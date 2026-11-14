@@ -1,0 +1,17 @@
+# Simple SEO
+
+Simple SEO is a lightweight SEO plugin for WordPress, built by Vitalii Kaplia for client and personal projects. It is meant to replace Yoast SEO on typical custom-built sites. Every feature is written from scratch; no code is taken from other SEO plugins.
+
+The plugin is in early development: this version is only the skeleton — bootstrap, lifecycle hooks, translation loading and updates from GitHub.
+
+## Requirements
+
+WordPress 6.5 or newer and PHP 8.1 or newer.
+
+## Installation
+
+Upload the `simple-seo` folder to `wp-content/plugins/` and activate it. Updates come through the normal WordPress updater, straight from the `master` branch of this repository.
+
+## License
+
+GPLv2 or later. Author: Vitalii Kaplia — [kaplia.pro](https://kaplia.pro/).
