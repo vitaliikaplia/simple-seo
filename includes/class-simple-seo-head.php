@@ -64,7 +64,7 @@ final class Simple_SEO_Head {
 	}
 
 	public static function output(): void {
-		if ( is_admin() || is_feed() ) {
+		if ( is_admin() || is_feed() || '' !== Simple_SEO_Plugin::conflicting_plugin() ) {
 			return;
 		}
 

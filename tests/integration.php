@@ -95,6 +95,7 @@ $sseo_saved_options = array(
 	'page_on_front'  => get_option( 'page_on_front' ),
 	'page_for_posts' => get_option( 'page_for_posts' ),
 	'access'         => get_option( Simple_SEO_Access::OPTION ),
+	'titles'         => get_option( Simple_SEO_Titles::OPTION ),
 );
 
 try {
@@ -112,7 +113,7 @@ try {
 	sseo_check( 'the access row is autoloaded', in_array( $sseo_autoload, wp_autoload_values_to_autoload(), true ), $sseo_autoload );
 	sseo_check( 'head output hooked at priority 1', 1 === has_action( 'wp_head', array( Simple_SEO_Head::class, 'output' ) ) );
 	sseo_check( 'admin classes are not loaded outside the admin', ! has_action( 'admin_menu', array( Simple_SEO_Admin::class, 'add_menu' ) ) );
-	sseo_check( 'translated field labels are registered on init, not when plugins load', 5 === has_action( 'init', array( Simple_SEO_Fields::class, 'register_builtin' ) ) );
+	sseo_check( 'translated field labels are registered on init, not when plugins load', 5 === has_action( 'init', array( Simple_SEO_Titles::class, 'register_fields' ) ) && 5 === has_action( 'init', array( Simple_SEO_Variables::class, 'register_builtin' ) ) );
 	$sseo_hook = $GLOBALS['wp_filter']['sanitize_post_meta__simple_seo_title'] ?? null;
 	sseo_check( 'field meta is registered once', $sseo_hook instanceof WP_Hook && 1 === count( $sseo_hook->callbacks[10] ?? array() ), $sseo_hook instanceof WP_Hook ? count( $sseo_hook->callbacks[10] ?? array() ) : 'no hook' );
 
@@ -565,6 +566,8 @@ try {
 
 	Simple_SEO_Context::reset();
 	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['author_post'] ) );
+	// The plugin's own providers are tested in their sections; here only the mechanism.
+	Simple_SEO_Head::remove_provider( 'description' );
 	sseo_check( 'no providers, no output', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
 
 	Simple_SEO_Head::add_provider(
@@ -620,6 +623,7 @@ try {
 	Simple_SEO_Head::remove_provider( 'sseo_test' );
 	Simple_SEO_Head::remove_provider( 'sseo_test_late' );
 	sseo_check( 'removed providers print nothing', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
+	Simple_SEO_Head::add_provider( 'description', array( Simple_SEO_Titles::class, 'head_tags' ), 10 );
 
 	$GLOBALS['wp_query'] = $sseo_saved_query;
 	if ( null === $sseo_saved_wp_actions ) {
@@ -630,6 +634,243 @@ try {
 	Simple_SEO_Context::reset();
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Variables' );
+
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	update_option( Simple_SEO_Titles::OPTION, array() );
+	$sseo_tagline = get_option( 'blogdescription' );
+	update_option( 'blogdescription', 'Just testing' );
+	Simple_SEO_Settings::flush();
+	$sseo_site = (string) get_option( 'blogname' );
+	$sseo_ctx_of = static fn( array $vars ): Simple_SEO_Context => Simple_SEO_Context::from_query( sseo_query( $vars ) );
+
+	sseo_check( 'twelve built-in variables', 12 === count( Simple_SEO_Variables::labels() ), array_keys( Simple_SEO_Variables::labels() ) );
+	$sseo_ctx = $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) );
+	sseo_check( 'title, page and site with the separator', "Author post – {$sseo_site}" === Simple_SEO_Variables::replace( '{title} {page} {sep} {site}', $sseo_ctx, '–' ) );
+	sseo_check( 'separators at the ends and in a row are tidied away', "Author post – {$sseo_site}" === Simple_SEO_Variables::replace( '{sep} {title} {sep}{sep}  {page} {sep} {site} {sep}', $sseo_ctx, '–' ), Simple_SEO_Variables::replace( '{sep} {title} {sep}{sep}  {page} {sep} {site} {sep}', $sseo_ctx, '–' ) );
+	sseo_check( 'unknown names in braces stay as typed', 'SSEO category {nope}' === Simple_SEO_Variables::replace( '{category} {nope}', $sseo_ctx, '–' ) );
+	sseo_check( 'an empty template stays empty', '' === Simple_SEO_Variables::replace( '  ', $sseo_ctx, '–' ) );
+	sseo_check( 'plain(): tags and entities removed, one line', 'Tom & Jerry’s x' === Simple_SEO_Variables::plain( "<b>Tom</b> &amp;\n Jerry&#8217;s <i>x</i>" ) );
+	sseo_check( 'a value cannot smuggle in a separator', "a b – {$sseo_site}" === Simple_SEO_Variables::replace( 'a {search} b {sep} {site}', Simple_SEO_Context::from_query( sseo_query( array( 's' => "\x1F" ) ) ), '–' ) );
+
+	wp_update_term( $sseo_cat_id, 'category', array( 'description' => 'Category <em>about</em> things' ) );
+	$sseo_ctx = $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) );
+	sseo_check( 'term: {title} is the name, {excerpt} the description', 'SSEO category|Category about things' === Simple_SEO_Variables::replace( '{title}|{excerpt}', $sseo_ctx, '–' ), Simple_SEO_Variables::replace( '{title}|{excerpt}', $sseo_ctx, '–' ) );
+	sseo_check( 'post type archive: {title} is the plural name', 'Books' === Simple_SEO_Variables::replace( '{title}', $sseo_ctx_of( array( 'post_type' => 'sseo_book' ) ), '–' ) );
+	sseo_check( 'author archive: {title} and {author} are the name', 'sseo-author sseo-author' === Simple_SEO_Variables::replace( '{title} {author}', $sseo_ctx_of( array( 'author' => $sseo_au ) ), '–' ) );
+	$sseo_y = (int) gmdate( 'Y' );
+	$sseo_n = (int) gmdate( 'n' );
+	sseo_check( 'year archive', (string) $sseo_y === Simple_SEO_Variables::replace( '{title}', $sseo_ctx_of( array( 'year' => $sseo_y ) ), '–' ) );
+	sseo_check( 'month archive: month and year', gmdate( 'F Y', gmmktime( 0, 0, 0, $sseo_n, 1, $sseo_y ) ) === Simple_SEO_Variables::replace( '{title}', $sseo_ctx_of( array( 'm' => gmdate( 'Ym' ) ) ), '–' ), Simple_SEO_Variables::replace( '{title}', $sseo_ctx_of( array( 'm' => gmdate( 'Ym' ) ) ), '–' ) );
+	sseo_check( 'day archive: the site date format', date_i18n( get_option( 'date_format' ), gmmktime( 0, 0, 0, $sseo_n, 1, $sseo_y ) ) === Simple_SEO_Variables::replace( '{date}', $sseo_ctx_of( array( 'year' => $sseo_y, 'monthnum' => $sseo_n, 'day' => 1 ) ), '–' ) );
+	$sseo_ctx = $sseo_ctx_of( array( 's' => 'кава' ) );
+	sseo_check( 'search: a ready phrase and the query', 'Search results for "кава" / кава' === Simple_SEO_Variables::replace( '{title} / {search}', $sseo_ctx, '–' ) );
+	$sseo_q = sseo_query( array( 'p' => 99999999 ) );
+	$sseo_q->set_404();
+	sseo_check( '404: a ready phrase', 'Page not found' === Simple_SEO_Variables::replace( '{title}', Simple_SEO_Context::from_query( $sseo_q ), '–' ) );
+	sseo_check( 'home: {title} is the site title', $sseo_site === Simple_SEO_Variables::replace( '{title}', $sseo_ctx_of( array() ), '–' ) );
+	sseo_check( 'part 2 of a split post: Page 2 of 2', 'Page 2 of 2' === Simple_SEO_Variables::replace( '{page}', $sseo_ctx_of( array( 'p' => $sseo_p['multi'], 'page' => 2 ) ), '–' ) );
+	sseo_check( 'first page: no page number', '' === Simple_SEO_Variables::replace( '{page}', $sseo_ctx_of( array( 'p' => $sseo_p['multi'] ) ), '–' ) );
+
+	$sseo['posts']['excerpt'] = wp_insert_post( array( 'post_title' => 'With excerpt', 'post_status' => 'publish', 'post_excerpt' => 'The <b>chosen</b> excerpt', 'post_content' => 'Body' ) );
+	$sseo['posts']['blocks']  = wp_insert_post( array( 'post_title' => 'Blocks', 'post_status' => 'publish', 'post_content' => '<!-- wp:paragraph --><p>Hello <strong>world</strong> [gallery]</p><!-- /wp:paragraph --><!-- wp:acf/hero {"name":"acf/hero","data":{"title":"Hidden"}} /-->' ) );
+	$sseo['posts']['long']    = wp_insert_post( array( 'post_title' => 'Long', 'post_status' => 'publish', 'post_content' => str_repeat( 'Привіт світ, як справи. ', 30 ) ) );
+	$sseo['posts']['secret']  = wp_insert_post( array( 'post_title' => 'Secret', 'post_status' => 'publish', 'post_password' => 'pw', 'post_excerpt' => 'Leaked excerpt', 'post_content' => 'Leaked text' ) );
+	$sseo_p = $sseo['posts'];
+	sseo_check( '{excerpt}: the written excerpt, as plain text', 'The chosen excerpt' === Simple_SEO_Variables::replace( '{excerpt}', $sseo_ctx_of( array( 'p' => $sseo_p['excerpt'] ) ), '–' ) );
+	sseo_check( '{excerpt}: from the content, without shortcodes and dynamic blocks', 'Hello world' === Simple_SEO_Variables::replace( '{excerpt}', $sseo_ctx_of( array( 'p' => $sseo_p['blocks'] ) ), '–' ), Simple_SEO_Variables::replace( '{excerpt}', $sseo_ctx_of( array( 'p' => $sseo_p['blocks'] ) ), '–' ) );
+	$sseo_long = Simple_SEO_Variables::replace( '{excerpt}', $sseo_ctx_of( array( 'p' => $sseo_p['long'] ) ), '–' );
+	sseo_check( '{excerpt}: long Cyrillic text cut at a word with an ellipsis, valid UTF-8', mb_check_encoding( $sseo_long, 'UTF-8' ) && mb_strlen( $sseo_long ) <= 157 && str_ends_with( $sseo_long, '…' ) && ! preg_match( '/[\s,.]…$/u', $sseo_long ), $sseo_long );
+	// "р" is D1 80 in UTF-8; 80 is also a byte of the dashes, so a byte-wise trim would break the letter.
+	$sseo['posts']['cheese'] = wp_insert_post( array( 'post_title' => 'Cheese', 'post_status' => 'publish', 'post_content' => str_repeat( 'сир ', 60 ) ) );
+	$sseo_cheese             = Simple_SEO_Variables::replace( '{excerpt}', $sseo_ctx_of( array( 'p' => $sseo['posts']['cheese'] ) ), '–' );
+	sseo_check( '{excerpt}: a cut right after "р" keeps the letter whole', mb_check_encoding( $sseo_cheese, 'UTF-8' ) && str_ends_with( $sseo_cheese, 'сир…' ), $sseo_cheese );
+	sseo_check( '{excerpt}: nothing of a password-protected post', '' === Simple_SEO_Variables::replace( '{excerpt}', $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ), '–' ) );
+	$sseo_ctx = $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) );
+	sseo_check( '{category}, {author}, {post_type} of a post', 'SSEO category|sseo-author|Post' === Simple_SEO_Variables::replace( '{category}|{author}|{post_type}', $sseo_ctx, '–' ) );
+	sseo_check( '{date} of a post: its publication date', get_the_date( '', $sseo_p['author_post'] ) === Simple_SEO_Variables::replace( '{date}', $sseo_ctx, '–' ) );
+	sseo_check( '{year}: the current year', wp_date( 'Y' ) === Simple_SEO_Variables::replace( '{year}', $sseo_ctx, '–' ) );
+	sseo_check( '{category} of a page is empty', '' === Simple_SEO_Variables::replace( '{category}', $sseo_ctx_of( array( 'page_id' => $sseo_p['front'] ) ), '–' ) );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Titles and descriptions' );
+
+	sseo_check( 'default separator is the en dash', '–' === Simple_SEO_Titles::separator() );
+	$sseo_slots = array(
+		'home'              => $sseo_ctx_of( array() ),
+		'post:post'         => $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ),
+		'term:category'     => $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ),
+		'archive:sseo_book' => $sseo_ctx_of( array( 'post_type' => 'sseo_book' ) ),
+		'author'            => $sseo_ctx_of( array( 'author' => $sseo_au ) ),
+		'date'              => $sseo_ctx_of( array( 'year' => $sseo_y ) ),
+		'search'            => $sseo_ctx_of( array( 's' => 'x' ) ),
+		'404'               => Simple_SEO_Context::from_query( $sseo_q ),
+		''                  => new Simple_SEO_Context(),
+	);
+	foreach ( $sseo_slots as $sseo_slot => $sseo_ctx ) {
+		$sseo_slot = (string) $sseo_slot; // PHP turns the key '404' into an integer.
+		sseo_check( 'slot ' . ( '' === $sseo_slot ? '(none)' : $sseo_slot ), $sseo_slot === Simple_SEO_Titles::slot_for( $sseo_ctx ), Simple_SEO_Titles::slot_for( $sseo_ctx ) );
+	}
+
+	$sseo['posts']['bare'] = wp_insert_post( array( 'post_title' => 'Bare', 'post_status' => 'publish' ) );
+	$sseo_p                = $sseo['posts'];
+	sseo_check( 'a post without fields: the type template', "Editor post – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) ) );
+	sseo_check( 'a post without fields: its excerpt as the description', 'sibling saved in the same request' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) ) );
+	sseo_check( 'a post without excerpt or text: no description', '' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) ) );
+	sseo_check( 'the own field wins over the template', 'Only for the edited post' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_title', '{title} custom {sep} {site}' );
+	sseo_check( 'the own field may use variables', "Author post custom – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) );
+	sseo_check( 'a term: the taxonomy template with its field', 'Saved from the term form' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ) ) );
+	sseo_check( 'a term: description from the term description', 'Category about things' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ) ) );
+	sseo_check( 'home: site and tagline', "{$sseo_site} – Just testing" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) && 'Just testing' === Simple_SEO_Titles::description( $sseo_ctx_of( array() ) ) );
+	sseo_check( 'search results: phrase and site, no description', "Search results for \"x\" – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array( 's' => 'x' ) ) ) && '' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 's' => 'x' ) ) ) );
+	sseo_check( 'a page Simple SEO does not know: nothing', '' === Simple_SEO_Titles::title( new Simple_SEO_Context() ) );
+
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_p['front'] );
+	sseo_check( 'a static front page uses the home template', "{$sseo_site} – Just testing" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) );
+	update_post_meta( $sseo_p['front'], '_simple_seo_title', 'Welcome {sep} {site}' );
+	sseo_check( "a static front page's own field wins", "Welcome – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) );
+	update_option( 'show_on_front', 'posts' );
+
+	update_option(
+		Simple_SEO_Titles::OPTION,
+		array(
+			'separator' => '|',
+			'templates' => array(
+				'post:post' => array( 'title' => '{site}: {title} {sep} {year}', 'description' => '' ),
+				'search'    => array( 'title' => '' ),
+			),
+		)
+	);
+	sseo_check( 'a saved template and separator are used', "{$sseo_site}: Editor post | " . wp_date( 'Y' ) === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) ) );
+	sseo_check( 'a template saved empty stays empty (no fallback to the default)', '' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 's' => 'x' ) ) ) );
+	sseo_check( 'a description template saved empty: no description, even with an excerpt', '' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 'p' => $sseo_p['excerpt'] ) ) ) );
+	sseo_check( 'templates not saved keep their default', 'Category about things' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ) ) );
+	update_option( Simple_SEO_Titles::OPTION, array( 'separator' => 'XX' ) );
+	sseo_check( 'an unknown stored separator falls back to the default', '–' === Simple_SEO_Titles::separator() );
+	update_option( Simple_SEO_Titles::OPTION, array() );
+
+	add_filter( 'simple_seo_title', static fn( string $title, Simple_SEO_Context $context ): string => $title . ' [' . $context->kind . ']', 10, 2 );
+	sseo_check( 'simple_seo_title changes the result', "Editor post – {$sseo_site} [singular]" === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) ) );
+	remove_all_filters( 'simple_seo_title' );
+
+	$sseo_clean = Simple_SEO_Titles::sanitize(
+		array(
+			'separator' => 'x',
+			'templates' => array(
+				'post:post'     => array(
+					'title'       => '{title} {page} {sep} {site}',
+					'description' => '<b>Hi</b> {excerpt}',
+				),
+				'bad key!'      => array( 'title' => 'x' ),
+				'term:category' => array( 'title' => '' ),
+				'author'        => 'not an array',
+				'search'        => array( 'title' => array( 'x' ) ),
+			),
+		)
+	);
+	sseo_check( 'sanitize: an unknown separator becomes the default', '–' === $sseo_clean['separator'] );
+	sseo_check( 'sanitize: a template equal to the default is not stored', ! isset( $sseo_clean['templates']['post:post']['title'] ), $sseo_clean );
+	sseo_check( 'sanitize: tags stripped from a template', 'Hi {excerpt}' === ( $sseo_clean['templates']['post:post']['description'] ?? null ), $sseo_clean );
+	sseo_check( 'sanitize: an empty template is stored as empty', '' === ( $sseo_clean['templates']['term:category']['title'] ?? null ), $sseo_clean );
+	sseo_check( 'sanitize: bad slots and values are dropped', ! isset( $sseo_clean['templates']['bad key!'] ) && ! isset( $sseo_clean['templates']['author'] ) && ! isset( $sseo_clean['templates']['search'] ), array_keys( $sseo_clean['templates'] ) );
+
+	// Output through core: <title> and the head.
+	$sseo['posts']['tricky'] = wp_insert_post( array( 'post_title' => 'Tom & "Jerry"', 'post_status' => 'publish', 'post_excerpt' => 'Short "desc" & <b>more</b>' ) );
+	$sseo_p                  = $sseo['posts'];
+	$sseo_saved_query        = $GLOBALS['wp_query'];
+	$GLOBALS['wp_query']     = sseo_query( array( 'p' => $sseo_p['tricky'] ) );
+	Simple_SEO_Context::reset();
+	sseo_check( 'wp_get_document_title() returns our title, escaped', "Tom &amp; &quot;Jerry&quot; – {$sseo_site}" === wp_get_document_title(), wp_get_document_title() );
+	sseo_check( 'wp_title gets the same title', "Tom &amp; &quot;Jerry&quot; – {$sseo_site}" === apply_filters( 'wp_title', 'theme title', '|', 'right' ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Head::class, 'output' ) );
+	sseo_check( 'the head has the description, escaped', str_contains( $sseo_html, '<meta name="description" content="Short &quot;desc&quot; &amp; more" />' ), $sseo_html );
+
+	Simple_SEO_Context::reset();
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['excerpt'] ) );
+	$sseo_queries        = $GLOBALS['wpdb']->num_queries;
+	$sseo_ctx            = Simple_SEO_Context::current();
+	Simple_SEO_Titles::title( $sseo_ctx );
+	Simple_SEO_Titles::description( $sseo_ctx );
+	sseo_check( 'title and description of a post cost no database query', 0 === $GLOBALS['wpdb']->num_queries - $sseo_queries, $GLOBALS['wpdb']->num_queries - $sseo_queries );
+
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	Simple_SEO_Context::reset();
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['tricky'] ) );
+	sseo_check( 'with another SEO plugin active, <title> is left to it', ! str_contains( wp_get_document_title(), '&quot;Jerry&quot;' ), wp_get_document_title() );
+	sseo_check( 'with another SEO plugin active, the head gets nothing', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
+	set_current_screen( 'plugins' );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( 'the plugins screen says why', str_contains( sseo_capture( array( Simple_SEO_Admin::class, 'conflict_notice' ) ), 'Yoast SEO is active' ) );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	sseo_check( 'no notice without another SEO plugin', '' === sseo_capture( array( Simple_SEO_Admin::class, 'conflict_notice' ) ) );
+	sseo_check( 'no other SEO plugin in the test site', '' === Simple_SEO_Plugin::conflicting_plugin() );
+
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+	Simple_SEO_Context::reset();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Titles tab and the structure button' );
+
+	Simple_SEO_Titles::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	update_option( Simple_SEO_Titles::OPTION, array( 'separator' => '|', 'templates' => array( 'post:post' => array( 'title' => '{title} {page} {sep} {site}', 'description' => 'Own {excerpt}' ) ) ) );
+	$sseo_stored = get_option( Simple_SEO_Titles::OPTION );
+	sseo_check( 'saving the tab runs the sanitizer', '|' === $sseo_stored['separator'] && ! isset( $sseo_stored['templates']['post:post']['title'] ) && 'Own {excerpt}' === $sseo_stored['templates']['post:post']['description'], $sseo_stored );
+	sseo_check( 'the tab saves with the plugin capability', Simple_SEO_Access::CAP_SETTINGS === apply_filters( 'option_page_capability_simple-seo-titles', 'manage_options' ) );
+
+	$_GET['tab'] = 'titles';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check( 'the Titles tab comes first in the tab bar', strpos( $sseo_html, '>Titles<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check( 'fourteen separators, the saved one checked', 14 === substr_count( $sseo_html, 'name="simple_seo_titles[separator]"' ) && (bool) preg_match( '/value="\|"\s+checked=\'checked\'/', $sseo_html ) );
+	sseo_check( 'rows for post types and taxonomies', str_contains( $sseo_html, 'simple_seo_titles[templates][post:post][title]' ) && str_contains( $sseo_html, 'simple_seo_titles[templates][term:sseo_genre][description]' ) );
+	sseo_check( 'an archive row only for a type with an archive', str_contains( $sseo_html, '[archive:sseo_book]' ) && ! str_contains( $sseo_html, '[archive:post]' ) );
+	sseo_check( 'author, date and search rows', str_contains( $sseo_html, '[templates][author]' ) && str_contains( $sseo_html, '[templates][date]' ) && str_contains( $sseo_html, '[templates][search]' ) );
+	sseo_check( 'a saved template is shown, the default where none is saved', str_contains( $sseo_html, 'value="Own {excerpt}"' ) && str_contains( $sseo_html, 'value="{title} {page} {sep} {site}"' ) );
+	sseo_check( 'structure buttons carry the default', str_contains( $sseo_html, 'class="button simple-seo-mask"' ) && str_contains( $sseo_html, 'data-mask="{excerpt}"' ) );
+	sseo_check( 'no structure button where the default is empty (search description)', ! str_contains( $sseo_html, 'data-target="simple-seo-template-search-description"' ) );
+	sseo_check( 'the variables are listed', str_contains( $sseo_html, '<code>{excerpt}</code>' ) && str_contains( $sseo_html, '<code>{sep}</code>' ) );
+	update_option( Simple_SEO_Titles::OPTION, array() );
+
+	wp_set_current_user( $sseo_ed );
+	delete_post_meta( $sseo_p['editor_post'], '_simple_seo_title' );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['editor_post'] ) ) );
+	sseo_check( 'meta box: the template as placeholder', str_contains( $sseo_html, 'placeholder="{title} {page} {sep} {site}"' ) );
+	sseo_check( 'meta box: the structure button for the title', str_contains( $sseo_html, 'data-target="simple-seo-field-title" data-mask="{title} {page} {sep} {site}"' ) );
+
+	// Rendered the way core renders it, with the postbox around: every id must be unique, or the
+	// labels and the structure button point at the wrong element (core gives the heading "<box id>-title").
+	set_current_screen( 'post' );
+	$GLOBALS['wp_meta_boxes'] = array();
+	Simple_SEO_Editor::add_meta_box( 'post', get_post( $sseo_p['editor_post'] ) );
+	$sseo_html = sseo_capture( static fn() => do_meta_boxes( 'post', 'normal', get_post( $sseo_p['editor_post'] ) ) );
+	preg_match_all( '/\sid="([^"]+)"/', $sseo_html, $sseo_ids );
+	$sseo_dupes = array_keys( array_filter( array_count_values( $sseo_ids[1] ), static fn( int $n ): bool => $n > 1 ) );
+	sseo_check( 'meta box inside the core postbox: every id is unique', str_contains( $sseo_html, 'id="simple-seo-field-title"' ) && array() === $sseo_dupes, $sseo_dupes );
+	sseo_check( 'meta box: what the page shows now', str_contains( $sseo_html, 'Now: Editor post – ' . esc_html( $sseo_site ) ) && str_contains( $sseo_html, 'Now: sibling saved in the same request' ) );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
+	sseo_check( 'meta box: no description says so', str_contains( $sseo_html, 'Now: none from Simple SEO.' ) );
+	$sseo['posts']['draft'] = wp_insert_post( array( 'post_title' => 'Auto Draft', 'post_status' => 'auto-draft' ) );
+	$sseo_html              = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['draft'] ) ) );
+	sseo_check( 'meta box of a new post: no "Now"', ! str_contains( $sseo_html, 'Now:' ) && str_contains( $sseo_html, 'simple-seo-mask' ) );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
+	sseo_check( 'term screen: structure button and what the term shows now', str_contains( $sseo_html, 'data-mask="{excerpt}"' ) && str_contains( $sseo_html, 'Now: Saved from the term form' ) );
+
+	foreach ( array( 'toplevel_page_simple-seo' => '', 'post.php' => 'post', 'edit.php' => 'edit-post', 'term.php' => 'edit-category' ) as $sseo_hook => $sseo_screen ) {
+		wp_dequeue_script( 'simple-seo-admin' );
+		if ( '' !== $sseo_screen ) {
+			set_current_screen( $sseo_screen );
+		}
+		Simple_SEO_Admin::enqueue( $sseo_hook );
+		$sseo_expected = 'edit.php' !== $sseo_hook;
+		sseo_check( "admin.js " . ( $sseo_expected ? 'loads' : 'does not load' ) . " on {$sseo_hook}", $sseo_expected === wp_script_is( 'simple-seo-admin', 'enqueued' ) );
+	}
+	wp_dequeue_script( 'simple-seo-admin' );
+	update_option( 'blogdescription', $sseo_tagline );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -637,7 +878,9 @@ try {
 	unload_textdomain( 'simple-seo' );
 	load_textdomain( 'simple-seo', $sseo_mo );
 	sseo_check( 'a field label is translated', 'SEO-заголовок' === __( 'SEO title', 'simple-seo' ), __( 'SEO title', 'simple-seo' ) );
-	sseo_check( 'a tab name is translated', 'Доступ' === __( 'Access', 'simple-seo' ), __( 'Access', 'simple-seo' ) );
+	sseo_check( 'a tab name is translated', 'Доступ' === __( 'Access', 'simple-seo' ) && 'Заголовки' === __( 'Titles', 'simple-seo' ), __( 'Titles', 'simple-seo' ) );
+	sseo_check( 'the structure button is translated', 'Вставити структуру' === __( 'Insert structure', 'simple-seo' ) );
+	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
 	// ------------------------------------------------------------------------------------------
@@ -651,7 +894,7 @@ try {
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
 	sseo_check( 'uninstall leaves the options cache consistent', null === get_option( Simple_SEO_Plugin::VERSION_OPTION, null ) && null === get_option( Simple_SEO_Access::OPTION, null ) );
-	sseo_check( 'uninstall keeps the SEO fields of posts', 'Only for the edited post' === Simple_SEO_Fields::post_value( $sseo_p['author_post'], 'title' ) );
+	sseo_check( 'uninstall keeps the SEO fields of posts', '{title} custom {sep} {site}' === Simple_SEO_Fields::post_value( $sseo_p['author_post'], 'title' ) );
 	sseo_check( 'uninstall keeps the SEO fields of terms', 'Saved from the term form' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Plugin::maybe_upgrade();
@@ -676,7 +919,9 @@ try {
 	foreach ( array( 'show_on_front', 'page_on_front', 'page_for_posts' ) as $sseo_name ) {
 		update_option( $sseo_name, $sseo_saved_options[ $sseo_name ] );
 	}
-	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) ? $sseo_saved_options['access'] : array() );
+	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
+	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
+	update_option( Simple_SEO_Titles::OPTION, is_array( $sseo_saved_options['titles'] ) ? $sseo_saved_options['titles'] : array() );
 }
 
 $sseo_r = $GLOBALS['sseo_results'];

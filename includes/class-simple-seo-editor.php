@@ -33,6 +33,9 @@ final class Simple_SEO_Editor {
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 
+		// A new post has no title yet: what it would show now says nothing.
+		$preview = 'auto-draft' !== $post->post_status;
+
 		echo '<div class="simple-seo-fields">';
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::post_value( (int) $post->ID, $key );
@@ -42,10 +45,13 @@ final class Simple_SEO_Editor {
 				printf( '<label for="%s">%s</label>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
 			} else {
 				printf( '<label for="%s"><strong>%s</strong></label><br>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
-				echo self::input( $field, $value ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+				echo self::input_with_mask( $field, $value, 'post', $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 			}
 			if ( '' !== (string) $field['description'] ) {
 				printf( '<br><span class="description">%s</span>', esc_html( (string) $field['description'] ) );
+			}
+			if ( $preview ) {
+				echo self::preview( $field, 'post', $post, '<br>' ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 			}
 			echo '</p>';
 		}
@@ -96,10 +102,11 @@ final class Simple_SEO_Editor {
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::term_value( (int) $term->term_id, $key );
 			printf( '<tr class="form-field"><th scope="row"><label for="%s">%s</label></th><td>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
-			echo self::input( $field, $value ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+			echo self::input_with_mask( $field, $value, 'term', $term ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 			if ( '' !== (string) $field['description'] ) {
 				printf( '<p class="description">%s</p>', esc_html( (string) $field['description'] ) );
 			}
+			echo self::preview( $field, 'term', $term, '' ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 			echo '</td></tr>';
 		}
 	}
@@ -135,19 +142,62 @@ final class Simple_SEO_Editor {
 		return is_array( $input ) ? $input : array();
 	}
 
+	/** Not "simple-seo-{key}": WordPress gives the meta box heading the id "simple-seo-title". */
 	private static function input_id( string $key ): string {
-		return 'simple-seo-' . $key;
+		return 'simple-seo-field-' . $key;
+	}
+
+	/**
+	 * A field with a template: the template as the placeholder and the "Insert structure" button.
+	 *
+	 * @param array<string, mixed> $field
+	 * @param WP_Post|WP_Term      $object
+	 */
+	private static function input_with_mask( array $field, string $value, string $object_type, $object ): string {
+		$mask = is_callable( $field['mask'] ?? null ) ? (string) call_user_func( $field['mask'], $object_type, $object ) : '';
+		$html = self::input( $field, $value, $mask );
+
+		if ( '' !== $mask ) {
+			$html .= '<span style="display:inline-block;margin-top:4px">' . Simple_SEO_Admin::mask_button( self::input_id( (string) $field['key'] ), $mask ) . '</span>';
+		}
+
+		return $html;
+	}
+
+	/**
+	 * What the page shows now with the saved values, under the field.
+	 *
+	 * @param array<string, mixed> $field
+	 * @param WP_Post|WP_Term      $object
+	 */
+	private static function preview( array $field, string $object_type, $object, string $before ): string {
+		if ( ! is_callable( $field['preview'] ?? null ) ) {
+			return '';
+		}
+
+		$text = (string) call_user_func( $field['preview'], $object_type, $object );
+
+		return $before . sprintf(
+			'<span class="description simple-seo-preview">%s</span>',
+			esc_html(
+				'' !== $text
+					/* translators: %s: the title or description the page has with the saved values. */
+					? sprintf( __( 'Now: %s', 'simple-seo' ), $text )
+					: __( 'Now: none from Simple SEO.', 'simple-seo' )
+			)
+		);
 	}
 
 	/** @param array<string, mixed> $field */
-	private static function input( array $field, string $value ): string {
-		$key  = (string) $field['key'];
-		$id   = esc_attr( self::input_id( $key ) );
-		$name = esc_attr( self::INPUT . '[' . $key . ']' );
+	private static function input( array $field, string $value, string $placeholder = '' ): string {
+		$key         = (string) $field['key'];
+		$id          = esc_attr( self::input_id( $key ) );
+		$name        = esc_attr( self::INPUT . '[' . $key . ']' );
+		$placeholder = '' !== $placeholder ? sprintf( ' placeholder="%s"', esc_attr( $placeholder ) ) : '';
 
 		switch ( $field['type'] ) {
 			case 'textarea':
-				return sprintf( '<textarea id="%s" name="%s" rows="3" class="large-text">%s</textarea>', $id, $name, esc_textarea( $value ) );
+				return sprintf( '<textarea id="%s" name="%s" rows="3" class="large-text"%s>%s</textarea>', $id, $name, $placeholder, esc_textarea( $value ) );
 			case 'checkbox':
 				// The hidden empty value is what arrives when the box is unchecked.
 				return sprintf( '<input type="hidden" name="%2$s" value=""><input type="checkbox" id="%1$s" name="%2$s" value="1"%3$s>', $id, $name, checked( '' !== $value && '0' !== $value, true, false ) );
@@ -158,9 +208,9 @@ final class Simple_SEO_Editor {
 				}
 				return sprintf( '<select id="%s" name="%s">%s</select>', $id, $name, $options );
 			case 'url':
-				return sprintf( '<input type="url" id="%s" name="%s" value="%s" class="large-text">', $id, $name, esc_attr( $value ) );
+				return sprintf( '<input type="url" id="%s" name="%s" value="%s" class="large-text"%s>', $id, $name, esc_attr( $value ), $placeholder );
 			default:
-				return sprintf( '<input type="text" id="%s" name="%s" value="%s" class="large-text">', $id, $name, esc_attr( $value ) );
+				return sprintf( '<input type="text" id="%s" name="%s" value="%s" class="large-text"%s>', $id, $name, esc_attr( $value ), $placeholder );
 		}
 	}
 }

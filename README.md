@@ -2,7 +2,7 @@
 
 Simple SEO is a lightweight SEO plugin for WordPress, built by Vitalii Kaplia for client and personal projects. It is meant to replace Yoast SEO on typical custom-built sites. Every feature is written from scratch; no code is taken from other SEO plugins.
 
-The plugin is in early development. So far it has the groundwork — SEO fields in the editor, a settings page with per-role access — and does not print anything on the site yet.
+The plugin is in early development. So far it sets the page title and the meta description — from each post's or term's own SEO fields, otherwise from templates with variables — and lets you choose which roles edit what. While another SEO plugin is active, it prints nothing on the site.
 
 ## Requirements
 

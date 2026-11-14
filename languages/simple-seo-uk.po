@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.2.0\n"
+"Project-Id-Version: Simple SEO 0.3.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -14,7 +14,7 @@ msgstr ""
 
 #. Plugin Name of the plugin
 #: simple-seo.php
-#: includes/class-simple-seo-admin.php:49
+#: includes/class-simple-seo-admin.php:60
 #: includes/views/settings.php:14
 msgid "Simple SEO"
 msgstr "Simple SEO"
@@ -59,44 +59,199 @@ msgstr "Редагувати поля індексації"
 msgid "Fields that decide whether and how search engines index a page: robots, canonical address. A wrong value can take a page out of search."
 msgstr "Поля, що вирішують, чи індексують пошуковики сторінку і як: robots, канонічна адреса. Хибне значення може прибрати сторінку з пошуку."
 
-#: includes/class-simple-seo-admin.php:21
+#: includes/class-simple-seo-admin.php:32
 msgid "Access"
 msgstr "Доступ"
 
-#: includes/class-simple-seo-admin.php:50
+#: includes/class-simple-seo-admin.php:61
 #: includes/class-simple-seo-editor.php:28
-#: includes/class-simple-seo-editor.php:92
+#: includes/class-simple-seo-editor.php:98
 msgid "SEO"
 msgstr "SEO"
 
-#: includes/class-simple-seo-admin.php:107
+#: includes/class-simple-seo-admin.php:118
 msgid "Sorry, you are not allowed to access this page."
 msgstr "На жаль, у вас немає доступу до цієї сторінки."
 
-#: includes/class-simple-seo-admin.php:122
+#. translators: %s: name of another SEO plugin, e.g. Yoast SEO.
+#: includes/class-simple-seo-admin.php:144
+#, php-format
+msgid "%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime."
+msgstr "%s активний, тому Simple SEO нічого не виводить на сайті — ні заголовків, ні описів, ні інших тегів, — і сторінки ніколи не отримують їх двічі. Вимкніть його, коли переходитимете на Simple SEO; налаштування й поля тут можна підготувати заздалегідь."
+
+#: includes/class-simple-seo-admin.php:179
+msgid "Insert structure"
+msgstr "Вставити структуру"
+
+#: includes/class-simple-seo-admin.php:189
 msgid "Settings"
 msgstr "Налаштування"
 
-#: includes/class-simple-seo-fields.php:37
+#. translators: %s: the title or description the page has with the saved values.
+#: includes/class-simple-seo-editor.php:184
+#, php-format
+msgid "Now: %s"
+msgstr "Зараз: %s"
+
+#: includes/class-simple-seo-editor.php:185
+msgid "Now: none from Simple SEO."
+msgstr "Зараз: від Simple SEO нічого."
+
+#: includes/class-simple-seo-github-updater.php:103
+msgid "Version 0.3.0: the page title and the meta description are set on the site from the SEO fields and from templates with variables; Titles tab with the separator and the templates of every kind of page; \"Insert structure\" button. While another SEO plugin is active, nothing is printed. Version 0.2.0: SEO fields for posts, pages and terms, SEO settings page with per-role access."
+msgstr "Версія 0.3.0: заголовок сторінки й мета-опис виводяться на сайті з SEO-полів і з шаблонів зі змінними; вкладка «Заголовки» з роздільником і шаблонами для всіх типів сторінок; кнопка «Вставити структуру». Поки активний інший SEO-плагін, нічого не виводиться. Версія 0.2.0: SEO-поля для записів, сторінок і термінів, сторінка налаштувань SEO з доступом за ролями."
+
+#: includes/class-simple-seo-titles.php:51
 msgid "SEO title"
 msgstr "SEO-заголовок"
 
-#: includes/class-simple-seo-fields.php:38
-msgid "The title search engines show. Leave empty to use the template."
-msgstr "Заголовок, який показують пошуковики. Залиште порожнім, щоб узяти шаблон."
+#: includes/class-simple-seo-titles.php:52
+msgid "The title search engines show. Leave empty to use the template; variables like {title}, {sep} and {site} work here too."
+msgstr "Заголовок, який показують пошуковики. Залиште порожнім, щоб узяти шаблон; змінні на кшталт {title}, {sep} і {site} працюють і тут."
 
-#: includes/class-simple-seo-fields.php:45
+#: includes/class-simple-seo-titles.php:61
 msgid "Meta description"
 msgstr "Мета-опис"
 
-#: includes/class-simple-seo-fields.php:46
+#: includes/class-simple-seo-titles.php:62
 msgid "The text under the title in search results. Leave empty to use the template."
 msgstr "Текст під заголовком у результатах пошуку. Залиште порожнім, щоб узяти шаблон."
 
-#: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.2.0: SEO title and meta description fields for posts, pages and terms, and the SEO settings page with per-role access. Nothing is printed on the site yet."
-msgstr "Версія 0.2.0: поля SEO-заголовка й мета-опису для записів, сторінок і термінів та сторінка налаштувань SEO з доступом за ролями. На сайті плагін поки нічого не виводить."
+#: includes/class-simple-seo-titles.php:72
+msgid "Titles"
+msgstr "Заголовки"
+
+#. translators: %s: post type name, plural.
+#: includes/class-simple-seo-titles.php:253
+#, php-format
+msgid "Archive: %s"
+msgstr "Архів: %s"
+
+#: includes/class-simple-seo-titles.php:256
+msgid "Author archives"
+msgstr "Архіви авторів"
+
+#: includes/class-simple-seo-titles.php:257
+msgid "Date archives"
+msgstr "Архіви за датами"
+
+#: includes/class-simple-seo-titles.php:258
+msgid "Search results"
+msgstr "Результати пошуку"
+
+#: includes/class-simple-seo-titles.php:262
+msgid "Post types"
+msgstr "Типи записів"
+
+#: includes/class-simple-seo-titles.php:266
+msgid "Taxonomies"
+msgstr "Таксономії"
+
+#: includes/class-simple-seo-titles.php:270
+msgid "Archives and search"
+msgstr "Архіви й пошук"
+
+#: includes/class-simple-seo-variables.php:46
+msgid "Title of the post, term, archive or author; on search results and 404 a ready phrase"
+msgstr "Назва запису, терміна чи архіву або ім'я автора; на сторінках пошуку й 404 — готова фраза"
+
+#: includes/class-simple-seo-variables.php:47
+msgid "Site title"
+msgstr "Назва сайту"
+
+#: includes/class-simple-seo-variables.php:48
+msgid "Tagline"
+msgstr "Короткий опис сайту"
+
+#: includes/class-simple-seo-variables.php:49
+msgid "Separator chosen in the settings"
+msgstr "Роздільник, обраний у налаштуваннях"
+
+#: includes/class-simple-seo-variables.php:50
+msgid "Page number, only from the second page on: \"Page 2 of 5\""
+msgstr "Номер сторінки, лише з другої: «Сторінка 2 з 5»"
+
+#: includes/class-simple-seo-variables.php:51
+msgid "Excerpt of the post (or the start of its text), description of the term, author or post type"
+msgstr "Витяг запису (або початок його тексту), опис терміна, автора чи типу записів"
+
+#: includes/class-simple-seo-variables.php:52
+msgid "Category of the post"
+msgstr "Рубрика запису"
+
+#: includes/class-simple-seo-variables.php:53
+msgid "Author name"
+msgstr "Ім'я автора"
+
+#: includes/class-simple-seo-variables.php:54
+msgid "Publication date of the post, or the date of a date archive"
+msgstr "Дата публікації запису або дата архіву за датами"
+
+#: includes/class-simple-seo-variables.php:55
+msgid "Name of the post type"
+msgstr "Назва типу записів"
+
+#: includes/class-simple-seo-variables.php:56
+msgid "What was searched for"
+msgstr "Що шукали"
+
+#: includes/class-simple-seo-variables.php:57
+msgid "Current year"
+msgstr "Поточний рік"
+
+#. translators: %s: what was searched for.
+#: includes/class-simple-seo-variables.php:114
+#, php-format
+msgid "Search results for \"%s\""
+msgstr "Результати пошуку за «%s»"
+
+#: includes/class-simple-seo-variables.php:116
+msgid "Page not found"
+msgstr "Сторінку не знайдено"
+
+#. translators: 1: page number, 2: number of pages.
+#: includes/class-simple-seo-variables.php:131
+#, php-format
+msgid "Page %1$d of %2$d"
+msgstr "Сторінка %1$d з %2$d"
+
+#. translators: %d: page number.
+#: includes/class-simple-seo-variables.php:133
+#, php-format
+msgid "Page %d"
+msgstr "Сторінка %d"
+
+#. translators: format of a month archive date, see https://www.php.net/manual/datetime.format.php
+#: includes/class-simple-seo-variables.php:214
+msgctxt "month archive date format"
+msgid "F Y"
+msgstr "F Y"
 
 #: includes/views/tab-access.php:14
 msgid "Choose which roles can do what. Editing SEO fields of a post or term also needs the right to edit that post or term itself."
 msgstr "Оберіть, які ролі що можуть. Щоб редагувати SEO-поля запису чи терміна, потрібне ще й право редагувати сам запис чи термін."
+
+#: includes/views/tab-titles.php:30
+msgid "Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme's title and without a description."
+msgstr "Шаблони визначають заголовок і опис кожної сторінки, яка не має власного SEO-заголовка чи опису. Змінні у фігурних дужках замінюються на кожній сторінці; змінна, якій нічого показати, зникає разом із роздільником поруч. Порожній шаблон лишає сторінці заголовок теми й не дає їй опису."
+
+#: includes/views/tab-titles.php:33
+msgid "Variables"
+msgstr "Змінні"
+
+#: includes/views/tab-titles.php:49
+#: includes/views/tab-titles.php:52
+msgid "Separator"
+msgstr "Роздільник"
+
+#: includes/views/tab-titles.php:61
+msgid "Goes where a template says {sep}."
+msgstr "Стоїть там, де в шаблоні {sep}."
+
+#: includes/views/tab-titles.php:83
+msgid "Title template"
+msgstr "Шаблон заголовка"
+
+#: includes/views/tab-titles.php:84
+msgid "Description template"
+msgstr "Шаблон опису"

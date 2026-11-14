@@ -34,31 +34,9 @@ final class Simple_SEO_Fields {
 	private static bool $meta_registered = false;
 
 	public static function init(): void {
-		// Labels are translated, so the fields are registered on init, not when plugins load.
-		add_action( 'init', array( self::class, 'register_builtin' ), 5 );
-		// Late enough for post types and taxonomies that themes register on init.
+		// Late enough for post types and taxonomies that themes register on init. The parts of the
+		// plugin register their fields earlier on init (labels are translated, so not before init).
 		add_action( 'init', array( self::class, 'register_all_meta' ), 99 );
-	}
-
-	/** The fields of the foundation; later parts register theirs the same way, on init. */
-	public static function register_builtin(): void {
-		self::register(
-			'title',
-			array(
-				'label'       => __( 'SEO title', 'simple-seo' ),
-				'description' => __( 'The title search engines show. Leave empty to use the template.', 'simple-seo' ),
-				'order'       => 10,
-			)
-		);
-		self::register(
-			'description',
-			array(
-				'label'       => __( 'Meta description', 'simple-seo' ),
-				'description' => __( 'The text under the title in search results. Leave empty to use the template.', 'simple-seo' ),
-				'type'        => 'textarea',
-				'order'       => 20,
-			)
-		);
 	}
 
 	/**
@@ -74,6 +52,11 @@ final class Simple_SEO_Fields {
 	 *     @type array    $options     Value => label, for select.
 	 *     @type callable $sanitize    Sanitizer of one value; the type decides when omitted.
 	 *     @type int      $order       Position in the editor, lower first.
+	 *     @type callable $mask        Optional: ( 'post'|'term', WP_Post|WP_Term ) → the template the
+	 *                                 field falls back to; shown as the placeholder and inserted by
+	 *                                 the "Insert structure" button.
+	 *     @type callable $preview     Optional: ( 'post'|'term', WP_Post|WP_Term ) → what the page
+	 *                                 shows now, under the field.
 	 * }
 	 */
 	public static function register( string $key, array $args ): void {
@@ -89,6 +72,8 @@ final class Simple_SEO_Fields {
 				'options'     => array(),
 				'sanitize'    => null,
 				'order'       => 50,
+				'mask'        => null,
+				'preview'     => null,
 			),
 			$args,
 			array( 'key' => $key )

@@ -24,6 +24,8 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Access::init();
 		Simple_SEO_Fields::init();
 		Simple_SEO_Head::init();
+		Simple_SEO_Variables::init();
+		Simple_SEO_Titles::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
@@ -34,6 +36,38 @@ final class Simple_SEO_Plugin {
 		}
 
 		new Simple_SEO_GitHub_Updater();
+	}
+
+	/**
+	 * Another active SEO plugin, by name; '' when there is none.
+	 *
+	 * While one is active Simple SEO prints nothing on the site, so pages never get two titles,
+	 * two descriptions or two canonicals during a switch-over. Its settings and fields stay usable.
+	 */
+	public static function conflicting_plugin(): string {
+		$plugins = array(
+			'WPSEO_VERSION'              => 'Yoast SEO',
+			'RANK_MATH_VERSION'          => 'Rank Math',
+			'AIOSEO_VERSION'             => 'All in One SEO',
+			'SEOPRESS_VERSION'           => 'SEOPress',
+			'THE_SEO_FRAMEWORK_VERSION'  => 'The SEO Framework',
+			'SLIM_SEO_VER'               => 'Slim SEO',
+		);
+
+		$found = '';
+		foreach ( $plugins as $constant => $name ) {
+			if ( defined( $constant ) ) {
+				$found = $name;
+				break;
+			}
+		}
+
+		/**
+		 * The active SEO plugin Simple SEO steps aside for; return '' to print anyway.
+		 *
+		 * @param string $found Plugin name, '' when none was found.
+		 */
+		return (string) apply_filters( 'simple_seo_conflicting_plugin', $found );
 	}
 
 	public static function load_textdomain(): void {

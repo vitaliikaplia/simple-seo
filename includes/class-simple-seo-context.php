@@ -47,6 +47,15 @@ final class Simple_SEO_Context {
 	/** Archive page number, or the part number of a post split with <!--nextpage-->. */
 	public int $page = 1;
 
+	/** Number of archive pages, or of parts of a split post. */
+	public int $pages = 1;
+
+	/** What was searched for, on search results. */
+	public string $search = '';
+
+	/** Date archives: Unix time of the first day of the archived year, month or day (UTC). */
+	public int $timestamp = 0;
+
 	private static ?self $current = null;
 
 	/** The context of the main query, resolved once the query has run. */
@@ -76,7 +85,8 @@ final class Simple_SEO_Context {
 		if ( $query->is_404() ) {
 			$context->kind = self::NOT_FOUND;
 		} elseif ( $query->is_search() ) {
-			$context->kind = self::SEARCH;
+			$context->kind   = self::SEARCH;
+			$context->search = trim( (string) $query->get( 's' ) );
 		} elseif ( $query->is_home() && $query->is_front_page() ) {
 			$context->kind          = self::HOME;
 			$context->is_front_page = true;
@@ -123,15 +133,66 @@ final class Simple_SEO_Context {
 				$context->object_id = (int) $user->ID;
 			}
 		} elseif ( $query->is_date() ) {
-			$context->kind    = self::DATE;
-			$context->subtype = $query->is_day() ? 'day' : ( $query->is_month() ? 'month' : 'year' );
+			$context->kind      = self::DATE;
+			$context->subtype   = $query->is_day() ? 'day' : ( $query->is_month() ? 'month' : 'year' );
+			$context->timestamp = self::archive_timestamp( $query );
 		}
 
-		$context->page = self::SINGULAR === $context->kind
-			? max( 1, (int) $query->get( 'page' ) )
-			: max( 1, (int) $query->get( 'paged' ) );
+		if ( self::SINGULAR === $context->kind ) {
+			$context->page  = max( 1, (int) $query->get( 'page' ) );
+			$context->pages = $context->object instanceof WP_Post ? 1 + substr_count( $context->object->post_content, '<!--nextpage-->' ) : 1;
+		} else {
+			$context->page  = max( 1, (int) $query->get( 'paged' ) );
+			$context->pages = max( 1, (int) $query->max_num_pages );
+		}
 
 		return $context;
+	}
+
+	/**
+	 * The context a post would have as the page it is shown on: for previews in the editor,
+	 * sitemaps and the like.
+	 */
+	public static function for_post( WP_Post $post ): self {
+		$context            = new self();
+		$context->object    = $post;
+		$context->object_id = (int) $post->ID;
+		$context->subtype   = $post->post_type;
+
+		if ( 'page' === $post->post_type && (int) $post->ID === (int) get_option( 'page_for_posts' ) && 'page' === get_option( 'show_on_front' ) ) {
+			$context->kind = self::POSTS_PAGE;
+			return $context;
+		}
+
+		$context->kind              = self::SINGULAR;
+		$context->is_front_page     = 'page' === $post->post_type && 'page' === get_option( 'show_on_front' ) && (int) $post->ID === (int) get_option( 'page_on_front' );
+		$context->password_required = '' !== (string) $post->post_password;
+		$context->pages             = 1 + substr_count( $post->post_content, '<!--nextpage-->' );
+
+		return $context;
+	}
+
+	public static function for_term( WP_Term $term ): self {
+		$context            = new self();
+		$context->kind      = self::TERM;
+		$context->object    = $term;
+		$context->object_id = (int) $term->term_id;
+		$context->subtype   = $term->taxonomy;
+
+		return $context;
+	}
+
+	private static function archive_timestamp( WP_Query $query ): int {
+		$m     = preg_replace( '/\D/', '', (string) $query->get( 'm' ) );
+		$year  = '' !== $m ? (int) substr( $m, 0, 4 ) : (int) $query->get( 'year' );
+		$month = '' !== $m ? (int) substr( $m, 4, 2 ) : (int) $query->get( 'monthnum' );
+		$day   = '' !== $m ? (int) substr( $m, 6, 2 ) : (int) $query->get( 'day' );
+
+		if ( $year < 1 ) {
+			return 0;
+		}
+
+		return (int) gmmktime( 0, 0, 0, max( 1, $month ), max( 1, $day ), $year );
 	}
 
 	/** Whether the page has its own SEO fields: a post or a term. */

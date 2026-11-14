@@ -17,6 +17,8 @@ final class Simple_SEO_Admin {
 		add_action( 'admin_menu', array( self::class, 'add_menu' ) );
 		add_action( 'admin_init', array( self::class, 'register_settings' ) );
 		add_filter( 'plugin_action_links_' . SIMPLE_SEO_BASENAME, array( self::class, 'action_links' ) );
+		add_action( 'admin_notices', array( self::class, 'conflict_notice' ) );
+		add_action( 'admin_enqueue_scripts', array( self::class, 'enqueue' ) );
 
 		// Tab labels are translated: tabs are added on init, which runs before admin_init and admin_menu.
 		if ( did_action( 'init' ) ) {
@@ -120,6 +122,62 @@ final class Simple_SEO_Admin {
 		$current = self::current_tab();
 
 		require SIMPLE_SEO_DIR . 'includes/views/settings.php';
+	}
+
+	/** On the plugin's page and the plugins list: say why the site shows nothing of Simple SEO. */
+	public static function conflict_notice(): void {
+		$screen = get_current_screen();
+		if ( ! $screen || ! in_array( $screen->id, array( 'toplevel_page_' . self::PAGE, 'plugins' ), true ) || ! current_user_can( Simple_SEO_Access::CAP_SETTINGS ) ) {
+			return;
+		}
+
+		$plugin = Simple_SEO_Plugin::conflicting_plugin();
+		if ( '' === $plugin ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			esc_html(
+				sprintf(
+					/* translators: %s: name of another SEO plugin, e.g. Yoast SEO. */
+					__( '%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime.', 'simple-seo' ),
+					$plugin
+				)
+			)
+		);
+	}
+
+	/** The small script of the "Insert structure" buttons, only where those buttons are. */
+	public static function enqueue( string $hook ): void {
+		$screen = get_current_screen();
+		$ours   = 'toplevel_page_' . self::PAGE === $hook
+			|| ( in_array( $hook, array( 'post.php', 'post-new.php' ), true ) && $screen && in_array( $screen->post_type, Simple_SEO_Fields::post_types(), true ) )
+			|| ( in_array( $hook, array( 'term.php', 'edit-tags.php' ), true ) && $screen && in_array( $screen->taxonomy, Simple_SEO_Fields::taxonomies(), true ) );
+
+		if ( $ours ) {
+			wp_enqueue_script(
+				'simple-seo-admin',
+				SIMPLE_SEO_URL . 'assets/js/admin.js',
+				array(),
+				SIMPLE_SEO_VERSION,
+				array(
+					'in_footer' => true,
+					'strategy'  => 'defer',
+				)
+			);
+		}
+	}
+
+	/** The "Insert structure" button for a field with the given id. */
+	public static function mask_button( string $target_id, string $mask ): string {
+		return sprintf(
+			'<button type="button" class="button simple-seo-mask" data-target="%s" data-mask="%s" title="%s">%s</button>',
+			esc_attr( $target_id ),
+			esc_attr( $mask ),
+			esc_attr( $mask ),
+			esc_html__( 'Insert structure', 'simple-seo' )
+		);
 	}
 
 	/**
