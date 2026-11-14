@@ -99,6 +99,7 @@ $sseo_saved_options = array(
 	'indexing'       => get_option( Simple_SEO_Indexing::OPTION ),
 	'social'         => get_option( Simple_SEO_Social::OPTION ),
 	'special'        => get_option( Simple_SEO_Special::OPTION ),
+	'sitemaps'       => get_option( Simple_SEO_Sitemaps::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 );
 
@@ -1438,6 +1439,275 @@ try {
 	Simple_SEO_Settings::flush();
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Sitemaps' );
+
+	unset( $GLOBALS['current_screen'] );
+	delete_option( Simple_SEO_Indexing::OPTION );
+	delete_option( Simple_SEO_Sitemaps::OPTION );
+	update_option( 'show_on_front', 'posts' );
+	Simple_SEO_Settings::flush();
+	register_post_type(
+		'sseo_map',
+		array(
+			'public'      => true,
+			'has_archive' => true,
+			'label'       => 'Maps',
+		)
+	);
+	register_taxonomy(
+		'sseo_topic',
+		array( 'sseo_map' ),
+		array(
+			'public' => true,
+			'label'  => 'Topics',
+		)
+	);
+	Simple_SEO_Fields::flush_types();
+
+	$sseo_map  = static function ( string $title, array $extra = array() ) use ( &$sseo ): int {
+		$id                                         = wp_insert_post( array_merge( array( 'post_title' => $title, 'post_type' => 'sseo_map', 'post_status' => 'publish' ), $extra ) );
+		$sseo['posts'][ 'map_' . sanitize_key( $title ) ] = $id;
+		return $id;
+	};
+	$sseo_locs = static fn( ?array $entries ): array => array_map( static fn( array $entry ): string => $entry['loc'], (array) $entries );
+	$sseo_w3c  = '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$/';
+
+	$sseo_shown = $sseo_map( 'Shown', array( 'post_content' => '<p><img class="a" src="/wp-content/uploads/inline.jpg"> <img src=\'//cdn.example.com/x.png?a=1&amp;b=2\'> <img src="data:image/png;base64,AAAA"> <img src="/wp-content/uploads/inline.jpg"></p>' ) );
+	update_post_meta( $sseo_shown, '_thumbnail_id', $sseo_og );
+	$sseo_hidden = $sseo_map( 'Hidden' );
+	update_post_meta( $sseo_hidden, '_simple_seo_index', 'noindex' );
+	$sseo_locked = $sseo_map( 'Locked', array( 'post_password' => 'pw' ) );
+	$sseo_draft  = $sseo_map( 'Draft', array( 'post_status' => 'draft' ) );
+	$sseo_moved  = $sseo_map( 'Moved' );
+	update_post_meta( $sseo_moved, '_simple_seo_canonical', 'https://example.com/original/' );
+	$sseo_same = $sseo_map( 'Same' );
+	update_post_meta( $sseo_same, '_simple_seo_canonical', get_permalink( $sseo_same ) );
+
+	sseo_check( 'the sitemap addresses are registered', isset( $GLOBALS['wp_rewrite']->extra_rules_top['^sitemap_index\.xml$'], $GLOBALS['wp_rewrite']->extra_rules_top['^([a-z0-9_-]+?)-sitemap([0-9]*)\.xml$'] ) && in_array( Simple_SEO_Sitemaps::QUERY_VAR, apply_filters( 'query_vars', array() ), true ) );
+	sseo_check( 'on by default, and core\'s wp-sitemap.xml steps aside', Simple_SEO_Sitemaps::enabled() && false === apply_filters( 'wp_sitemaps_enabled', true ) );
+	sseo_check( 'served after wp-loc switches the locale (template_redirect 1), before core\'s sitemaps (10)', 2 === has_action( 'template_redirect', array( Simple_SEO_Sitemaps::class, 'serve' ) ) );
+	sseo_check( 'sanitize: off only when the form says 0', false === Simple_SEO_Sitemaps::sanitize( array( 'enabled' => '0' ) )['enabled'] && true === Simple_SEO_Sitemaps::sanitize( array( 'enabled' => '1' ) )['enabled'] && true === Simple_SEO_Sitemaps::sanitize( array() )['enabled'] );
+	update_option( Simple_SEO_Sitemaps::OPTION, array( 'enabled' => false ) );
+	sseo_check( 'switched off: not served, core\'s sitemap comes back', ! Simple_SEO_Sitemaps::enabled() && true === apply_filters( 'wp_sitemaps_enabled', true ) );
+	delete_option( Simple_SEO_Sitemaps::OPTION );
+	update_option( 'blog_public', '0' );
+	sseo_check( 'a site hidden from search engines has no sitemap', ! Simple_SEO_Sitemaps::enabled() );
+	update_option( 'blog_public', '1' );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	sseo_check( 'with another SEO plugin the addresses stay its own', ! Simple_SEO_Sitemaps::enabled() && true === apply_filters( 'wp_sitemaps_enabled', true ) );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+
+	sseo_check( 'addresses: the index and pages the way Yoast SEO named them', home_url( '/sitemap_index.xml' ) === Simple_SEO_Sitemaps::index_url() && home_url( '/sseo_map-sitemap.xml' ) === Simple_SEO_Sitemaps::url( 'sseo_map' ) && home_url( '/sseo_map-sitemap2.xml' ) === Simple_SEO_Sitemaps::url( 'sseo_map', 2 ) );
+	add_filter( 'pre_option_permalink_structure', '__return_empty_string' );
+	$sseo_url = Simple_SEO_Sitemaps::url( 'sseo_map', 2 );
+	remove_filter( 'pre_option_permalink_structure', '__return_empty_string' );
+	sseo_check( 'addresses without pretty permalinks use query arguments', str_contains( $sseo_url, 'simple_seo_sitemap=sseo_map' ) && str_contains( $sseo_url, 'simple_seo_sitemap_page=2' ), $sseo_url );
+	sseo_check( 'what a name lists', 'post' === Simple_SEO_Sitemaps::kind_of( 'sseo_map' ) && 'term' === Simple_SEO_Sitemaps::kind_of( 'sseo_topic' ) && 'author' === Simple_SEO_Sitemaps::kind_of( 'author' ) && '' === Simple_SEO_Sitemaps::kind_of( 'sseo_private' ) && '' === Simple_SEO_Sitemaps::kind_of( 'attachment' ) );
+
+	// One archive entry: the sitemap's own language (sseo_map is not translated by wp-loc anyway).
+	$sseo_lead    = 1;
+	$sseo_entries = Simple_SEO_Sitemaps::entries( 'sseo_map', 1 );
+	$sseo_l       = $sseo_locs( $sseo_entries );
+	sseo_check( 'a type: its archive first, then the posts search engines may show', get_post_type_archive_link( 'sseo_map' ) === ( $sseo_l[0] ?? '' ) && array( get_permalink( $sseo_shown ), get_permalink( $sseo_same ) ) === array_slice( $sseo_l, $sseo_lead ), $sseo_l );
+	$sseo_entry = array_column( (array) $sseo_entries, null, 'loc' )[ get_permalink( $sseo_shown ) ] ?? array();
+	sseo_check( 'images: the featured image and those in the text, absolute, once each, no data: URIs', array( wp_get_attachment_url( $sseo_og ), home_url( '/wp-content/uploads/inline.jpg' ), 'http://cdn.example.com/x.png?a=1&b=2' ) === ( $sseo_entry['images'] ?? null ), $sseo_entry['images'] ?? null );
+	sseo_check( 'lastmod in W3C format, in UTC', (bool) preg_match( $sseo_w3c, $sseo_entry['lastmod'] ?? '' ) && get_post_modified_time( 'c', true, $sseo_shown ) === $sseo_entry['lastmod'], $sseo_entry['lastmod'] ?? '' );
+	sseo_check( 'without wp-loc: no alternates', array() === ( $sseo_entry['alternates'] ?? null ) || Simple_SEO_WP_Loc::languages() );
+
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'post:sseo_map', 'archive:sseo_map', 'date', 'author', 'post:attachment' ) ) );
+	update_post_meta( $sseo_same, '_simple_seo_index', 'index' );
+	sseo_check( 'a hidden type lists only the posts shown on their own', array( get_permalink( $sseo_same ) ) === $sseo_locs( Simple_SEO_Sitemaps::entries( 'sseo_map', 1 ) ) );
+	delete_post_meta( $sseo_same, '_simple_seo_index' );
+	sseo_check( 'a hidden type with nothing shown has no sitemap', 0 === Simple_SEO_Sitemaps::page_count( 'sseo_map' ) && ! in_array( 'sseo_map', array_column( Simple_SEO_Sitemaps::sitemaps(), 'name' ), true ) && null === Simple_SEO_Sitemaps::entries( 'sseo_map', 1 ) );
+	delete_option( Simple_SEO_Indexing::OPTION );
+
+	$sseo_topic = static function ( string $name ) use ( &$sseo ): int {
+		$term            = wp_insert_term( $name, 'sseo_topic' );
+		$sseo['terms'][] = array( (int) $term['term_id'], 'sseo_topic' );
+		return (int) $term['term_id'];
+	};
+	$sseo_t_full   = $sseo_topic( 'Full topic' );
+	$sseo_t_empty  = $sseo_topic( 'Empty topic' );
+	$sseo_t_hidden = $sseo_topic( 'Hidden topic' );
+	wp_set_object_terms( $sseo_shown, array( $sseo_t_full, $sseo_t_hidden ), 'sseo_topic' );
+	update_term_meta( $sseo_t_hidden, '_simple_seo_index', 'noindex' );
+	$sseo_entries = Simple_SEO_Sitemaps::entries( 'sseo_topic', 1 );
+	sseo_check( 'terms: those with posts, not hidden ones', array( get_term_link( $sseo_t_full, 'sseo_topic' ) ) === $sseo_locs( $sseo_entries ), $sseo_locs( $sseo_entries ) );
+	sseo_check( 'a term is as new as its newest post', get_post_modified_time( 'c', true, $sseo_shown ) === ( $sseo_entries[0]['lastmod'] ?? '' ) );
+	add_filter( 'simple_seo_sitemap_entries', '__return_true' );
+	sseo_check( 'empty and hidden terms are not even counted', 1 === Simple_SEO_Sitemaps::page_count( 'sseo_topic' ) );
+	remove_filter( 'simple_seo_sitemap_entries', '__return_true' );
+
+	sseo_check( 'authors stay out while author archives are hidden', 0 === Simple_SEO_Sitemaps::page_count( 'author' ) && ! in_array( 'author', array_column( Simple_SEO_Sitemaps::sitemaps(), 'name' ), true ) );
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'date', 'post:attachment' ) ) );
+	$sseo_l = $sseo_locs( Simple_SEO_Sitemaps::entries( 'author', 1 ) );
+	sseo_check( 'with author archives shown: the authors who have published', in_array( get_author_posts_url( $sseo_ed ), $sseo_l, true ) && ! in_array( get_author_posts_url( $sseo_u['subscriber'] ), $sseo_l, true ), $sseo_l );
+	delete_option( Simple_SEO_Indexing::OPTION );
+
+	$sseo_entries = Simple_SEO_Sitemaps::entries( 'page', 1 );
+	sseo_check( 'the page sitemap opens with the home page', home_url( '/' ) === ( $sseo_entries[0]['loc'] ?? '' ) && (bool) preg_match( $sseo_w3c, $sseo_entries[0]['lastmod'] ?? '' ) );
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_p['front'] );
+	$sseo_l = $sseo_locs( Simple_SEO_Sitemaps::entries( 'page', 1 ) );
+	sseo_check( 'a static front page is listed once, as the home page', home_url( '/' ) === ( $sseo_l[0] ?? '' ) && 1 === count( array_keys( $sseo_l, home_url( '/' ), true ) ) && in_array( get_permalink( $sseo_p['blog'] ), $sseo_l, true ), $sseo_l );
+	update_option( 'show_on_front', 'posts' );
+
+	add_filter( 'simple_seo_sitemap_entries', static fn(): int => 2 );
+	$sseo_map( 'Third' );
+	// Shown, Moved, Same and Third pass the query; Moved (canonical elsewhere) drops out of page 1 afterwards.
+	sseo_check( 'pages of the size asked for', 2 === Simple_SEO_Sitemaps::page_count( 'sseo_map' ) && array( get_permalink( $sseo_same ), get_permalink( $sseo['posts']['map_third'] ) ) === $sseo_locs( Simple_SEO_Sitemaps::entries( 'sseo_map', 2 ) ) && null === Simple_SEO_Sitemaps::entries( 'sseo_map', 3 ) && null === Simple_SEO_Sitemaps::entries( 'sseo_map', 0 ), array( Simple_SEO_Sitemaps::page_count( 'sseo_map' ), $sseo_locs( Simple_SEO_Sitemaps::entries( 'sseo_map', 2 ) ) ) );
+	$sseo_xml = Simple_SEO_Sitemaps::render_index();
+	remove_all_filters( 'simple_seo_sitemap_entries' );
+	$sseo_doc = simplexml_load_string( $sseo_xml );
+	sseo_check( 'the index: well-formed, every page listed with its date', false !== $sseo_doc && str_contains( $sseo_xml, '<loc>' . home_url( '/sseo_map-sitemap2.xml' ) . '</loc>' ) && str_contains( $sseo_xml, '<loc>' . home_url( '/sseo_topic-sitemap.xml' ) . '</loc>' ) && ! str_contains( $sseo_xml, 'author-sitemap' ) && (bool) preg_match( '#<lastmod>\d{4}-\d\d-\d\dT[^<]+\+00:00</lastmod>#', $sseo_xml ), $sseo_xml );
+
+	$sseo_xml = (string) Simple_SEO_Sitemaps::render_sitemap( 'sseo_map', 1 );
+	sseo_check( 'a sitemap page: well-formed, styled with CSS (no XSLT), with images and escaped addresses', false !== simplexml_load_string( $sseo_xml ) && str_contains( $sseo_xml, '<?xml-stylesheet type="text/css" href="' . home_url( '/sitemap.css?ver=' . SIMPLE_SEO_VERSION ) . '"?>' ) && ! str_contains( $sseo_xml, 'text/xsl' ) && str_contains( $sseo_xml, '<image:loc>http://cdn.example.com/x.png?a=1&amp;b=2</image:loc>' ), $sseo_xml );
+	$sseo_css = Simple_SEO_Sitemaps::render_stylesheet();
+	sseo_check( 'the stylesheet styles the sitemap and index elements and their namespaces', str_contains( $sseo_css, '@namespace xhtml url(http://www.w3.org/1999/xhtml);' ) && str_contains( $sseo_css, 'xhtml|link::before' ) && str_contains( $sseo_css, 'image|loc::before' ) && str_contains( $sseo_css, 'sitemapindex::before' ) && substr_count( $sseo_css, '{' ) === substr_count( $sseo_css, '}' ) );
+	add_filter( 'gettext', $sseo_quote = static fn( string $text ): string => 'Last modified:' === $text ? 'Say "hi" \\ now' : $text );
+	$sseo_css = Simple_SEO_Sitemaps::render_stylesheet();
+	remove_filter( 'gettext', $sseo_quote );
+	sseo_check( 'labels are safe CSS strings', str_contains( $sseo_css, '"Say \\"hi\\" \\\\ now"' ), $sseo_css );
+	sseo_check( 'namespaces only where used', ! str_contains( $sseo_xml, 'xmlns:xhtml' ) || Simple_SEO_WP_Loc::languages() );
+	sseo_check( 'no such sitemap: nothing to send', null === Simple_SEO_Sitemaps::render_sitemap( 'nope', 1 ) && null === Simple_SEO_Sitemaps::render_sitemap( 'sseo_map', 9 ) );
+
+	sseo_check( 'robots.txt names the index', str_contains( Simple_SEO_Sitemaps::robots_txt( "User-agent: *\n", '1' ), 'Sitemap: ' . home_url( '/sitemap_index.xml' ) ) && ! str_contains( Simple_SEO_Sitemaps::robots_txt( '', '0' ), 'Sitemap:' ) );
+	update_option( Simple_SEO_Sitemaps::OPTION, array( 'enabled' => false ) );
+	sseo_check( 'robots.txt: no sitemap line while it is off', ! str_contains( Simple_SEO_Sitemaps::robots_txt( '', '1' ), 'Sitemap:' ) );
+	delete_option( Simple_SEO_Sitemaps::OPTION );
+	unset( $GLOBALS['wp_rewrite']->extra_rules_top['^sitemap_index\.xml$'] );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	Simple_SEO_Sitemaps::register_rewrites();
+	$sseo_taken = isset( $GLOBALS['wp_rewrite']->extra_rules_top['^sitemap_index\.xml$'] );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	Simple_SEO_Sitemaps::register_rewrites();
+	sseo_check( 'no sitemap addresses of ours next to another SEO plugin', ! $sseo_taken && isset( $GLOBALS['wp_rewrite']->extra_rules_top['^sitemap_index\.xml$'] ) );
+	$sseo_q = new WP_Query();
+	$sseo_q->set( Simple_SEO_Sitemaps::QUERY_VAR, Simple_SEO_Sitemaps::index_url() ? '__index' : '' );
+	$sseo_main                 = $GLOBALS['wp_the_query'];
+	$GLOBALS['wp_the_query']   = $sseo_q;
+	$sseo_skipped              = apply_filters( 'posts_pre_query', null, $sseo_q );
+	$GLOBALS['wp_the_query']   = $sseo_main;
+	sseo_check( 'a sitemap request skips the posts query', array() === $sseo_skipped && null === apply_filters( 'posts_pre_query', null, new WP_Query() ) );
+
+	wp_cache_flush();
+	$sseo_queries = $GLOBALS['wpdb']->num_queries;
+	Simple_SEO_Sitemaps::entries( 'sseo_map', 1 );
+	$sseo_few = $GLOBALS['wpdb']->num_queries - $sseo_queries;
+	foreach ( array( 'Fourth', 'Fifth', 'Sixth', 'Seventh' ) as $sseo_title ) {
+		$sseo_map( $sseo_title );
+	}
+	wp_cache_flush();
+	$sseo_queries = $GLOBALS['wpdb']->num_queries;
+	Simple_SEO_Sitemaps::entries( 'sseo_map', 1 );
+	$sseo_more = $GLOBALS['wpdb']->num_queries - $sseo_queries;
+	sseo_check( 'a sitemap page costs the same queries for more posts', $sseo_more <= $sseo_few, array( $sseo_few, $sseo_more ) );
+
+	Simple_SEO_Indexing::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	$sseo_registered = get_registered_settings();
+	sseo_check( 'the Indexing tab saves the sitemap setting too', 'simple-seo-indexing' === ( $sseo_registered[ Simple_SEO_Sitemaps::OPTION ]['group'] ?? '' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab'] = 'indexing';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the Indexing tab: the sitemap switch, on, with the link', (bool) preg_match( '/name="simple_seo_sitemaps\[enabled\]" value="1"\s+checked/', $sseo_html ) && str_contains( $sseo_html, 'href="' . home_url( '/sitemap_index.xml' ) . '"' ) && str_contains( $sseo_html, 'stays out of the XML sitemap' ) );
+
+	Simple_SEO_Plugin::deactivate();
+	sseo_check( 'deactivation drops the rewrite rules for WordPress to build again', ! get_option( 'rewrite_rules' ) );
+	Simple_SEO_Plugin::activate();
+	sseo_check( 'activation builds them with the sitemap addresses', isset( get_option( 'rewrite_rules' )['^sitemap_index\.xml$'] ) );
+	delete_option( 'rewrite_rules' );
+	update_option( Simple_SEO_Plugin::VERSION_OPTION, '0.6.0' );
+	Simple_SEO_Plugin::maybe_upgrade();
+	sseo_check( 'an update builds them too (no activation hook runs then)', isset( get_option( 'rewrite_rules' )['^sitemap_index\.xml$'] ) && SIMPLE_SEO_VERSION === get_option( Simple_SEO_Plugin::VERSION_OPTION ) );
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		Simple_SEO_WP_Loc::flush();
+		$sseo_codes = array_keys( Simple_SEO_WP_Loc::languages() );
+		$sseo_d     = Simple_SEO_WP_Loc::default_language();
+		$sseo_o     = (string) current( array_diff( $sseo_codes, array( $sseo_d ) ) );
+		$sseo_lang  = static function ( int $id, string $type, string $code, int $trid = 0 ) use ( $sseo_d ): void {
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => $id, 'element_type' => $type, 'trid' => $trid ?: null, 'language_code' => $code, 'source_language_code' => $trid ? $sseo_d : null ) );
+		};
+		$sseo['posts']['ml_d'] = wp_insert_post( array( 'post_title' => 'Ml default', 'post_status' => 'publish' ) );
+		$sseo['posts']['ml_o'] = wp_insert_post( array( 'post_title' => 'Ml other', 'post_status' => 'publish' ) );
+		$sseo_lang( $sseo['posts']['ml_d'], 'post_post', $sseo_d );
+		$sseo_lang( $sseo['posts']['ml_o'], 'post_post', $sseo_o, (int) apply_filters( 'wpml_element_trid', 0, $sseo['posts']['ml_d'], 'post_post' ) );
+		$sseo_c_d = wp_insert_term( 'Ml cat default', 'category' );
+		$sseo_c_o = wp_insert_term( 'Ml cat other', 'category' );
+		$sseo['terms'][] = array( (int) $sseo_c_d['term_id'], 'category' );
+		$sseo['terms'][] = array( (int) $sseo_c_o['term_id'], 'category' );
+		$sseo_lang( (int) $sseo_c_d['term_taxonomy_id'], 'tax_category', $sseo_d );
+		$sseo_lang( (int) $sseo_c_o['term_taxonomy_id'], 'tax_category', $sseo_o, (int) apply_filters( 'wpml_element_trid', 0, $sseo_c_d['term_taxonomy_id'], 'tax_category' ) );
+		// wp-loc moves a post's terms to its language: assign them once the languages are set.
+		wp_set_post_categories( $sseo['posts']['ml_d'], array( (int) $sseo_c_d['term_id'] ) );
+		wp_set_post_categories( $sseo['posts']['ml_o'], array( (int) $sseo_c_o['term_id'] ) );
+		clean_term_cache( array( (int) $sseo_c_d['term_id'], (int) $sseo_c_o['term_id'] ), 'category' );
+
+		$sseo_hl  = Simple_SEO_WP_Loc::languages();
+		$sseo_by  = static fn( ?array $entries ): array => array_column( (array) $entries, null, 'loc' );
+		$sseo_e   = $sseo_by( Simple_SEO_Sitemaps::entries( 'post', 1, $sseo_d ) );
+		$sseo_eo  = $sseo_by( Simple_SEO_Sitemaps::entries( 'post', 1, $sseo_o ) );
+		$sseo_u_d = get_permalink( $sseo['posts']['ml_d'] );
+		$sseo_u_o = get_permalink( $sseo['posts']['ml_o'] );
+		$sseo_alt = array(
+			$sseo_hl[ $sseo_d ] => $sseo_u_d,
+			$sseo_hl[ $sseo_o ] => $sseo_u_o,
+			'x-default'         => $sseo_u_d,
+		);
+		$sseo_prefix = '/' . WP_LOC_DB::from_db_language_code( $sseo_o ) . '/';
+		sseo_check( 'wp-loc: each language has its own sitemap, the other one under its prefix', isset( $sseo_e[ $sseo_u_d ], $sseo_eo[ $sseo_u_o ] ) && ! isset( $sseo_e[ $sseo_u_o ] ) && ! isset( $sseo_eo[ $sseo_u_d ] ) && str_contains( $sseo_u_o, $sseo_prefix ), array( array_keys( $sseo_e ), array_keys( $sseo_eo ) ) );
+		sseo_check( 'wp-loc: every address of the other language\'s sitemap is under its prefix', ! array_filter( array_keys( $sseo_eo ), static fn( string $loc ): bool => ! str_contains( $loc, $sseo_prefix ) ), array_keys( $sseo_eo ) );
+		sseo_check( 'wp-loc: each translation lists both with their hreflang, and x-default', $sseo_alt === ( $sseo_e[ $sseo_u_d ]['alternates'] ?? null ) && $sseo_alt === ( $sseo_eo[ $sseo_u_o ]['alternates'] ?? null ), $sseo_e[ $sseo_u_d ]['alternates'] ?? null );
+		sseo_check( 'wp-loc: the sitemap XML carries them as xhtml:link', str_contains( (string) Simple_SEO_Sitemaps::render_sitemap( 'post', 1, $sseo_d ), '<xhtml:link rel="alternate" hreflang="' . $sseo_hl[ $sseo_o ] . '" href="' . $sseo_u_o . '"/>' ) );
+		$sseo_xml         = Simple_SEO_Sitemaps::render_index();
+		$sseo_first_other = strpos( $sseo_xml, home_url( $sseo_prefix ) );
+		sseo_check( 'wp-loc: the index lists the sitemaps language by language, the default one first', str_contains( $sseo_xml, '<loc>' . home_url( '/post-sitemap.xml' ) . '</loc>' ) && str_contains( $sseo_xml, '<loc>' . home_url( $sseo_prefix . 'post-sitemap.xml' ) . '</loc>' ) && false !== $sseo_first_other && $sseo_first_other > strrpos( $sseo_xml, '<loc>' . home_url( '/category-sitemap.xml' ) ) && ! str_contains( $sseo_xml, $sseo_prefix . 'sseo_map-sitemap' ), $sseo_xml );
+		sseo_check( 'wp-loc: a sitemap of the other language takes the stylesheet of its language', str_contains( (string) Simple_SEO_Sitemaps::render_sitemap( 'post', 1, $sseo_o ), 'href="' . home_url( $sseo_prefix . 'sitemap.css?ver=' . SIMPLE_SEO_VERSION ) . '"' ) );
+		update_post_meta( $sseo['posts']['ml_o'], '_simple_seo_index', 'noindex' );
+		$sseo_e  = $sseo_by( Simple_SEO_Sitemaps::entries( 'post', 1, $sseo_d ) );
+		$sseo_eo = $sseo_by( (array) Simple_SEO_Sitemaps::entries( 'post', 1, $sseo_o ) );
+		sseo_check( 'wp-loc: a hidden translation leaves the sitemap and the alternates', ! isset( $sseo_eo[ $sseo_u_o ] ) && array() === ( $sseo_e[ $sseo_u_d ]['alternates'] ?? null ) );
+		delete_post_meta( $sseo['posts']['ml_o'], '_simple_seo_index' );
+
+		$sseo_e   = $sseo_by( Simple_SEO_Sitemaps::entries( 'category', 1, $sseo_o ) );
+		$sseo_t_o = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => get_term_link( (int) $sseo_c_o['term_id'], 'category' ) );
+		sseo_check( 'wp-loc: a term is listed in its language\'s sitemap with its link and alternates', isset( $sseo_e[ $sseo_t_o ] ) && str_contains( $sseo_t_o, $sseo_prefix ) && 3 === count( $sseo_e[ $sseo_t_o ]['alternates'] ?? array() ) && ! isset( $sseo_by( Simple_SEO_Sitemaps::entries( 'category', 1, $sseo_d ) )[ $sseo_t_o ] ), array_keys( $sseo_e ) );
+		$sseo_h = trailingslashit( (string) apply_filters( 'wpml_home_url', '', $sseo_o ) );
+		$sseo_l = $sseo_locs( Simple_SEO_Sitemaps::entries( 'page', 1, $sseo_d ) );
+		$sseo_m = Simple_SEO_Sitemaps::entries( 'page', 1, $sseo_o );
+		sseo_check( 'wp-loc: each language\'s page sitemap opens with its home page, the others as alternates', home_url( '/' ) === ( $sseo_l[0] ?? '' ) && ! in_array( $sseo_h, $sseo_l, true ) && $sseo_h === ( $sseo_m[0]['loc'] ?? '' ) && 3 === count( $sseo_m[0]['alternates'] ?? array() ), array( $sseo_l, $sseo_m[0] ?? null ) );
+		$sseo_queries = $GLOBALS['wpdb']->num_queries;
+		Simple_SEO_Sitemaps::page_count( 'sseo_map', 'post', $sseo_o );
+		sseo_check( 'wp-loc: an untranslated type costs no query in another language', $sseo_queries === $GLOBALS['wpdb']->num_queries, $GLOBALS['wpdb']->num_queries - $sseo_queries );
+		$sseo_l = $sseo_locs( Simple_SEO_Sitemaps::entries( 'sseo_map', 1, $sseo_d ) );
+		sseo_check( 'wp-loc: a type wp-loc does not translate stays in the default language, posts without a language included', 0 === Simple_SEO_Sitemaps::page_count( 'sseo_map', 'post', $sseo_o ) && in_array( get_permalink( $sseo_shown ), $sseo_l, true ) && 1 === count( array_filter( $sseo_l, static fn( string $loc ): bool => get_post_type_archive_link( 'sseo_map' ) === $loc ) ), $sseo_l );
+
+		do_action( 'wpml_switch_language', $sseo_o );
+		$sseo_e   = $sseo_by( Simple_SEO_Sitemaps::entries( 'post', 1 ) );
+		$sseo_idx = Simple_SEO_Sitemaps::index_url();
+		$sseo_c   = Simple_SEO_WP_Loc::current_language();
+		do_action( 'wpml_switch_language', $sseo_d );
+		sseo_check( 'wp-loc: a request in the other language gets its sitemap; the index stays at the default address', isset( $sseo_e[ $sseo_u_o ] ) && ! isset( $sseo_e[ $sseo_u_d ] ) && $sseo_o === $sseo_c && home_url( '/sitemap_index.xml' ) === $sseo_idx, $sseo_idx );
+
+		$sseo_hreflang = static fn( string $code, string $slug ): string => 'en-US' === $code ? 'en' : $code;
+		add_filter( 'wp_loc_hreflang_code', $sseo_hreflang, 10, 2 );
+		Simple_SEO_WP_Loc::flush();
+		$sseo_hl2 = Simple_SEO_WP_Loc::languages();
+		remove_filter( 'wp_loc_hreflang_code', $sseo_hreflang, 10 );
+		Simple_SEO_WP_Loc::flush();
+		sseo_check( 'wp-loc: hreflang values go through wp_loc_hreflang_code, as in its head output', in_array( 'en', $sseo_hl2, true ) || ! in_array( 'en-US', $sseo_hl, true ), $sseo_hl2 );
+	} else {
+		echo "  skip  sitemaps with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+
+	delete_option( Simple_SEO_Indexing::OPTION );
+	Simple_SEO_Settings::flush();
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -1450,6 +1720,7 @@ try {
 	sseo_check( 'the Indexing tab is translated', 'Індексація' === __( 'Indexing', 'simple-seo' ) );
 	sseo_check( 'the Social networks tab is translated', 'Соцмережі' === __( 'Social networks', 'simple-seo' ) );
 	sseo_check( 'the Special pages tab is translated', 'Спецсторінки' === __( 'Special pages', 'simple-seo' ) );
+	sseo_check( 'the sitemap switch is translated', 'Створювати XML-карту сайту' === __( 'Create an XML sitemap', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -1492,13 +1763,14 @@ try {
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
 		}
 	}
 	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
+	flush_rewrite_rules( false );
 	// Rows of other languages that a broken run may have left behind.
 	unset( $_COOKIE['admin_lang'] );
 	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%'" ) as $sseo_name ) {

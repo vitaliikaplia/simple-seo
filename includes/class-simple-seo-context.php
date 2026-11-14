@@ -182,6 +182,41 @@ final class Simple_SEO_Context {
 		return $context;
 	}
 
+	/** The site's home page: the static front page, or the list of latest posts. */
+	public static function for_home(): self {
+		$front = 'page' === get_option( 'show_on_front' ) ? get_post( (int) get_option( 'page_on_front' ) ) : null;
+		if ( $front instanceof WP_Post ) {
+			return self::for_post( $front );
+		}
+
+		$context                = new self();
+		$context->kind          = self::HOME;
+		$context->is_front_page = true;
+
+		return $context;
+	}
+
+	public static function for_post_type_archive( string $post_type ): self {
+		$context = new self();
+		$object  = get_post_type_object( $post_type );
+		if ( $object instanceof WP_Post_Type ) {
+			$context->kind    = self::POST_TYPE_ARCHIVE;
+			$context->object  = $object;
+			$context->subtype = $post_type;
+		}
+
+		return $context;
+	}
+
+	public static function for_author( WP_User $user ): self {
+		$context            = new self();
+		$context->kind      = self::AUTHOR;
+		$context->object    = $user;
+		$context->object_id = (int) $user->ID;
+
+		return $context;
+	}
+
 	private static function archive_timestamp( WP_Query $query ): int {
 		$m     = preg_replace( '/\D/', '', (string) $query->get( 'm' ) );
 		$year  = '' !== $m ? (int) substr( $m, 0, 4 ) : (int) $query->get( 'year' );

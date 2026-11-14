@@ -30,6 +30,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Social::init();
 		Simple_SEO_Special::init();
 		Simple_SEO_WP_Loc::init();
+		Simple_SEO_Sitemaps::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
@@ -85,12 +86,18 @@ final class Simple_SEO_Plugin {
 		}
 
 		Simple_SEO_Settings::install();
+		// New versions may bring new addresses (the sitemaps in 0.7.0); the rules are registered on init by now.
+		flush_rewrite_rules( false );
 		update_option( self::VERSION_OPTION, SIMPLE_SEO_VERSION, true );
 	}
 
 	public static function activate( bool $network_wide = false ): void {
+		Simple_SEO_Sitemaps::register_rewrites();
+		flush_rewrite_rules( false );
 	}
 
+	/** WordPress builds the rewrite rules again on the next request, without the sitemap addresses. */
 	public static function deactivate( bool $network_wide = false ): void {
+		delete_option( 'rewrite_rules' );
 	}
 }

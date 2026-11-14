@@ -100,7 +100,7 @@ final class Simple_SEO_GitHub_Updater {
 			'download_link' => $remote_data['package'] ?? $this->get_package_url(),
 			'sections'      => array(
 				'description' => '<p>' . esc_html__( 'A lightweight SEO plugin for WordPress.', 'simple-seo' ) . '</p>',
-				'changelog'   => '<p>' . esc_html__( 'Version 0.6.0: settings for the home page, the 404 page and password-protected content, per language with wp-loc. Version 0.5.0: Open Graph and X card for link previews, with a title, description and image for social networks on each post, page and term. Version 0.4.0: canonical address, noindex and nofollow, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed.', 'simple-seo' ) . '</p>',
+				'changelog'   => '<p>' . esc_html__( 'Version 0.7.0: XML sitemap at the addresses Yoast SEO used, only with what search engines may show, with images, styled for browsers and, under wp-loc, a sitemap for each language with its translations. Version 0.6.0: settings for the home page, the 404 page and password-protected content, per language with wp-loc. Version 0.5.0: Open Graph and X card for link previews. Version 0.4.0: canonical address, noindex and nofollow, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed.', 'simple-seo' ) . '</p>',
 			),
 		);
 	}

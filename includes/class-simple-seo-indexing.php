@@ -100,7 +100,7 @@ final class Simple_SEO_Indexing {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'indexing', __( 'Indexing', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 20 );
+		Simple_SEO_Admin::add_tab( 'indexing', __( 'Indexing', 'simple-seo' ), array( self::OPTION, Simple_SEO_Sitemaps::OPTION ), array( self::class, 'render_tab' ), 20 );
 	}
 
 	/**

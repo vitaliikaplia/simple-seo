@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,14 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.7.0 =
+* XML sitemap at /sitemap_index.xml, with a sitemap for each post type, taxonomy and (while author archives are shown) the authors, 1000 addresses a page. The addresses are the ones Yoast SEO used, so a sitemap submitted to Google Search Console keeps working; /sitemap.xml and WordPress's /wp-sitemap.xml redirect to it.
+* Only what search engines may show goes in: published posts without a password, not hidden by their kind or on their own, whose canonical address is their own; terms with posts. The page sitemap opens with the home page, other post types with their archive.
+* Each address has its last modification date and the images of the post (featured image and images in the text).
+* With wp-loc, each language has its own sitemaps under its own prefix (/en/post-sitemap.xml), listed language by language in the index; every address names its translations (xhtml:link alternate) and x-default. Types wp-loc does not translate stay in the default language.
+* In a browser the sitemaps are a readable, styled list (CSS, in the language of the sitemap) instead of raw XML.
+* robots.txt names the sitemap. Switched off on the Indexing tab, the WordPress sitemap is back.
 
 = 0.6.0 =
 * Special pages tab: title and description templates of the home page, the 404 page and password-protected content, and an image for social networks of the home page and of protected content.

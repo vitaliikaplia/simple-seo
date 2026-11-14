@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.6.0\n"
+"Project-Id-Version: Simple SEO 0.7.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -114,8 +114,8 @@ msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.6.0: settings for the home page, the 404 page and password-protected content, per language with wp-loc. Version 0.5.0: Open Graph and X card for link previews, with a title, description and image for social networks on each post, page and term. Version 0.4.0: canonical address, noindex and nofollow, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем, — для кожної мови з wp-loc. Версія 0.5.0: Open Graph і картка X для прев'ю посилань — із заголовком, описом і зображенням для соцмереж на кожному записі, сторінці й терміні. Версія 0.4.0: канонічна адреса, noindex і nofollow, сторінки вкладень. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.7.0: XML sitemap at the addresses Yoast SEO used, only with what search engines may show, with images, styled for browsers and, under wp-loc, a sitemap for each language with its translations. Version 0.6.0: settings for the home page, the 404 page and password-protected content, per language with wp-loc. Version 0.5.0: Open Graph and X card for link previews. Version 0.4.0: canonical address, noindex and nofollow, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, лише з тим, що можуть показувати пошуковики, із зображеннями, оформлена для браузера, а з wp-loc — окрема карта для кожної мови з її перекладами. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем, — для кожної мови з wp-loc. Версія 0.5.0: Open Graph і картка X для прев'ю посилань. Версія 0.4.0: канонічна адреса, noindex і nofollow, сторінки вкладень. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-indexing.php:58
 #: includes/class-simple-seo-indexing.php:103
@@ -131,7 +131,7 @@ msgid "As set for this type of page"
 msgstr "Як налаштовано для цього виду сторінок"
 
 #: includes/class-simple-seo-indexing.php:67
-#: includes/views/tab-indexing.php:76
+#: includes/views/tab-indexing.php:96
 msgid "Show in search results"
 msgstr "Показувати в результатах пошуку"
 
@@ -158,6 +158,35 @@ msgstr "Канонічна адреса"
 #: includes/class-simple-seo-indexing.php:91
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
+
+#: includes/class-simple-seo-sitemaps.php:851
+#: includes/views/tab-indexing.php:32
+msgid "XML sitemap"
+msgstr "XML-карта сайту"
+
+#: includes/class-simple-seo-sitemaps.php:852
+msgid "The sitemaps of the site, language by language. Search engines read every one of them."
+msgstr "Карти сайту, мова за мовою. Пошуковики читають кожну з них."
+
+#: includes/class-simple-seo-sitemaps.php:853
+msgid "Pages search engines may show, with their translations and images."
+msgstr "Сторінки, які можуть показувати пошуковики, з їхніми перекладами й зображеннями."
+
+#: includes/class-simple-seo-sitemaps.php:854
+msgid "Last modified:"
+msgstr "Остання зміна:"
+
+#: includes/class-simple-seo-sitemaps.php:855
+msgid "Languages:"
+msgstr "Мови:"
+
+#: includes/class-simple-seo-sitemaps.php:856
+msgid "Image:"
+msgstr "Зображення:"
+
+#: includes/class-simple-seo-sitemaps.php:857
+msgid "Addresses:"
+msgstr "Адрес:"
 
 #: includes/class-simple-seo-social.php:59
 #: includes/class-simple-seo-social.php:94
@@ -355,13 +384,13 @@ msgid "Choose which roles can do what. Editing SEO fields of a post or term also
 msgstr "Оберіть, які ролі що можуть. Щоб редагувати SEO-поля запису чи терміна, потрібне ще й право редагувати сам запис чи термін."
 
 #: includes/views/tab-indexing.php:16
-#: includes/views/tab-indexing.php:32
+#: includes/views/tab-indexing.php:52
 msgid "Attachment pages"
 msgstr "Сторінки вкладень"
 
 #: includes/views/tab-indexing.php:18
-msgid "Choose which kinds of pages search engines may show. A hidden kind gets \"noindex\"; links on it are still followed. Each post, page or term can override its kind in its own SEO fields. Search results and the 404 page are always hidden."
-msgstr "Оберіть, які види сторінок можуть показувати пошуковики. Прихований вид отримує «noindex», але посилання з нього пошуковики все одно проходять. Кожен запис, сторінка чи термін може перевизначити це у своїх SEO-полях. Результати пошуку й сторінка 404 приховані завжди."
+msgid "Choose which kinds of pages search engines may show. A hidden kind gets \"noindex\" and stays out of the XML sitemap; links on it are still followed. Each post, page or term can override its kind in its own SEO fields. Search results and the 404 page are always hidden."
+msgstr "Оберіть, які види сторінок можуть показувати пошуковики. Прихований вид отримує «noindex» і не потрапляє в XML-карту сайту; посилання на ньому пошуковики все одно відстежують. Кожен запис, сторінка чи термін може змінити це для себе у власних SEO-полях. Результати пошуку й сторінка 404 приховані завжди."
 
 #. translators: %s: link to Settings → Reading.
 #: includes/views/tab-indexing.php:25
@@ -374,23 +403,35 @@ msgid "Settings → Reading"
 msgstr "Налаштування → Читання"
 
 #: includes/views/tab-indexing.php:36
-#: includes/views/tab-indexing.php:39
+msgid "Sitemap"
+msgstr "Карта сайту"
+
+#: includes/views/tab-indexing.php:41
+msgid "Create an XML sitemap"
+msgstr "Створювати XML-карту сайту"
+
+#: includes/views/tab-indexing.php:46
+msgid "It lists only what search engines may show, with the images of posts; with wp-loc each language has its own sitemaps under its prefix, every address with its translations. Its address is the one Yoast SEO used, so a sitemap already submitted to Google Search Console keeps working, and robots.txt names it. Switched off, the WordPress sitemap (wp-sitemap.xml) takes its place."
+msgstr "У ній лише те, що можуть показувати пошуковики, із зображеннями записів; з wp-loc кожна мова має власні карти під своїм префіксом, а кожна адреса — свої переклади. Її адреса та сама, що була в Yoast SEO, тож карта, уже додана в Google Search Console, і далі працює, а robots.txt на неї вказує. Якщо вимкнути, її місце займе карта сайту WordPress (wp-sitemap.xml)."
+
+#: includes/views/tab-indexing.php:56
+#: includes/views/tab-indexing.php:59
 msgid "An attachment page"
 msgstr "Сторінка вкладення"
 
-#: includes/views/tab-indexing.php:42
+#: includes/views/tab-indexing.php:62
 msgid "redirects to the file itself (recommended)"
 msgstr "веде на сам файл (рекомендовано)"
 
-#: includes/views/tab-indexing.php:43
+#: includes/views/tab-indexing.php:63
 msgid "redirects to the post it is attached to, or to the file when there is none"
 msgstr "веде на запис, до якого прикріплено файл, а якщо такого немає — на сам файл"
 
-#: includes/views/tab-indexing.php:44
+#: includes/views/tab-indexing.php:64
 msgid "stays a page of its own"
 msgstr "лишається окремою сторінкою"
 
-#: includes/views/tab-indexing.php:52
+#: includes/views/tab-indexing.php:72
 msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
 msgstr "WordPress створює сторінку для кожного завантаженого файлу. На ній немає нічого, крім зображення, тож пошуковики вважають її порожньою сторінкою."
 
