@@ -100,7 +100,7 @@ final class Simple_SEO_GitHub_Updater {
 			'download_link' => $remote_data['package'] ?? $this->get_package_url(),
 			'sections'      => array(
 				'description' => '<p>' . esc_html__( 'A lightweight SEO plugin for WordPress.', 'simple-seo' ) . '</p>',
-				'changelog'   => '<p>' . esc_html__( 'Version 0.1.0: initial plugin skeleton.', 'simple-seo' ) . '</p>',
+				'changelog'   => '<p>' . esc_html__( 'Version 0.2.0: SEO title and meta description fields for posts, pages and terms, and the SEO settings page with per-role access. Nothing is printed on the site yet.', 'simple-seo' ) . '</p>',
 			),
 		);
 	}

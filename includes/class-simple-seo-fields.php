@@ -1,0 +1,278 @@
+<?php
+/**
+ * Registry of the per-post and per-term SEO fields and their storage.
+ *
+ * Each field is its own meta key, _simple_seo_{key}, on posts and terms. An empty value is
+ * never stored: the row is deleted, so only what an editor actually set exists in the database
+ * and everything else falls back to the templates. Keys start with an underscore, so the core
+ * Custom Fields box does not show them; REST access goes through the auth callbacks below.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+final class Simple_SEO_Fields {
+	public const META_PREFIX = '_simple_seo_';
+
+	/** Basic fields: anyone with CAP_FIELDS who can edit the object. */
+	public const LEVEL_BASIC = 'basic';
+
+	/** Fields that change indexing: CAP_ADVANCED as well. */
+	public const LEVEL_ADVANCED = 'advanced';
+
+	/** @var array<string, array<string, mixed>> */
+	private static array $fields = array();
+
+	/** @var string[]|null */
+	private static ?array $post_types = null;
+
+	/** @var string[]|null */
+	private static ?array $taxonomies = null;
+
+	/** Whether the meta of the registered fields is registered already. */
+	private static bool $meta_registered = false;
+
+	public static function init(): void {
+		// Labels are translated, so the fields are registered on init, not when plugins load.
+		add_action( 'init', array( self::class, 'register_builtin' ), 5 );
+		// Late enough for post types and taxonomies that themes register on init.
+		add_action( 'init', array( self::class, 'register_all_meta' ), 99 );
+	}
+
+	/** The fields of the foundation; later parts register theirs the same way, on init. */
+	public static function register_builtin(): void {
+		self::register(
+			'title',
+			array(
+				'label'       => __( 'SEO title', 'simple-seo' ),
+				'description' => __( 'The title search engines show. Leave empty to use the template.', 'simple-seo' ),
+				'order'       => 10,
+			)
+		);
+		self::register(
+			'description',
+			array(
+				'label'       => __( 'Meta description', 'simple-seo' ),
+				'description' => __( 'The text under the title in search results. Leave empty to use the template.', 'simple-seo' ),
+				'type'        => 'textarea',
+				'order'       => 20,
+			)
+		);
+	}
+
+	/**
+	 * Register a field, on init or later (its label is translated). Once the meta of the other
+	 * fields is registered, a new field registers its meta right away.
+	 *
+	 * @param array<string, mixed> $args {
+	 *     @type string   $label       Field label.
+	 *     @type string   $description Help text under the field.
+	 *     @type string   $type        text, textarea, url, checkbox or select.
+	 *     @type string[] $objects     Where the field exists: post, term or both.
+	 *     @type string   $level       LEVEL_BASIC or LEVEL_ADVANCED.
+	 *     @type array    $options     Value => label, for select.
+	 *     @type callable $sanitize    Sanitizer of one value; the type decides when omitted.
+	 *     @type int      $order       Position in the editor, lower first.
+	 * }
+	 */
+	public static function register( string $key, array $args ): void {
+		$key = sanitize_key( $key );
+
+		self::$fields[ $key ] = array_merge(
+			array(
+				'label'       => $key,
+				'description' => '',
+				'type'        => 'text',
+				'objects'     => array( 'post', 'term' ),
+				'level'       => self::LEVEL_BASIC,
+				'options'     => array(),
+				'sanitize'    => null,
+				'order'       => 50,
+			),
+			$args,
+			array( 'key' => $key )
+		);
+
+		if ( self::$meta_registered ) {
+			self::register_meta( $key );
+		}
+	}
+
+	/** @return array<string, array<string, mixed>> Fields for one object type, in editor order. */
+	public static function all( string $object_type = '' ): array {
+		$fields = self::$fields;
+		if ( '' !== $object_type ) {
+			$fields = array_filter(
+				$fields,
+				static fn( array $field ): bool => in_array( $object_type, (array) $field['objects'], true )
+			);
+		}
+
+		uasort( $fields, static fn( array $a, array $b ): int => (int) $a['order'] <=> (int) $b['order'] );
+
+		return $fields;
+	}
+
+	/** @return array<string, mixed>|null */
+	public static function get( string $key ): ?array {
+		return self::$fields[ $key ] ?? null;
+	}
+
+	public static function meta_key( string $key ): string {
+		return self::META_PREFIX . $key;
+	}
+
+	public static function register_all_meta(): void {
+		if ( self::$meta_registered ) {
+			return;
+		}
+		self::$meta_registered = true;
+
+		foreach ( array_keys( self::$fields ) as $key ) {
+			self::register_meta( $key );
+		}
+	}
+
+	private static function register_meta( string $key ): void {
+		$field = self::$fields[ $key ];
+		$type  = 'checkbox' === $field['type'] ? 'boolean' : 'string';
+
+		foreach ( (array) $field['objects'] as $object_type ) {
+			register_meta(
+				$object_type,
+				self::meta_key( $key ),
+				array(
+					'type'              => $type,
+					'single'            => true,
+					'show_in_rest'      => true,
+					'sanitize_callback' => static fn( $value ) => self::sanitize_value( $key, $value ),
+					'auth_callback'     => static fn( $allowed, $meta_key, $object_id, $user_id ) => self::user_can_edit( (int) $user_id, $object_type, (int) $object_id, $key ),
+				)
+			);
+		}
+	}
+
+	/** Public post types that get SEO fields. Filter: simple_seo_post_types. */
+	public static function post_types(): array {
+		if ( null === self::$post_types ) {
+			$types = array_values( array_diff( get_post_types( array( 'public' => true ) ), array( 'attachment' ) ) );
+
+			/** @param string[] $types Post type names. */
+			self::$post_types = array_values( array_filter( (array) apply_filters( 'simple_seo_post_types', $types ), 'post_type_exists' ) );
+		}
+
+		return self::$post_types;
+	}
+
+	/** Public taxonomies that get SEO fields. Filter: simple_seo_taxonomies. */
+	public static function taxonomies(): array {
+		if ( null === self::$taxonomies ) {
+			$taxonomies = array_values( array_diff( get_taxonomies( array( 'public' => true ) ), array( 'post_format' ) ) );
+
+			/** @param string[] $taxonomies Taxonomy names. */
+			self::$taxonomies = array_values( array_filter( (array) apply_filters( 'simple_seo_taxonomies', $taxonomies ), 'taxonomy_exists' ) );
+		}
+
+		return self::$taxonomies;
+	}
+
+	/** Forget the computed lists, e.g. after a post type was registered late. */
+	public static function flush_types(): void {
+		self::$post_types = null;
+		self::$taxonomies = null;
+	}
+
+	/**
+	 * Whether a user may edit one field of one post or term.
+	 *
+	 * @param string $object_type post or term.
+	 */
+	public static function user_can_edit( int $user_id, string $object_type, int $object_id, string $key ): bool {
+		$field = self::$fields[ $key ] ?? null;
+		if ( null === $field || ! $user_id ) {
+			return false;
+		}
+
+		$object_cap = 'term' === $object_type ? 'edit_term' : 'edit_post';
+		if ( ! user_can( $user_id, $object_cap, $object_id ) || ! user_can( $user_id, Simple_SEO_Access::CAP_FIELDS ) ) {
+			return false;
+		}
+
+		return self::LEVEL_ADVANCED !== $field['level'] || user_can( $user_id, Simple_SEO_Access::CAP_ADVANCED );
+	}
+
+	/** @param mixed $value */
+	public static function sanitize_value( string $key, $value ) {
+		$field = self::$fields[ $key ] ?? null;
+		if ( null === $field ) {
+			return '';
+		}
+
+		if ( is_callable( $field['sanitize'] ) ) {
+			return call_user_func( $field['sanitize'], $value );
+		}
+
+		switch ( $field['type'] ) {
+			case 'checkbox':
+				return (bool) $value;
+			case 'textarea':
+				return trim( sanitize_textarea_field( (string) $value ) );
+			case 'url':
+				return esc_url_raw( trim( (string) $value ) );
+			case 'select':
+				$value = (string) $value;
+				return array_key_exists( $value, (array) $field['options'] ) ? $value : '';
+			default:
+				return trim( sanitize_text_field( (string) $value ) );
+		}
+	}
+
+	/** A stored value of a post field, '' when not set. */
+	public static function post_value( int $post_id, string $key ): string {
+		return (string) get_post_meta( $post_id, self::meta_key( $key ), true );
+	}
+
+	/** A stored value of a term field, '' when not set. */
+	public static function term_value( int $term_id, string $key ): string {
+		return (string) get_term_meta( $term_id, self::meta_key( $key ), true );
+	}
+
+	/**
+	 * Save submitted values of the fields the current user may edit; empty values delete the row.
+	 *
+	 * @param string               $object_type post or term.
+	 * @param array<string, mixed> $input       Unslashed field key => raw value.
+	 * @return string[] Keys that were written or deleted.
+	 */
+	public static function save( string $object_type, int $object_id, array $input ): array {
+		$user_id = get_current_user_id();
+		$changed = array();
+
+		foreach ( self::all( $object_type ) as $key => $field ) {
+			if ( ! self::user_can_edit( $user_id, $object_type, $object_id, $key ) ) {
+				continue;
+			}
+
+			// A field missing from the input is left as it is, checkboxes included: the editor form
+			// sends an empty hidden value before each checkbox, so an unchecked box arrives as ''.
+			if ( ! array_key_exists( $key, $input ) ) {
+				continue;
+			}
+
+			$value    = self::sanitize_value( $key, $input[ $key ] );
+			$meta_key = self::meta_key( $key );
+			$empty    = false === $value || '' === $value;
+
+			if ( $empty ) {
+				delete_metadata( $object_type, $object_id, $meta_key );
+			} else {
+				// update_metadata() expects slashed data and unslashes it itself.
+				update_metadata( $object_type, $object_id, $meta_key, wp_slash( $value ) );
+			}
+			$changed[] = $key;
+		}
+
+		return $changed;
+	}
+}

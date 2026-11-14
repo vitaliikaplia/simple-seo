@@ -21,6 +21,18 @@ final class Simple_SEO_Plugin {
 		add_action( 'init', array( self::class, 'load_textdomain' ), 0 );
 		add_action( 'init', array( self::class, 'maybe_upgrade' ), 20 );
 
+		Simple_SEO_Access::init();
+		Simple_SEO_Fields::init();
+		Simple_SEO_Head::init();
+
+		if ( is_admin() ) {
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-editor.php';
+
+			Simple_SEO_Admin::init();
+			Simple_SEO_Editor::init();
+		}
+
 		new Simple_SEO_GitHub_Updater();
 	}
 
@@ -30,9 +42,12 @@ final class Simple_SEO_Plugin {
 
 	/** An update does not run the activation hook: per-version migrations go here. */
 	public static function maybe_upgrade(): void {
-		if ( SIMPLE_SEO_VERSION !== get_option( self::VERSION_OPTION ) ) {
-			update_option( self::VERSION_OPTION, SIMPLE_SEO_VERSION, true );
+		if ( SIMPLE_SEO_VERSION === get_option( self::VERSION_OPTION ) ) {
+			return;
 		}
+
+		Simple_SEO_Settings::install();
+		update_option( self::VERSION_OPTION, SIMPLE_SEO_VERSION, true );
 	}
 
 	public static function activate( bool $network_wide = false ): void {
