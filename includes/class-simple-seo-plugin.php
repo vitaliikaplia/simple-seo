@@ -26,6 +26,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Head::init();
 		Simple_SEO_Variables::init();
 		Simple_SEO_Titles::init();
+		Simple_SEO_Indexing::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';

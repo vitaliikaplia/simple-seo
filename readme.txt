@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence, and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; decides where attachment pages go; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,13 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.4.0 =
+* Canonical address on every page that search engines may show, with page numbers, instead of the one WordPress prints only on posts; a post or term can name another address.
+* Indexing tab: which kinds of pages search engines may show — each post type, taxonomy, post type archive, author and date archives (date and author archives hidden by default). Search results and 404 are always hidden.
+* Each post, page and term can be shown or hidden on its own and can ask search engines not to follow its links.
+* Attachment pages redirect to the file (default), to the post they are attached to, or stay.
+* Works with wp-loc: one canonical address, not two.
 
 = 0.3.0 =
 * The page title and the meta description are set on the site: from the SEO title and description of the post, page or term, otherwise from templates.

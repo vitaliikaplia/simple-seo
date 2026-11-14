@@ -100,7 +100,7 @@ final class Simple_SEO_GitHub_Updater {
 			'download_link' => $remote_data['package'] ?? $this->get_package_url(),
 			'sections'      => array(
 				'description' => '<p>' . esc_html__( 'A lightweight SEO plugin for WordPress.', 'simple-seo' ) . '</p>',
-				'changelog'   => '<p>' . esc_html__( 'Version 0.3.0: the page title and the meta description are set on the site from the SEO fields and from templates with variables; Titles tab with the separator and the templates of every kind of page; "Insert structure" button. While another SEO plugin is active, nothing is printed. Version 0.2.0: SEO fields for posts, pages and terms, SEO settings page with per-role access.', 'simple-seo' ) . '</p>',
+				'changelog'   => '<p>' . esc_html__( 'Version 0.4.0: canonical address on every page search engines may show; Indexing tab — which kinds of pages search engines may show, where attachment pages go; noindex and nofollow for each post, page and term. Version 0.3.0: page title and meta description from the SEO fields and from templates with variables; Titles tab; "Insert structure" button. While another SEO plugin is active, nothing is printed.', 'simple-seo' ) . '</p>',
 			),
 		);
 	}

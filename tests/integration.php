@@ -96,6 +96,8 @@ $sseo_saved_options = array(
 	'page_for_posts' => get_option( 'page_for_posts' ),
 	'access'         => get_option( Simple_SEO_Access::OPTION ),
 	'titles'         => get_option( Simple_SEO_Titles::OPTION ),
+	'indexing'       => get_option( Simple_SEO_Indexing::OPTION ),
+	'blog_public'    => get_option( 'blog_public' ),
 );
 
 try {
@@ -133,6 +135,10 @@ try {
 	Simple_SEO_Settings::install();
 	sseo_check( 'install() leaves an existing row alone', array( 'editor' ) === Simple_SEO_Settings::get( Simple_SEO_Access::OPTION )['fields'] );
 	sseo_check( 'an unregistered option sanitizes to nothing', array() === Simple_SEO_Settings::sanitize( 'simple_seo_nope', array( 'a' => 1 ) ) );
+	Simple_SEO_Settings::get( Simple_SEO_Access::OPTION );
+	delete_option( Simple_SEO_Access::OPTION );
+	sseo_check( 'deleting the row empties the cache too', Simple_SEO_Access::defaults() === Simple_SEO_Settings::get( Simple_SEO_Access::OPTION ) );
+	Simple_SEO_Settings::install();
 	update_option( Simple_SEO_Access::OPTION, array() );
 
 	// ------------------------------------------------------------------------------------------
@@ -279,7 +285,7 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	sseo_check( 'fields come in editor order', array( 'title', 'description', 'index', 'nofollow', 'canonical', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -568,6 +574,7 @@ try {
 	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['author_post'] ) );
 	// The plugin's own providers are tested in their sections; here only the mechanism.
 	Simple_SEO_Head::remove_provider( 'description' );
+	Simple_SEO_Head::remove_provider( 'canonical' );
 	sseo_check( 'no providers, no output', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
 
 	Simple_SEO_Head::add_provider(
@@ -624,6 +631,7 @@ try {
 	Simple_SEO_Head::remove_provider( 'sseo_test_late' );
 	sseo_check( 'removed providers print nothing', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
 	Simple_SEO_Head::add_provider( 'description', array( Simple_SEO_Titles::class, 'head_tags' ), 10 );
+	Simple_SEO_Head::add_provider( 'canonical', array( Simple_SEO_Indexing::class, 'head_tags' ), 20 );
 
 	$GLOBALS['wp_query'] = $sseo_saved_query;
 	if ( null === $sseo_saved_wp_actions ) {
@@ -871,6 +879,226 @@ try {
 	update_option( 'blogdescription', $sseo_tagline );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Indexing' );
+
+	// set_current_screen() above makes is_admin() true, and WP_Query then never sees a home page.
+	unset( $GLOBALS['current_screen'] );
+	delete_option( Simple_SEO_Indexing::OPTION );
+	update_option( 'blog_public', '1' );
+	update_option( 'show_on_front', 'posts' );
+	Simple_SEO_Settings::flush();
+	delete_post_meta( $sseo_p['author_post'], '_simple_seo_title' );
+
+	$sseo_post_meta = get_registered_meta_keys( 'post' );
+	sseo_check( 'index, nofollow and canonical fields are registered', isset( $sseo_post_meta['_simple_seo_index'], $sseo_post_meta['_simple_seo_nofollow'], $sseo_post_meta['_simple_seo_canonical'] ) && 'boolean' === $sseo_post_meta['_simple_seo_nofollow']['type'] );
+	sseo_check( 'indexing fields are for editors, not authors', Simple_SEO_Fields::user_can_edit( $sseo_ed, 'post', $sseo_p['author_post'], 'index' ) && ! Simple_SEO_Fields::user_can_edit( $sseo_au, 'post', $sseo_p['author_post'], 'canonical' ) );
+	sseo_check( 'index: an unknown choice is dropped', '' === Simple_SEO_Fields::sanitize_value( 'index', 'maybe' ) && 'noindex' === Simple_SEO_Fields::sanitize_value( 'index', 'noindex' ) );
+
+	$sseo_urls = array(
+		'https://example.test/a/?b=1' => 'https://example.test/a/?b=1',
+		'/about/'                     => home_url( '/about/' ),
+		'javascript:alert(1)'         => '',
+		'example.com/page'            => '',
+		'//evil.test/x'               => '',
+		'http://'                     => '',
+		'ftp://example.test/file'     => '',
+	);
+	foreach ( $sseo_urls as $sseo_in => $sseo_out ) {
+		sseo_check( "canonical field: {$sseo_in}", $sseo_out === Simple_SEO_Indexing::sanitize_url( $sseo_in ), Simple_SEO_Indexing::sanitize_url( $sseo_in ) );
+	}
+
+	$sseo_q404 = sseo_query( array( 'p' => 99999999 ) );
+	$sseo_q404->set_404();
+	$sseo_kinds = array(
+		'a post'              => array( false, $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) ),
+		'a page'              => array( false, $sseo_ctx_of( array( 'page_id' => $sseo_p['front'] ) ) ),
+		'a category'          => array( false, $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ) ),
+		'a tag'               => array( false, $sseo_ctx_of( array( 'tag' => 'sseo-tag' ) ) ),
+		'the home page'       => array( false, $sseo_ctx_of( array() ) ),
+		'a date archive'      => array( true, $sseo_ctx_of( array( 'year' => $sseo_y ) ) ),
+		'an author archive'   => array( true, $sseo_ctx_of( array( 'author' => $sseo_au ) ) ),
+		'search results'      => array( true, $sseo_ctx_of( array( 's' => 'x' ) ) ),
+		'404'                 => array( true, Simple_SEO_Context::from_query( $sseo_q404 ) ),
+	);
+	foreach ( $sseo_kinds as $sseo_name => $sseo_case ) {
+		sseo_check( "default: {$sseo_name} is " . ( $sseo_case[0] ? 'hidden' : 'shown' ), $sseo_case[0] === Simple_SEO_Indexing::is_noindex( $sseo_case[1] ) );
+	}
+
+	update_post_meta( $sseo_p['editor_post'], '_simple_seo_index', 'noindex' );
+	sseo_check( "a post's own noindex wins over its type", Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) ) );
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'post:sseo_book', 'term:category' ) ) );
+	sseo_check( 'a hidden post type hides its posts', Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'p' => $sseo_p['book'], 'post_type' => 'sseo_book' ) ) ) );
+	update_post_meta( $sseo_p['book'], '_simple_seo_index', 'index' );
+	sseo_check( "a post's own index wins over a hidden type", ! Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'p' => $sseo_p['book'], 'post_type' => 'sseo_book' ) ) ) );
+	sseo_check( 'a hidden taxonomy hides its terms', Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ) ) );
+	sseo_check( 'with the list saved, date archives follow it (shown now)', ! Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'year' => $sseo_y ) ) ) );
+	update_term_meta( $sseo_tag_id, '_simple_seo_index', 'noindex' );
+	sseo_check( "a term's own noindex", Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'tag' => 'sseo-tag' ) ) ) );
+	update_option( 'blog_public', '0' );
+	sseo_check( 'a site closed in Settings → Reading: everything counts as hidden', Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) );
+	update_option( 'blog_public', '1' );
+	add_filter( 'simple_seo_noindex', '__return_true' );
+	sseo_check( 'simple_seo_noindex decides last', Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) );
+	remove_all_filters( 'simple_seo_noindex' );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_nofollow', '1' );
+	sseo_check( 'nofollow from the field', Simple_SEO_Indexing::is_nofollow( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) && ! Simple_SEO_Indexing::is_nofollow( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) ) );
+
+	// <meta name="robots"> through core.
+	$sseo_saved_query = $GLOBALS['wp_query'];
+	$sseo_robots      = static function ( array $vars ): string {
+		$GLOBALS['wp_query'] = sseo_query( $vars );
+		Simple_SEO_Context::reset();
+		return sseo_capture( 'wp_robots' );
+	};
+	$sseo_html = $sseo_robots( array( 'p' => $sseo_p['bare'] ) );
+	sseo_check( 'robots of a plain post: no noindex, core keeps max-image-preview', ! str_contains( $sseo_html, 'noindex' ) && ! str_contains( $sseo_html, 'nofollow' ) && str_contains( $sseo_html, 'max-image-preview:large' ), $sseo_html );
+	$sseo_html = $sseo_robots( array( 'p' => $sseo_p['editor_post'] ) );
+	sseo_check( 'robots of a hidden post: noindex, follow', str_contains( $sseo_html, 'noindex' ) && (bool) preg_match( '/[\s,\']follow[,\s\']/', $sseo_html ) && ! str_contains( $sseo_html, 'nofollow' ), $sseo_html );
+	$sseo_html = $sseo_robots( array( 'p' => $sseo_p['author_post'] ) );
+	sseo_check( 'robots with nofollow only', str_contains( $sseo_html, 'nofollow' ) && ! str_contains( $sseo_html, 'noindex' ), $sseo_html );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_index', 'noindex' );
+	$sseo_html = $sseo_robots( array( 'p' => $sseo_p['author_post'] ) );
+	sseo_check( 'robots with noindex and nofollow: no "follow" left', str_contains( $sseo_html, 'noindex' ) && str_contains( $sseo_html, 'nofollow' ) && ! preg_match( '/[\s,\']follow[,\s\']/', $sseo_html ), $sseo_html );
+	// A theme or plugin that says "index, follow" outright must not contradict the page's own choice.
+	add_filter( 'wp_robots', static fn( array $robots ): array => array_merge( $robots, array( 'index' => true, 'follow' => true ) ), 10 );
+	$sseo_html = $sseo_robots( array( 'p' => $sseo_p['author_post'] ) );
+	sseo_check( 'an explicit "index, follow" from elsewhere gives way to noindex, nofollow', ! preg_match( '/[\s,\'](?:index|follow)[,\s\']/', $sseo_html ) && str_contains( $sseo_html, 'noindex' ) && str_contains( $sseo_html, 'nofollow' ), $sseo_html );
+	remove_all_filters( 'wp_robots', 10 );
+	add_filter( 'wp_robots', 'wp_robots_noindex' );
+	add_filter( 'wp_robots', 'wp_robots_noindex_embeds' );
+	add_filter( 'wp_robots', 'wp_robots_noindex_search' );
+	add_filter( 'wp_robots', 'wp_robots_max_image_preview_large' );
+	delete_post_meta( $sseo_p['author_post'], '_simple_seo_index' );
+	delete_post_meta( $sseo_p['author_post'], '_simple_seo_nofollow' );
+	$sseo_html = $sseo_robots( array( 's' => 'x' ) );
+	sseo_check( 'robots of search results: noindex', str_contains( $sseo_html, 'noindex' ), $sseo_html );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	$sseo_html = $sseo_robots( array( 'p' => $sseo_p['editor_post'] ) );
+	sseo_check( 'with another SEO plugin active, robots are left to it', ! str_contains( $sseo_html, 'noindex' ), $sseo_html );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+
+	// Canonical addresses.
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array() ) );
+	$sseo_canon = static fn( array $vars ): string => Simple_SEO_Indexing::canonical( $sseo_ctx_of( $vars ) );
+	sseo_check( 'canonical of a post: its permalink', get_permalink( $sseo_p['bare'] ) === $sseo_canon( array( 'p' => $sseo_p['bare'] ) ) );
+	sseo_check( 'canonical of part 2 of a split post', trailingslashit( get_permalink( $sseo_p['multi'] ) ) . '2/' === $sseo_canon( array( 'p' => $sseo_p['multi'], 'page' => 2 ) ), $sseo_canon( array( 'p' => $sseo_p['multi'], 'page' => 2 ) ) );
+	sseo_check( 'canonical of page 2 of a category', trailingslashit( get_term_link( $sseo_cat_id ) ) . 'page/2/' === $sseo_canon( array( 'cat' => $sseo_cat_id, 'paged' => 2 ) ), $sseo_canon( array( 'cat' => $sseo_cat_id, 'paged' => 2 ) ) );
+	sseo_check( 'canonical of page 3 of the home page', home_url( '/page/3/' ) === $sseo_canon( array( 'paged' => 3 ) ), $sseo_canon( array( 'paged' => 3 ) ) );
+	sseo_check( 'canonical of a post type archive', get_post_type_archive_link( 'sseo_book' ) === $sseo_canon( array( 'post_type' => 'sseo_book' ) ) );
+	sseo_check( 'canonical of an author archive (when shown)', get_author_posts_url( $sseo_au ) === $sseo_canon( array( 'author' => $sseo_au ) ) );
+	sseo_check( 'canonical of a year archive (when shown)', get_year_link( $sseo_y ) === $sseo_canon( array( 'year' => $sseo_y ) ) );
+	sseo_check( 'canonical of a month archive', get_month_link( $sseo_y, $sseo_n ) === $sseo_canon( array( 'm' => gmdate( 'Ym' ) ) ) );
+	sseo_check( 'no canonical on search results and 404', '' === $sseo_canon( array( 's' => 'x' ) ) && '' === Simple_SEO_Indexing::canonical( Simple_SEO_Context::from_query( $sseo_q404 ) ) );
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_p['front'] );
+	update_option( 'page_for_posts', $sseo_p['blog'] );
+	sseo_check( 'canonical of the posts page and of the static front page', get_permalink( $sseo_p['blog'] ) === $sseo_canon( array( 'page_id' => $sseo_p['blog'] ) ) && home_url( '/' ) === $sseo_canon( array() ) );
+	update_option( 'show_on_front', 'posts' );
+	update_post_meta( $sseo_p['bare'], '_simple_seo_canonical', 'https://example.test/original/' );
+	sseo_check( 'the canonical field wins', 'https://example.test/original/' === $sseo_canon( array( 'p' => $sseo_p['bare'] ) ) );
+	update_post_meta( $sseo_p['bare'], '_simple_seo_index', 'noindex' );
+	sseo_check( 'a hidden page gets no canonical, even with the field', '' === $sseo_canon( array( 'p' => $sseo_p['bare'] ) ) );
+	delete_post_meta( $sseo_p['bare'], '_simple_seo_index' );
+	sseo_check( 'a draft has no canonical of its own', '' === Simple_SEO_Indexing::own_address( Simple_SEO_Context::for_post( get_post( $sseo['posts']['draft'] ) ) ) );
+	add_filter( 'simple_seo_canonical', static fn( string $url ): string => $url . '#x' );
+	sseo_check( 'simple_seo_canonical changes it', 'https://example.test/original/#x' === $sseo_canon( array( 'p' => $sseo_p['bare'] ) ) );
+	remove_all_filters( 'simple_seo_canonical' );
+
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['bare'] ) );
+	Simple_SEO_Context::reset();
+	$sseo_html = sseo_capture( array( Simple_SEO_Head::class, 'output' ) );
+	sseo_check( 'the head has the canonical link', str_contains( $sseo_html, '<link rel="canonical" href="https://example.test/original/" />' ), $sseo_html );
+	delete_post_meta( $sseo_p['bare'], '_simple_seo_canonical' );
+
+	sseo_check( "core's rel_canonical is on before the takeover", (bool) has_action( 'wp_head', 'rel_canonical' ) );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	Simple_SEO_Indexing::take_over();
+	sseo_check( "with another SEO plugin active, core's canonical stays", (bool) has_action( 'wp_head', 'rel_canonical' ) );
+	sseo_check( 'with another SEO plugin active, wp-loc decides its canonical itself', false === apply_filters( 'wp_loc_canonical_already_handled', false ) );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	Simple_SEO_Indexing::take_over();
+	sseo_check( "the takeover removes core's rel_canonical (ours replaces it)", ! has_action( 'wp_head', 'rel_canonical' ) );
+	add_action( 'wp_head', 'rel_canonical' );
+	sseo_check( 'wp-loc is told the canonical is handled', true === apply_filters( 'wp_loc_canonical_already_handled', false ) );
+
+	// Attachment pages.
+	$sseo['posts']['att_parent'] = wp_insert_post( array( 'post_title' => 'Gallery', 'post_status' => 'publish' ) );
+	$sseo['posts']['att_draft']  = wp_insert_post( array( 'post_title' => 'Draft gallery', 'post_status' => 'draft' ) );
+	$sseo['posts']['att']        = wp_insert_attachment( array( 'post_title' => 'Image', 'post_mime_type' => 'image/jpeg', 'post_status' => 'inherit' ), 'sseo-image.jpg', $sseo['posts']['att_parent'] );
+	$sseo['posts']['att_loose']  = wp_insert_attachment( array( 'post_title' => 'Loose', 'post_mime_type' => 'image/jpeg', 'post_status' => 'inherit' ), 'sseo-loose.jpg' );
+	$sseo['posts']['att_hidden'] = wp_insert_attachment( array( 'post_title' => 'Hidden', 'post_mime_type' => 'image/jpeg', 'post_status' => 'inherit' ), 'sseo-hidden.jpg', $sseo['posts']['att_draft'] );
+	$sseo_p                      = $sseo['posts'];
+	delete_option( Simple_SEO_Indexing::OPTION );
+	sseo_check( 'default: attachment pages go to the file (core does it, the option reads 0)', Simple_SEO_Indexing::ATTACHMENTS_FILE === Simple_SEO_Indexing::attachments_mode() && '0' === get_option( 'wp_attachment_pages_enabled' ) && '' === Simple_SEO_Indexing::attachment_redirect( get_post( $sseo_p['att'] ) ) );
+	sseo_check( 'default: a kept attachment page would be hidden', Simple_SEO_Indexing::is_noindex( Simple_SEO_Context::for_post( get_post( $sseo_p['att'] ) ) ) );
+	update_option( Simple_SEO_Indexing::OPTION, array( 'attachments' => Simple_SEO_Indexing::ATTACHMENTS_PARENT ) );
+	sseo_check( 'parent mode: to the published parent', get_permalink( $sseo_p['att_parent'] ) === Simple_SEO_Indexing::attachment_redirect( get_post( $sseo_p['att'] ) ) && '1' === get_option( 'wp_attachment_pages_enabled' ) );
+	sseo_check( 'parent mode: no parent — to the file', wp_get_attachment_url( $sseo_p['att_loose'] ) === Simple_SEO_Indexing::attachment_redirect( get_post( $sseo_p['att_loose'] ) ) && str_ends_with( wp_get_attachment_url( $sseo_p['att_loose'] ), 'sseo-loose.jpg' ) );
+	sseo_check( 'parent mode: a draft parent is not revealed — to the file', wp_get_attachment_url( $sseo_p['att_hidden'] ) === Simple_SEO_Indexing::attachment_redirect( get_post( $sseo_p['att_hidden'] ) ) );
+	update_option( Simple_SEO_Indexing::OPTION, array( 'attachments' => Simple_SEO_Indexing::ATTACHMENTS_KEEP ) );
+	sseo_check( 'keep mode: no redirect, attachment pages on for core', '' === Simple_SEO_Indexing::attachment_redirect( get_post( $sseo_p['att'] ) ) && '1' === get_option( 'wp_attachment_pages_enabled' ) );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	sseo_check( 'with another SEO plugin active, the core option is left alone', 'stored' === Simple_SEO_Indexing::attachment_pages_option( 'stored' ) );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+
+	// Settings tab.
+	delete_option( Simple_SEO_Indexing::OPTION );
+	Simple_SEO_Indexing::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'post:ghost', 'date', 'bad key!' ) ) );
+	sseo_check( 'a list given directly keeps well-formed slots only', array( 'post:ghost', 'date' ) === Simple_SEO_Settings::value( Simple_SEO_Indexing::OPTION, 'noindex' ), Simple_SEO_Settings::value( Simple_SEO_Indexing::OPTION, 'noindex' ) );
+	update_option(
+		Simple_SEO_Indexing::OPTION,
+		array(
+			'index'       => array(
+				'post:post'     => '0',
+				'date'          => '1',
+				'term:category' => '1',
+				'nonsense key'  => '0',
+			),
+			'attachments' => 'everywhere',
+		)
+	);
+	$sseo_stored = get_option( Simple_SEO_Indexing::OPTION );
+	sseo_check( 'the form: unchecked hides, checked shows', in_array( 'post:post', $sseo_stored['noindex'], true ) && ! in_array( 'date', $sseo_stored['noindex'], true ), $sseo_stored );
+	sseo_check( 'the form: a slot not on the form keeps its state', in_array( 'post:ghost', $sseo_stored['noindex'], true ), $sseo_stored );
+	sseo_check( 'the form: bad keys and modes are dropped', ! in_array( 'nonsense key', $sseo_stored['noindex'], true ) && Simple_SEO_Indexing::ATTACHMENTS_FILE === $sseo_stored['attachments'], $sseo_stored );
+	sseo_check( 'the tab saves with the plugin capability', Simple_SEO_Access::CAP_SETTINGS === apply_filters( 'option_page_capability_simple-seo-indexing', 'manage_options' ) );
+
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( 'blog_public', '0' );
+	$_GET['tab'] = 'indexing';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	update_option( 'blog_public', '1' );
+	sseo_check( 'the Indexing tab sits between Titles and Access', strpos( $sseo_html, '>Titles<' ) < strpos( $sseo_html, '>Indexing<' ) && strpos( $sseo_html, '>Indexing<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check( 'three attachment modes, the saved one checked', 3 === substr_count( $sseo_html, 'name="simple_seo_indexing[attachments]"' ) && (bool) preg_match( '/value="file"\s+checked=\'checked\'/', $sseo_html ) );
+	sseo_check( 'every slot sends 0 before its checkbox', str_contains( $sseo_html, '<input type="hidden" name="simple_seo_indexing[index][post:post]" value="0">' ) && str_contains( $sseo_html, 'name="simple_seo_indexing[index][post:attachment]"' ) );
+	sseo_check( 'a hidden kind is unchecked, a shown one checked', ! preg_match( '/\[index\]\[post:post\]" value="1"\s+checked/', $sseo_html ) && (bool) preg_match( '/\[index\]\[term:category\]" value="1"\s+checked/', $sseo_html ) );
+	sseo_check( 'no switch for search results', ! str_contains( $sseo_html, '[index][search]' ) );
+	sseo_check( 'a site closed in Settings → Reading is pointed out', str_contains( $sseo_html, 'options-reading.php' ) );
+
+	// Editor.
+	delete_option( Simple_SEO_Indexing::OPTION );
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
+	sseo_check( 'meta box: an Indexing heading before the indexing fields', str_contains( $sseo_html, '>Indexing</h4>' ) && strpos( $sseo_html, '>Indexing</h4>' ) < strpos( $sseo_html, 'name="simple_seo[index]"' ) );
+	sseo_check( 'meta box: what search engines do now, and the canonical', str_contains( $sseo_html, 'Now: shown in search results' ) && str_contains( $sseo_html, 'Now: ' . get_permalink( $sseo_p['bare'] ) ) );
+	sseo_check( 'meta box: three choices for search engines', 3 === substr_count( $sseo_html, '<option value=' ) - substr_count( $sseo_html, 'name="simple_seo[test_choice]"' ) * 2 );
+	wp_set_current_user( $sseo_au );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
+	sseo_check( 'meta box of an author: no indexing fields, no heading', ! str_contains( $sseo_html, 'Indexing' ) && ! str_contains( $sseo_html, 'simple_seo[index]' ) );
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
+	sseo_check( 'term screen: indexing fields under their heading', str_contains( $sseo_html, '>Indexing</h3>' ) && str_contains( $sseo_html, 'name="simple_seo[canonical]"' ) );
+
+	delete_option( Simple_SEO_Indexing::OPTION );
+	delete_term_meta( $sseo_tag_id, '_simple_seo_index' );
+	delete_post_meta( $sseo_p['editor_post'], '_simple_seo_index' );
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+	Simple_SEO_Context::reset();
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -880,6 +1108,7 @@ try {
 	sseo_check( 'a field label is translated', 'SEO-заголовок' === __( 'SEO title', 'simple-seo' ), __( 'SEO title', 'simple-seo' ) );
 	sseo_check( 'a tab name is translated', 'Доступ' === __( 'Access', 'simple-seo' ) && 'Заголовки' === __( 'Titles', 'simple-seo' ), __( 'Titles', 'simple-seo' ) );
 	sseo_check( 'the structure button is translated', 'Вставити структуру' === __( 'Insert structure', 'simple-seo' ) );
+	sseo_check( 'the Indexing tab is translated', 'Індексація' === __( 'Indexing', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -894,7 +1123,7 @@ try {
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
 	sseo_check( 'uninstall leaves the options cache consistent', null === get_option( Simple_SEO_Plugin::VERSION_OPTION, null ) && null === get_option( Simple_SEO_Access::OPTION, null ) );
-	sseo_check( 'uninstall keeps the SEO fields of posts', '{title} custom {sep} {site}' === Simple_SEO_Fields::post_value( $sseo_p['author_post'], 'title' ) );
+	sseo_check( 'uninstall keeps the SEO fields of posts', 'Welcome {sep} {site}' === Simple_SEO_Fields::post_value( $sseo_p['front'], 'title' ) );
 	sseo_check( 'uninstall keeps the SEO fields of terms', 'Saved from the term form' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Plugin::maybe_upgrade();
@@ -921,7 +1150,14 @@ try {
 	}
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
-	update_option( Simple_SEO_Titles::OPTION, is_array( $sseo_saved_options['titles'] ) ? $sseo_saved_options['titles'] : array() );
+	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing' ) as $sseo_name => $sseo_key ) {
+		delete_option( $sseo_name );
+		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
+			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
+		}
+	}
+	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
 }
 
 $sseo_r = $GLOBALS['sseo_results'];

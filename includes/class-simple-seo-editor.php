@@ -36,9 +36,14 @@ final class Simple_SEO_Editor {
 		// A new post has no title yet: what it would show now says nothing.
 		$preview = 'auto-draft' !== $post->post_status;
 
+		$advanced = false;
 		echo '<div class="simple-seo-fields">';
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::post_value( (int) $post->ID, $key );
+			if ( ! $advanced && Simple_SEO_Fields::LEVEL_ADVANCED === $field['level'] ) {
+				$advanced = true;
+				printf( '<h4 style="margin:1.5em 0 .5em;padding-top:1em;border-top:1px solid #dcdcde">%s</h4>', esc_html__( 'Indexing', 'simple-seo' ) );
+			}
 			echo '<p>';
 			if ( 'checkbox' === $field['type'] ) {
 				echo self::input( $field, $value ) . ' '; // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
@@ -99,8 +104,13 @@ final class Simple_SEO_Editor {
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 		echo '</th></tr>';
 
+		$advanced = false;
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::term_value( (int) $term->term_id, $key );
+			if ( ! $advanced && Simple_SEO_Fields::LEVEL_ADVANCED === $field['level'] ) {
+				$advanced = true;
+				printf( '<tr class="form-field"><th scope="row" colspan="2"><h3 style="margin:.5em 0 0">%s</h3></th></tr>', esc_html__( 'Indexing', 'simple-seo' ) );
+			}
 			printf( '<tr class="form-field"><th scope="row"><label for="%s">%s</label></th><td>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
 			echo self::input_with_mask( $field, $value, 'term', $term ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 			if ( '' !== (string) $field['description'] ) {

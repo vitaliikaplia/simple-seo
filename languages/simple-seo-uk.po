@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.3.0\n"
+"Project-Id-Version: Simple SEO 0.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -65,7 +65,7 @@ msgstr "Доступ"
 
 #: includes/class-simple-seo-admin.php:61
 #: includes/class-simple-seo-editor.php:28
-#: includes/class-simple-seo-editor.php:98
+#: includes/class-simple-seo-editor.php:103
 msgid "SEO"
 msgstr "SEO"
 
@@ -87,19 +87,62 @@ msgstr "Вставити структуру"
 msgid "Settings"
 msgstr "Налаштування"
 
+#: includes/class-simple-seo-editor.php:45
+#: includes/class-simple-seo-editor.php:112
+#: includes/class-simple-seo-indexing.php:99
+msgid "Indexing"
+msgstr "Індексація"
+
 #. translators: %s: the title or description the page has with the saved values.
-#: includes/class-simple-seo-editor.php:184
+#: includes/class-simple-seo-editor.php:195
 #, php-format
 msgid "Now: %s"
 msgstr "Зараз: %s"
 
-#: includes/class-simple-seo-editor.php:185
+#: includes/class-simple-seo-editor.php:196
 msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.3.0: the page title and the meta description are set on the site from the SEO fields and from templates with variables; Titles tab with the separator and the templates of every kind of page; \"Insert structure\" button. While another SEO plugin is active, nothing is printed. Version 0.2.0: SEO fields for posts, pages and terms, SEO settings page with per-role access."
-msgstr "Версія 0.3.0: заголовок сторінки й мета-опис виводяться на сайті з SEO-полів і з шаблонів зі змінними; вкладка «Заголовки» з роздільником і шаблонами для всіх типів сторінок; кнопка «Вставити структуру». Поки активний інший SEO-плагін, нічого не виводиться. Версія 0.2.0: SEO-поля для записів, сторінок і термінів, сторінка налаштувань SEO з доступом за ролями."
+msgid "Version 0.4.0: canonical address on every page search engines may show; Indexing tab — which kinds of pages search engines may show, where attachment pages go; noindex and nofollow for each post, page and term. Version 0.3.0: page title and meta description from the SEO fields and from templates with variables; Titles tab; \"Insert structure\" button. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.4.0: канонічна адреса на кожній сторінці, яку можуть показувати пошуковики; вкладка «Індексація» — які види сторінок показувати в пошуку й куди ведуть сторінки вкладень; noindex і nofollow для кожного запису, сторінки й терміна. Версія 0.3.0: заголовок сторінки й мета-опис із SEO-полів і з шаблонів зі змінними; вкладка «Заголовки»; кнопка «Вставити структуру». Поки активний інший SEO-плагін, нічого не виводиться."
+
+#: includes/class-simple-seo-indexing.php:61
+msgid "Search engines"
+msgstr "Пошуковики"
+
+#: includes/class-simple-seo-indexing.php:65
+msgid "As set for this type of page"
+msgstr "Як налаштовано для цього виду сторінок"
+
+#: includes/class-simple-seo-indexing.php:66
+#: includes/views/tab-indexing.php:76
+msgid "Show in search results"
+msgstr "Показувати в результатах пошуку"
+
+#: includes/class-simple-seo-indexing.php:67
+msgid "Hide from search results (noindex)"
+msgstr "Не показувати в результатах пошуку (noindex)"
+
+#: includes/class-simple-seo-indexing.php:71
+msgid "hidden from search results"
+msgstr "прихована від пошуковиків"
+
+#: includes/class-simple-seo-indexing.php:72
+msgid "shown in search results"
+msgstr "показується в результатах пошуку"
+
+#: includes/class-simple-seo-indexing.php:78
+msgid "Ask search engines not to follow the links on this page (nofollow)"
+msgstr "Просити пошуковики не переходити за посиланнями з цієї сторінки (nofollow)"
+
+#: includes/class-simple-seo-indexing.php:87
+msgid "Canonical address"
+msgstr "Канонічна адреса"
+
+#: includes/class-simple-seo-indexing.php:88
+msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
+msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
 
 #: includes/class-simple-seo-titles.php:51
 msgid "SEO title"
@@ -230,6 +273,46 @@ msgstr "F Y"
 #: includes/views/tab-access.php:14
 msgid "Choose which roles can do what. Editing SEO fields of a post or term also needs the right to edit that post or term itself."
 msgstr "Оберіть, які ролі що можуть. Щоб редагувати SEO-поля запису чи терміна, потрібне ще й право редагувати сам запис чи термін."
+
+#: includes/views/tab-indexing.php:16
+#: includes/views/tab-indexing.php:32
+msgid "Attachment pages"
+msgstr "Сторінки вкладень"
+
+#: includes/views/tab-indexing.php:18
+msgid "Choose which kinds of pages search engines may show. A hidden kind gets \"noindex\"; links on it are still followed. Each post, page or term can override its kind in its own SEO fields. Search results and the 404 page are always hidden."
+msgstr "Оберіть, які види сторінок можуть показувати пошуковики. Прихований вид отримує «noindex», але посилання з нього пошуковики все одно проходять. Кожен запис, сторінка чи термін може перевизначити це у своїх SEO-полях. Результати пошуку й сторінка 404 приховані завжди."
+
+#. translators: %s: link to Settings → Reading.
+#: includes/views/tab-indexing.php:25
+#, php-format
+msgid "The whole site is hidden from search engines in %s, whatever is chosen here."
+msgstr "Увесь сайт приховано від пошуковиків у %s, що б тут не було обрано."
+
+#: includes/views/tab-indexing.php:26
+msgid "Settings → Reading"
+msgstr "Налаштування → Читання"
+
+#: includes/views/tab-indexing.php:36
+#: includes/views/tab-indexing.php:39
+msgid "An attachment page"
+msgstr "Сторінка вкладення"
+
+#: includes/views/tab-indexing.php:42
+msgid "redirects to the file itself (recommended)"
+msgstr "веде на сам файл (рекомендовано)"
+
+#: includes/views/tab-indexing.php:43
+msgid "redirects to the post it is attached to, or to the file when there is none"
+msgstr "веде на запис, до якого прикріплено файл, а якщо такого немає — на сам файл"
+
+#: includes/views/tab-indexing.php:44
+msgid "stays a page of its own"
+msgstr "лишається окремою сторінкою"
+
+#: includes/views/tab-indexing.php:52
+msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
+msgstr "WordPress створює сторінку для кожного завантаженого файлу. На ній немає нічого, крім зображення, тож пошуковики вважають її порожньою сторінкою."
 
 #: includes/views/tab-titles.php:30
 msgid "Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme's title and without a description."

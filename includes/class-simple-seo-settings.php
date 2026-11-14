@@ -34,6 +34,7 @@ final class Simple_SEO_Settings {
 
 		add_action( "update_option_{$name}", array( self::class, 'flush_after_update' ), 10, 3 );
 		add_action( "add_option_{$name}", array( self::class, 'flush_after_add' ), 10, 1 );
+		add_action( "delete_option_{$name}", array( self::class, 'flush_after_add' ), 10, 1 );
 	}
 
 	/** @return array<string, array{defaults: array<string, mixed>, sanitize: callable, autoload: bool}> */

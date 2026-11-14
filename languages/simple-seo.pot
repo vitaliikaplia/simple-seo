@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.3.0\n"
+"Project-Id-Version: Simple SEO 0.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-14T21:21:06+00:00\n"
+"POT-Creation-Date: 2026-11-14T22:00:15+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -67,7 +67,7 @@ msgstr ""
 
 #: includes/class-simple-seo-admin.php:61
 #: includes/class-simple-seo-editor.php:28
-#: includes/class-simple-seo-editor.php:98
+#: includes/class-simple-seo-editor.php:103
 msgid "SEO"
 msgstr ""
 
@@ -89,18 +89,61 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
+#: includes/class-simple-seo-editor.php:45
+#: includes/class-simple-seo-editor.php:112
+#: includes/class-simple-seo-indexing.php:99
+msgid "Indexing"
+msgstr ""
+
 #. translators: %s: the title or description the page has with the saved values.
-#: includes/class-simple-seo-editor.php:184
+#: includes/class-simple-seo-editor.php:195
 #, php-format
 msgid "Now: %s"
 msgstr ""
 
-#: includes/class-simple-seo-editor.php:185
+#: includes/class-simple-seo-editor.php:196
 msgid "Now: none from Simple SEO."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.3.0: the page title and the meta description are set on the site from the SEO fields and from templates with variables; Titles tab with the separator and the templates of every kind of page; \"Insert structure\" button. While another SEO plugin is active, nothing is printed. Version 0.2.0: SEO fields for posts, pages and terms, SEO settings page with per-role access."
+msgid "Version 0.4.0: canonical address on every page search engines may show; Indexing tab — which kinds of pages search engines may show, where attachment pages go; noindex and nofollow for each post, page and term. Version 0.3.0: page title and meta description from the SEO fields and from templates with variables; Titles tab; \"Insert structure\" button. While another SEO plugin is active, nothing is printed."
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:61
+msgid "Search engines"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:65
+msgid "As set for this type of page"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:66
+#: includes/views/tab-indexing.php:76
+msgid "Show in search results"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:67
+msgid "Hide from search results (noindex)"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:71
+msgid "hidden from search results"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:72
+msgid "shown in search results"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:78
+msgid "Ask search engines not to follow the links on this page (nofollow)"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:87
+msgid "Canonical address"
+msgstr ""
+
+#: includes/class-simple-seo-indexing.php:88
+msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr ""
 
 #: includes/class-simple-seo-titles.php:51
@@ -231,6 +274,46 @@ msgstr ""
 
 #: includes/views/tab-access.php:14
 msgid "Choose which roles can do what. Editing SEO fields of a post or term also needs the right to edit that post or term itself."
+msgstr ""
+
+#: includes/views/tab-indexing.php:16
+#: includes/views/tab-indexing.php:32
+msgid "Attachment pages"
+msgstr ""
+
+#: includes/views/tab-indexing.php:18
+msgid "Choose which kinds of pages search engines may show. A hidden kind gets \"noindex\"; links on it are still followed. Each post, page or term can override its kind in its own SEO fields. Search results and the 404 page are always hidden."
+msgstr ""
+
+#. translators: %s: link to Settings → Reading.
+#: includes/views/tab-indexing.php:25
+#, php-format
+msgid "The whole site is hidden from search engines in %s, whatever is chosen here."
+msgstr ""
+
+#: includes/views/tab-indexing.php:26
+msgid "Settings → Reading"
+msgstr ""
+
+#: includes/views/tab-indexing.php:36
+#: includes/views/tab-indexing.php:39
+msgid "An attachment page"
+msgstr ""
+
+#: includes/views/tab-indexing.php:42
+msgid "redirects to the file itself (recommended)"
+msgstr ""
+
+#: includes/views/tab-indexing.php:43
+msgid "redirects to the post it is attached to, or to the file when there is none"
+msgstr ""
+
+#: includes/views/tab-indexing.php:44
+msgid "stays a page of its own"
+msgstr ""
+
+#: includes/views/tab-indexing.php:52
+msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
 msgstr ""
 
 #: includes/views/tab-titles.php:30
