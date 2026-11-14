@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.4.0\n"
+"Project-Id-Version: Simple SEO 0.5.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -65,7 +65,7 @@ msgstr "Доступ"
 
 #: includes/class-simple-seo-admin.php:61
 #: includes/class-simple-seo-editor.php:28
-#: includes/class-simple-seo-editor.php:103
+#: includes/class-simple-seo-editor.php:106
 msgid "SEO"
 msgstr "SEO"
 
@@ -79,70 +79,114 @@ msgstr "На жаль, у вас немає доступу до цієї сто�
 msgid "%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime."
 msgstr "%s активний, тому Simple SEO нічого не виводить на сайті — ні заголовків, ні описів, ні інших тегів, — і сторінки ніколи не отримують їх двічі. Вимкніть його, коли переходитимете на Simple SEO; налаштування й поля тут можна підготувати заздалегідь."
 
-#: includes/class-simple-seo-admin.php:179
+#: includes/class-simple-seo-admin.php:194
+msgid "Choose an image"
+msgstr "Оберіть зображення"
+
+#: includes/class-simple-seo-admin.php:195
+msgid "Use this image"
+msgstr "Використати це зображення"
+
+#: includes/class-simple-seo-admin.php:197
+msgid "Choose image"
+msgstr "Обрати зображення"
+
+#: includes/class-simple-seo-admin.php:198
+msgid "Remove image"
+msgstr "Прибрати зображення"
+
+#: includes/class-simple-seo-admin.php:209
 msgid "Insert structure"
 msgstr "Вставити структуру"
 
-#: includes/class-simple-seo-admin.php:189
+#: includes/class-simple-seo-admin.php:219
 msgid "Settings"
 msgstr "Налаштування"
 
-#: includes/class-simple-seo-editor.php:45
-#: includes/class-simple-seo-editor.php:112
-#: includes/class-simple-seo-indexing.php:99
-msgid "Indexing"
-msgstr "Індексація"
-
 #. translators: %s: the title or description the page has with the saved values.
-#: includes/class-simple-seo-editor.php:195
+#: includes/class-simple-seo-editor.php:201
 #, php-format
 msgid "Now: %s"
 msgstr "Зараз: %s"
 
-#: includes/class-simple-seo-editor.php:196
+#: includes/class-simple-seo-editor.php:202
 msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.4.0: canonical address on every page search engines may show; Indexing tab — which kinds of pages search engines may show, where attachment pages go; noindex and nofollow for each post, page and term. Version 0.3.0: page title and meta description from the SEO fields and from templates with variables; Titles tab; \"Insert structure\" button. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.4.0: канонічна адреса на кожній сторінці, яку можуть показувати пошуковики; вкладка «Індексація» — які види сторінок показувати в пошуку й куди ведуть сторінки вкладень; noindex і nofollow для кожного запису, сторінки й терміна. Версія 0.3.0: заголовок сторінки й мета-опис із SEO-полів і з шаблонів зі змінними; вкладка «Заголовки»; кнопка «Вставити структуру». Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.5.0: Open Graph and X card for link previews, with a title, description and image for social networks on each post, page and term, a default image and the X account in the settings. Version 0.4.0: canonical address, noindex and nofollow by kind of page and one by one, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.5.0: Open Graph і картка X для прев'ю посилань — із заголовком, описом і зображенням для соцмереж на кожному записі, сторінці й терміні, типовим зображенням і акаунтом X у налаштуваннях. Версія 0.4.0: канонічна адреса, noindex і nofollow за видами сторінок і окремо, сторінки вкладень. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
-#: includes/class-simple-seo-indexing.php:61
+#: includes/class-simple-seo-indexing.php:58
+#: includes/class-simple-seo-indexing.php:103
+msgid "Indexing"
+msgstr "Індексація"
+
+#: includes/class-simple-seo-indexing.php:62
 msgid "Search engines"
 msgstr "Пошуковики"
 
-#: includes/class-simple-seo-indexing.php:65
+#: includes/class-simple-seo-indexing.php:66
 msgid "As set for this type of page"
 msgstr "Як налаштовано для цього виду сторінок"
 
-#: includes/class-simple-seo-indexing.php:66
+#: includes/class-simple-seo-indexing.php:67
 #: includes/views/tab-indexing.php:76
 msgid "Show in search results"
 msgstr "Показувати в результатах пошуку"
 
-#: includes/class-simple-seo-indexing.php:67
+#: includes/class-simple-seo-indexing.php:68
 msgid "Hide from search results (noindex)"
 msgstr "Не показувати в результатах пошуку (noindex)"
 
-#: includes/class-simple-seo-indexing.php:71
+#: includes/class-simple-seo-indexing.php:73
 msgid "hidden from search results"
 msgstr "прихована від пошуковиків"
 
-#: includes/class-simple-seo-indexing.php:72
+#: includes/class-simple-seo-indexing.php:74
 msgid "shown in search results"
 msgstr "показується в результатах пошуку"
 
-#: includes/class-simple-seo-indexing.php:78
+#: includes/class-simple-seo-indexing.php:80
 msgid "Ask search engines not to follow the links on this page (nofollow)"
 msgstr "Просити пошуковики не переходити за посиланнями з цієї сторінки (nofollow)"
 
-#: includes/class-simple-seo-indexing.php:87
+#: includes/class-simple-seo-indexing.php:90
 msgid "Canonical address"
 msgstr "Канонічна адреса"
 
-#: includes/class-simple-seo-indexing.php:88
+#: includes/class-simple-seo-indexing.php:91
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
+
+#: includes/class-simple-seo-social.php:58
+#: includes/class-simple-seo-social.php:93
+msgid "Social networks"
+msgstr "Соцмережі"
+
+#: includes/class-simple-seo-social.php:62
+msgid "Title for social networks"
+msgstr "Заголовок для соцмереж"
+
+#: includes/class-simple-seo-social.php:63
+msgid "How a shared link is titled on Facebook, Telegram, X and the like. Leave empty to use the SEO title."
+msgstr "Як підписане посилання, коли ним діляться у Facebook, Telegram, X тощо. Залиште порожнім, щоб узяти SEO-заголовок."
+
+#: includes/class-simple-seo-social.php:72
+msgid "Description for social networks"
+msgstr "Опис для соцмереж"
+
+#: includes/class-simple-seo-social.php:73
+msgid "Leave empty to use the meta description."
+msgstr "Залиште порожнім, щоб узяти мета-опис."
+
+#: includes/class-simple-seo-social.php:83
+msgid "Image for social networks"
+msgstr "Зображення для соцмереж"
+
+#: includes/class-simple-seo-social.php:84
+msgid "Best 1200 × 630 pixels. Without it: the featured image, then the default image from the settings."
+msgstr "Найкраще 1200 × 630 пікселів. Без нього — головне зображення запису, а далі типове зображення з налаштувань."
 
 #: includes/class-simple-seo-titles.php:51
 msgid "SEO title"
@@ -313,6 +357,26 @@ msgstr "лишається окремою сторінкою"
 #: includes/views/tab-indexing.php:52
 msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
 msgstr "WordPress створює сторінку для кожного завантаженого файлу. На ній немає нічого, крім зображення, тож пошуковики вважають її порожньою сторінкою."
+
+#: includes/views/tab-social.php:14
+msgid "When a page is shared on Facebook, Telegram, Viber, LinkedIn, X and the like, the preview shows its title, description and image: the SEO title and meta description, unless a post or term has its own for social networks."
+msgstr "Коли сторінкою діляться у Facebook, Telegram, Viber, LinkedIn, X тощо, прев'ю показує її заголовок, опис і зображення: SEO-заголовок і мета-опис, якщо запис чи термін не має власних для соцмереж."
+
+#: includes/views/tab-social.php:19
+msgid "Default image"
+msgstr "Типове зображення"
+
+#: includes/views/tab-social.php:24
+msgid "For pages without an image of their own or a featured image: a logo or a picture of the site, best 1200 × 630 pixels."
+msgstr "Для сторінок без власного чи головного зображення: логотип або картинка сайту, найкраще 1200 × 630 пікселів."
+
+#: includes/views/tab-social.php:28
+msgid "X account"
+msgstr "Акаунт X"
+
+#: includes/views/tab-social.php:31
+msgid "Optional: the site's account on X (Twitter), as @name or a link to it."
+msgstr "Необов'язково: акаунт сайту в X (Twitter) — як @ім'я або посилання на нього."
 
 #: includes/views/tab-titles.php:30
 msgid "Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme's title and without a description."

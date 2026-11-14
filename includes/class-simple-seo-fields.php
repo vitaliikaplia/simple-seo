@@ -24,6 +24,9 @@ final class Simple_SEO_Fields {
 	/** @var array<string, array<string, mixed>> */
 	private static array $fields = array();
 
+	/** @var array<string, string> Group => heading shown above its fields in the editor. */
+	private static array $groups = array();
+
 	/** @var string[]|null */
 	private static ?array $post_types = null;
 
@@ -46,12 +49,14 @@ final class Simple_SEO_Fields {
 	 * @param array<string, mixed> $args {
 	 *     @type string   $label       Field label.
 	 *     @type string   $description Help text under the field.
-	 *     @type string   $type        text, textarea, url, checkbox or select.
+	 *     @type string   $type        text, textarea, url, checkbox, select or image (attachment ID).
 	 *     @type string[] $objects     Where the field exists: post, term or both.
 	 *     @type string   $level       LEVEL_BASIC or LEVEL_ADVANCED.
 	 *     @type array    $options     Value => label, for select.
 	 *     @type callable $sanitize    Sanitizer of one value; the type decides when omitted.
 	 *     @type int      $order       Position in the editor, lower first.
+	 *     @type string   $group       Group in the editor ('' for the main fields): its heading is
+	 *                                 printed above its first field the user can edit.
 	 *     @type callable $mask        Optional: ( 'post'|'term', WP_Post|WP_Term ) → the template the
 	 *                                 field falls back to; shown as the placeholder and inserted by
 	 *                                 the "Insert structure" button.
@@ -72,6 +77,7 @@ final class Simple_SEO_Fields {
 				'options'     => array(),
 				'sanitize'    => null,
 				'order'       => 50,
+				'group'       => '',
 				'mask'        => null,
 				'preview'     => null,
 			),
@@ -99,6 +105,15 @@ final class Simple_SEO_Fields {
 		return $fields;
 	}
 
+	/** Name a group of fields; call it on init (the heading is translated). */
+	public static function register_group( string $group, string $heading ): void {
+		self::$groups[ sanitize_key( $group ) ] = $heading;
+	}
+
+	public static function group_heading( string $group ): string {
+		return self::$groups[ $group ] ?? '';
+	}
+
 	/** @return array<string, mixed>|null */
 	public static function get( string $key ): ?array {
 		return self::$fields[ $key ] ?? null;
@@ -121,7 +136,11 @@ final class Simple_SEO_Fields {
 
 	private static function register_meta( string $key ): void {
 		$field = self::$fields[ $key ];
-		$type  = 'checkbox' === $field['type'] ? 'boolean' : 'string';
+		$types = array(
+			'checkbox' => 'boolean',
+			'image'    => 'integer',
+		);
+		$type  = $types[ $field['type'] ] ?? 'string';
 
 		foreach ( (array) $field['objects'] as $object_type ) {
 			register_meta(
@@ -208,6 +227,10 @@ final class Simple_SEO_Fields {
 			case 'select':
 				$value = (string) $value;
 				return array_key_exists( $value, (array) $field['options'] ) ? $value : '';
+			case 'image':
+				// Only an image from the media library; anything else is no image at all.
+				$id = absint( $value );
+				return $id && 'attachment' === get_post_type( $id ) && wp_attachment_is_image( $id ) ? $id : '';
 			default:
 				return trim( sanitize_text_field( (string) $value ) );
 		}

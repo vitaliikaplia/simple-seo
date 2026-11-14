@@ -100,7 +100,7 @@ final class Simple_SEO_GitHub_Updater {
 			'download_link' => $remote_data['package'] ?? $this->get_package_url(),
 			'sections'      => array(
 				'description' => '<p>' . esc_html__( 'A lightweight SEO plugin for WordPress.', 'simple-seo' ) . '</p>',
-				'changelog'   => '<p>' . esc_html__( 'Version 0.4.0: canonical address on every page search engines may show; Indexing tab — which kinds of pages search engines may show, where attachment pages go; noindex and nofollow for each post, page and term. Version 0.3.0: page title and meta description from the SEO fields and from templates with variables; Titles tab; "Insert structure" button. While another SEO plugin is active, nothing is printed.', 'simple-seo' ) . '</p>',
+				'changelog'   => '<p>' . esc_html__( 'Version 0.5.0: Open Graph and X card for link previews, with a title, description and image for social networks on each post, page and term, a default image and the X account in the settings. Version 0.4.0: canonical address, noindex and nofollow by kind of page and one by one, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed.', 'simple-seo' ) . '</p>',
 			),
 		);
 	}

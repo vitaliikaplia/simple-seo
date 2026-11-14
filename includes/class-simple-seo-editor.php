@@ -36,13 +36,16 @@ final class Simple_SEO_Editor {
 		// A new post has no title yet: what it would show now says nothing.
 		$preview = 'auto-draft' !== $post->post_status;
 
-		$advanced = false;
+		$group = '';
 		echo '<div class="simple-seo-fields">';
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::post_value( (int) $post->ID, $key );
-			if ( ! $advanced && Simple_SEO_Fields::LEVEL_ADVANCED === $field['level'] ) {
-				$advanced = true;
-				printf( '<h4 style="margin:1.5em 0 .5em;padding-top:1em;border-top:1px solid #dcdcde">%s</h4>', esc_html__( 'Indexing', 'simple-seo' ) );
+			if ( $group !== $field['group'] ) {
+				$group   = (string) $field['group'];
+				$heading = Simple_SEO_Fields::group_heading( $group );
+				if ( '' !== $heading ) {
+					printf( '<h4 style="margin:1.5em 0 .5em;padding-top:1em;border-top:1px solid #dcdcde">%s</h4>', esc_html( $heading ) );
+				}
 			}
 			echo '<p>';
 			if ( 'checkbox' === $field['type'] ) {
@@ -104,12 +107,15 @@ final class Simple_SEO_Editor {
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 		echo '</th></tr>';
 
-		$advanced = false;
+		$group = '';
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::term_value( (int) $term->term_id, $key );
-			if ( ! $advanced && Simple_SEO_Fields::LEVEL_ADVANCED === $field['level'] ) {
-				$advanced = true;
-				printf( '<tr class="form-field"><th scope="row" colspan="2"><h3 style="margin:.5em 0 0">%s</h3></th></tr>', esc_html__( 'Indexing', 'simple-seo' ) );
+			if ( $group !== $field['group'] ) {
+				$group   = (string) $field['group'];
+				$heading = Simple_SEO_Fields::group_heading( $group );
+				if ( '' !== $heading ) {
+					printf( '<tr class="form-field"><th scope="row" colspan="2"><h3 style="margin:.5em 0 0">%s</h3></th></tr>', esc_html( $heading ) );
+				}
 			}
 			printf( '<tr class="form-field"><th scope="row"><label for="%s">%s</label></th><td>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
 			echo self::input_with_mask( $field, $value, 'term', $term ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
@@ -219,6 +225,8 @@ final class Simple_SEO_Editor {
 				return sprintf( '<select id="%s" name="%s">%s</select>', $id, $name, $options );
 			case 'url':
 				return sprintf( '<input type="url" id="%s" name="%s" value="%s" class="large-text"%s>', $id, $name, esc_attr( $value ), $placeholder );
+			case 'image':
+				return Simple_SEO_Admin::image_picker( self::INPUT . '[' . $key . ']', self::input_id( $key ), (int) $value );
 			default:
 				return sprintf( '<input type="text" id="%s" name="%s" value="%s" class="large-text"%s>', $id, $name, esc_attr( $value ), $placeholder );
 		}

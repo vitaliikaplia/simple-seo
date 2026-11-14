@@ -97,6 +97,7 @@ $sseo_saved_options = array(
 	'access'         => get_option( Simple_SEO_Access::OPTION ),
 	'titles'         => get_option( Simple_SEO_Titles::OPTION ),
 	'indexing'       => get_option( Simple_SEO_Indexing::OPTION ),
+	'social'         => get_option( Simple_SEO_Social::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 );
 
@@ -285,7 +286,7 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'index', 'nofollow', 'canonical', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'index', 'nofollow', 'canonical', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -366,6 +367,10 @@ try {
 	$sseo_request->set_param( 'context', 'edit' );
 	$sseo_data = rest_do_request( $sseo_request )->get_data();
 	sseo_check( 'the field is readable in the edit context', 'Via REST' === ( $sseo_data['meta']['_simple_seo_title'] ?? null ) );
+	// Core's posts controller leaves a post_password_required filter behind for the rest of this
+	// process: for anyone who may edit a post it says no password is needed. A front-end request
+	// never runs a REST request first, so the later checks of protected posts would be lying.
+	remove_all_filters( 'post_password_required' );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Editor screens' );
@@ -575,6 +580,7 @@ try {
 	// The plugin's own providers are tested in their sections; here only the mechanism.
 	Simple_SEO_Head::remove_provider( 'description' );
 	Simple_SEO_Head::remove_provider( 'canonical' );
+	Simple_SEO_Head::remove_provider( 'social' );
 	sseo_check( 'no providers, no output', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
 
 	Simple_SEO_Head::add_provider(
@@ -632,6 +638,7 @@ try {
 	sseo_check( 'removed providers print nothing', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
 	Simple_SEO_Head::add_provider( 'description', array( Simple_SEO_Titles::class, 'head_tags' ), 10 );
 	Simple_SEO_Head::add_provider( 'canonical', array( Simple_SEO_Indexing::class, 'head_tags' ), 20 );
+	Simple_SEO_Head::add_provider( 'social', array( Simple_SEO_Social::class, 'head_tags' ), 30 );
 
 	$GLOBALS['wp_query'] = $sseo_saved_query;
 	if ( null === $sseo_saved_wp_actions ) {
@@ -1099,6 +1106,152 @@ try {
 	Simple_SEO_Context::reset();
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Social networks' );
+
+	unset( $GLOBALS['current_screen'] );
+	delete_option( Simple_SEO_Social::OPTION );
+	delete_option( Simple_SEO_Indexing::OPTION );
+	update_option( 'show_on_front', 'posts' );
+	Simple_SEO_Settings::flush();
+
+	$sseo_image = static function ( string $file, string $mime, int $width, int $height, string $alt = '' ) use ( &$sseo ): int {
+		$id = wp_insert_attachment( array( 'post_title' => $file, 'post_mime_type' => $mime, 'post_status' => 'inherit' ), $file );
+		if ( $width ) {
+			wp_update_attachment_metadata( $id, array( 'width' => $width, 'height' => $height, 'file' => $file ) );
+		}
+		if ( '' !== $alt ) {
+			update_post_meta( $id, '_wp_attachment_image_alt', $alt );
+		}
+		$sseo['posts'][ 'img_' . $file ] = $id;
+		return $id;
+	};
+	$sseo_og      = $sseo_image( 'sseo-og.jpg', 'image/jpeg', 1200, 630, 'Alt "text"' );
+	$sseo_feat    = $sseo_image( 'sseo-featured.png', 'image/png', 800, 600 );
+	$sseo_default = $sseo_image( 'sseo-default.jpg', 'image/jpeg', 1200, 630 );
+	$sseo_pdf     = $sseo_image( 'sseo-doc.pdf', 'application/pdf', 0, 0 );
+	$sseo_p       = $sseo['posts'];
+	$sseo_tags    = static fn( Simple_SEO_Context $context ): array => array_map( static fn( array $tag ): string => (string) $tag['attributes']['content'], Simple_SEO_Social::head_tags( $context ) );
+
+	$sseo_post_meta = get_registered_meta_keys( 'post' );
+	sseo_check( 'social fields are registered, the image as an integer', isset( $sseo_post_meta['_simple_seo_og_title'], $sseo_post_meta['_simple_seo_og_description'] ) && 'integer' === ( $sseo_post_meta['_simple_seo_og_image']['type'] ?? '' ) );
+	sseo_check( 'social fields are for authors too', Simple_SEO_Fields::user_can_edit( $sseo_au, 'post', $sseo_p['author_post'], 'og_image' ) );
+	sseo_check( 'image field: an image attachment is kept', $sseo_og === Simple_SEO_Fields::sanitize_value( 'og_image', (string) $sseo_og ) );
+	sseo_check( 'image field: a PDF, a post, a missing ID and text are dropped', '' === Simple_SEO_Fields::sanitize_value( 'og_image', $sseo_pdf ) && '' === Simple_SEO_Fields::sanitize_value( 'og_image', $sseo_p['bare'] ) && '' === Simple_SEO_Fields::sanitize_value( 'og_image', 99999999 ) && '' === Simple_SEO_Fields::sanitize_value( 'og_image', 'abc' ) );
+	wp_set_current_user( $sseo_ed );
+	Simple_SEO_Fields::save( 'post', $sseo_p['bare'], array( 'og_image' => (string) $sseo_og ) );
+	sseo_check( 'image field: saved as the ID', (string) $sseo_og === Simple_SEO_Fields::post_value( $sseo_p['bare'], 'og_image' ) );
+	Simple_SEO_Fields::save( 'post', $sseo_p['bare'], array( 'og_image' => '0' ) );
+	sseo_check( 'image field: 0 deletes the row', ! metadata_exists( 'post', $sseo_p['bare'], '_simple_seo_og_image' ) );
+
+	foreach ( array( 'en_US' => 'en_US', 'uk' => 'uk_UA', 'de_DE_formal' => 'de_DE', 'pt_BR' => 'pt_BR', 'fi' => 'fi_FI', 'el' => 'el_GR', '' => 'en_US' ) as $sseo_in => $sseo_out ) {
+		sseo_check( "og:locale of '{$sseo_in}'", $sseo_out === Simple_SEO_Social::og_locale( (string) $sseo_in ), Simple_SEO_Social::og_locale( (string) $sseo_in ) );
+	}
+	foreach ( array( '@kaplia' => '@kaplia', 'kaplia' => '@kaplia', 'https://x.com/kaplia' => '@kaplia', 'twitter.com/@kaplia?s=1' => '@kaplia', 'bad handle!' => '', 'a_name_much_too_long' => '', 'https://evil.test/kaplia' => '' ) as $sseo_in => $sseo_out ) {
+		sseo_check( "X account '{$sseo_in}'", $sseo_out === Simple_SEO_Social::sanitize_account( $sseo_in ), Simple_SEO_Social::sanitize_account( $sseo_in ) );
+	}
+	$sseo_clean = Simple_SEO_Social::sanitize( array( 'default_image' => $sseo_pdf, 'x_account' => 'x.com/kaplia' ) );
+	sseo_check( 'settings: a PDF is no default image', 0 === $sseo_clean['default_image'] && '@kaplia' === $sseo_clean['x_account'], $sseo_clean );
+
+	update_post_meta( $sseo_p['bare'], '_thumbnail_id', $sseo_feat );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) );
+	sseo_check( 'a post: article, SEO title, permalink, site name', 'article' === $sseo_t['og:type'] && "Bare – {$sseo_site}" === $sseo_t['og:title'] && get_permalink( $sseo_p['bare'] ) === $sseo_t['og:url'] && $sseo_site === $sseo_t['og:site_name'], $sseo_t );
+	sseo_check( 'a post: publication and modification times', (bool) preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$/', $sseo_t['article:published_time'] ?? '' ) && isset( $sseo_t['article:modified_time'] ), $sseo_t );
+	sseo_check( 'a post: the featured image with its size and type', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-featured.png' ) && '800' === ( $sseo_t['og:image:width'] ?? '' ) && '600' === ( $sseo_t['og:image:height'] ?? '' ) && 'image/png' === ( $sseo_t['og:image:type'] ?? '' ), $sseo_t );
+	sseo_check( 'a post with an image: the large X card', 'summary_large_image' === $sseo_t['twitter:card'] && ! isset( $sseo_t['twitter:site'] ) );
+	sseo_check( 'og:locale of the site', 'en_US' === $sseo_t['og:locale'] );
+
+	update_post_meta( $sseo_p['bare'], '_simple_seo_og_image', $sseo_og );
+	update_post_meta( $sseo_p['bare'], '_simple_seo_og_title', '{title} for social' );
+	update_post_meta( $sseo_p['bare'], '_simple_seo_og_description', 'Shared {sep} {site}' );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) );
+	sseo_check( 'own social image wins over the featured image, with its alt text', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-og.jpg' ) && 'Alt "text"' === ( $sseo_t['og:image:alt'] ?? '' ), $sseo_t );
+	sseo_check( 'own social title and description, with variables', 'Bare for social' === $sseo_t['og:title'] && "Shared – {$sseo_site}" === $sseo_t['og:description'], $sseo_t );
+
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) );
+	sseo_check( 'no image anywhere: no og:image, the small X card', ! isset( $sseo_t['og:image'] ) && 'summary' === $sseo_t['twitter:card'], $sseo_t );
+	sseo_check( 'og:description falls back to the meta description', 'sibling saved in the same request' === $sseo_t['og:description'] );
+	update_option( Simple_SEO_Social::OPTION, array( 'default_image' => $sseo_default, 'x_account' => '@kaplia' ) );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['editor_post'] ) ) );
+	sseo_check( 'the default image from the settings', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-default.jpg' ), $sseo_t );
+	sseo_check( 'twitter:site from the settings', '@kaplia' === ( $sseo_t['twitter:site'] ?? '' ) );
+
+	update_post_meta( $sseo_p['secret'], '_thumbnail_id', $sseo_feat );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) );
+	sseo_check( 'a password-protected post does not show its featured image or text', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-default.jpg' ) && '' === ( $sseo_t['og:description'] ?? '' ), $sseo_t );
+
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array() ) );
+	sseo_check( 'home: website, the home address', 'website' === $sseo_t['og:type'] && home_url( '/' ) === $sseo_t['og:url'] && ! isset( $sseo_t['article:published_time'] ), $sseo_t );
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_p['front'] );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array() ) );
+	sseo_check( 'a static front page is a website, not an article', 'website' === $sseo_t['og:type'] && home_url( '/' ) === $sseo_t['og:url'], $sseo_t );
+	update_option( 'show_on_front', 'posts' );
+	update_term_meta( $sseo_cat_id, '_simple_seo_og_image', $sseo_og );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'cat' => $sseo_cat_id ) ) );
+	sseo_check( 'a term: website, its title and its own image', 'website' === $sseo_t['og:type'] && 'Saved from the term form' === $sseo_t['og:title'] && str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-og.jpg' ), $sseo_t );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'year' => $sseo_y ) ) );
+	sseo_check( 'a hidden page still has og:url, its own address', get_year_link( $sseo_y ) === ( $sseo_t['og:url'] ?? '' ), $sseo_t );
+	sseo_check( 'no social tags on search results and 404', array() === Simple_SEO_Social::head_tags( $sseo_ctx_of( array( 's' => 'x' ) ) ) && array() === Simple_SEO_Social::head_tags( Simple_SEO_Context::from_query( $sseo_q404 ) ) );
+
+	add_filter( 'locale', static fn(): string => 'uk' );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) );
+	remove_all_filters( 'locale' );
+	sseo_check( 'og:locale follows the locale of the page (wp-loc switches it)', 'uk_UA' === $sseo_t['og:locale'], $sseo_t['og:locale'] );
+	add_filter( 'simple_seo_social_image', static fn(): int => $sseo_pdf );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) );
+	remove_all_filters( 'simple_seo_social_image' );
+	sseo_check( 'simple_seo_social_image cannot slip in a non-image', ! isset( $sseo_t['og:image'] ) );
+	add_filter( 'simple_seo_social_image', static fn(): int => $sseo_pdf );
+	sseo_check( 'image_id() gives 0 for a non-image, whoever chose it', 0 === Simple_SEO_Social::image_id( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) ) );
+	remove_all_filters( 'simple_seo_social_image' );
+
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['tricky'] ) );
+	Simple_SEO_Context::reset();
+	$sseo_html = sseo_capture( array( Simple_SEO_Head::class, 'output' ) );
+	sseo_check( 'the head: og:title as a property, escaped', str_contains( $sseo_html, '<meta property="og:title" content="Tom &amp; &quot;Jerry&quot; – ' . esc_attr( $sseo_site ) . '" />' ), $sseo_html );
+	sseo_check( 'the head: the X card as a name', str_contains( $sseo_html, '<meta name="twitter:card" content="summary_large_image" />' ) );
+	sseo_check( 'the head: tags in order — description, canonical, then social', strpos( $sseo_html, 'name="description"' ) < strpos( $sseo_html, 'rel="canonical"' ) && strpos( $sseo_html, 'rel="canonical"' ) < strpos( $sseo_html, 'og:locale' ), $sseo_html );
+
+	delete_option( Simple_SEO_Social::OPTION );
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['editor_post'] ) );
+	$sseo_queries        = $GLOBALS['wpdb']->num_queries;
+	Simple_SEO_Social::head_tags( Simple_SEO_Context::from_query( $GLOBALS['wp_query'] ) );
+	sseo_check( 'social tags of a post without images cost no database query', 0 === $GLOBALS['wpdb']->num_queries - $sseo_queries, $GLOBALS['wpdb']->num_queries - $sseo_queries );
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+	Simple_SEO_Context::reset();
+
+	// Settings tab and the editor.
+	Simple_SEO_Social::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	update_option( Simple_SEO_Social::OPTION, array( 'default_image' => (string) $sseo_default, 'x_account' => 'https://x.com/kaplia' ) );
+	$sseo_stored = get_option( Simple_SEO_Social::OPTION );
+	sseo_check( 'saving the tab runs the sanitizer', $sseo_default === $sseo_stored['default_image'] && '@kaplia' === $sseo_stored['x_account'], $sseo_stored );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab'] = 'social';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check( 'the Social networks tab sits between Titles and Indexing', strpos( $sseo_html, '>Titles<' ) < strpos( $sseo_html, '>Social networks<' ) && strpos( $sseo_html, '>Social networks<' ) < strpos( $sseo_html, '>Indexing<' ) );
+	sseo_check( 'the default image picker shows the saved image', str_contains( $sseo_html, 'name="simple_seo_social[default_image]" value="' . $sseo_default . '"' ) && str_contains( $sseo_html, 'sseo-default.jpg' ) && ! str_contains( $sseo_html, 'class="simple-seo-image-preview" hidden' ) );
+	sseo_check( 'the X account field', str_contains( $sseo_html, 'name="simple_seo_social[x_account]" value="@kaplia"' ) );
+
+	wp_set_current_user( $sseo_au );
+	delete_post_meta( $sseo_p['author_post'], '_simple_seo_og_image' );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
+	sseo_check( 'meta box of an author: the social networks group with its fields', str_contains( $sseo_html, '>Social networks</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[og_title]"' ) && str_contains( $sseo_html, 'name="simple_seo[og_image]"' ) );
+	sseo_check( 'meta box: no image yet — preview and remove hidden, no display style to override that', str_contains( $sseo_html, 'class="simple-seo-image-preview" hidden>' ) && str_contains( $sseo_html, 'class="button-link simple-seo-image-remove" hidden>' ) );
+	sseo_check( 'meta box: the social title shows what is shared now', str_contains( $sseo_html, 'Now: Author post – ' . esc_html( $sseo_site ) ) );
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
+	sseo_check( 'meta box of an editor: social before indexing, the chosen image shown', strpos( $sseo_html, '>Social networks</h4>' ) < strpos( $sseo_html, '>Indexing</h4>' ) && str_contains( $sseo_html, 'value="' . $sseo_og . '"' ) && str_contains( $sseo_html, 'sseo-og.jpg' ) );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
+	sseo_check( 'term screen: the social networks group', str_contains( $sseo_html, '>Social networks</h3>' ) && str_contains( $sseo_html, 'name="simple_seo[og_image]"' ) );
+	Simple_SEO_Admin::enqueue( 'toplevel_page_simple-seo' );
+	sseo_check( 'the media library is loaded where the image pickers are', did_action( 'wp_enqueue_media' ) > 0 );
+	unset( $GLOBALS['current_screen'] );
+	delete_option( Simple_SEO_Social::OPTION );
+	delete_term_meta( $sseo_cat_id, '_simple_seo_og_image' );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -1109,6 +1262,7 @@ try {
 	sseo_check( 'a tab name is translated', 'Доступ' === __( 'Access', 'simple-seo' ) && 'Заголовки' === __( 'Titles', 'simple-seo' ), __( 'Titles', 'simple-seo' ) );
 	sseo_check( 'the structure button is translated', 'Вставити структуру' === __( 'Insert structure', 'simple-seo' ) );
 	sseo_check( 'the Indexing tab is translated', 'Індексація' === __( 'Indexing', 'simple-seo' ) );
+	sseo_check( 'the Social networks tab is translated', 'Соцмережі' === __( 'Social networks', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -1151,7 +1305,7 @@ try {
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );

@@ -156,6 +156,8 @@ final class Simple_SEO_Admin {
 			|| ( in_array( $hook, array( 'term.php', 'edit-tags.php' ), true ) && $screen && in_array( $screen->taxonomy, Simple_SEO_Fields::taxonomies(), true ) );
 
 		if ( $ours ) {
+			// The image fields pick from the media library.
+			wp_enqueue_media();
 			wp_enqueue_script(
 				'simple-seo-admin',
 				SIMPLE_SEO_URL . 'assets/js/admin.js',
@@ -167,6 +169,34 @@ final class Simple_SEO_Admin {
 				)
 			);
 		}
+	}
+
+	/**
+	 * An image chosen from the media library: a hidden attachment ID, a thumbnail and two buttons.
+	 * assets/js/admin.js opens the library; without JavaScript the saved image simply stays.
+	 */
+	public static function image_picker( string $name, string $id, int $attachment_id ): string {
+		$thumbnail = $attachment_id ? (string) wp_get_attachment_image_url( $attachment_id, 'thumbnail' ) : '';
+		$hidden    = '' === $thumbnail ? ' hidden' : '';
+
+		return sprintf(
+			'<span class="simple-seo-image" data-target="%1$s" data-title="%5$s" data-button="%6$s">'
+			. '<input type="hidden" id="%1$s" name="%2$s" value="%3$s">'
+			// No display style on the wrappers: it would override their hidden attribute.
+			. '<span class="simple-seo-image-preview"%4$s><img src="%7$s" alt="" style="max-width:150px;height:auto;display:block;margin-bottom:6px"></span>'
+			. '<button type="button" class="button simple-seo-image-choose">%8$s</button> '
+			. '<button type="button" class="button-link simple-seo-image-remove"%4$s>%9$s</button>'
+			. '</span>',
+			esc_attr( $id ),
+			esc_attr( $name ),
+			esc_attr( $attachment_id ? (string) $attachment_id : '' ),
+			$hidden,
+			esc_attr__( 'Choose an image', 'simple-seo' ),
+			esc_attr__( 'Use this image', 'simple-seo' ),
+			esc_url( $thumbnail ),
+			esc_html__( 'Choose image', 'simple-seo' ),
+			esc_html__( 'Remove image', 'simple-seo' )
+		);
 	}
 
 	/** The "Insert structure" button for a field with the given id. */

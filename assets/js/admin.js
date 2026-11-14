@@ -26,8 +26,67 @@
 		return mask;
 	}
 
+	/** Image fields: a media library frame for "Choose image", and "Remove image". */
+	function imagePicker( event ) {
+		var choose = event.target.closest( '.simple-seo-image-choose' );
+		var remove = event.target.closest( '.simple-seo-image-remove' );
+		var box    = ( choose || remove ) ? ( choose || remove ).closest( '.simple-seo-image' ) : null;
+		if ( ! box ) {
+			return false;
+		}
+		event.preventDefault();
+
+		var input   = document.getElementById( box.getAttribute( 'data-target' ) );
+		var preview = box.querySelector( '.simple-seo-image-preview' );
+		var image   = preview ? preview.querySelector( 'img' ) : null;
+		var unset   = box.querySelector( '.simple-seo-image-remove' );
+
+		function show( url ) {
+			if ( image ) {
+				image.src = url;
+			}
+			[ preview, unset ].forEach( function ( element ) {
+				if ( element ) {
+					element.hidden = ! url;
+				}
+			} );
+		}
+
+		if ( remove ) {
+			input.value = '';
+			show( '' );
+			return true;
+		}
+		if ( ! window.wp || ! window.wp.media ) {
+			return true;
+		}
+
+		// One media frame per picker, made on the first click: a new one every time would pile up in the page.
+		if ( ! box.simpleSeoFrame ) {
+			var frame = window.wp.media( {
+				title: box.getAttribute( 'data-title' ),
+				button: { text: box.getAttribute( 'data-button' ) },
+				library: { type: 'image' },
+				multiple: false
+			} );
+			frame.on( 'select', function () {
+				var chosen = frame.state().get( 'selection' ).first().toJSON();
+				input.value = chosen.id;
+				show( chosen.sizes && chosen.sizes.thumbnail ? chosen.sizes.thumbnail.url : chosen.url );
+			} );
+			box.simpleSeoFrame = frame;
+		}
+		box.simpleSeoFrame.open();
+
+		return true;
+	}
+
 	document.addEventListener( 'click', function ( event ) {
-		var button = event.target.closest ? event.target.closest( '.simple-seo-mask' ) : null;
+		if ( ! event.target.closest || imagePicker( event ) ) {
+			return;
+		}
+
+		var button = event.target.closest( '.simple-seo-mask' );
 		if ( ! button ) {
 			return;
 		}

@@ -55,6 +55,7 @@ final class Simple_SEO_Indexing {
 	}
 
 	public static function register_fields(): void {
+		Simple_SEO_Fields::register_group( 'indexing', __( 'Indexing', 'simple-seo' ) );
 		Simple_SEO_Fields::register(
 			'index',
 			array(
@@ -67,6 +68,7 @@ final class Simple_SEO_Indexing {
 					'noindex' => __( 'Hide from search results (noindex)', 'simple-seo' ),
 				),
 				'order'   => 60,
+				'group'   => 'indexing',
 				'preview' => static fn( string $type, $object ): string => self::is_noindex( self::object_context( $type, $object ) )
 					? __( 'hidden from search results', 'simple-seo' )
 					: __( 'shown in search results', 'simple-seo' ),
@@ -79,6 +81,7 @@ final class Simple_SEO_Indexing {
 				'type'  => 'checkbox',
 				'level' => Simple_SEO_Fields::LEVEL_ADVANCED,
 				'order' => 70,
+				'group' => 'indexing',
 			)
 		);
 		Simple_SEO_Fields::register(
@@ -90,6 +93,7 @@ final class Simple_SEO_Indexing {
 				'level'       => Simple_SEO_Fields::LEVEL_ADVANCED,
 				'sanitize'    => array( self::class, 'sanitize_url' ),
 				'order'       => 80,
+				'group'       => 'indexing',
 				'preview'     => static fn( string $type, $object ): string => self::canonical( self::object_context( $type, $object ) ),
 			)
 		);
