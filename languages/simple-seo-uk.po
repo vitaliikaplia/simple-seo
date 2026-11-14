@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.5.0\n"
+"Project-Id-Version: Simple SEO 0.6.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -114,8 +114,8 @@ msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.5.0: Open Graph and X card for link previews, with a title, description and image for social networks on each post, page and term, a default image and the X account in the settings. Version 0.4.0: canonical address, noindex and nofollow by kind of page and one by one, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.5.0: Open Graph і картка X для прев'ю посилань — із заголовком, описом і зображенням для соцмереж на кожному записі, сторінці й терміні, типовим зображенням і акаунтом X у налаштуваннях. Версія 0.4.0: канонічна адреса, noindex і nofollow за видами сторінок і окремо, сторінки вкладень. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.6.0: settings for the home page, the 404 page and password-protected content, per language with wp-loc. Version 0.5.0: Open Graph and X card for link previews, with a title, description and image for social networks on each post, page and term. Version 0.4.0: canonical address, noindex and nofollow, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем, — для кожної мови з wp-loc. Версія 0.5.0: Open Graph і картка X для прев'ю посилань — із заголовком, описом і зображенням для соцмереж на кожному записі, сторінці й терміні. Версія 0.4.0: канонічна адреса, noindex і nofollow, сторінки вкладень. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-indexing.php:58
 #: includes/class-simple-seo-indexing.php:103
@@ -159,82 +159,118 @@ msgstr "Канонічна адреса"
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
 
-#: includes/class-simple-seo-social.php:58
-#: includes/class-simple-seo-social.php:93
+#: includes/class-simple-seo-social.php:59
+#: includes/class-simple-seo-social.php:94
 msgid "Social networks"
 msgstr "Соцмережі"
 
-#: includes/class-simple-seo-social.php:62
+#: includes/class-simple-seo-social.php:63
 msgid "Title for social networks"
 msgstr "Заголовок для соцмереж"
 
-#: includes/class-simple-seo-social.php:63
+#: includes/class-simple-seo-social.php:64
 msgid "How a shared link is titled on Facebook, Telegram, X and the like. Leave empty to use the SEO title."
 msgstr "Як підписане посилання, коли ним діляться у Facebook, Telegram, X тощо. Залиште порожнім, щоб узяти SEO-заголовок."
 
-#: includes/class-simple-seo-social.php:72
+#: includes/class-simple-seo-social.php:73
 msgid "Description for social networks"
 msgstr "Опис для соцмереж"
 
-#: includes/class-simple-seo-social.php:73
+#: includes/class-simple-seo-social.php:74
 msgid "Leave empty to use the meta description."
 msgstr "Залиште порожнім, щоб узяти мета-опис."
 
-#: includes/class-simple-seo-social.php:83
+#: includes/class-simple-seo-social.php:84
+#: includes/views/tab-special.php:72
 msgid "Image for social networks"
 msgstr "Зображення для соцмереж"
 
-#: includes/class-simple-seo-social.php:84
+#: includes/class-simple-seo-social.php:85
 msgid "Best 1200 × 630 pixels. Without it: the featured image, then the default image from the settings."
 msgstr "Найкраще 1200 × 630 пікселів. Без нього — головне зображення запису, а далі типове зображення з налаштувань."
 
-#: includes/class-simple-seo-titles.php:51
+#: includes/class-simple-seo-special.php:34
+#: includes/views/tab-titles.php:31
+msgid "Special pages"
+msgstr "Спецсторінки"
+
+#: includes/class-simple-seo-special.php:105
+msgid "Home page"
+msgstr "Головна сторінка"
+
+#. translators: %s: title of the page set as the front page.
+#: includes/class-simple-seo-special.php:108
+#, php-format
+msgid "The front page of the site is the page \"%s\": these settings apply to it where its own SEO fields are empty."
+msgstr "Головна сайту — сторінка «%s»: ці налаштування діють для неї там, де її власні SEO-поля порожні."
+
+#: includes/class-simple-seo-special.php:109
+msgid "The front page of the site lists the latest posts."
+msgstr "Головна сайту показує останні записи."
+
+#: includes/class-simple-seo-special.php:113
+msgid "Page not found (404)"
+msgstr "Сторінку не знайдено (404)"
+
+#: includes/class-simple-seo-special.php:114
+msgid "Shown for addresses that lead nowhere. Search engines do not index it and social networks get no preview of it, so it has no image. {title} here is \"Page not found\" in the language of the page."
+msgstr "Показується за адресами, що ведуть у нікуди. Пошуковики її не індексують, а соцмережі не отримують її прев'ю, тож зображення в неї немає. {title} тут — «Сторінку не знайдено» мовою сторінки."
+
+#: includes/class-simple-seo-special.php:117
+msgid "Password-protected content"
+msgstr "Вміст, захищений паролем"
+
+#: includes/class-simple-seo-special.php:118
+msgid "A post or page protected with a password shows only the password form until the visitor enters it. Meanwhile these templates replace those of its post type, and its featured image and excerpt stay hidden; an SEO title, description or image of its own still wins. {title} here is the post title."
+msgstr "Запис чи сторінка під паролем показує лише форму пароля, доки відвідувач його не введе. Тим часом ці шаблони заміняють шаблони його типу запису, а головне зображення й витяг лишаються прихованими; власні SEO-заголовок, опис чи зображення запису все одно мають перевагу. {title} тут — назва запису."
+
+#: includes/class-simple-seo-titles.php:53
 msgid "SEO title"
 msgstr "SEO-заголовок"
 
-#: includes/class-simple-seo-titles.php:52
+#: includes/class-simple-seo-titles.php:54
 msgid "The title search engines show. Leave empty to use the template; variables like {title}, {sep} and {site} work here too."
 msgstr "Заголовок, який показують пошуковики. Залиште порожнім, щоб узяти шаблон; змінні на кшталт {title}, {sep} і {site} працюють і тут."
 
-#: includes/class-simple-seo-titles.php:61
+#: includes/class-simple-seo-titles.php:63
 msgid "Meta description"
 msgstr "Мета-опис"
 
-#: includes/class-simple-seo-titles.php:62
+#: includes/class-simple-seo-titles.php:64
 msgid "The text under the title in search results. Leave empty to use the template."
 msgstr "Текст під заголовком у результатах пошуку. Залиште порожнім, щоб узяти шаблон."
 
-#: includes/class-simple-seo-titles.php:72
+#: includes/class-simple-seo-titles.php:74
 msgid "Titles"
 msgstr "Заголовки"
 
 #. translators: %s: post type name, plural.
-#: includes/class-simple-seo-titles.php:253
+#: includes/class-simple-seo-titles.php:269
 #, php-format
 msgid "Archive: %s"
 msgstr "Архів: %s"
 
-#: includes/class-simple-seo-titles.php:256
+#: includes/class-simple-seo-titles.php:272
 msgid "Author archives"
 msgstr "Архіви авторів"
 
-#: includes/class-simple-seo-titles.php:257
+#: includes/class-simple-seo-titles.php:273
 msgid "Date archives"
 msgstr "Архіви за датами"
 
-#: includes/class-simple-seo-titles.php:258
+#: includes/class-simple-seo-titles.php:274
 msgid "Search results"
 msgstr "Результати пошуку"
 
-#: includes/class-simple-seo-titles.php:262
+#: includes/class-simple-seo-titles.php:278
 msgid "Post types"
 msgstr "Типи записів"
 
-#: includes/class-simple-seo-titles.php:266
+#: includes/class-simple-seo-titles.php:282
 msgid "Taxonomies"
 msgstr "Таксономії"
 
-#: includes/class-simple-seo-titles.php:270
+#: includes/class-simple-seo-titles.php:286
 msgid "Archives and search"
 msgstr "Архіви й пошук"
 
@@ -378,27 +414,53 @@ msgstr "Акаунт X"
 msgid "Optional: the site's account on X (Twitter), as @name or a link to it."
 msgstr "Необов'язково: акаунт сайту в X (Twitter) — як @ім'я або посилання на нього."
 
-#: includes/views/tab-titles.php:30
-msgid "Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme's title and without a description."
-msgstr "Шаблони визначають заголовок і опис кожної сторінки, яка не має власного SEO-заголовка чи опису. Змінні у фігурних дужках замінюються на кожній сторінці; змінна, якій нічого показати, зникає разом із роздільником поруч. Порожній шаблон лишає сторінці заголовок теми й не дає їй опису."
+#: includes/views/tab-special.php:17
+msgid "The home page, the page for addresses that lead nowhere and content behind a password get their title and description from the templates below. Variables work as on the Titles tab; an empty template leaves the page with the theme's title and without a description."
+msgstr "Головна сторінка, сторінка для адрес, що ведуть у нікуди, і вміст під паролем беруть заголовок і опис із шаблонів нижче. Змінні працюють так само, як на вкладці «Заголовки»; порожній шаблон лишає сторінці заголовок теми й залишає її без опису."
 
-#: includes/views/tab-titles.php:33
-msgid "Variables"
-msgstr "Змінні"
+#. translators: %s: language name, e.g. English.
+#: includes/views/tab-special.php:25
+#, php-format
+msgid "These settings are kept for each language. You are editing them for: %s. Switch the language in the admin bar to edit another one; a language not saved here yet uses the settings of the default language."
+msgstr "Ці налаштування зберігаються для кожної мови окремо. Ви редагуєте їх для: %s. Щоб редагувати іншу мову, перемкніть її на панелі адміністратора; мова, для якої тут ще нічого не збережено, бере налаштування основної мови."
 
-#: includes/views/tab-titles.php:49
-#: includes/views/tab-titles.php:52
-msgid "Separator"
-msgstr "Роздільник"
+#: includes/views/tab-special.php:41
+msgid "Edit the page"
+msgstr "Редагувати сторінку"
 
-#: includes/views/tab-titles.php:61
-msgid "Goes where a template says {sep}."
-msgstr "Стоїть там, де в шаблоні {sep}."
-
-#: includes/views/tab-titles.php:83
+#: includes/views/tab-special.php:48
+#: includes/views/tab-titles.php:75
 msgid "Title template"
 msgstr "Шаблон заголовка"
 
-#: includes/views/tab-titles.php:84
+#: includes/views/tab-special.php:49
+#: includes/views/tab-titles.php:76
 msgid "Description template"
 msgstr "Шаблон опису"
+
+#: includes/views/tab-special.php:77
+msgid "Without it: the default image from the Social networks tab."
+msgstr "Без нього — типове зображення з вкладки «Соцмережі»."
+
+#: includes/views/tab-titles.php:25
+msgid "Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme's title and without a description."
+msgstr "Шаблони визначають заголовок і опис кожної сторінки, яка не має власного SEO-заголовка чи опису. Змінні у фігурних дужках замінюються на кожній сторінці; змінна, якій нічого показати, зникає разом із роздільником поруч. Порожній шаблон лишає сторінці заголовок теми й не дає їй опису."
+
+#. translators: %s: link to the Special pages tab.
+#: includes/views/tab-titles.php:30
+#, php-format
+msgid "The home page, the 404 page and password-protected content have their own templates on the %s tab."
+msgstr "Головна сторінка, сторінка 404 і вміст, захищений паролем, мають власні шаблони на вкладці «%s»."
+
+#: includes/views/tab-titles.php:41
+#: includes/views/tab-titles.php:44
+msgid "Separator"
+msgstr "Роздільник"
+
+#: includes/views/tab-titles.php:53
+msgid "Goes where a template says {sep}."
+msgstr "Стоїть там, де в шаблоні {sep}."
+
+#: includes/views/variables.php:22
+msgid "Variables"
+msgstr "Змінні"

@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,12 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.6.0 =
+* Special pages tab: title and description templates of the home page, the 404 page and password-protected content, and an image for social networks of the home page and of protected content.
+* A post or page that waits for its password uses these templates instead of its post type's; its own SEO title, description and image still win.
+* With wp-loc, the special pages settings are kept for each language: the settings page edits the language chosen in the admin bar.
+* Fixed: settings stored under a numeric key (such as 404) were lost when read.
 
 = 0.5.0 =
 * Open Graph tags for link previews on Facebook, Telegram, Viber, LinkedIn and the like: title, description, address, type, locale, site name, image with its size, type and alt text, publication and modification times of posts. X gets its card.

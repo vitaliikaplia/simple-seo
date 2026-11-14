@@ -228,12 +228,22 @@ final class Simple_SEO_Fields {
 				$value = (string) $value;
 				return array_key_exists( $value, (array) $field['options'] ) ? $value : '';
 			case 'image':
-				// Only an image from the media library; anything else is no image at all.
-				$id = absint( $value );
-				return $id && 'attachment' === get_post_type( $id ) && wp_attachment_is_image( $id ) ? $id : '';
+				$id = self::image_attachment( $value );
+				return $id ? $id : '';
 			default:
 				return trim( sanitize_text_field( (string) $value ) );
 		}
+	}
+
+	/**
+	 * An image from the media library, by attachment ID; 0 for anything else.
+	 *
+	 * @param mixed $value
+	 */
+	public static function image_attachment( $value ): int {
+		$id = absint( $value );
+
+		return $id && 'attachment' === get_post_type( $id ) && wp_attachment_is_image( $id ) ? $id : 0;
 	}
 
 	/** A stored value of a post field, '' when not set. */

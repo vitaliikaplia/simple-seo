@@ -28,6 +28,8 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Titles::init();
 		Simple_SEO_Indexing::init();
 		Simple_SEO_Social::init();
+		Simple_SEO_Special::init();
+		Simple_SEO_WP_Loc::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';

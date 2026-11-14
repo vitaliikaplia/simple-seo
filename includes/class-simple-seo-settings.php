@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Simple_SEO_Settings {
-	/** @var array<string, array{defaults: array<string, mixed>, sanitize: callable, autoload: bool}> */
+	/** @var array<string, array{defaults: array<string, mixed>, sanitize: callable, autoload: bool, localized: bool}> */
 	private static array $options = array();
 
 	/** @var array<string, array<string, mixed>> */
@@ -20,16 +20,18 @@ final class Simple_SEO_Settings {
 	/**
 	 * Register an option row.
 	 *
-	 * @param string               $name     Full option name, prefixed with simple_seo_.
-	 * @param array<string, mixed> $defaults Values used for keys the stored row does not have.
-	 * @param callable             $sanitize Receives the raw form input, returns the clean row.
-	 * @param bool                 $autoload Whether the front end needs the row on every request.
+	 * @param string               $name      Full option name, prefixed with simple_seo_.
+	 * @param array<string, mixed> $defaults  Values used for keys the stored row does not have.
+	 * @param callable             $sanitize  Receives the raw form input, returns the clean row.
+	 * @param bool                 $autoload  Whether the front end needs the row on every request.
+	 * @param bool                 $localized Whether the row is kept per language (by wp-loc, when it is active).
 	 */
-	public static function register( string $name, array $defaults, callable $sanitize, bool $autoload = true ): void {
+	public static function register( string $name, array $defaults, callable $sanitize, bool $autoload = true, bool $localized = false ): void {
 		self::$options[ $name ] = array(
-			'defaults' => $defaults,
-			'sanitize' => $sanitize,
-			'autoload' => $autoload,
+			'defaults'  => $defaults,
+			'sanitize'  => $sanitize,
+			'autoload'  => $autoload,
+			'localized' => $localized,
 		);
 
 		add_action( "update_option_{$name}", array( self::class, 'flush_after_update' ), 10, 3 );
@@ -37,9 +39,14 @@ final class Simple_SEO_Settings {
 		add_action( "delete_option_{$name}", array( self::class, 'flush_after_add' ), 10, 1 );
 	}
 
-	/** @return array<string, array{defaults: array<string, mixed>, sanitize: callable, autoload: bool}> */
+	/** @return array<string, array{defaults: array<string, mixed>, sanitize: callable, autoload: bool, localized: bool}> */
 	public static function registered(): array {
 		return self::$options;
+	}
+
+	/** @return string[] Names of the rows kept per language. */
+	public static function localized(): array {
+		return array_keys( array_filter( self::$options, static fn( array $option ): bool => $option['localized'] ) );
 	}
 
 	/** @return array<string, mixed> */
@@ -48,14 +55,16 @@ final class Simple_SEO_Settings {
 	}
 
 	/**
-	 * The option row merged over its defaults, read once per request.
+	 * The option row merged over its defaults, read once per request — or once per language: a
+	 * language switch in the middle of a request empties the cache (Simple_SEO_WP_Loc).
 	 *
 	 * @return array<string, mixed>
 	 */
 	public static function get( string $name ): array {
 		if ( ! isset( self::$cache[ $name ] ) ) {
-			$stored               = get_option( $name, array() );
-			self::$cache[ $name ] = array_merge( self::defaults( $name ), is_array( $stored ) ? $stored : array() );
+			$stored = get_option( $name, array() );
+			// Not array_merge(): it renumbers numeric keys, and PHP makes the key '404' a number.
+			self::$cache[ $name ] = array_replace( self::defaults( $name ), is_array( $stored ) ? $stored : array() );
 		}
 
 		return self::$cache[ $name ];

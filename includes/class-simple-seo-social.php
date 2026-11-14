@@ -3,8 +3,9 @@
  * Social networks: Open Graph tags (Facebook, Telegram, Viber, LinkedIn, …) and the X card.
  *
  * Title and description default to the SEO title and description; the image comes from the
- * post's or term's own social image, then the featured image, then the default image from the
- * settings. X reads the og:* tags, so only twitter:card and twitter:site are printed for it.
+ * post's or term's own social image, then the featured image, then the image set for the home page
+ * or password-protected content, then the default image from the settings. X reads the og:* tags,
+ * so only twitter:card and twitter:site are printed for it.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -115,12 +116,18 @@ final class Simple_SEO_Social {
 			: Simple_SEO_Titles::description( $context );
 	}
 
-	/** The attachment ID of the page's image: its own, the featured image, the default; 0 for none. */
+	/**
+	 * The attachment ID of the page's image, 0 for none: its own, the featured image, the image of
+	 * the home page or of password-protected content from Special pages, the default image.
+	 */
 	public static function image_id( Simple_SEO_Context $context ): int {
 		$id = (int) $context->field( 'og_image' );
 
 		if ( ! $id && $context->object instanceof WP_Post && ! $context->password_required ) {
 			$id = (int) get_post_thumbnail_id( $context->object );
+		}
+		if ( ! $id ) {
+			$id = Simple_SEO_Special::image_id( Simple_SEO_Titles::template_slot( $context ) );
 		}
 		if ( ! $id ) {
 			$id = (int) Simple_SEO_Settings::value( self::OPTION, 'default_image' );
@@ -246,10 +253,8 @@ final class Simple_SEO_Social {
 	 * @return array<string, mixed>
 	 */
 	public static function sanitize( array $input ): array {
-		$image = absint( $input['default_image'] ?? 0 );
-
 		return array(
-			'default_image' => $image && 'attachment' === get_post_type( $image ) && wp_attachment_is_image( $image ) ? $image : 0,
+			'default_image' => Simple_SEO_Fields::image_attachment( $input['default_image'] ?? 0 ),
 			'x_account'     => self::sanitize_account( $input['x_account'] ?? '' ),
 		);
 	}

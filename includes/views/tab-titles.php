@@ -4,7 +4,7 @@
  *
  * @var string                                                         $separator
  * @var array<string, array{label: string, slots: array<string, string>}> $groups
- * @var array<string, string>                                          $variables
+ * @var array<string, string>                                          $variables Name => label, for views/variables.php.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,28 +20,20 @@ $simple_seo_option = Simple_SEO_Titles::OPTION;
 	.simple-seo-separators span { display: inline-block; min-width: 2.4em; padding: 6px 0; border: 1px solid #8c8f94; border-radius: 4px; background: #fff; font-size: 18px; line-height: 1.2; text-align: center; cursor: pointer; }
 	.simple-seo-separators input:checked + span { border-color: #2271b1; background: #2271b1; color: #fff; }
 	.simple-seo-separators input:focus-visible + span { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1; }
-	.simple-seo-template { display: flex; gap: 6px; align-items: flex-start; margin: 2px 0 10px; }
-	.simple-seo-template input { flex: 1 1 auto; min-width: 0; }
-	.simple-seo-template .button { flex: 0 0 auto; }
-	.simple-seo-variables code { white-space: nowrap; }
-	@media (max-width: 600px) { .simple-seo-template { flex-wrap: wrap; } }
 </style>
 
 <p><?php esc_html_e( 'Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme\'s title and without a description.', 'simple-seo' ); ?></p>
+<p>
+	<?php
+	printf(
+		/* translators: %s: link to the Special pages tab. */
+		esc_html__( 'The home page, the 404 page and password-protected content have their own templates on the %s tab.', 'simple-seo' ),
+		'<a href="' . esc_url( Simple_SEO_Admin::url( 'special' ) ) . '">' . esc_html__( 'Special pages', 'simple-seo' ) . '</a>'
+	);
+	?>
+</p>
 
-<details class="simple-seo-variables">
-	<summary><strong><?php esc_html_e( 'Variables', 'simple-seo' ); ?></strong></summary>
-	<table class="widefat striped" style="max-width:860px;margin-top:8px">
-		<tbody>
-		<?php foreach ( $variables as $simple_seo_name => $simple_seo_label ) : ?>
-			<tr>
-				<td style="width:9em"><code>{<?php echo esc_html( $simple_seo_name ); ?>}</code></td>
-				<td><?php echo esc_html( $simple_seo_label ); ?></td>
-			</tr>
-		<?php endforeach; ?>
-		</tbody>
-	</table>
-</details>
+<?php require __DIR__ . '/variables.php'; ?>
 
 <table class="form-table" role="presentation">
 	<tbody>

@@ -98,6 +98,7 @@ $sseo_saved_options = array(
 	'titles'         => get_option( Simple_SEO_Titles::OPTION ),
 	'indexing'       => get_option( Simple_SEO_Indexing::OPTION ),
 	'social'         => get_option( Simple_SEO_Social::OPTION ),
+	'special'        => get_option( Simple_SEO_Special::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 );
 
@@ -1252,6 +1253,191 @@ try {
 	delete_term_meta( $sseo_cat_id, '_simple_seo_og_image' );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Special pages' );
+
+	unset( $GLOBALS['current_screen'] );
+	delete_option( Simple_SEO_Special::OPTION );
+	update_option( 'show_on_front', 'posts' );
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Context::reset();
+	$sseo_404 = static fn(): Simple_SEO_Context => Simple_SEO_Context::from_query( $sseo_q404 );
+
+	sseo_check( 'only the special pages row is kept per language', array( Simple_SEO_Special::OPTION ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
+	Simple_SEO_Settings::install();
+	sseo_check( 'install() creates the special pages row', array() === get_option( Simple_SEO_Special::OPTION, null ) );
+
+	sseo_check( 'a protected post takes the password slot for its templates, its type for the rest', 'password' === Simple_SEO_Titles::template_slot( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) && 'post:post' === Simple_SEO_Titles::slot_for( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) );
+	sseo_check( 'other pages keep their slot for templates', 'post:post' === Simple_SEO_Titles::template_slot( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) ) && 'home' === Simple_SEO_Titles::template_slot( $sseo_ctx_of( array() ) ) );
+	sseo_check( 'defaults: 404 has the phrase and the site, no description', "Page not found – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_404() ) && '' === Simple_SEO_Titles::description( $sseo_404() ) );
+	sseo_check( 'defaults: a protected post has its title and the site, no description', "Secret – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) && '' === Simple_SEO_Titles::description( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) );
+
+	$sseo_clean = Simple_SEO_Special::sanitize(
+		array(
+			'home'     => array(
+				'title'       => '{site} {page} {sep} {tagline}',
+				'description' => '<b>Hi</b> {tagline}',
+				'image'       => (string) $sseo_og,
+			),
+			'404'      => array(
+				'title' => '',
+				'image' => $sseo_og,
+			),
+			'password' => array(
+				'title' => array( 'x' ),
+				'image' => $sseo_pdf,
+			),
+			'search'   => array( 'title' => 'x' ),
+		)
+	);
+	sseo_check( 'sanitize: a template equal to the default is not stored', ! isset( $sseo_clean['home']['title'] ), $sseo_clean );
+	sseo_check( 'sanitize: tags stripped, the image kept as its ID', 'Hi {tagline}' === ( $sseo_clean['home']['description'] ?? null ) && $sseo_og === ( $sseo_clean['home']['image'] ?? null ), $sseo_clean );
+	sseo_check( 'sanitize: an empty template is stored as empty', '' === ( $sseo_clean['404']['title'] ?? null ), $sseo_clean );
+	sseo_check( 'sanitize: no image for 404, no PDF as an image', ! isset( $sseo_clean['404']['image'] ) && ! isset( $sseo_clean['password'] ), $sseo_clean );
+	sseo_check( 'sanitize: other slots are not kept here', ! isset( $sseo_clean['search'] ), $sseo_clean );
+	$sseo_clean = Simple_SEO_Titles::sanitize( array( 'templates' => array( 'home' => array( 'title' => 'x' ), '404' => array( 'title' => 'x' ), 'password' => array( 'title' => 'x' ) ) ) );
+	sseo_check( 'the Titles row keeps no special page templates', array() === $sseo_clean['templates'], $sseo_clean );
+
+	Simple_SEO_Special::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	update_option(
+		Simple_SEO_Special::OPTION,
+		array(
+			'home'     => array(
+				'title'       => 'Home of {site}',
+				'description' => 'Welcome home',
+				'image'       => (string) $sseo_og,
+			),
+			'404'      => array(
+				'title'       => 'Lost {sep} {site}',
+				'description' => '',
+				'image'       => (string) $sseo_og,
+			),
+			'password' => array(
+				'title'       => 'Locked: {title}',
+				'description' => 'Ask for the password',
+				'image'       => (string) $sseo_default,
+			),
+		)
+	);
+	$sseo_stored = get_option( Simple_SEO_Special::OPTION );
+	sseo_check( 'saving the tab runs the sanitizer', $sseo_og === ( $sseo_stored['home']['image'] ?? null ) && ! isset( $sseo_stored['404']['image'] ), $sseo_stored );
+	sseo_check( 'image_id() of the home page', $sseo_og === Simple_SEO_Special::image_id( 'home' ) );
+	$sseo_raw = static fn(): array => array(
+		'404'    => array( 'image' => $sseo_og ),
+		'search' => array( 'image' => $sseo_og ),
+	);
+	add_filter( 'pre_option_' . Simple_SEO_Special::OPTION, $sseo_raw );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'image_id() of 404 and of other slots is 0, even with an image in the row', 0 === Simple_SEO_Special::image_id( '404' ) && 0 === Simple_SEO_Special::image_id( 'search' ) );
+	remove_filter( 'pre_option_' . Simple_SEO_Special::OPTION, $sseo_raw );
+	Simple_SEO_Settings::flush();
+
+	sseo_check( 'home: the saved title and description', "Home of {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) && 'Welcome home' === Simple_SEO_Titles::description( $sseo_ctx_of( array() ) ) );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array() ) );
+	sseo_check( 'home: its image for social networks', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-og.jpg' ) && "Home of {$sseo_site}" === $sseo_t['og:title'], $sseo_t );
+	sseo_check( '404: the saved title; saved empty description gives no description tag', "Lost – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_404() ) && array() === Simple_SEO_Titles::head_tags( $sseo_404() ) );
+	sseo_check( '404: still no social tags', array() === Simple_SEO_Social::head_tags( $sseo_404() ) );
+
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) );
+	sseo_check( 'a protected post: the password templates', 'Locked: Secret' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) && 'Ask for the password' === ( $sseo_t['og:description'] ?? '' ), $sseo_t );
+	sseo_check( 'a protected post: the password image, not its featured image', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-default.jpg' ), $sseo_t );
+	update_option( Simple_SEO_Titles::OPTION, array( 'templates' => array( 'post:post' => array( 'title' => 'POST {title}' ) ) ) );
+	sseo_check( 'a protected post ignores its post type template', 'Locked: Secret' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) );
+	update_post_meta( $sseo_p['secret'], '_simple_seo_title', 'Own {title}' );
+	sseo_check( "a protected post's own SEO title still wins", 'Own Secret' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) );
+	delete_post_meta( $sseo_p['secret'], '_simple_seo_title' );
+	add_filter( 'post_password_required', '__return_false' );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) );
+	sseo_check( 'with the password entered: the post type template and the featured image again', 'POST Secret' === Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo_p['secret'] ) ) ) && str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-featured.png' ), $sseo_t );
+	remove_filter( 'post_password_required', '__return_false' );
+	update_option( Simple_SEO_Titles::OPTION, array() );
+
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_p['front'] );
+	$sseo_t = $sseo_tags( $sseo_ctx_of( array() ) );
+	sseo_check( 'a static front page: own title, the home description and image where its fields are empty', "Welcome – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) && 'Welcome home' === Simple_SEO_Titles::description( $sseo_ctx_of( array() ) ) && str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-og.jpg' ), $sseo_t );
+
+	// The tab.
+	wp_set_current_user( $sseo_u['administrator'] );
+	Simple_SEO_Titles::add_admin_tab();
+	Simple_SEO_Social::add_admin_tab();
+	$_GET['tab'] = 'special';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'the Special pages tab sits between Titles and Social networks', strpos( $sseo_html, '>Titles<' ) < strpos( $sseo_html, '>Special pages<' ) && strpos( $sseo_html, '>Special pages<' ) < strpos( $sseo_html, '>Social networks<' ) );
+	sseo_check( 'the tab posts its own group', str_contains( $sseo_html, "value='simple-seo-special'" ) );
+	sseo_check( 'the tab: three sections with title and description templates', 6 === preg_match_all( '/name="simple_seo_special\[(?:home|404|password)\]\[(?:title|description)\]"/', $sseo_html ) && str_contains( $sseo_html, 'value="Home of {site}"' ) );
+	sseo_check( 'the tab: image pickers for the home page and protected content only', str_contains( $sseo_html, 'name="simple_seo_special[home][image]" value="' . $sseo_og . '"' ) && str_contains( $sseo_html, 'name="simple_seo_special[password][image]"' ) && ! str_contains( $sseo_html, 'simple_seo_special[404][image]' ) );
+	sseo_check( 'the tab: the static front page is named, with a link to edit it', str_contains( $sseo_html, 'is the page &quot;Front&quot;' ) && str_contains( $sseo_html, 'post=' . $sseo_p['front'] . '&#038;action=edit' ), $sseo_html );
+	sseo_check( 'the tab: the variables and structure buttons', str_contains( $sseo_html, 'simple-seo-variables' ) && str_contains( $sseo_html, 'data-target="simple-seo-special-password-title"' ) );
+	if ( Simple_SEO_WP_Loc::active() && count( WP_LOC_Languages::get_active_languages() ) > 1 ) {
+		sseo_check( 'with wp-loc: the language notice names the default language', str_contains( $sseo_html, 'kept for each language' ) && str_contains( $sseo_html, '<strong>' . esc_html( WP_LOC_Languages::get_display_name( WP_LOC_Languages::get_default_language() ) ) . '</strong>' ) );
+	} else {
+		sseo_check( 'without wp-loc: no language notice', ! str_contains( $sseo_html, 'kept for each language' ) && '' === Simple_SEO_WP_Loc::admin_language() );
+	}
+	$_GET['tab'] = 'titles';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'the Titles tab points to Special pages and no longer lists home or 404', str_contains( $sseo_html, 'tab=special' ) && ! str_contains( $sseo_html, '[templates][home]' ) && ! str_contains( $sseo_html, '[templates][404]' ) );
+	unset( $_GET['tab'] );
+	update_option( 'show_on_front', 'posts' );
+	update_option( 'page_on_front', 0 );
+
+	// The bond with wp-loc: its filters, without wp-loc itself.
+	$sseo_ml = apply_filters( 'wp_loc_default_multilingual_options', array( 'blogname' ) );
+	sseo_check( 'wp-loc gets the special pages row as a multilingual option', in_array( Simple_SEO_Special::OPTION, $sseo_ml, true ) && in_array( 'blogname', $sseo_ml, true ) && ! in_array( Simple_SEO_Titles::OPTION, $sseo_ml, true ), $sseo_ml );
+	sseo_check( 'wp-loc localizes the options on the Simple SEO page only', true === apply_filters( 'wp_loc_is_localized_options_screen', false, WP_Screen::get( 'toplevel_page_simple-seo' ) ) && false === apply_filters( 'wp_loc_is_localized_options_screen', false, WP_Screen::get( 'dashboard' ) ) );
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Special::saved_template( 'home', 'title' );
+	$sseo_other_language = static fn(): array => array( 'home' => array( 'title' => 'Other language home' ) );
+	add_filter( 'pre_option_' . Simple_SEO_Special::OPTION, $sseo_other_language );
+	$sseo_before = Simple_SEO_Special::saved_template( 'home', 'title' );
+	do_action( 'wpml_switch_language', 'xx' );
+	$sseo_after = Simple_SEO_Special::saved_template( 'home', 'title' );
+	sseo_check( 'a language switch empties the settings cache', 'Home of {site}' === $sseo_before && 'Other language home' === $sseo_after, array( $sseo_before, $sseo_after ) );
+	remove_filter( 'pre_option_' . Simple_SEO_Special::OPTION, $sseo_other_language );
+	do_action( 'change_locale', 'en_US' );
+	sseo_check( 'so does a locale switch', 'Home of {site}' === Simple_SEO_Special::saved_template( 'home', 'title' ) );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'wp-loc' );
+
+	if ( ! Simple_SEO_WP_Loc::active() || count( WP_LOC_Languages::get_active_languages() ) < 2 ) {
+		echo "  skip  wp-loc with two languages is not active here (tools/wp-loc-it.sh runs these checks)\n";
+	} else {
+		$sseo_default_lang = WP_LOC_Languages::get_default_language();
+		$sseo_other_lang   = (string) current( array_diff( array_keys( WP_LOC_Languages::get_active_languages() ), array( $sseo_default_lang ) ) );
+		$sseo_other_row    = Simple_SEO_Special::OPTION . '_' . ( WP_LOC_DB::to_db_language_code( $sseo_other_lang ) ?: $sseo_other_lang );
+		sseo_check( 'wp-loc knows the special pages row as multilingual', WP_LOC_Options::is_multilingual( Simple_SEO_Special::OPTION ) );
+
+		update_option( $sseo_other_row, array( 'home' => array( 'title' => 'Other home {sep} {site}' ) ) );
+		sseo_check( 'the default language reads the row itself', 'Home of {site}' === Simple_SEO_Special::saved_template( 'home', 'title' ) );
+		do_action( 'wpml_switch_language', $sseo_other_lang );
+		sseo_check( 'the other language reads its own row', "Other home – {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ), Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) );
+		sseo_check( 'what its row does not have is the default, not the other language\'s value', '{title} {sep} {site}' === Simple_SEO_Titles::template( '404', 'title' ) && 0 === Simple_SEO_Special::image_id( 'home' ) );
+		do_action( 'wpml_switch_language', $sseo_default_lang );
+		sseo_check( 'back in the default language', "Home of {$sseo_site}" === Simple_SEO_Titles::title( $sseo_ctx_of( array() ) ) );
+
+		// The settings page in the other admin language: shows and saves that language's row.
+		$_COOKIE['admin_lang'] = WP_LOC_Languages::get_language_locale( $sseo_other_lang );
+		set_current_screen( 'toplevel_page_simple-seo' );
+		sseo_check( 'the settings page shows the admin language\'s values', 'Other home {sep} {site}' === Simple_SEO_Special::saved_template( 'home', 'title' ) );
+		$_GET['tab'] = 'special';
+		$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+		unset( $_GET['tab'] );
+		sseo_check( 'the tab names the language being edited', str_contains( $sseo_html, 'kept for each language' ) && str_contains( $sseo_html, '<strong>' . esc_html( WP_LOC_Languages::get_display_name( $sseo_other_lang ) ) . '</strong>' ) && str_contains( $sseo_html, 'value="Other home {sep} {site}"' ) );
+		update_option( Simple_SEO_Special::OPTION, array( 'home' => array( 'title' => 'Saved in the other language' ) ) );
+		// On this screen get_option() of the row gives the admin language's values: read the row itself.
+		$sseo_base  = WP_LOC_Options::get_unfiltered_option( Simple_SEO_Special::OPTION )[1];
+		$sseo_local = get_option( $sseo_other_row );
+		sseo_check( 'saving in the other admin language writes its row, sanitized, and leaves the default\'s', 'Saved in the other language' === ( $sseo_local['home']['title'] ?? null ) && 'Home of {site}' === ( $sseo_base['home']['title'] ?? null ), array( $sseo_base, $sseo_local ) );
+		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
+		delete_option( $sseo_other_row );
+	}
+
+	wp_set_current_user( 0 );
+	delete_option( Simple_SEO_Special::OPTION );
+	Simple_SEO_Settings::flush();
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -1263,6 +1449,7 @@ try {
 	sseo_check( 'the structure button is translated', 'Вставити структуру' === __( 'Insert structure', 'simple-seo' ) );
 	sseo_check( 'the Indexing tab is translated', 'Індексація' === __( 'Indexing', 'simple-seo' ) );
 	sseo_check( 'the Social networks tab is translated', 'Соцмережі' === __( 'Social networks', 'simple-seo' ) );
+	sseo_check( 'the Special pages tab is translated', 'Спецсторінки' === __( 'Special pages', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -1305,13 +1492,18 @@ try {
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
 		}
 	}
 	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
+	// Rows of other languages that a broken run may have left behind.
+	unset( $_COOKIE['admin_lang'] );
+	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%'" ) as $sseo_name ) {
+		delete_option( (string) $sseo_name );
+	}
 }
 
 $sseo_r = $GLOBALS['sseo_results'];

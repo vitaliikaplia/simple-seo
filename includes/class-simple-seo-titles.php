@@ -5,7 +5,9 @@
  * <meta name="description"> through the head output.
  *
  * A "slot" names the kind of page a template is for: post:{post type}, term:{taxonomy},
- * archive:{post type}, author, date, search, home, 404.
+ * archive:{post type}, author, date, search, home, 404, and password for a protected post that
+ * waits for its password. The templates of home, 404 and password live on the Special pages tab
+ * (Simple_SEO_Special), per language with wp-loc; the rest here.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -106,6 +108,16 @@ final class Simple_SEO_Titles {
 	}
 
 	/**
+	 * The slot whose templates a page uses: its own, or password while a protected post shows only
+	 * its password form.
+	 */
+	public static function template_slot( Simple_SEO_Context $context ): string {
+		$slot = self::slot_for( $context );
+
+		return '' !== $slot && Simple_SEO_Context::SINGULAR === $context->kind && $context->password_required ? 'password' : $slot;
+	}
+
+	/**
 	 * The template of a slot: what is saved, else the plugin's default. A template saved empty stays
 	 * empty — the page then keeps the theme's title and gets no description.
 	 *
@@ -114,6 +126,9 @@ final class Simple_SEO_Titles {
 	public static function template( string $slot, string $which ): string {
 		if ( '' === $slot ) {
 			return '';
+		}
+		if ( Simple_SEO_Special::handles( $slot ) ) {
+			return Simple_SEO_Special::saved_template( $slot, $which ) ?? self::default_template( $slot, $which );
 		}
 
 		$saved = Simple_SEO_Settings::value( self::OPTION, 'templates' );
@@ -133,6 +148,7 @@ final class Simple_SEO_Titles {
 				case 'home':
 					return '{site} {page} {sep} {tagline}';
 				case '404':
+				case 'password':
 					return '{title} {sep} {site}';
 				default:
 					return '{title} {page} {sep} {site}';
@@ -170,7 +186,7 @@ final class Simple_SEO_Titles {
 			return $stored[ $which ];
 		}
 
-		$slot = self::slot_for( $context );
+		$slot = self::template_slot( $context );
 		$text = '';
 		if ( '' !== $slot ) {
 			// The post's or term's own field wins over the template, and may use variables as well.
@@ -290,7 +306,8 @@ final class Simple_SEO_Titles {
 		$templates = isset( $input['templates'] ) && is_array( $input['templates'] ) ? $input['templates'] : array();
 		foreach ( $templates as $slot => $values ) {
 			$slot = (string) $slot;
-			if ( ! is_array( $values ) || ! preg_match( '/^(?:(?:post|term|archive):[a-z0-9_-]+|author|date|search|home|404)$/', $slot ) ) {
+			// home, 404 and password are kept by Simple_SEO_Special.
+			if ( ! is_array( $values ) || ! preg_match( '/^(?:(?:post|term|archive):[a-z0-9_-]+|author|date|search)$/', $slot ) ) {
 				continue;
 			}
 
