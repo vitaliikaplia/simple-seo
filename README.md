@@ -6,7 +6,7 @@ The plugin is in early development: this version is only the skeleton — bootst
 
 ## Requirements
 
-WordPress 6.5 or newer and PHP 8.1 or newer.
+WordPress 7.0 or newer and PHP 8.1 or newer.
 
 ## Installation
 

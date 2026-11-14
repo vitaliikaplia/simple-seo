@@ -95,7 +95,7 @@ final class Simple_SEO_GitHub_Updater {
 			'version'       => $version,
 			'author'        => 'Vitalii Kaplia',
 			'homepage'      => $this->get_repository_url(),
-			'requires'      => '6.5',
+			'requires'      => '7.0',
 			'requires_php'  => '8.1',
 			'download_link' => $remote_data['package'] ?? $this->get_package_url(),
 			'sections'      => array(
@@ -244,7 +244,7 @@ final class Simple_SEO_GitHub_Updater {
 			'new_version'  => $remote_data['version'],
 			'url'          => $remote_data['url'],
 			'package'      => $remote_data['package'],
-			'requires'     => '6.5',
+			'requires'     => '7.0',
 			'requires_php' => '8.1',
 		);
 	}

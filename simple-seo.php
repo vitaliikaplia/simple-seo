@@ -6,7 +6,7 @@
  * Author: Vitalii Kaplia
  * Author URI: https://kaplia.pro/
  * Update URI: https://github.com/vitaliikaplia/simple-seo
- * Requires at least: 6.5
+ * Requires at least: 7.0
  * Requires PHP: 8.1
  * License: GPL-2.0-or-later
  * Text Domain: simple-seo
