@@ -15,9 +15,6 @@ final class Simple_SEO_Variables {
 	/** Stands for the separator while the template is filled, so empty parts can be tidied away. */
 	private const SEPARATOR_MARK = "\x1F";
 
-	/** Length of a description made from the post content. */
-	private const EXCERPT_LENGTH = 156;
-
 	/** @var array<string, array{label: string, callback: callable}> */
 	private static array $variables = array();
 
@@ -160,7 +157,9 @@ final class Simple_SEO_Variables {
 				return $object->post_excerpt;
 			}
 
-			return self::shorten( self::plain( strip_shortcodes( excerpt_remove_blocks( $object->post_content ) ) ), self::EXCERPT_LENGTH );
+			// As wide as a description in search results on a computer, not a number of characters:
+			// Cyrillic letters are wider than Latin ones.
+			return Simple_SEO_Text_Width::cut( self::plain( strip_shortcodes( excerpt_remove_blocks( $object->post_content ) ) ), Simple_SEO_Text_Width::DESCRIPTION );
 		}
 		if ( $object instanceof WP_Term ) {
 			return (string) $object->description;
@@ -231,21 +230,5 @@ final class Simple_SEO_Variables {
 		);
 
 		return (string) date_i18n( $formats[ $context->subtype ] ?? 'Y', $context->timestamp );
-	}
-
-	/** Cut at a word boundary, with an ellipsis when something was cut. */
-	private static function shorten( string $text, int $length ): string {
-		if ( mb_strlen( $text ) <= $length ) {
-			return $text;
-		}
-
-		$cut   = mb_substr( $text, 0, $length );
-		$space = mb_strrpos( $cut, ' ' );
-		if ( false !== $space && $space > $length / 2 ) {
-			$cut = mb_substr( $cut, 0, $space );
-		}
-
-		// Not rtrim(): its character list is bytes, and the dashes would eat bytes of Cyrillic letters.
-		return preg_replace( '/[\s,.;:–—-]+$/u', '', $cut ) . '…';
 	}
 }

@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.29.0\n"
+"Project-Id-Version: Simple SEO 0.30.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-15T23:07:21+00:00\n"
+"POT-Creation-Date: 2026-11-15T23:28:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -335,32 +335,32 @@ msgstr ""
 msgid "The page has no meta description: search engines will show a piece of its text."
 msgstr ""
 
-#: includes/class-simple-seo-analysis.php:359
+#: includes/class-simple-seo-analysis.php:366
 #: includes/class-simple-seo-bulk.php:316
 #: includes/class-simple-seo-titles.php:53
 msgid "SEO title"
 msgstr ""
 
-#: includes/class-simple-seo-analysis.php:359
+#: includes/class-simple-seo-analysis.php:366
 #: includes/class-simple-seo-bulk.php:316
 #: includes/class-simple-seo-titles.php:63
 msgid "Meta description"
 msgstr ""
 
-#. translators: 1: SEO title or Meta description, 2: number of characters, 3: a good number.
-#: includes/class-simple-seo-analysis.php:362
+#. translators: 1: SEO title or Meta description, 2: number of characters, 3: its width in pixels, 4: the width search results give it.
+#: includes/class-simple-seo-analysis.php:370
 #, php-format
-msgid "%1$s: %2$s characters, short: up to %3$s fit."
-msgstr ""
-
-#. translators: 1: SEO title or Meta description, 2: number of characters, 3: how many fit.
-#: includes/class-simple-seo-analysis.php:366
-#, php-format
-msgid "%1$s: %2$s characters, search engines may cut it after about %3$s."
+msgid "%1$s: %2$s characters, %3$s pixels wide of %4$s: search engines will cut its end."
 msgstr ""
 
 #. translators: 1: SEO title or Meta description, 2: number of characters.
-#: includes/class-simple-seo-analysis.php:370
+#: includes/class-simple-seo-analysis.php:374
+#, php-format
+msgid "%1$s: %2$s characters, short: a search result has room for more."
+msgstr ""
+
+#. translators: 1: SEO title or Meta description, 2: number of characters.
+#: includes/class-simple-seo-analysis.php:378
 #, php-format
 msgid "%1$s: %2$s characters, a good length."
 msgstr ""
@@ -374,7 +374,7 @@ msgstr ""
 
 #. translators: %d: page number.
 #: includes/class-simple-seo-breadcrumbs.php:111
-#: includes/class-simple-seo-variables.php:148
+#: includes/class-simple-seo-variables.php:145
 #, php-format
 msgid "Page %d"
 msgstr ""
@@ -639,7 +639,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-import.php:39
@@ -1439,72 +1439,72 @@ msgstr ""
 msgid "Archives and search"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:46
+#: includes/class-simple-seo-variables.php:43
 msgid "Title of the post, term, archive or author; on search results and 404 a ready phrase"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:47
+#: includes/class-simple-seo-variables.php:44
 msgid "Site title"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:48
+#: includes/class-simple-seo-variables.php:45
 msgid "Tagline"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:49
+#: includes/class-simple-seo-variables.php:46
 msgid "Separator chosen in the settings"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:50
+#: includes/class-simple-seo-variables.php:47
 msgid "Page number, only from the second page on: \"Page 2 of 5\""
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:51
+#: includes/class-simple-seo-variables.php:48
 msgid "Excerpt of the post (or the start of its text), description of the term, author or post type"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:52
+#: includes/class-simple-seo-variables.php:49
 msgid "Category of the post"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:53
+#: includes/class-simple-seo-variables.php:50
 msgid "Author name"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:54
+#: includes/class-simple-seo-variables.php:51
 msgid "Publication date of the post, or the date of a date archive"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:55
+#: includes/class-simple-seo-variables.php:52
 msgid "Name of the post type"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:56
+#: includes/class-simple-seo-variables.php:53
 msgid "What was searched for"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:57
+#: includes/class-simple-seo-variables.php:54
 msgid "Current year"
 msgstr ""
 
 #. translators: %s: what was searched for.
-#: includes/class-simple-seo-variables.php:129
+#: includes/class-simple-seo-variables.php:126
 #, php-format
 msgid "Search results for \"%s\""
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:131
+#: includes/class-simple-seo-variables.php:128
 msgid "Page not found"
 msgstr ""
 
 #. translators: 1: page number, 2: number of pages.
-#: includes/class-simple-seo-variables.php:146
+#: includes/class-simple-seo-variables.php:143
 #, php-format
 msgid "Page %1$d of %2$d"
 msgstr ""
 
 #. translators: format of a month archive date, see https://www.php.net/manual/datetime.format.php
-#: includes/class-simple-seo-variables.php:229
+#: includes/class-simple-seo-variables.php:228
 msgctxt "month archive date format"
 msgid "F Y"
 msgstr ""

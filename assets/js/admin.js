@@ -130,6 +130,8 @@
 		canvas = canvas || document.createElement( 'canvas' );
 		var context = canvas.getContext( '2d' );
 		context.font = font;
+		// As Simple_SEO_Text_Width measures on the server: the widths of the letters, no kerning.
+		context.fontKerning = 'none';
 
 		return context.measureText( text ).width;
 	}

@@ -343,27 +343,35 @@ final class Simple_SEO_Analysis {
 			$checks[] = self::check( 'alt', 'bad', sprintf( __( 'Images without alt text: %s. Describe what they show, for search engines and for people who do not see them.', 'simple-seo' ), number_format_i18n( $no_alt ) ) );
 		}
 
-		$checks[] = self::length_check( 'title_length', $title, 30, 60, __( 'The page has no SEO title of Simple SEO: the theme\'s title stays.', 'simple-seo' ) );
-		$checks[] = self::length_check( 'description_length', $summary, 70, 160, __( 'The page has no meta description: search engines will show a piece of its text.', 'simple-seo' ) );
+		$checks[] = self::length_check( 'title_length', $title, 30, Simple_SEO_Text_Width::TITLE, __( 'The page has no SEO title of Simple SEO: the theme\'s title stays.', 'simple-seo' ) );
+		$checks[] = self::length_check( 'description_length', $summary, 70, Simple_SEO_Text_Width::DESCRIPTION, __( 'The page has no meta description: search engines will show a piece of its text.', 'simple-seo' ) );
 
 		return $checks;
 	}
 
 	/** @return array{id: string, status: string, text: string} */
-	private static function length_check( string $id, string $text, int $short, int $long, string $none ): array {
+	/**
+	 * The length of the title or the description: short below a number of characters (it says too
+	 * little), too long when wider than search results show it on a computer (its end is cut) — a
+	 * width, as the search result preview measures it, not a number of characters.
+	 *
+	 * @param array{0: int, 1: int} $limit Width and font size of search results, in pixels.
+	 */
+	private static function length_check( string $id, string $text, int $short, array $limit, string $none ): array {
 		$length = mb_strlen( $text );
 		if ( 0 === $length ) {
 			return self::check( $id, 'bad', $none );
 		}
 
-		$what = 'title_length' === $id ? __( 'SEO title', 'simple-seo' ) : __( 'Meta description', 'simple-seo' );
-		if ( $length < $short ) {
-			/* translators: 1: SEO title or Meta description, 2: number of characters, 3: a good number. */
-			return self::check( $id, 'ok', sprintf( __( '%1$s: %2$s characters, short: up to %3$s fit.', 'simple-seo' ), $what, number_format_i18n( $length ), number_format_i18n( $long ) ) );
+		$what  = 'title_length' === $id ? __( 'SEO title', 'simple-seo' ) : __( 'Meta description', 'simple-seo' );
+		$width = (int) round( Simple_SEO_Text_Width::width( $text, $limit[1] ) );
+		if ( $width > $limit[0] ) {
+			/* translators: 1: SEO title or Meta description, 2: number of characters, 3: its width in pixels, 4: the width search results give it. */
+			return self::check( $id, 'ok', sprintf( __( '%1$s: %2$s characters, %3$s pixels wide of %4$s: search engines will cut its end.', 'simple-seo' ), $what, number_format_i18n( $length ), number_format_i18n( $width ), number_format_i18n( $limit[0] ) ) );
 		}
-		if ( $length > $long ) {
-			/* translators: 1: SEO title or Meta description, 2: number of characters, 3: how many fit. */
-			return self::check( $id, 'ok', sprintf( __( '%1$s: %2$s characters, search engines may cut it after about %3$s.', 'simple-seo' ), $what, number_format_i18n( $length ), number_format_i18n( $long ) ) );
+		if ( $length < $short ) {
+			/* translators: 1: SEO title or Meta description, 2: number of characters. */
+			return self::check( $id, 'ok', sprintf( __( '%1$s: %2$s characters, short: a search result has room for more.', 'simple-seo' ), $what, number_format_i18n( $length ) ) );
 		}
 
 		/* translators: 1: SEO title or Meta description, 2: number of characters. */

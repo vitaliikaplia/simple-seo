@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Simple SEO
  * Description: A lightweight SEO plugin for WordPress.
- * Version: 0.29.0
+ * Version: 0.30.0
  * Author: Vitalii Kaplia
  * Author URI: https://kaplia.pro/
  * Update URI: https://github.com/vitaliikaplia/simple-seo
@@ -32,7 +32,7 @@ if ( PHP_VERSION_ID < 80100 ) {
 	return;
 }
 
-define( 'SIMPLE_SEO_VERSION', '0.29.0' );
+define( 'SIMPLE_SEO_VERSION', '0.30.0' );
 define( 'SIMPLE_SEO_FILE', __FILE__ );
 define( 'SIMPLE_SEO_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SIMPLE_SEO_URL', plugin_dir_url( __FILE__ ) );
@@ -44,6 +44,7 @@ require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-fields.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-context.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-head.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-variables.php';
+require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-text-width.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-titles.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-content.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-readability.php';

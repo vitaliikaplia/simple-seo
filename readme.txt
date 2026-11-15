@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.29.0
+Stable tag: 0.30.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.30.0 =
+* The description made from the text of a post is as wide as a description in search results on a computer, not 156 characters: Cyrillic letters are wider than Latin ones, and such a description was cut with an ellipsis.
+* The content analysis measures the SEO title and the meta description as search results do: too long is wider than they show (the check says how many pixels), too short is still too few characters. The search result preview and the analysis now agree.
 
 = 0.29.0 =
 * Alt texts and titles of images from their names, on an Images tab: a new image without an alt text gets one, and its title reads as words instead of the name of its file, each by its own switch. The name is the image's title first — WordPress takes it from the file as it was named on the computer, Cyrillic kept — then the file's name, without the extension, the copies and sizes WordPress makes, dates and counters. Names that say nothing of the picture (IMG_1234, a screenshot, a hash, a stock photo's code, an untitled design) give nothing.
