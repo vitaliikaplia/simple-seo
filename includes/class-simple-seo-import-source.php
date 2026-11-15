@@ -338,8 +338,10 @@ abstract class Simple_SEO_Import_Source {
 	 * the title of the site is not copied, an empty name falls back to it anyway.
 	 *
 	 * @param array<string, mixed>  $common represents (organization|person), person (user ID), logo
-	 *                                      (attachment ID), profiles (addresses); what the plugin does
-	 *                                      not say is left out.
+	 *                                      (attachment ID), profiles (addresses), page_types and
+	 *                                      article_types (post type => type); what the plugin does not
+	 *                                      say is left out. A post type's type is taken only where
+	 *                                      Simple SEO has none of its own for that post type.
 	 * @param array<string, string> $names  site_name, site_alternate, name, alternate.
 	 * @param array<string, mixed>  $report
 	 */
@@ -359,6 +361,17 @@ abstract class Simple_SEO_Import_Source {
 				if ( $value !== $defaults[ $key ] ) {
 					$clean[ $key ] = $value;
 					++$taken;
+				}
+			}
+			foreach ( array( 'page_types', 'article_types' ) as $key ) {
+				if ( empty( $common[ $key ] ) || ! is_array( $common[ $key ] ) ) {
+					continue;
+				}
+				$own = is_array( $row[ $key ] ?? null ) ? $row[ $key ] : array();
+				$new = array_diff_key( Simple_SEO_Schema::sanitize( array( $key => array_diff_key( $common[ $key ], $own ) ) + $clean )[ $key ], $own );
+				if ( $new ) {
+					$clean[ $key ] += $new;
+					$taken         += count( $new );
 				}
 			}
 			if ( $taken ) {

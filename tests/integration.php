@@ -446,7 +446,7 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'schema_page_type', 'schema_article_type', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -2839,11 +2839,11 @@ try {
 		return array() === array_diff( $refs, $ids );
 	};
 
-	sseo_check( 'the defaults: Auto, an organization, breadcrumbs in the graph', array( 'mode' => 'auto', 'represents' => 'organization', 'person' => 0, 'logo' => 0, 'profiles' => array(), 'breadcrumbs' => true ) === Simple_SEO_Settings::get( Simple_SEO_Schema::OPTION ) );
+	sseo_check( 'the defaults: Auto, an organization, breadcrumbs in the graph', array( 'mode' => 'auto', 'represents' => 'organization', 'person' => 0, 'logo' => 0, 'profiles' => array(), 'breadcrumbs' => true, 'page_types' => array(), 'article_types' => array() ) === Simple_SEO_Settings::get( Simple_SEO_Schema::OPTION ) );
 	sseo_check( 'the names are kept per language, the rest is common', in_array( Simple_SEO_Schema::NAMES, Simple_SEO_Settings::localized(), true ) && ! in_array( Simple_SEO_Schema::OPTION, Simple_SEO_Settings::localized(), true ) );
 	sseo_check( 'the graph is printed after the head tags, both at priority 1', 1 === has_action( 'wp_head', array( Simple_SEO_Schema::class, 'output' ) ) && array_search( 'Simple_SEO_Head::output', array_keys( $GLOBALS['wp_filter']['wp_head']->callbacks[1] ), true ) < array_search( 'Simple_SEO_Schema::output', array_keys( $GLOBALS['wp_filter']['wp_head']->callbacks[1] ), true ) );
 	$sseo_clean = Simple_SEO_Schema::sanitize( array( 'mode' => 'never', 'represents' => 'robot', 'person' => 99999999, 'logo' => $sseo_pdf, 'profiles' => "https://a.test/x\n javascript:alert(1)\r\nftp://b.test/\nnot a link\nhttp://not%20a%20link\nhttps://localhost/x\nsee https://f.test/me\nhttps://user@g.test/\nwww.d.test\nhttps://\nhttps://e.test/a b\nhttps://приклад.укр/сторінка\nhttps://a.test/x\n\n  https://c.test/y?z=1 ", 'breadcrumbs' => '0' ) );
-	sseo_check( 'sanitize: an unknown mode or kind falls back, no such user, a PDF is no logo, profiles whole http(s) addresses once each, breadcrumbs off', array( 'mode' => 'auto', 'represents' => 'organization', 'person' => 0, 'logo' => 0, 'profiles' => array( 'https://a.test/x', 'https://приклад.укр/сторінка', 'https://c.test/y?z=1' ), 'breadcrumbs' => false ) === $sseo_clean, $sseo_clean );
+	sseo_check( 'sanitize: an unknown mode or kind falls back, no such user, a PDF is no logo, profiles whole http(s) addresses once each, breadcrumbs off', array( 'mode' => 'auto', 'represents' => 'organization', 'person' => 0, 'logo' => 0, 'profiles' => array( 'https://a.test/x', 'https://приклад.укр/сторінка', 'https://c.test/y?z=1' ), 'breadcrumbs' => false, 'page_types' => array(), 'article_types' => array() ) === $sseo_clean, $sseo_clean );
 	$sseo_clean = Simple_SEO_Schema::sanitize( array( 'mode' => 'always', 'represents' => 'person', 'person' => (string) $sseo_au, 'logo' => (string) $sseo_og, 'profiles' => array_map( static fn( int $n ): string => 'https://p.test/' . $n, range( 1, 25 ) ) ) );
 	sseo_check( 'sanitize: a user and an image as IDs, twenty profiles at most, breadcrumbs on unless switched off', 'always' === $sseo_clean['mode'] && 'person' === $sseo_clean['represents'] && $sseo_au === $sseo_clean['person'] && $sseo_og === $sseo_clean['logo'] && 20 === count( $sseo_clean['profiles'] ) && 'https://p.test/20' === end( $sseo_clean['profiles'] ) && true === $sseo_clean['breadcrumbs'], $sseo_clean );
 	$sseo_clean = Simple_SEO_Schema::sanitize_names( array( 'name' => ' <b>Acme</b> Ltd ', 'alternate' => str_repeat( 'я', 250 ), 'site_name' => array( 'no' ), 'bogus' => 'x' ) );
@@ -3058,6 +3058,144 @@ try {
 	}
 	Simple_SEO_Context::reset();
 
+	// Types of pages and articles.
+	$sseo_field = Simple_SEO_Fields::get( 'schema_page_type' );
+	sseo_check( 'the types are fields of posts under Schema, for whoever edits the SEO fields', null !== $sseo_field && array( 'post' ) === $sseo_field['objects'] && 'schema' === $sseo_field['group'] && 'Schema' === Simple_SEO_Fields::group_heading( 'schema' ) && null !== Simple_SEO_Fields::get( 'schema_article_type' ) && Simple_SEO_Fields::user_can_edit( $sseo_au, 'post', $sseo['posts']['sc'], 'schema_article_type' ) && ! Simple_SEO_Fields::user_can_edit( $sseo_au, 'term', $sseo_news, 'schema_page_type' ) );
+	sseo_check( 'a type as its constant spells it, whatever the case; nothing unknown', 'NewsArticle' === Simple_SEO_Schema::known( 'newsarticle', Simple_SEO_Schema::ARTICLE_TYPES ) && 'None' === Simple_SEO_Fields::sanitize_value( 'schema_article_type', 'none' ) && 'AboutPage' === Simple_SEO_Fields::sanitize_value( 'schema_page_type', ' ABOUTPAGE ' ) && '' === Simple_SEO_Fields::sanitize_value( 'schema_page_type', 'Article' ) && '' === Simple_SEO_Schema::known( array( 'WebPage' ), Simple_SEO_Schema::PAGE_TYPES ) );
+	sseo_check( "Simple SEO's own types: a web page; an article for posts only", 'WebPage' === Simple_SEO_Schema::default_page_type( 'post' ) && 'Article' === Simple_SEO_Schema::default_article_type( 'post' ) && 'None' === Simple_SEO_Schema::default_article_type( 'page' ) );
+	$sseo_choices = call_user_func( Simple_SEO_Fields::get( 'schema_article_type' )['options'], 'post', get_post( $sseo['posts']['sc_page'] ) );
+	sseo_check( "the field's first choice is the post type's own type", 'As set for this post type: Not an article' === $sseo_choices[''] && 'News article' === $sseo_choices['NewsArticle'] && count( Simple_SEO_Schema::ARTICLE_TYPES ) + 1 === count( $sseo_choices ), $sseo_choices );
+	$sseo_clean = Simple_SEO_Schema::sanitize( array( 'page_types' => array( 'page' => 'aboutpage', 'post' => 'WebPage', 'ghost' => 'AboutPage', 'sseo_map' => 'Nonsense' ), 'article_types' => array( 'post' => 'Article', 'page' => 'none', 'sseo_map' => 'blogposting' ) ) );
+	sseo_check( 'sanitize: a known type of a known post type, kept only where it differs from the default', array( 'page' => 'AboutPage' ) === $sseo_clean['page_types'] && array( 'sseo_map' => 'BlogPosting' ) === $sseo_clean['article_types'], array( $sseo_clean['page_types'], $sseo_clean['article_types'] ) );
+
+	update_option( Simple_SEO_Schema::OPTION, array( 'page_types' => array( 'page' => 'AboutPage' ), 'article_types' => array( 'post' => 'NewsArticle', 'page' => 'BlogPosting' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_g      = $sseo_sc_graph( array( 'page_id' => $sseo['posts']['sc_page'] ) );
+	$sseo_g_post = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	sseo_check( "a post type's own types: pages are about pages and blog posts, posts news articles", 'AboutPage' === ( $sseo_sc_node( $sseo_g, 'AboutPage' )['@type'] ?? '' ) && 'BlogPosting' === ( $sseo_sc_node( $sseo_g, 'BlogPosting' )['@type'] ?? '' ) && array() !== $sseo_sc_node( $sseo_g, 'Person' ) && 'NewsArticle' === ( $sseo_sc_node( $sseo_g_post, 'NewsArticle' )['@type'] ?? '' ) && array() === $sseo_sc_node( $sseo_g_post, 'Article' ), $sseo_sc_types( $sseo_g ) );
+	update_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_page_type' ), 'ContactPage' );
+	update_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_article_type' ), 'TechArticle' );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	update_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_article_type' ), 'None' );
+	$sseo_g_post = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	delete_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_page_type' ) );
+	delete_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_article_type' ) );
+	sseo_check( "a post's own types win over its post type's; None: no article and no author", 'ContactPage' === ( $sseo_sc_node( $sseo_g, 'ContactPage' )['@type'] ?? '' ) && 'TechArticle' === ( $sseo_sc_node( $sseo_g, 'TechArticle' )['@type'] ?? '' ) && array() === $sseo_sc_node( $sseo_g_post, 'NewsArticle' ) && array() === $sseo_sc_node( $sseo_g_post, 'Person' ) && $sseo_sc_linked( $sseo_g_post ), array( $sseo_sc_types( $sseo_g ), $sseo_sc_types( $sseo_g_post ) ) );
+	add_filter( 'simple_seo_schema_article_types', static fn( array $types, string $type ): array => 'post' === $type ? array() : $types, 10, 2 );
+	$sseo_sc_types_now = array( Simple_SEO_Schema::default_article_type( 'post' ), Simple_SEO_Schema::default_article_type( 'page' ) );
+	remove_all_filters( 'simple_seo_schema_article_types' );
+	sseo_check( 'simple_seo_schema_article_types still takes a post type out, with the type asked about', array( 'None', 'BlogPosting' ) === $sseo_sc_types_now, $sseo_sc_types_now );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+
+	// Questions and answers.
+	$sseo_block_of = static fn( string $name, array $attrs ): string => serialize_block( array( 'blockName' => $name, 'attrs' => $attrs, 'innerBlocks' => array(), 'innerHTML' => '', 'innerContent' => array() ) );
+	$sseo_faq_acf  = $sseo_block_of(
+		'acf/main-faq',
+		array(
+			'name' => 'acf/main-faq',
+			'data' => array(
+				'faq_items'             => 3,
+				'_faq_items'            => 'field_1',
+				'faq_items_10_question' => 'Q eleven?',
+				'faq_items_10_answer'   => 'A eleven',
+				'faq_items_0_question'  => 'Q <b>one</b>?',
+				'_faq_items_0_question' => 'field_2',
+				'_faq_items_0_answer'   => 'field_3',
+				'faq_items_0_answer'    => '<p class="p3"><strong>A one</strong> <script>alert(1)</script><span>text</span></p>',
+				'faq_items_1_question'  => 'Q two?',
+				'faq_items_1_answer'    => '',
+				'faq_items_2_question'  => 'Q three?',
+				'faq_items_2_answer'    => 'A three',
+			),
+		)
+	);
+	kses_remove_filters(); // Block comments with JSON, as an administrator saves them.
+	$sseo_faq_cards = $sseo_block_of(
+		'acf/main-cards',
+		array(
+			'name' => 'acf/main-cards',
+			'data' => array(
+				'cards_0_question' => 'A card?',
+				'cards_0_answer'   => 'Not a FAQ',
+			),
+		)
+	);
+	$sseo['posts']['sc_faq'] = (int) wp_insert_post( array( 'post_title' => 'Sc Faq', 'post_status' => 'publish', 'post_content' => wp_slash( $sseo_faq_cards . '<!-- wp:group --><div class="wp-block-group">' . $sseo_faq_acf . '</div><!-- /wp:group -->' ) ) );
+	kses_init();
+	$sseo_faq_post = get_post( $sseo['posts']['sc_faq'] );
+	$sseo_faq      = Simple_SEO_FAQ::questions( $sseo_faq_post, false );
+	sseo_check( "an ACF block with faq in its name, inside another block: its rows in order, without an empty answer or ACF's own keys; another ACF block is no FAQ; questions plain, answers with search engines' tags only", array( array( 'question' => 'Q one?', 'answer' => '<p><strong>A one</strong> text</p>' ), array( 'question' => 'Q three?', 'answer' => 'A three' ), array( 'question' => 'Q eleven?', 'answer' => 'A eleven' ) ) === $sseo_faq, $sseo_faq );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc_faq'] ) );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'FAQPage' );
+	sseo_check( 'the post is a FAQ page: its questions as the main entity, each with its accepted answer', 'FAQPage' === ( $sseo_n['@type'] ?? '' ) && 3 === count( $sseo_n['mainEntity'] ?? array() ) && array( '@type' => 'Question', 'name' => 'Q one?', 'acceptedAnswer' => array( '@type' => 'Answer', 'text' => '<p><strong>A one</strong> text</p>' ) ) === $sseo_n['mainEntity'][0], $sseo_n );
+	update_post_meta( $sseo['posts']['sc_faq'], Simple_SEO_Fields::meta_key( 'schema_page_type' ), 'AboutPage' );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc_faq'] ) );
+	sseo_check( 'a page of another type with questions is that type and a FAQ page', array( 'AboutPage', 'FAQPage' ) === ( $sseo_sc_node( $sseo_g, 'FAQPage' )['@type'] ?? null ), $sseo_sc_types( $sseo_g ) );
+	sseo_check( 'the editor says what the page has', 'About page, FAQ page with questions and answers: 3' === Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc_faq'] ) ), Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc_faq'] ) ) );
+	delete_post_meta( $sseo['posts']['sc_faq'], Simple_SEO_Fields::meta_key( 'schema_page_type' ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['sc_faq'], 'post_password' => 'secret' ) );
+	$sseo_g = Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['sc_faq'] ) ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['sc_faq'], 'post_password' => '' ) );
+	sseo_check( 'a post asking for a password shows no questions', array() === $sseo_sc_node( $sseo_g, 'FAQPage' ) && ! isset( $sseo_sc_node( $sseo_g, 'WebPage' )['mainEntity'] ), $sseo_sc_types( $sseo_g ) );
+
+	$sseo_faq_acc = '<!-- wp:builder/accordion --><!-- wp:builder/accordion-item {"label":"Acc question?"} --><!-- wp:paragraph --><p>Acc answer</p><!-- /wp:paragraph --><!-- /wp:builder/accordion-item --><!-- wp:builder/accordion-item {"label":""} --><!-- wp:paragraph --><p>No question</p><!-- /wp:paragraph --><!-- /wp:builder/accordion-item --><!-- /wp:builder/accordion -->'
+		. '<!-- wp:details --><details class="wp-block-details"><summary>Det <em>question</em>?</summary><!-- wp:paragraph --><p>Det answer</p><!-- /wp:paragraph --></details><!-- /wp:details -->';
+	kses_remove_filters(); // Block comments with JSON, as an administrator saves them.
+	$sseo['posts']['sc_acc'] = (int) wp_insert_post( array( 'post_title' => 'Sc Accordion', 'post_status' => 'publish', 'post_content' => wp_slash( $sseo_faq_acc ) ) );
+	kses_init();
+	$sseo_acc_post = get_post( $sseo['posts']['sc_acc'] );
+	$sseo_g        = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc_acc'] ) );
+	sseo_check( 'accordions are no FAQ of a page of another type, but the editor suggests the type', array() === Simple_SEO_FAQ::questions( $sseo_acc_post, false ) && array() === $sseo_sc_node( $sseo_g, 'FAQPage' ) && 2 === count( Simple_SEO_FAQ::scan( $sseo_acc_post )['accordion'] ) && 'Web page. The page has an accordion (items: 2): choose FAQ page to mark it up as questions and answers.' === Simple_SEO_Schema::page_type_now( $sseo_acc_post ), Simple_SEO_Schema::page_type_now( $sseo_acc_post ) );
+	update_post_meta( $sseo['posts']['sc_acc'], Simple_SEO_Fields::meta_key( 'schema_page_type' ), 'FAQPage' );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc_acc'] ) );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'FAQPage' );
+	sseo_check( 'the editor counts the questions of the accordions on a FAQ page', 'FAQ page with questions and answers: 2' === Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc_acc'] ) ), Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc_acc'] ) ) );
+	sseo_check( "a FAQ page by its type: Builder's accordion and core/details are its questions, the answer as the site shows it", 'FAQPage' === ( $sseo_n['@type'] ?? '' ) && array( 'Acc question?', 'Det question?' ) === array_column( $sseo_n['mainEntity'] ?? array(), 'name' ) && '<p>Acc answer</p>' === ( $sseo_n['mainEntity'][0]['acceptedAnswer']['text'] ?? '' ) && '<p>Det answer</p>' === ( $sseo_n['mainEntity'][1]['acceptedAnswer']['text'] ?? '' ), $sseo_n );
+	update_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_page_type' ), 'FAQPage' );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	sseo_check( 'a FAQ page without questions is a web page, and the editor says what to add', 'WebPage' === ( $sseo_sc_node( $sseo_g, 'WebPage' )['@type'] ?? '' ) && ! isset( $sseo_sc_node( $sseo_g, 'WebPage' )['mainEntity'] ) && 'Web page: no questions and answers were found. Add the block Questions and answers, or an accordion, to the page.' === Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc'] ) ), Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc'] ) ) );
+	delete_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_page_type' ) );
+	sseo_check( 'without questions or an accordion the editor names the type', 'Web page' === Simple_SEO_Schema::page_type_now( get_post( $sseo['posts']['sc'] ) ) );
+
+	// Simple SEO's own block.
+	$sseo_block = WP_Block_Type_Registry::get_instance()->get_registered( Simple_SEO_FAQ::BLOCK );
+	sseo_check( 'the block Questions and answers is registered, rendered by PHP, with its script and editor style', $sseo_block instanceof WP_Block_Type && in_array( Simple_SEO_FAQ::SCRIPT, $sseo_block->editor_script_handles, true ) && in_array( Simple_SEO_FAQ::EDITOR_STYLE, $sseo_block->editor_style_handles, true ) && is_callable( $sseo_block->render_callback ) && 'Questions and answers' === $sseo_block->title && wp_script_is( Simple_SEO_FAQ::SCRIPT, 'registered' ) && array( 'wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components' ) === wp_scripts()->registered[ Simple_SEO_FAQ::SCRIPT ]->deps && str_contains( implode( '', (array) wp_scripts()->get_data( Simple_SEO_FAQ::SCRIPT, 'before' ) ), '"add":"Add a question"' ) );
+	$sseo_own = $sseo_block_of(
+		'simple-seo/faq',
+		array(
+			'items' => array(
+				array(
+					'question' => 'Own question?',
+					'answer'   => 'Own <em>answer</em> <script>x</script>',
+				),
+				array(
+					'question' => '',
+					'answer'   => 'Lost',
+				),
+				'junk',
+			),
+		)
+	);
+	kses_remove_filters(); // Block comments with JSON, as an administrator saves them.
+	$sseo['posts']['sc_own'] = (int) wp_insert_post( array( 'post_title' => 'Sc Own', 'post_status' => 'publish', 'post_content' => wp_slash( $sseo_own ) ) );
+	kses_init();
+	$sseo_html = do_blocks( get_post( $sseo['posts']['sc_own'] )->post_content );
+	sseo_check( 'the block on the site: a details element for each question that opens to its answer', str_contains( $sseo_html, '<div class="simple-seo-faq wp-block-simple-seo-faq"><details class="simple-seo-faq-item"><summary class="simple-seo-faq-question">Own question?</summary><div class="simple-seo-faq-answer">Own <em>answer</em></div></details></div>' ) && 1 === substr_count( $sseo_html, '<details' ) && ! str_contains( $sseo_html, 'script' ), $sseo_html );
+	sseo_check( 'an empty block shows nothing', '' === trim( do_blocks( $sseo_block_of( 'simple-seo/faq', array( 'items' => array( array( 'question' => ' ', 'answer' => 'x' ) ) ) ) ) ) && '' === trim( do_blocks( '<!-- wp:simple-seo/faq /-->' ) ) );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc_own'] ) );
+	sseo_check( "the block's questions make a FAQ page whatever its type", array( 'Own question?' ) === array_column( $sseo_sc_node( $sseo_g, 'FAQPage' )['mainEntity'] ?? array(), 'name' ), $sseo_g );
+	add_filter( 'simple_seo_faq', static fn( array $items, WP_Post $post, bool $accordions ): array => $post->ID === $sseo['posts']['sc'] && ! $accordions ? array( array( 'question' => '<i>Theme</i> question?', 'answer' => 'Theme answer' ), array( 'question' => 'No answer' ), 'junk' ) : $items, 10, 3 );
+	$sseo_faq = Simple_SEO_FAQ::questions( get_post( $sseo['posts']['sc'] ), false );
+	remove_all_filters( 'simple_seo_faq' );
+	sseo_check( 'simple_seo_faq: a theme gives its own questions, cleaned like the rest', array( array( 'question' => 'Theme question?', 'answer' => 'Theme answer' ) ) === $sseo_faq, $sseo_faq );
+
+	// The SEO block of the editor.
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['sc_faq'] ) ) );
+	wp_set_current_user( 0 );
+	sseo_check( 'the SEO block: Schema with both types and what the page is now', str_contains( $sseo_html, '>Schema</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_page_type]"' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>As set for this post type: Web page</option>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_article_type]"' ) && str_contains( $sseo_html, 'Now: FAQ page with questions and answers: 3' ), $sseo_html );
+
 	// The tab.
 	Simple_SEO_Schema::add_admin_tab();
 	Simple_SEO_Admin::register_settings();
@@ -3077,6 +3215,15 @@ try {
 	sseo_check( 'the tab shows the graph of the home page', str_contains( $sseo_html, 'class="simple-seo-schema-example"' ) && str_contains( $sseo_html, '&quot;@type&quot;: &quot;WebSite&quot;' ) );
 	sseo_check( 'a theme that switches off the graph of SEO plugins is named on the tab', ! str_contains( $sseo_html, 'wpseo_json_ld_output' ) && str_contains( $sseo_html_off, 'The active theme switches off the graph of SEO plugins' ) );
 	sseo_check( 'the tab saves both rows', 'simple-seo-schema' === ( get_registered_settings()[ Simple_SEO_Schema::OPTION ]['group'] ?? '' ) && 'simple-seo-schema' === ( get_registered_settings()[ Simple_SEO_Schema::NAMES ]['group'] ?? '' ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'page_types' => array( 'page' => 'AboutPage' ), 'article_types' => array( 'page' => 'BlogPosting' ) ) );
+	Simple_SEO_Settings::flush();
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab'] = 'schema';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	$sseo_chosen = static fn( string $name ): string => preg_match( '~<select[^>]*name="simple_seo_schema\[' . preg_quote( $name, '~' ) . '\]">.*?<option value="([^"]*)" selected=\'selected\'>~s', $sseo_html, $sseo_match ) ? $sseo_match[1] : '';
+	sseo_check( 'the tab: a type of page and of article for each post type, as saved or Simple SEO\'s own', 'AboutPage' === $sseo_chosen( 'page_types][page' ) && 'WebPage' === $sseo_chosen( 'page_types][post' ) && 'BlogPosting' === $sseo_chosen( 'article_types][page' ) && 'Article' === $sseo_chosen( 'article_types][post' ) && 'None' === $sseo_chosen( 'article_types][sseo_map' ), array( $sseo_chosen( 'page_types][page' ), $sseo_chosen( 'article_types][page' ), $sseo_chosen( 'article_types][post' ) ) );
 	delete_option( Simple_SEO_Schema::OPTION );
 	delete_option( Simple_SEO_Schema::NAMES );
 	Simple_SEO_Settings::flush();
@@ -4797,6 +4944,26 @@ try {
 	delete_option( Simple_SEO_Schema::OPTION );
 	delete_option( Simple_SEO_Schema::NAMES );
 	Simple_SEO_Settings::flush();
+	// Schema types: of the post types and of single posts.
+	update_option( 'wpseo_titles', array_merge( $sseo_yi_saved[0], array( 'schema-page-type-page' => 'AboutPage', 'schema-page-type-post' => 'WebPage', 'schema-article-type-post' => 'NewsArticle', 'schema-article-type-page' => 'None', 'schema-article-type-sseo_map' => 'Nonsense' ) ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'article_types' => array( 'page' => 'Report' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	$sseo_yi_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema types of post types: Yoast's where they differ from Simple SEO's defaults; Simple SEO's own choice stays; nothing unknown", array( 'page' => 'AboutPage' ) === $sseo_yi_schema['page_types'] && array( 'page' => 'Report', 'post' => 'NewsArticle' ) === $sseo_yi_schema['article_types'] && 2 === ( $sseo_yi_again['settings']['schema'] ?? 0 ), array( $sseo_yi_schema, $sseo_yi_again ) );
+	update_option( 'wpseo_titles', $sseo_yi_saved[0] );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo['posts']['yi_types'] = (int) wp_insert_post( array( 'post_title' => 'Yi Types', 'post_status' => 'publish' ) );
+	$sseo_ym_insert( $sseo['posts']['yi_types'], array( '_yoast_wpseo_schema_page_type' => 'FAQPage', '_yoast_wpseo_schema_article_type' => 'None' ) );
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::posts( $sseo['posts']['yi_types'] - 1, 1, $sseo_yi_again );
+	$sseo_yi_types = array( Simple_SEO_Fields::post_value( $sseo['posts']['yi_types'], 'schema_page_type' ), Simple_SEO_Fields::post_value( $sseo['posts']['yi_types'], 'schema_article_type' ), get_post_meta( $sseo['posts']['yi_types'], '_yoast_wpseo_schema_page_type', true ) );
+	update_post_meta( $sseo['posts']['yi_types'], '_yoast_wpseo_schema_article_type', 'newsarticle' );
+	$sseo_yi_types[] = Simple_SEO_Fields::post_value( $sseo['posts']['yi_types'], 'schema_article_type' );
+	wp_delete_post( $sseo['posts']['yi_types'], true );
+	sseo_check( "Schema types of a post from Yoast's meta, which then reads and writes Simple SEO's fields", array( 'FAQPage', 'None', 'FAQPage', 'NewsArticle' ) === $sseo_yi_types && 2 === ( $sseo_yi_again['post']['fields'] ?? 0 ), array( $sseo_yi_types, $sseo_yi_again ) );
 
 	// Posts.
 	$sseo_yi_report = array();
@@ -5451,6 +5618,15 @@ try {
 	delete_option( Simple_SEO_Schema::OPTION );
 	delete_option( Simple_SEO_Schema::NAMES );
 	Simple_SEO_Settings::flush();
+	update_option( 'rank-math-options-titles', array_merge( $sseo_rm_saved, array( 'pt_post_default_rich_snippet' => 'article', 'pt_post_default_article_type' => 'NewsArticle', 'pt_page_default_rich_snippet' => 'off', 'pt_sseo_map_default_rich_snippet' => 'article', 'pt_attachment_default_rich_snippet' => 'book' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	$sseo_rm_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema types of post types from Rank Math's rich snippets: an article of its type (Article when none is set), no article for the rest", 'NewsArticle' === ( $sseo_rm_schema['article_types']['post'] ?? '' ) && 'Article' === ( $sseo_rm_schema['article_types']['sseo_map'] ?? '' ) && ! isset( $sseo_rm_schema['article_types']['page'] ) && ! isset( $sseo_rm_schema['article_types']['attachment'] ) && array() === $sseo_rm_schema['page_types'], $sseo_rm_schema );
+	update_option( 'rank-math-options-titles', $sseo_rm_saved );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
 
 	$sseo_rm_saved = array( get_option( 'rank-math-options-titles' ), get_option( 'rank-math-options-general' ) );
 	update_option(
@@ -6007,6 +6183,19 @@ try {
 	delete_option( Simple_SEO_Schema::OPTION );
 	delete_option( Simple_SEO_Schema::NAMES );
 	Simple_SEO_Settings::flush();
+	$sseo_ai_dyn_saved = get_option( 'aioseo_options_dynamic' );
+	$sseo_ai_dyn       = json_decode( (string) $sseo_ai_dyn_saved, true );
+	$sseo_ai_dyn['searchAppearance']['postTypes']['post'] = array_merge( (array) ( $sseo_ai_dyn['searchAppearance']['postTypes']['post'] ?? array() ), array( 'schemaType' => 'Article', 'articleType' => 'NewsArticle', 'webPageType' => 'WebPage' ) );
+	$sseo_ai_dyn['searchAppearance']['postTypes']['page'] = array_merge( (array) ( $sseo_ai_dyn['searchAppearance']['postTypes']['page'] ?? array() ), array( 'schemaType' => 'WebPage', 'webPageType' => 'AboutPage', 'articleType' => 'BlogPosting' ) );
+	update_option( 'aioseo_options_dynamic', wp_json_encode( $sseo_ai_dyn ) );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	$sseo_ai_schema = get_option( Simple_SEO_Schema::OPTION );
+	update_option( 'aioseo_options_dynamic', $sseo_ai_dyn_saved );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( "Schema types of post types from AIOSEO: the type of web page, an article of its type only where the schema is Article", 'AboutPage' === ( $sseo_ai_schema['page_types']['page'] ?? '' ) && ! isset( $sseo_ai_schema['page_types']['post'] ) && 'NewsArticle' === ( $sseo_ai_schema['article_types']['post'] ?? '' ) && ! isset( $sseo_ai_schema['article_types']['page'] ), $sseo_ai_schema );
 
 	// Another set of AIOSEO's settings: noindex as the global robots, crawl clean-up off, no separator Simple SEO has.
 	$sseo_ai_saved = array( get_option( 'aioseo_options' ), get_option( 'aioseo_options_dynamic' ) );

@@ -7,6 +7,7 @@
  * @var array<string, string> $names
  * @var string                $language Name of the language being edited, '' without wp-loc.
  * @var array<int, mixed>     $example  The graph of the home page.
+ * @var array<string, string> $types    Post types with SEO fields => their names.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -116,6 +117,45 @@ require __DIR__ . '/language-notice.php';
 				<input type="text" class="regular-text" id="simple-seo-schema-site-alternate" name="<?php echo esc_attr( $simple_seo_names ); ?>[site_alternate]" value="<?php echo esc_attr( (string) ( $names['site_alternate'] ?? '' ) ); ?>">
 			</td>
 		</tr>
+	</tbody>
+</table>
+
+<h2><?php esc_html_e( 'Types of pages', 'simple-seo' ); ?></h2>
+<p><?php esc_html_e( 'What the posts of each type are, unless a post has a type of its own in its SEO block. A page with questions and answers becomes a FAQ page as well.', 'simple-seo' ); ?></p>
+<table class="widefat striped simple-seo-schema-types" style="max-width:860px">
+	<thead>
+		<tr>
+			<th scope="col"><?php esc_html_e( 'Post type', 'simple-seo' ); ?></th>
+			<th scope="col"><?php esc_html_e( 'Type of page', 'simple-seo' ); ?></th>
+			<th scope="col"><?php esc_html_e( 'Type of article', 'simple-seo' ); ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php
+		foreach ( $types as $simple_seo_type => $simple_seo_type_name ) :
+			$simple_seo_page    = Simple_SEO_Schema::known( $settings['page_types'][ $simple_seo_type ] ?? '', Simple_SEO_Schema::PAGE_TYPES ) ?: 'WebPage';
+			$simple_seo_article = Simple_SEO_Schema::known( $settings['article_types'][ $simple_seo_type ] ?? '', Simple_SEO_Schema::ARTICLE_TYPES ) ?: Simple_SEO_Schema::builtin_article_type( $simple_seo_type );
+			?>
+			<tr>
+				<td><?php echo esc_html( $simple_seo_type_name ); ?> <code><?php echo esc_html( $simple_seo_type ); ?></code></td>
+				<td>
+					<label for="simple-seo-schema-page-<?php echo esc_attr( $simple_seo_type ); ?>" class="screen-reader-text"><?php esc_html_e( 'Type of page', 'simple-seo' ); ?></label>
+					<select id="simple-seo-schema-page-<?php echo esc_attr( $simple_seo_type ); ?>" name="<?php echo esc_attr( $simple_seo_option ); ?>[page_types][<?php echo esc_attr( $simple_seo_type ); ?>]">
+						<?php foreach ( Simple_SEO_Schema::page_type_labels() as $simple_seo_value => $simple_seo_label ) : ?>
+							<option value="<?php echo esc_attr( $simple_seo_value ); ?>"<?php selected( $simple_seo_page, $simple_seo_value ); ?>><?php echo esc_html( $simple_seo_label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</td>
+				<td>
+					<label for="simple-seo-schema-article-<?php echo esc_attr( $simple_seo_type ); ?>" class="screen-reader-text"><?php esc_html_e( 'Type of article', 'simple-seo' ); ?></label>
+					<select id="simple-seo-schema-article-<?php echo esc_attr( $simple_seo_type ); ?>" name="<?php echo esc_attr( $simple_seo_option ); ?>[article_types][<?php echo esc_attr( $simple_seo_type ); ?>]">
+						<?php foreach ( Simple_SEO_Schema::article_type_labels() as $simple_seo_value => $simple_seo_label ) : ?>
+							<option value="<?php echo esc_attr( $simple_seo_value ); ?>"<?php selected( $simple_seo_article, $simple_seo_value ); ?>><?php echo esc_html( $simple_seo_label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
+		<?php endforeach; ?>
 	</tbody>
 </table>
 

@@ -32,6 +32,8 @@ final class Simple_SEO_Yoast_Meta {
 		'meta-robots-nofollow'  => 'nofollow',
 		'canonical'             => 'canonical',
 		'focuskw'               => 'keyphrase',
+		'schema_page_type'      => 'schema_page_type',
+		'schema_article_type'   => 'schema_article_type',
 	);
 
 	/** Keys whose text may hold variables: %%title%% for Yoast, {title} for Simple SEO. */

@@ -9,10 +9,12 @@
  *   webpage      — the page, of its kind: CollectionPage for archives, ProfilePage for authors,
  *                  SearchResultsPage for search results;
  *   mainimage    — the featured image of a post;
- *   article      — a post (post types of the filter simple_seo_schema_article_types);
+ *   article      — a post whose type of article is not None (its own, or its post type's);
  *   author       — the person who wrote the post, or whose archive the page is;
  *   breadcrumb   — the trail of Simple_SEO_Breadcrumbs.
  * The pieces refer to each other by @id. A 404 page gets the site and whom it represents only.
+ * A post has a type of page (WebPage, AboutPage, FAQPage, …) and of article, its own or its post
+ * type's; questions and answers on it (Simple_SEO_FAQ) make it a FAQPage too.
  *
  * Who prints the graph (decisions/schema): in the mode Auto Simple SEO stays silent where the theme
  * switches off the graph of SEO plugins with the filter wpseo_json_ld_output, as themes with a graph
@@ -34,6 +36,12 @@ final class Simple_SEO_Schema {
 
 	public const MAX_PROFILES = 20;
 
+	/** Types of a web page (schema.org's WebPage and its kinds) a post may be. */
+	public const PAGE_TYPES = array( 'WebPage', 'AboutPage', 'CheckoutPage', 'CollectionPage', 'ContactPage', 'FAQPage', 'ItemPage', 'MedicalWebPage', 'ProfilePage', 'QAPage', 'RealEstateListing', 'SearchResultsPage' );
+
+	/** Types of an article (schema.org's Article and its kinds) a post may be; None: no article. */
+	public const ARTICLE_TYPES = array( 'None', 'Article', 'BlogPosting', 'NewsArticle', 'Report', 'ScholarlyArticle', 'TechArticle', 'SatiricalArticle', 'AdvertiserContentArticle', 'SocialMediaPosting' );
+
 	/** @var WeakMap<Simple_SEO_Context, array<int, array<string, mixed>>>|null */
 	private static ?WeakMap $graphs = null;
 
@@ -47,6 +55,9 @@ final class Simple_SEO_Schema {
 				'logo'        => 0,
 				'profiles'    => array(),
 				'breadcrumbs' => true,
+				// Post type => its type of page and of article, where it differs from the default.
+				'page_types'    => array(),
+				'article_types' => array(),
 			),
 			array( self::class, 'sanitize' ),
 			true
@@ -64,6 +75,7 @@ final class Simple_SEO_Schema {
 			true
 		);
 
+		add_action( 'init', array( self::class, 'register_fields' ), 5 );
 		// After the head tags of Simple_SEO_Head (also priority 1, added earlier).
 		add_action( 'wp_head', array( self::class, 'output' ), 1 );
 		// Before the theme's own filters (10), so a theme still has the last word.
@@ -72,6 +84,164 @@ final class Simple_SEO_Schema {
 		if ( is_admin() ) {
 			add_action( 'init', array( self::class, 'add_admin_tab' ), 6 );
 		}
+	}
+
+	/** The types of page and of article in the SEO block of posts, under Schema. */
+	public static function register_fields(): void {
+		Simple_SEO_Fields::register_group( 'schema', __( 'Schema', 'simple-seo' ) );
+		Simple_SEO_Fields::register(
+			'schema_page_type',
+			array(
+				'label'    => __( 'Type of page', 'simple-seo' ),
+				'type'     => 'select',
+				'objects'  => array( 'post' ),
+				'options'  => static fn( string $type, $object ): array => array( '' => self::default_label( self::page_type_labels(), $object instanceof WP_Post ? self::default_page_type( $object->post_type ) : 'WebPage' ) ) + self::page_type_labels(),
+				'sanitize' => static fn( $value ): string => self::known( $value, self::PAGE_TYPES ),
+				'order'    => 85,
+				'group'    => 'schema',
+				'preview'  => static fn( string $type, $object ): string => $object instanceof WP_Post ? self::page_type_now( $object ) : '',
+			)
+		);
+		Simple_SEO_Fields::register(
+			'schema_article_type',
+			array(
+				'label'    => __( 'Type of article', 'simple-seo' ),
+				'type'     => 'select',
+				'objects'  => array( 'post' ),
+				'options'  => static fn( string $type, $object ): array => array( '' => self::default_label( self::article_type_labels(), $object instanceof WP_Post ? self::default_article_type( $object->post_type ) : 'None' ) ) + self::article_type_labels(),
+				'sanitize' => static fn( $value ): string => self::known( $value, self::ARTICLE_TYPES ),
+				'order'    => 86,
+				'group'    => 'schema',
+			)
+		);
+	}
+
+	/** @return array<string, string> Type => its name. */
+	public static function page_type_labels(): array {
+		return array(
+			'WebPage'           => __( 'Web page', 'simple-seo' ),
+			'AboutPage'         => __( 'About page', 'simple-seo' ),
+			'CheckoutPage'      => __( 'Checkout page', 'simple-seo' ),
+			'CollectionPage'    => __( 'Collection page', 'simple-seo' ),
+			'ContactPage'       => __( 'Contact page', 'simple-seo' ),
+			'FAQPage'           => __( 'FAQ page', 'simple-seo' ),
+			'ItemPage'          => __( 'Item page', 'simple-seo' ),
+			'MedicalWebPage'    => __( 'Medical page', 'simple-seo' ),
+			'ProfilePage'       => __( 'Profile page', 'simple-seo' ),
+			'QAPage'            => __( 'Question and answer page', 'simple-seo' ),
+			'RealEstateListing' => __( 'Real estate listing', 'simple-seo' ),
+			'SearchResultsPage' => __( 'Search results page', 'simple-seo' ),
+		);
+	}
+
+	/** @return array<string, string> Type => its name. */
+	public static function article_type_labels(): array {
+		return array(
+			'None'                     => __( 'Not an article', 'simple-seo' ),
+			'Article'                  => __( 'Article', 'simple-seo' ),
+			'BlogPosting'              => __( 'Blog post', 'simple-seo' ),
+			'NewsArticle'              => __( 'News article', 'simple-seo' ),
+			'Report'                   => __( 'Report', 'simple-seo' ),
+			'ScholarlyArticle'         => __( 'Scholarly article', 'simple-seo' ),
+			'TechArticle'              => __( 'Technical article', 'simple-seo' ),
+			'SatiricalArticle'         => __( 'Satirical article', 'simple-seo' ),
+			'AdvertiserContentArticle' => __( 'Advertiser content', 'simple-seo' ),
+			'SocialMediaPosting'       => __( 'Social media post', 'simple-seo' ),
+		);
+	}
+
+	/** @param array<string, string> $labels */
+	private static function default_label( array $labels, string $type ): string {
+		/* translators: %s: name of a type of page or article, e.g. Web page. */
+		return sprintf( __( 'As set for this post type: %s', 'simple-seo' ), $labels[ $type ] ?? $type );
+	}
+
+	/**
+	 * A type as its constant spells it ("newsarticle" and "none" as Yoast and others write them
+	 * too); '' for an unknown one.
+	 *
+	 * @param mixed    $value
+	 * @param string[] $types
+	 */
+	public static function known( $value, array $types ): string {
+		$value = is_scalar( $value ) ? strtolower( trim( (string) $value ) ) : '';
+		foreach ( $types as $type ) {
+			if ( strtolower( $type ) === $value ) {
+				return $type;
+			}
+		}
+
+		return '';
+	}
+
+	/** The type of page of a post type's posts: the settings', else WebPage. */
+	public static function default_page_type( string $post_type ): string {
+		$types = (array) Simple_SEO_Settings::value( self::OPTION, 'page_types' );
+
+		return self::known( $types[ $post_type ] ?? '', self::PAGE_TYPES ) ?: 'WebPage';
+	}
+
+	/** Simple SEO's own type of article of a post type: Article for posts, None for the rest. */
+	public static function builtin_article_type( string $post_type ): string {
+		return 'post' === $post_type ? 'Article' : 'None';
+	}
+
+	/**
+	 * The type of article of a post type's posts: the settings', else Simple SEO's own. The filter
+	 * simple_seo_schema_article_types may still add or take out a post type.
+	 */
+	public static function default_article_type( string $post_type ): string {
+		$types = (array) Simple_SEO_Settings::value( self::OPTION, 'article_types' );
+		$type  = self::known( $types[ $post_type ] ?? '', self::ARTICLE_TYPES ) ?: self::builtin_article_type( $post_type );
+
+		/**
+		 * The post types whose posts are articles, asked for one type at a time.
+		 *
+		 * @param string[] $types     The post type, when its posts are articles; none when not.
+		 * @param string   $post_type The post type asked about.
+		 */
+		$listed = in_array( $post_type, (array) apply_filters( 'simple_seo_schema_article_types', 'None' !== $type ? array( $post_type ) : array(), $post_type ), true );
+		if ( ! $listed ) {
+			return 'None';
+		}
+
+		return 'None' !== $type ? $type : 'Article';
+	}
+
+	/** A post's type of page: its own, else its post type's. */
+	public static function post_page_type( WP_Post $post ): string {
+		return self::known( Simple_SEO_Fields::post_value( (int) $post->ID, 'schema_page_type' ), self::PAGE_TYPES ) ?: self::default_page_type( $post->post_type );
+	}
+
+	/** A post's type of article, None for no article: its own, else its post type's. */
+	public static function post_article_type( WP_Post $post ): string {
+		return self::known( Simple_SEO_Fields::post_value( (int) $post->ID, 'schema_article_type' ), self::ARTICLE_TYPES ) ?: self::default_article_type( $post->post_type );
+	}
+
+	/**
+	 * Under the type of page in the editor: the type the page has now, and what Simple_SEO_FAQ
+	 * found — the questions, an accordion that could be marked up, or none where FAQ is chosen.
+	 */
+	public static function page_type_now( WP_Post $post ): string {
+		$type   = self::post_page_type( $post );
+		$labels = self::page_type_labels();
+		$scan   = Simple_SEO_FAQ::scan( $post );
+		$faq    = Simple_SEO_FAQ::questions( $post, 'FAQPage' === $type );
+
+		if ( $faq ) {
+			$name = 'FAQPage' === $type || 'WebPage' === $type ? $labels['FAQPage'] : $labels[ $type ] . ', ' . $labels['FAQPage'];
+			/* translators: 1: type of page, 2: number of questions. */
+			return sprintf( __( '%1$s with questions and answers: %2$s', 'simple-seo' ), $name, number_format_i18n( count( $faq ) ) );
+		}
+		if ( 'FAQPage' === $type ) {
+			return __( 'Web page: no questions and answers were found. Add the block Questions and answers, or an accordion, to the page.', 'simple-seo' );
+		}
+		if ( $scan['accordion'] ) {
+			/* translators: 1: type of page, 2: number of items of the accordion. */
+			return sprintf( __( '%1$s. The page has an accordion (items: %2$s): choose FAQ page to mark it up as questions and answers.', 'simple-seo' ), $labels[ $type ] ?? $type, number_format_i18n( count( $scan['accordion'] ) ) );
+		}
+
+		return $labels[ $type ] ?? $type;
 	}
 
 	public static function add_admin_tab(): void {
@@ -228,8 +398,21 @@ final class Simple_SEO_Schema {
 			return $pieces;
 		}
 
+		$post = $context->object instanceof WP_Post ? $context->object : null;
+		$type = self::page_type( $context );
+		$faq  = array();
+		if ( $post && Simple_SEO_Context::SINGULAR === $context->kind && ! $context->password_required ) {
+			$faq = Simple_SEO_FAQ::questions( $post, 'FAQPage' === $type );
+		}
+		if ( 'FAQPage' === $type && ! $faq ) {
+			// FAQPage without questions is no valid FAQ page.
+			$type = 'WebPage';
+		} elseif ( $faq && 'FAQPage' !== $type ) {
+			$type = 'WebPage' === $type ? 'FAQPage' : array_merge( (array) $type, array( 'FAQPage' ) );
+		}
+
 		$page = array(
-			'@type'       => self::page_type( $context ),
+			'@type'       => $type,
 			'@id'         => $url,
 			'url'         => $url,
 			'name'        => self::page_name( $context ),
@@ -240,8 +423,20 @@ final class Simple_SEO_Schema {
 		if ( $context->is_front_page && $publisher ) {
 			$page['about'] = array( '@id' => $publisher['@id'] );
 		}
+		if ( $faq ) {
+			$page['mainEntity'] = array_map(
+				static fn( array $item ): array => array(
+					'@type'          => 'Question',
+					'name'           => $item['question'],
+					'acceptedAnswer' => array(
+						'@type' => 'Answer',
+						'text'  => $item['answer'],
+					),
+				),
+				$faq
+			);
+		}
 
-		$post = $context->object instanceof WP_Post ? $context->object : null;
 		if ( $post && in_array( $context->kind, array( Simple_SEO_Context::SINGULAR, Simple_SEO_Context::POSTS_PAGE ), true ) ) {
 			$page['datePublished'] = (string) get_post_time( 'c', true, $post );
 			$page['dateModified']  = (string) get_post_modified_time( 'c', true, $post );
@@ -460,6 +655,10 @@ final class Simple_SEO_Schema {
 
 	/** @return string|string[] */
 	private static function page_type( Simple_SEO_Context $context ) {
+		if ( Simple_SEO_Context::SINGULAR === $context->kind && $context->object instanceof WP_Post ) {
+			return self::post_page_type( $context->object );
+		}
+
 		switch ( $context->kind ) {
 			case Simple_SEO_Context::HOME:
 			case Simple_SEO_Context::POSTS_PAGE:
@@ -555,20 +754,19 @@ final class Simple_SEO_Schema {
 		return $context->object instanceof WP_Post ? (int) $context->object->post_author : 0;
 	}
 
-	/** Whether a page is an article: a post of a type the filter names, not the front page. */
+	/** Whether a page is an article: a post, not the front page, whose type of article is not None. */
 	public static function is_article( Simple_SEO_Context $context ): bool {
+		return '' !== self::article_type( $context );
+	}
+
+	/** The type of article of a page; '' when it is none. */
+	public static function article_type( Simple_SEO_Context $context ): string {
 		if ( Simple_SEO_Context::SINGULAR !== $context->kind || $context->is_front_page || ! $context->object instanceof WP_Post ) {
-			return false;
+			return '';
 		}
+		$type = self::post_article_type( $context->object );
 
-		/**
-		 * The post types whose posts are articles in the graph.
-		 *
-		 * @param string[] $types
-		 */
-		$types = (array) apply_filters( 'simple_seo_schema_article_types', array( 'post' ) );
-
-		return in_array( $context->object->post_type, $types, true );
+		return 'None' !== $type ? $type : '';
 	}
 
 	/**
@@ -578,8 +776,9 @@ final class Simple_SEO_Schema {
 	 * @return array<string, mixed>
 	 */
 	private static function article( WP_Post $post, string $url, ?array $publisher, ?array $author, ?array $image ): array {
+		$type    = self::post_article_type( $post );
 		$article = array(
-			'@type'            => 'Article',
+			'@type'            => 'None' !== $type ? $type : 'Article',
 			'@id'              => $url . '#article',
 			'isPartOf'         => array( '@id' => $url ),
 			'mainEntityOfPage' => array( '@id' => $url ),
@@ -701,7 +900,30 @@ final class Simple_SEO_Schema {
 			'logo'        => Simple_SEO_Fields::image_attachment( $input['logo'] ?? 0 ),
 			'profiles'    => self::sanitize_profiles( $input['profiles'] ?? array() ),
 			'breadcrumbs' => ! isset( $input['breadcrumbs'] ) || '1' === (string) $input['breadcrumbs'],
+			'page_types'    => self::sanitize_types( $input['page_types'] ?? array(), self::PAGE_TYPES, static fn( string $post_type ): string => 'WebPage' ),
+			'article_types' => self::sanitize_types( $input['article_types'] ?? array(), self::ARTICLE_TYPES, array( self::class, 'builtin_article_type' ) ),
 		);
+	}
+
+	/**
+	 * The types of the post types with SEO fields: a known type, kept only where it differs from
+	 * the default, so a better default reaches the rest.
+	 *
+	 * @param mixed    $input
+	 * @param string[] $types
+	 * @return array<string, string>
+	 */
+	private static function sanitize_types( $input, array $types, callable $default ): array {
+		$clean = array();
+		foreach ( (array) $input as $post_type => $type ) {
+			$post_type = sanitize_key( (string) $post_type );
+			$type      = self::known( $type, $types );
+			if ( '' !== $type && post_type_exists( $post_type ) && $type !== $default( $post_type ) ) {
+				$clean[ $post_type ] = $type;
+			}
+		}
+
+		return $clean;
 	}
 
 	/**
@@ -749,6 +971,13 @@ final class Simple_SEO_Schema {
 		$names    = Simple_SEO_Settings::get( self::NAMES );
 		$language = Simple_SEO_WP_Loc::admin_language();
 		$example  = self::graph( Simple_SEO_Context::for_home() );
+		$types    = array();
+		foreach ( Simple_SEO_Fields::post_types() as $post_type ) {
+			$object = get_post_type_object( $post_type );
+			if ( $object instanceof WP_Post_Type ) {
+				$types[ $post_type ] = (string) $object->labels->name;
+			}
+		}
 
 		require SIMPLE_SEO_DIR . 'includes/views/tab-schema.php';
 	}

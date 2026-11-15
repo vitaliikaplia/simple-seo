@@ -258,3 +258,19 @@
 		width: auto;
 	}
 }
+
+/* Schema tab: the types of each post type. Fixed columns, so long names of types do not widen
+   the page on a phone; a select fills its column. */
+.simple-seo-schema-types {
+	table-layout: fixed;
+	width: 100%;
+}
+
+.simple-seo-schema-types select {
+	width: 100%;
+	max-width: 100%;
+}
+
+.simple-seo-schema-types code {
+	word-break: break-all;
+}

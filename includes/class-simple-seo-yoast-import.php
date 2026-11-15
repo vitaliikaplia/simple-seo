@@ -335,6 +335,13 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 			$common['profiles'] = $profiles;
 		}
 
+		// The type of page and of article of each post type: schema-page-type-{type}, schema-article-type-{type}.
+		foreach ( $titles as $key => $value ) {
+			if ( preg_match( '/^schema-(page|article)-type-(.+)$/', (string) $key, $match ) && '' !== self::scalar( $value ) ) {
+				$common[ $match[1] . '_types' ][ $match[2] ] = self::scalar( $value );
+			}
+		}
+
 		return $common;
 	}
 

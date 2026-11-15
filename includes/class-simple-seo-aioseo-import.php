@@ -132,7 +132,7 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		);
 		$image = 'default' === $get( 'social.facebook.general.defaultImageSourcePosts' ) ? self::image( self::scalar( $get( 'social.facebook.general.defaultImagePosts' ) ) ) : 0;
 		self::social( $image, self::scalar( $get( 'social.profiles.urls.twitterUrl' ) ), $report );
-		self::take_schema( $get, $report );
+		self::take_schema( $get, $dynamic, $report );
 
 		$switch = static fn( string $path ): ?bool => is_bool( $get( $path ) ) ? $get( $path ) : null;
 		self::breadcrumbs( self::scalar( $get( 'breadcrumbs.separator' ) ), $switch( 'breadcrumbs.showCurrentItem' ), $switch( 'breadcrumbs.showBlogHome' ), array(), $report );
@@ -477,10 +477,11 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 	 * Whom the site represents, the names, the logo and the profiles elsewhere. A name made of
 	 * AIOSEO's tags (#site_title, the default) is not taken: an empty name is the site's title.
 	 *
-	 * @param callable             $get Reads a path of AIOSEO's options.
+	 * @param callable             $get     Reads a path of AIOSEO's options.
+	 * @param array<string, mixed> $dynamic AIOSEO's options of post types and taxonomies.
 	 * @param array<string, mixed> $report
 	 */
-	private static function take_schema( callable $get, array &$report ): void {
+	private static function take_schema( callable $get, array $dynamic, array &$report ): void {
 		$person = 'person' === self::scalar( $get( 'searchAppearance.global.schema.siteRepresents' ) );
 		$user   = absint( self::scalar( $get( 'searchAppearance.global.schema.person' ) ) );
 		$common = array();
@@ -503,6 +504,20 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		$profiles = array_values( array_filter( array_map( 'strval', $profiles ), static fn( string $url ): bool => '' !== $url && $url !== self::scalar( $get( 'social.profiles.urls.twitterUrl' ) ) ) );
 		if ( $profiles ) {
 			$common['profiles'] = $profiles;
+		}
+
+		// The type of page and of article of each post type: an Article, or the type of web page.
+		foreach ( (array) self::get( $dynamic, 'searchAppearance.postTypes' ) as $post_type => $options ) {
+			if ( ! is_array( $options ) ) {
+				continue;
+			}
+			$schema = self::scalar( $options['schemaType'] ?? '' );
+			if ( '' !== self::scalar( $options['webPageType'] ?? '' ) ) {
+				$common['page_types'][ $post_type ] = self::scalar( $options['webPageType'] );
+			}
+			if ( '' !== $schema ) {
+				$common['article_types'][ $post_type ] = 'Article' === $schema ? ( self::scalar( $options['articleType'] ?? '' ) ?: 'BlogPosting' ) : 'None';
+			}
 		}
 
 		$name = static function ( string $path ) use ( $get ): string {

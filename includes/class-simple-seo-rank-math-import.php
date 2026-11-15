@@ -327,6 +327,14 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		}
 
 		$common = $company ? array( 'represents' => 'organization' ) : array();
+		// The type of article of each post type: its default rich snippet, an article of the type chosen.
+		foreach ( $titles as $key => $value ) {
+			if ( preg_match( '/^pt_(.+)_default_rich_snippet$/', (string) $key, $match ) && '' !== self::scalar( $value ) ) {
+				$common['article_types'][ $match[1] ] = 'article' === self::scalar( $value )
+					? ( self::scalar( $titles[ 'pt_' . $match[1] . '_default_article_type' ] ?? '' ) ?: ( 'post' === $match[1] ? 'BlogPosting' : 'Article' ) )
+					: 'None';
+			}
+		}
 		$logo   = self::image( $titles, 'knowledgegraph_logo' );
 		if ( $logo ) {
 			$common['logo'] = $logo;
