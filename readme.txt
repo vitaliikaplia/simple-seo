@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.13.0
+Stable tag: 0.14.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.14.0 =
+* Yoast SEO post meta for themes: once Yoast is deactivated, get_post_meta(), update_post_meta(), add_post_meta() and delete_post_meta() with Yoast's keys read and write Simple SEO's own fields — _yoast_wpseo_title, _yoast_wpseo_metadesc, _yoast_wpseo_opengraph-title, _yoast_wpseo_opengraph-description, _yoast_wpseo_opengraph-image and _yoast_wpseo_opengraph-image-id, _yoast_wpseo_meta-robots-noindex, _yoast_wpseo_meta-robots-nofollow, _yoast_wpseo_canonical and _yoast_wpseo_primary_category (or the primary term of another taxonomy). Yoast's %%variables%% become Simple SEO's {variables} and back.
+* The rows Yoast left stay as they were for the import and for Yoast itself; the list of all of a post's meta leaves the aliases out, so copying a post (a new wp-loc translation) copies Simple SEO's fields and not Yoast's old values. Keys Simple SEO has no field for (focus keyphrase, X, advanced robots) stay Yoast's rows.
 
 = 0.13.0 =
 * Yoast SEO filters for themes: once Yoast is deactivated, the filters themes hook into change Simple SEO's output as they changed Yoast's — wpseo_title (the <title> alone), wpseo_metadesc (also where a page has no description), wpseo_canonical, the Open Graph filters (wpseo_opengraph_type, _title, _desc, _url, _image with its width, height and type, wpseo_og_locale and wpseo_locale), wpseo_twitter_title and wpseo_twitter_image, wpseo_robots and wpseo_robots_array, wpseo_breadcrumb_links (Simple SEO's own breadcrumbs included), the markup filters of yoast_breadcrumb() (wpseo_breadcrumb_single_link, wpseo_breadcrumb_single_link_info, wpseo_breadcrumb_separator, wpseo_breadcrumb_output_class), the sitemap filters (wpseo_sitemap_entry, wpseo_sitemap_url, wpseo_sitemap_post_type_first_links, wpseo_exclude_from_sitemap_by_post_ids and wpseo_exclude_from_sitemap_by_term_ids) and wpseo_replacements.

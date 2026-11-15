@@ -2,7 +2,8 @@
 /**
  * Compatibility with themes written for Yoast SEO: the public functions and the class they call
  * (wpseo_replace_vars(), yoast_breadcrumb(), WPSEO_Primary_Term and the primary term helpers),
- * answered with Simple SEO's own data, so a theme keeps working once Yoast is gone.
+ * answered with Simple SEO's own data, so a theme keeps working once Yoast is gone. Yoast's
+ * filters (Simple_SEO_Yoast_Filters) and post meta keys (Simple_SEO_Yoast_Meta) load with it.
  *
  * Interface compatibility only: the implementation is Simple SEO's. Nothing is defined while Yoast
  * itself or another SEO plugin is active, and nothing that other plugins take as a sign of a real
@@ -64,6 +65,8 @@ final class Simple_SEO_Yoast_Compat {
 		}
 		require_once SIMPLE_SEO_DIR . 'includes/compat/class-simple-seo-yoast-filters.php';
 		Simple_SEO_Yoast_Filters::init();
+		require_once SIMPLE_SEO_DIR . 'includes/compat/class-simple-seo-yoast-meta.php';
+		Simple_SEO_Yoast_Meta::init();
 	}
 
 	public static function loaded(): bool {
@@ -132,31 +135,83 @@ final class Simple_SEO_Yoast_Compat {
 	}
 
 	/**
+	 * Yoast's variables that are Simple SEO's own under another name: Yoast's name => Simple SEO's.
+	 * The first Yoast name of a Simple SEO variable is the one it is written back as.
+	 */
+	private const VARIABLES = array(
+		'sitename'             => 'site',
+		'sitedesc'             => 'tagline',
+		'sep'                  => 'sep',
+		'title'                => 'title',
+		'term_title'           => 'title',
+		'excerpt'              => 'excerpt',
+		'excerpt_only'         => 'excerpt',
+		'term_description'     => 'excerpt',
+		'category_description' => 'excerpt',
+		'tag_description'      => 'excerpt',
+		'category'             => 'category',
+		'primary_category'     => 'category',
+		'date'                 => 'date',
+		'name'                 => 'author',
+		'page'                 => 'page',
+		'searchphrase'         => 'search',
+		'currentyear'          => 'year',
+		'pt_single'            => 'post_type',
+	);
+
+	/**
+	 * A text written for Yoast in Simple SEO's syntax: %%title%% %%sep%% %%sitename%% becomes
+	 * {title} {sep} {site}. A Yoast variable Simple SEO has no counterpart for stays as written.
+	 */
+	public static function to_simple( string $text ): string {
+		if ( ! str_contains( $text, '%%' ) ) {
+			return $text;
+		}
+
+		$own = Simple_SEO_Variables::labels();
+
+		return (string) preg_replace_callback(
+			'/%%([A-Za-z0-9_-]+)%%/',
+			static function ( array $match ) use ( $own ): string {
+				$name = strtolower( $match[1] );
+				$name = self::VARIABLES[ $name ] ?? $name;
+
+				return isset( $own[ $name ] ) ? '{' . $name . '}' : $match[0];
+			},
+			$text
+		);
+	}
+
+	/**
+	 * A text of Simple SEO's in Yoast's syntax: {title} {sep} {site} becomes %%title%% %%sep%%
+	 * %%sitename%%, the reverse of to_simple(). Braces that are no Simple SEO variable stay.
+	 */
+	public static function to_yoast( string $text ): string {
+		if ( ! str_contains( $text, '{' ) ) {
+			return $text;
+		}
+
+		$own   = Simple_SEO_Variables::labels();
+		$names = array();
+		foreach ( self::VARIABLES as $yoast => $name ) {
+			$names[ $name ] ??= $yoast;
+		}
+
+		return (string) preg_replace_callback(
+			'/\{([a-z][a-z0-9_]*)\}/',
+			static fn( array $match ): string => isset( $own[ $match[1] ] ) ? '%%' . ( $names[ $match[1] ] ?? $match[1] ) . '%%' : $match[0],
+			$text
+		);
+	}
+
+	/**
 	 * The value of a Yoast variable for a page; null for one Simple SEO has no value for.
-	 * Most are Simple SEO's own variables under Yoast's names.
+	 * Most are Simple SEO's own variables under Yoast's names; a name Yoast does not have but
+	 * Simple SEO does (a variable a theme registered) is Simple SEO's.
 	 */
 	public static function variable( string $name, Simple_SEO_Context $context ): ?string {
-		$own = array(
-			'sitename'             => 'site',
-			'sitedesc'             => 'tagline',
-			'sep'                  => 'sep',
-			'title'                => 'title',
-			'term_title'           => 'title',
-			'excerpt'              => 'excerpt',
-			'excerpt_only'         => 'excerpt',
-			'term_description'     => 'excerpt',
-			'category_description' => 'excerpt',
-			'tag_description'      => 'excerpt',
-			'category'             => 'category',
-			'primary_category'     => 'category',
-			'date'                 => 'date',
-			'name'                 => 'author',
-			'page'                 => 'page',
-			'searchphrase'         => 'search',
-			'currentyear'          => 'year',
-		);
-		if ( isset( $own[ $name ] ) ) {
-			return Simple_SEO_Variables::value( $own[ $name ], $context );
+		if ( isset( self::VARIABLES[ $name ] ) ) {
+			return Simple_SEO_Variables::value( self::VARIABLES[ $name ], $context );
 		}
 
 		$post = $context->object instanceof WP_Post ? $context->object : null;
@@ -165,8 +220,6 @@ final class Simple_SEO_Yoast_Compat {
 		switch ( $name ) {
 			case 'id':
 				return $post ? (string) $post->ID : '';
-			case 'pt_single':
-				return $type ? (string) $type->labels->singular_name : '';
 			case 'pt_plural':
 				return $type ? (string) $type->labels->name : '';
 			case 'modified':
@@ -206,7 +259,7 @@ final class Simple_SEO_Yoast_Compat {
 			return is_scalar( $value ) ? Simple_SEO_Variables::plain( (string) $value ) : '';
 		}
 
-		return null;
+		return Simple_SEO_Variables::value( $name, $context );
 	}
 
 	/**

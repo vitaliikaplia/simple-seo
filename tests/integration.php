@@ -1980,6 +1980,7 @@ try {
 		update_post_meta( $sseo['posts']['bc_ml_o'], '_simple_seo_primary_category', (int) $sseo_c_d['term_id'] );
 		$sseo_primary = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Primary_Term::get( get_post( $sseo['posts']['bc_ml_o'] ), 'category' ) );
 		sseo_check( 'wp-loc: a copied pick is read as its translation', (int) $sseo_c_o['term_id'] === ( $sseo_primary->term_id ?? 0 ), $sseo_primary );
+		sseo_check( "wp-loc: Yoast's key reads the translation too, as wp-loc answered for Yoast", (string) $sseo_c_o['term_id'] === get_post_meta( $sseo['posts']['bc_ml_o'], '_yoast_wpseo_primary_category', true ) );
 		$sseo_items = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::for_post( get_post( $sseo['posts']['bc_ml_o'] ) ) ) );
 		$sseo_prefix = '/' . WP_LOC_DB::from_db_language_code( $sseo_o ) . '/';
 		sseo_check( 'wp-loc: the trail of a translation goes through its own language\'s category and links', 'Bc Ml other' === ( $sseo_items[1]['label'] ?? '' ) && str_contains( $sseo_items[1]['url'] ?? '', $sseo_prefix ) && str_contains( end( $sseo_items )['url'], $sseo_prefix ), $sseo_items );
@@ -3152,6 +3153,166 @@ try {
 	delete_option( Simple_SEO_Indexing::OPTION );
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Context::reset();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Yoast meta' );
+
+	$sseo_ym_hooks = array(
+		'get_post_metadata'    => 'get',
+		'update_post_metadata' => 'update',
+		'add_post_metadata'    => 'add',
+		'delete_post_metadata' => 'delete',
+	);
+	$sseo_ym_ok    = true;
+	foreach ( $sseo_ym_hooks as $sseo_hook => $sseo_name ) {
+		$sseo_ym_ok = $sseo_ym_ok && 5 === has_filter( $sseo_hook, array( Simple_SEO_Yoast_Meta::class, $sseo_name ) );
+	}
+	sseo_check( "hooked when the layer loads, before other plugins' meta filters", $sseo_ym_ok );
+
+	// Simple SEO's syntax and Yoast's.
+	sseo_check( "to_simple(): Yoast's variables in Simple SEO's syntax, the ones it has no counterpart for as written", '{site} {tagline} {author} {search} {year} {post_type} {category} {excerpt} {title} %%cf_x%% %%id%% 100%' === Simple_SEO_Yoast_Compat::to_simple( '%%sitename%% %%sitedesc%% %%name%% %%searchphrase%% %%currentyear%% %%pt_single%% %%primary_category%% %%excerpt_only%% %%Title%% %%cf_x%% %%id%% 100%' ) );
+	sseo_check( 'to_yoast(): back under the first name Yoast has for each; braces that are no variable stay', '%%sitename%% %%sitedesc%% %%name%% %%searchphrase%% %%currentyear%% %%pt_single%% %%category%% %%excerpt%% %%title%% %%sep%% {nope} {Title} {}' === Simple_SEO_Yoast_Compat::to_yoast( '{site} {tagline} {author} {search} {year} {post_type} {category} {excerpt} {title} {sep} {nope} {Title} {}' ) );
+	Simple_SEO_Variables::register( 'sseo_price', 'Price', static fn(): string => '100 EUR' );
+	sseo_check( 'a variable a theme registered keeps its name both ways and works in wpseo_replace_vars()', '%%sseo_price%%' === Simple_SEO_Yoast_Compat::to_yoast( '{sseo_price}' ) && '{sseo_price}' === Simple_SEO_Yoast_Compat::to_simple( '%%sseo_price%%' ) && '100 EUR' === wpseo_replace_vars( '%%sseo_price%%', array() ) );
+
+	$sseo['posts']['ym']      = (int) wp_insert_post( array( 'post_title' => 'Ym Post', 'post_status' => 'publish', 'post_category' => array( $sseo_news, $sseo_sport ) ) );
+	$sseo['posts']['ym_page'] = (int) wp_insert_post( array( 'post_title' => 'Ym Page', 'post_type' => 'page', 'post_status' => 'publish' ) );
+	$sseo['posts']['ym_copy'] = (int) wp_insert_post( array( 'post_title' => 'Ym Copy', 'post_status' => 'draft' ) );
+	$sseo_ym                  = $sseo['posts']['ym'];
+	$sseo_ym_page             = $sseo['posts']['ym_page'];
+	$sseo_ym_copy             = $sseo['posts']['ym_copy'];
+	$sseo_ym_rows             = static fn( string $key, int $id = 0 ): array => $GLOBALS['wpdb']->get_col( $GLOBALS['wpdb']->prepare( "SELECT meta_value FROM {$GLOBALS['wpdb']->postmeta} WHERE post_id = %d AND meta_key = %s ORDER BY meta_id", $id ? $id : $sseo_ym, $key ) );
+	$sseo_ym_insert           = static function ( int $id, array $rows ): void {
+		foreach ( $rows as $sseo_key => $sseo_value ) {
+			$GLOBALS['wpdb']->insert( $GLOBALS['wpdb']->postmeta, array( 'post_id' => $id, 'meta_key' => $sseo_key, 'meta_value' => $sseo_value ) );
+		}
+		wp_cache_delete( $id, 'post_meta' );
+	};
+	// The rows Yoast left, written past the meta API as Yoast itself had written them.
+	$sseo_ym_insert( $sseo_ym, array( '_yoast_wpseo_title' => 'Old %%title%%', '_yoast_wpseo_metadesc' => 'Old description', '_yoast_wpseo_focuskw' => 'old focus', '_yoast_wpseo_primary_category' => (string) $sseo_news ) );
+
+	$sseo_ym_notices = array();
+	set_error_handler(
+		static function ( int $no, string $text ) use ( &$sseo_ym_notices ): bool {
+			$sseo_ym_notices[] = $text;
+			return true;
+		}
+	);
+	$sseo_vals = array( get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_title' ), metadata_exists( 'post', $sseo_ym, '_yoast_wpseo_metadesc' ), get_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', true ) );
+	restore_error_handler();
+	sseo_check( "an alias reads Simple SEO's field, not the row Yoast left (and an empty one without a PHP notice)", array( '', array(), false, '' ) === $sseo_vals && array() === $sseo_ym_notices, array( $sseo_vals, $sseo_ym_notices ) );
+	sseo_check( 'a key Simple SEO has no field for stays the row Yoast left', 'old focus' === get_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', true ) );
+	update_post_meta( $sseo_ym, Simple_SEO_Fields::meta_key( 'title' ), '{title} {sep} {site} {nope}' );
+	update_post_meta( $sseo_ym, Simple_SEO_Fields::meta_key( 'description' ), 'By {author} on {site}: {tagline}, {post_type}, {category}' );
+	$sseo_text = get_post_meta( $sseo_ym, '_yoast_wpseo_title', true );
+	sseo_check( "Simple SEO's value, its variables as Yoast's", '%%title%% %%sep%% %%sitename%% {nope}' === $sseo_text && array( $sseo_text ) === get_post_meta( $sseo_ym, '_yoast_wpseo_title' ) && metadata_exists( 'post', $sseo_ym, '_yoast_wpseo_title' ) && 'By %%name%% on %%sitename%%: %%sitedesc%%, %%pt_single%%, %%category%%' === get_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', true ), $sseo_text );
+	$sseo_text = wpseo_replace_vars( $sseo_text, get_post( $sseo_ym ) );
+	sseo_check( 'what a theme reads works in wpseo_replace_vars()', 'Ym Post ' . Simple_SEO_Titles::separator() . ' ' . get_option( 'blogname' ) . ' {nope}' === $sseo_text, $sseo_text );
+
+	// Writing.
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_title', '%%title%% %%sep%% %%sitename%% %%TERM_TITLE%% %%modified%%' ), Simple_SEO_Fields::post_value( $sseo_ym, 'title' ), $sseo_ym_rows( '_yoast_wpseo_title' ) );
+	sseo_check( "update_post_meta() writes Simple SEO's field in its syntax; the row Yoast left stays as it was", array( true, '{title} {sep} {site} {title} %%modified%%', array( 'Old %%title%%' ) ) === $sseo_vals, $sseo_vals );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_title', '%%title%% for the page' );
+	$sseo_text = Simple_SEO_Titles::title( Simple_SEO_Context::for_post( get_post( $sseo_ym ) ) );
+	sseo_check( 'the page shows it', 'Ym Post for the page' === $sseo_text, $sseo_text );
+	$sseo_text = "Quotes \" and slash \\ %%title%%";
+	update_post_meta( $sseo_ym, '_yoast_wpseo_title', wp_slash( $sseo_text ) );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', wp_slash( "Line one\nLine two's" ) );
+	sseo_check( 'what a theme writes reads back the same: quotes, slashes, lines', $sseo_text === get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ) && "Line one\nLine two's" === get_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ) );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_title', '<b>Bold</b> title' );
+	$sseo_vals = array( get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), update_post_meta( $sseo_ym, '_yoast_wpseo_title', '<b></b>' ), update_post_meta( $sseo_ym, '_yoast_wpseo_title', array( 'x' ) ), get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ) );
+	sseo_check( "the field's sanitizer applies; what it cannot hold is not written", array( 'Bold title', false, false, 'Bold title' ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_title', '' ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'title' ) ), $sseo_ym_rows( '_yoast_wpseo_title' ), get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ) );
+	sseo_check( "'' clears the field, no row left; the row Yoast left stays", array( true, array(), array( 'Old %%title%%' ), '' ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( delete_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', 'Another text' ), get_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', true ), delete_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', "Line one\nLine two's" ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'description' ) ), $sseo_ym_rows( '_yoast_wpseo_metadesc' ), delete_post_meta( $sseo_ym, '_yoast_wpseo_metadesc' ) );
+	sseo_check( "delete_post_meta() clears the field, given a value only that value; the row Yoast left stays", array( false, "Line one\nLine two's", true, array(), array( 'Old description' ), false ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( add_post_meta( $sseo_ym, '_yoast_wpseo_title', 'First', true ), add_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Second', true ), add_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Third' ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'title' ) ) );
+	sseo_check( 'add_post_meta() sets the one value; with unique only while it is unset', is_int( $sseo_vals[0] ) && false === $sseo_vals[1] && true === $sseo_vals[2] && array( 'Third' ) === $sseo_vals[3], $sseo_vals );
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Fourth', 'Not it' ), get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), update_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Fourth', 'Third' ), get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), delete_post_meta( $sseo_ym, '_yoast_wpseo_title', array( 'x' ) ) );
+	sseo_check( 'update_post_meta() given the previous value changes only that one', array( false, 'Third', true, 'Fourth', false ) === $sseo_vals, $sseo_vals );
+	$sseo_theirs = static fn( $value, $id, $key ) => '_yoast_wpseo_title' === $key ? array( 'Theirs' ) : $value;
+	$sseo_veto   = static fn( $check, $id, $key ) => '_yoast_wpseo_title' === $key ? 'vetoed' : $check;
+	add_filter( 'get_post_metadata', $sseo_theirs, 1, 3 );
+	foreach ( array( 'update_post_metadata', 'add_post_metadata', 'delete_post_metadata' ) as $sseo_hook ) {
+		add_filter( $sseo_hook, $sseo_veto, 1, 3 );
+	}
+	$sseo_vals = array( get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), update_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Mine' ), add_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Mine' ), delete_post_meta( $sseo_ym, '_yoast_wpseo_title' ), Simple_SEO_Fields::post_value( $sseo_ym, 'title' ) );
+	remove_filter( 'get_post_metadata', $sseo_theirs, 1 );
+	foreach ( array( 'update_post_metadata', 'add_post_metadata', 'delete_post_metadata' ) as $sseo_hook ) {
+		remove_filter( $sseo_hook, $sseo_veto, 1 );
+	}
+	sseo_check( "another plugin's earlier answer stands", array( 'Theirs', true, 'vetoed', true, 'Fourth' ) === $sseo_vals, $sseo_vals );
+
+	// Indexing.
+	update_option( 'blog_public', '1' );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-noindex', '1' );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-nofollow', '1' );
+	$sseo_vals = array( Simple_SEO_Fields::post_value( $sseo_ym, 'index' ), Simple_SEO_Fields::post_value( $sseo_ym, 'nofollow' ), get_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-noindex', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-nofollow', true ), Simple_SEO_Indexing::is_noindex( Simple_SEO_Context::for_post( get_post( $sseo_ym ) ) ) );
+	sseo_check( "Yoast's noindex 1 and nofollow 1 are Simple SEO's noindex and nofollow", array( 'noindex', '1', '1', '1', true ) === $sseo_vals, $sseo_vals );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-noindex', '2' );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-nofollow', '0' );
+	$sseo_vals = array( Simple_SEO_Fields::post_value( $sseo_ym, 'index' ), get_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-noindex', true ), Simple_SEO_Indexing::is_noindex( Simple_SEO_Context::for_post( get_post( $sseo_ym ) ) ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'nofollow' ) ), get_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-nofollow', true ) );
+	sseo_check( '2 is index; nofollow 0 clears it', array( 'index', '2', false, array(), '' ) === $sseo_vals, $sseo_vals );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-noindex', '0' );
+	$sseo_ym_insert( $sseo_ym, array( Simple_SEO_Fields::meta_key( 'nofollow' ) => '0' ) );
+	sseo_check( "noindex 0 is Yoast's default, the setting of the type; a stored 0 is no nofollow, as Simple SEO reads it", array() === $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'index' ) ) && '' === get_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-noindex', true ) && '' === get_post_meta( $sseo_ym, '_yoast_wpseo_meta-robots-nofollow', true ) );
+	delete_post_meta( $sseo_ym, Simple_SEO_Fields::meta_key( 'nofollow' ) );
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_canonical', 'https://example.com/original/' ), update_post_meta( $sseo_ym, '_yoast_wpseo_canonical', 'javascript:alert(1)' ), get_post_meta( $sseo_ym, '_yoast_wpseo_canonical', true ), Simple_SEO_Indexing::canonical( Simple_SEO_Context::for_post( get_post( $sseo_ym ) ) ) );
+	sseo_check( 'the canonical address; one the field refuses is not written', true === $sseo_vals[0] && false === $sseo_vals[1] && array( 'https://example.com/original/', 'https://example.com/original/' ) === array_slice( $sseo_vals, 2 ), $sseo_vals );
+
+	// Social networks.
+	update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-title', '%%title%% to share' );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-description', 'About %%sitename%%' );
+	$sseo_vals = array( Simple_SEO_Fields::post_value( $sseo_ym, 'og_title' ), Simple_SEO_Fields::post_value( $sseo_ym, 'og_description' ), get_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-title', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-description', true ), Simple_SEO_Social::title( Simple_SEO_Context::for_post( get_post( $sseo_ym ) ) ) );
+	sseo_check( 'Open Graph title and description, with variables', array( '{title} to share', 'About {site}', '%%title%% to share', 'About %%sitename%%', 'Ym Post to share' ) === $sseo_vals, $sseo_vals );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image-id', (string) $sseo_og );
+	$sseo_vals = array( Simple_SEO_Fields::post_value( $sseo_ym, 'og_image' ), get_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image-id', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image', true ) );
+	sseo_check( 'the image: its ID, and its address where Yoast kept that', array( (string) $sseo_og, (string) $sseo_og, (string) wp_get_attachment_url( $sseo_og ) ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image', wp_get_attachment_url( $sseo_feat ) ), Simple_SEO_Fields::post_value( $sseo_ym, 'og_image' ), update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image', 'https://elsewhere.example/picture.jpg' ), update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image-id', (string) $sseo_pdf ), Simple_SEO_Fields::post_value( $sseo_ym, 'og_image' ) );
+	sseo_check( 'an address in the media library is that image; another address, or a file that is no image, is not written', array( true, (string) $sseo_feat, false, false, (string) $sseo_feat ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image-id', '0' ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'og_image' ) ), get_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image', true ), update_post_meta( $sseo_ym, '_yoast_wpseo_opengraph-image', '' ) );
+	sseo_check( "an image ID of 0 or an empty address clears the image", array( true, array(), '', false ) === $sseo_vals, $sseo_vals );
+
+	// The primary category.
+	$sseo_vals = array( update_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', $sseo_news ), Simple_SEO_Fields::post_value( $sseo_ym, Simple_SEO_Primary_Term::field( 'category' ) ), get_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', true ), Simple_SEO_Primary_Term::get( get_post( $sseo_ym ), 'category' )->term_id ?? 0 );
+	sseo_check( "the primary category is the SEO box's pick (not the deepest one)", true === $sseo_vals[0] && array( (string) $sseo_news, (string) $sseo_news, $sseo_news ) === array_slice( $sseo_vals, 1 ), $sseo_vals );
+	$sseo_tag        = wp_insert_term( 'Ym Tag', 'post_tag' );
+	$sseo['terms'][] = array( (int) $sseo_tag['term_id'], 'post_tag' );
+	$sseo_vals       = array( update_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', (int) $sseo_tag['term_id'] ), get_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', true ), update_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', 0 ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( Simple_SEO_Primary_Term::field( 'category' ) ) ) );
+	sseo_check( 'a term of another taxonomy is not written; 0 is no pick', array( false, (string) $sseo_news, true, array() ) === $sseo_vals, $sseo_vals );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', $sseo_news );
+	update_post_meta( $sseo_ym_page, '_yoast_wpseo_primary_category', 5 );
+	update_post_meta( $sseo_ym_page, '_yoast_wpseo_title', 'Page %%title%%' );
+	$sseo_vals = array( $sseo_ym_rows( '_yoast_wpseo_primary_category', $sseo_ym_page ), get_post_meta( $sseo_ym_page, '_yoast_wpseo_primary_category', true ), Simple_SEO_Fields::post_value( $sseo_ym_page, 'title' ) );
+	sseo_check( "a post type without the taxonomy has no primary alias, the row is a row; the other fields are every type's", array( array( '5' ), '5', 'Page {title}' ) === $sseo_vals, $sseo_vals );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', 'new focus' );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_twitter-title', 'X title' );
+	sseo_check( "the keys Simple SEO has no field for are Yoast's rows to write too", array( 'new focus' ) === $sseo_ym_rows( '_yoast_wpseo_focuskw' ) && array( 'X title' ) === $sseo_ym_rows( '_yoast_wpseo_twitter-title' ) );
+
+	// Every row of a post at once.
+	update_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Fifth' );
+	wp_cache_delete( $sseo_ym, 'post_meta' );
+	$sseo_list = get_post_meta( $sseo_ym );
+	sseo_check( "the list of all of a post's meta has no aliases, the rest as it is", ! isset( $sseo_list['_yoast_wpseo_title'] ) && ! isset( $sseo_list['_yoast_wpseo_metadesc'] ) && ! isset( $sseo_list['_yoast_wpseo_primary_category'] ) && array( 'new focus' ) === ( $sseo_list['_yoast_wpseo_focuskw'] ?? null ) && array( 'Fifth' ) === ( $sseo_list[ Simple_SEO_Fields::meta_key( 'title' ) ] ?? null ), array_keys( $sseo_list ) );
+	sseo_check( '... asked for a single value too', $sseo_list === get_post_meta( $sseo_ym, '', true ) );
+	sseo_check( 'a key that is no alias for that post stays in its list', array( '5' ) === ( get_post_meta( $sseo_ym_page )['_yoast_wpseo_primary_category'] ?? null ) );
+	foreach ( $sseo_list as $sseo_name => $sseo_values ) {
+		foreach ( $sseo_values as $sseo_value ) {
+			add_post_meta( $sseo_ym_copy, $sseo_name, maybe_unserialize( $sseo_value ) );
+		}
+	}
+	$sseo_vals = array( $sseo_ym_rows( Simple_SEO_Fields::meta_key( 'title' ), $sseo_ym_copy ), $sseo_ym_rows( Simple_SEO_Fields::meta_key( Simple_SEO_Primary_Term::field( 'category' ) ), $sseo_ym_copy ), $sseo_ym_rows( '_yoast_wpseo_title', $sseo_ym_copy ) );
+	sseo_check( "copying every row of a post, as wp-loc does for a new translation, copies Simple SEO's fields once and not Yoast's old values", array( array( 'Fifth' ), array( (string) $sseo_news ), array() ) === $sseo_vals, $sseo_vals );
+
+	delete_post_meta_by_key( '_yoast_wpseo_title' );
+	sseo_check( "a delete from every post removes the rows Yoast left and keeps Simple SEO's fields", array() === $sseo_ym_rows( '_yoast_wpseo_title' ) && 'Fifth' === Simple_SEO_Fields::post_value( $sseo_ym, 'title' ) );
+	foreach ( $sseo_ym_hooks as $sseo_hook => $sseo_name ) {
+		remove_filter( $sseo_hook, array( Simple_SEO_Yoast_Meta::class, $sseo_name ), 5 );
+	}
+	$sseo_vals = array( get_post_meta( $sseo_ym, '_yoast_wpseo_metadesc', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', true ) );
+	Simple_SEO_Yoast_Meta::init();
+	sseo_check( 'without the layer (next to Yoast) the rows Yoast left are what they were', array( 'Old description', (string) $sseo_news ) === $sseo_vals, $sseo_vals );
+	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
