@@ -3,12 +3,10 @@
  * What the import takes from Yoast SEO: its settings, the SEO fields of posts (post meta
  * _yoast_wpseo_*) and of terms (the option wpseo_taxonomy_meta), in Simple SEO's form.
  *
- * The import only fills what Simple SEO does not have. A setting counts as Simple SEO's own once
- * its tab was saved (Simple SEO's rows start empty, so a stored key is a saved choice); a template
- * or a field, once it holds a value. Running the import again is therefore safe. Yoast's data is
- * read straight from the database, past the meta aliases and wp-loc's language filters, and is
- * never changed. Yoast's %%variables%% become Simple SEO's {variables}; one Simple SEO has no
- * counterpart for is left out of the text and named in the report.
+ * Yoast's data is read straight from the database, past the meta aliases and wp-loc's language
+ * filters, and is never changed. Yoast's %%variables%% become Simple SEO's {variables}; one Simple
+ * SEO has no counterpart for is left out of the text and named in the report. What an import fills
+ * and what it leaves: Simple_SEO_Import_Source.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,7 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 // The import shares the meta aliases' reading of Yoast's values; it runs next to Yoast too, without them.
 require_once SIMPLE_SEO_DIR . 'includes/compat/class-simple-seo-yoast-meta.php';
 
-final class Simple_SEO_Yoast_Import {
+final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
+	public const STATE = 'simple_seo_import_yoast';
+
+	public const NAME = 'Yoast SEO';
+
+	public const CLEANUP = 'Simple_SEO_Yoast_Cleanup';
+
 	/** Yoast's separators by name => Simple SEO's. */
 	private const SEPARATORS = array(
 		'sc-dash'   => '-',
@@ -38,7 +42,7 @@ final class Simple_SEO_Yoast_Import {
 	);
 
 	/** Yoast's crawl settings => Simple SEO's clean-up switches. Only what Yoast removed carries over. */
-	private const CLEANUP = array(
+	private const CLEANUP_SWITCHES = array(
 		'remove_generator'              => 'generator',
 		'remove_shortlinks'             => 'shortlink',
 		'remove_rsd_wlw_links'          => 'rsd',
@@ -79,7 +83,6 @@ final class Simple_SEO_Yoast_Import {
 		'robots_adv' => array( '_yoast_wpseo_meta-robots-adv' ),
 	);
 
-	/** Whether the site has data of Yoast SEO: its settings, or SEO fields of posts or terms. */
 	public static function found(): bool {
 		global $wpdb;
 
@@ -88,11 +91,6 @@ final class Simple_SEO_Yoast_Import {
 			|| (bool) $wpdb->get_var( "SELECT 1 FROM {$wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%' LIMIT 1" );
 	}
 
-	/**
-	 * What there is to import: Yoast's settings, how many posts and terms have SEO fields.
-	 *
-	 * @return array{settings: bool, posts: int, terms: int}
-	 */
 	public static function summary(): array {
 		global $wpdb;
 
@@ -101,6 +99,14 @@ final class Simple_SEO_Yoast_Import {
 			'posts'    => (int) $wpdb->get_var( "SELECT COUNT( DISTINCT post_id ) FROM {$wpdb->postmeta} WHERE " . self::keys_sql() ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- built from constants.
 			'terms'    => count( self::term_list() ),
 		);
+	}
+
+	public static function variables_note(): string {
+		return __( 'Yoast\'s %%variables%% become Simple SEO\'s {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report.', 'simple-seo' );
+	}
+
+	public static function variable( string $name ): string {
+		return '%%' . $name . '%%';
 	}
 
 	// ----------------------------------------------------------------------------------------
@@ -117,109 +123,100 @@ final class Simple_SEO_Yoast_Import {
 		$titles = self::option( 'wpseo_titles' );
 		$social = self::option( 'wpseo_social' );
 		$main   = self::option( 'wpseo' );
+		$social = is_array( $social ) ? $social : array();
 
 		if ( is_array( $titles ) ) {
-			self::titles( $titles, $report );
-			self::indexing( $titles, $report );
-			self::breadcrumbs( $titles, $report );
-			self::special( $titles, is_array( $social ) ? $social : array(), '', $report );
-			self::labels( $titles, '', $report );
+			self::titles( self::SEPARATORS[ self::scalar( $titles['separator'] ?? '' ) ] ?? '', self::templates( $titles ), $report );
+			self::take_indexing( $titles, $report );
+			self::take_breadcrumbs( $titles, $report );
+			// Newer Yoast keeps the front page's image with the titles, older with the social settings.
+			self::special( '', self::special_templates( $titles ), $titles['open_graph_frontpage_image_id'] ?? ( $social['og_frontpage_image_id'] ?? 0 ), $report );
+			self::labels( '', self::label_texts( $titles ), $report );
 			self::left_settings( $titles, $report );
 		}
-		if ( is_array( $social ) ) {
-			self::social( $social, $report );
+		if ( $social ) {
+			self::social( $social['og_default_image_id'] ?? 0, self::scalar( $social['twitter_site'] ?? '' ), $report );
 		}
 		if ( is_array( $main ) ) {
-			self::sitemaps( $main, $report );
-			self::cleanup( $main, $report );
+			if ( array_key_exists( 'enable_xml_sitemap', $main ) && empty( $main['enable_xml_sitemap'] ) ) {
+				self::sitemaps_off( $report );
+			}
+			self::take_cleanup( $main, $report );
 		}
 
 		// wp-loc keeps Yoast's settings of another language in a copy of the row named after it.
 		foreach ( array_slice( Simple_SEO_WP_Loc::codes(), 1 ) as $code ) {
 			$row = self::language_option( 'wpseo_titles', $code );
 			if ( null !== $row ) {
-				self::special( $row, array(), $code, $report );
-				self::labels( $row, $code, $report );
+				self::special( $code, self::special_templates( $row ), $row['open_graph_frontpage_image_id'] ?? 0, $report );
+				self::labels( $code, self::label_texts( $row ), $report );
 				$report['languages'][] = $code;
 			}
 		}
 	}
 
-	/** @param array<string, mixed> $titles */
-	private static function titles( array $titles, array &$report ): void {
-		$row    = self::row( Simple_SEO_Titles::OPTION );
-		$before = Simple_SEO_Settings::sanitize( Simple_SEO_Titles::OPTION, $row );
-		$clean  = $before;
-
-		$separator = self::SEPARATORS[ self::scalar( $titles['separator'] ?? '' ) ] ?? '';
-		$taken     = '' !== $separator && ! array_key_exists( 'separator', $row );
-		if ( $taken ) {
-			$clean['separator'] = $separator;
-			self::add( $report, 'settings', 'separator' );
-		}
-
-		foreach ( self::slots() as $slot => $keys ) {
-			foreach ( $keys as $which => $key ) {
-				// A template Simple SEO has stays; an empty one of Yoast's leaves Simple SEO's default.
-				$value = isset( $before['templates'][ $slot ][ $which ] ) ? '' : self::text( self::scalar( $titles[ $key ] ?? '' ), $slot, $report );
-				if ( '' !== $value ) {
-					$clean['templates'][ $slot ][ $which ] = $value;
-				}
+	/**
+	 * Yoast's templates of titles and descriptions by Simple SEO's slot.
+	 *
+	 * @param array<string, mixed> $titles
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function templates( array $titles ): array {
+		$keys = static function ( string $kind, string $name ): array {
+			switch ( $kind ) {
+				case 'author':
+				case 'date':
+					$yoast = 'author' === $kind ? 'author' : 'archive';
+					return array(
+						'title'       => 'title-' . $yoast . '-wpseo',
+						'description' => 'metadesc-' . $yoast . '-wpseo',
+					);
+				case 'search':
+					return array( 'title' => 'title-search-wpseo' );
+				case 'post':
+					return array(
+						'title'       => 'title-' . $name,
+						'description' => 'metadesc-' . $name,
+					);
+				case 'archive':
+					return array(
+						'title'       => 'title-ptarchive-' . $name,
+						'description' => 'metadesc-ptarchive-' . $name,
+					);
+				default:
+					return array(
+						'title'       => 'title-tax-' . $name,
+						'description' => 'metadesc-tax-' . $name,
+					);
 			}
-		}
+		};
 
-		// What equals Simple SEO's default is not kept as a template of its own, nor counted.
-		$clean = Simple_SEO_Settings::sanitize( Simple_SEO_Titles::OPTION, $clean );
-		$count = 0;
-		foreach ( $clean['templates'] as $slot => $values ) {
-			$count += count( array_diff_key( $values, (array) ( $before['templates'][ $slot ] ?? array() ) ) );
-		}
-		if ( $count ) {
-			self::add( $report, 'settings', 'templates', $count );
-		}
-		if ( $count || $taken ) {
-			self::save( Simple_SEO_Titles::OPTION, $clean );
-		}
+		return array_map( static fn( array $slot ): array => array_map( static fn( string $key ) => $titles[ $key ] ?? '', $slot ), self::slots( $keys ) );
 	}
 
 	/**
-	 * Simple SEO's slots with Yoast's keys of their title and description templates. The home and
-	 * 404 pages are Simple SEO's special pages; attachments have no SEO fields here.
-	 *
-	 * @return array<string, array<string, string>>
+	 * @param array<string, mixed> $titles
+	 * @return array<string, array<string, mixed>>
 	 */
-	private static function slots(): array {
-		$slots = array(
-			'author' => array(
-				'title'       => 'title-author-wpseo',
-				'description' => 'metadesc-author-wpseo',
+	private static function special_templates( array $titles ): array {
+		return array(
+			'home' => array(
+				'title'       => $titles['title-home-wpseo'] ?? '',
+				'description' => $titles['metadesc-home-wpseo'] ?? '',
 			),
-			'date'   => array(
-				'title'       => 'title-archive-wpseo',
-				'description' => 'metadesc-archive-wpseo',
-			),
-			'search' => array( 'title' => 'title-search-wpseo' ),
+			'404'  => array( 'title' => $titles['title-404-wpseo'] ?? '' ),
 		);
-		foreach ( Simple_SEO_Fields::post_types() as $type ) {
-			$slots[ 'post:' . $type ] = array(
-				'title'       => 'title-' . $type,
-				'description' => 'metadesc-' . $type,
-			);
-			if ( ! empty( get_post_type_object( $type )->has_archive ) ) {
-				$slots[ 'archive:' . $type ] = array(
-					'title'       => 'title-ptarchive-' . $type,
-					'description' => 'metadesc-ptarchive-' . $type,
-				);
-			}
-		}
-		foreach ( Simple_SEO_Fields::taxonomies() as $taxonomy ) {
-			$slots[ 'term:' . $taxonomy ] = array(
-				'title'       => 'title-tax-' . $taxonomy,
-				'description' => 'metadesc-tax-' . $taxonomy,
-			);
-		}
+	}
 
-		return $slots;
+	/**
+	 * @param array<string, mixed> $titles
+	 * @return array<string, string>
+	 */
+	private static function label_texts( array $titles ): array {
+		return array(
+			'home'   => self::scalar( $titles['breadcrumbs-home'] ?? '' ),
+			'prefix' => self::scalar( $titles['breadcrumbs-prefix'] ?? '' ),
+		);
 	}
 
 	/**
@@ -227,201 +224,63 @@ final class Simple_SEO_Yoast_Import {
 	 *
 	 * @param array<string, mixed> $titles
 	 */
-	private static function indexing( array $titles, array &$report ): void {
-		$row   = self::row( Simple_SEO_Indexing::OPTION );
-		$clean = Simple_SEO_Indexing::sanitize( $row + Simple_SEO_Indexing::defaults() );
-		$on    = static fn( string $key ): bool => ! empty( $titles[ $key ] );
-		$count = 0;
-
-		if ( ! array_key_exists( 'noindex', $row ) ) {
-			$noindex = array();
-			foreach ( array_merge( Simple_SEO_Fields::post_types(), array( 'attachment' ) ) as $type ) {
-				if ( $on( 'noindex-' . $type ) || ( 'attachment' === $type && $on( 'disable-attachment' ) ) ) {
-					$noindex[] = 'post:' . $type;
-				}
-				if ( $on( 'noindex-ptarchive-' . $type ) ) {
-					$noindex[] = 'archive:' . $type;
-				}
+	private static function take_indexing( array $titles, array &$report ): void {
+		$on      = static fn( string $key ): bool => ! empty( $titles[ $key ] );
+		$noindex = array();
+		foreach ( array_merge( Simple_SEO_Fields::post_types(), array( 'attachment' ) ) as $type ) {
+			if ( $on( 'noindex-' . $type ) || ( 'attachment' === $type && $on( 'disable-attachment' ) ) ) {
+				$noindex[] = 'post:' . $type;
 			}
-			foreach ( Simple_SEO_Fields::taxonomies() as $taxonomy ) {
-				if ( $on( 'noindex-tax-' . $taxonomy ) ) {
-					$noindex[] = 'term:' . $taxonomy;
-				}
+			if ( $on( 'noindex-ptarchive-' . $type ) ) {
+				$noindex[] = 'archive:' . $type;
 			}
-			// Archives Yoast switched off entirely Simple SEO hides from search engines.
-			if ( $on( 'noindex-author-wpseo' ) || $on( 'disable-author' ) ) {
-				$noindex[] = 'author';
+		}
+		foreach ( Simple_SEO_Fields::taxonomies() as $taxonomy ) {
+			if ( $on( 'noindex-tax-' . $taxonomy ) ) {
+				$noindex[] = 'term:' . $taxonomy;
 			}
-			if ( $on( 'noindex-archive-wpseo' ) || $on( 'disable-date' ) ) {
-				$noindex[] = 'date';
-			}
-			$clean['noindex'] = $noindex;
-			self::add( $report, 'settings', 'indexing' );
-			++$count;
+		}
+		// Archives Yoast switched off entirely Simple SEO hides from search engines.
+		if ( $on( 'noindex-author-wpseo' ) || $on( 'disable-author' ) ) {
+			$noindex[] = 'author';
+		}
+		if ( $on( 'noindex-archive-wpseo' ) || $on( 'disable-date' ) ) {
+			$noindex[] = 'date';
 		}
 
 		// Yoast sent attachment pages to the file itself, or kept them.
-		if ( ! array_key_exists( 'attachments', $row ) && array_key_exists( 'disable-attachment', $titles ) ) {
-			$clean['attachments'] = $on( 'disable-attachment' ) ? Simple_SEO_Indexing::ATTACHMENTS_FILE : Simple_SEO_Indexing::ATTACHMENTS_KEEP;
-			self::add( $report, 'settings', 'attachments' );
-			++$count;
+		$attachments = '';
+		if ( array_key_exists( 'disable-attachment', $titles ) ) {
+			$attachments = $on( 'disable-attachment' ) ? Simple_SEO_Indexing::ATTACHMENTS_FILE : Simple_SEO_Indexing::ATTACHMENTS_KEEP;
 		}
 
-		if ( $count ) {
-			self::save( Simple_SEO_Indexing::OPTION, $clean );
-		}
-	}
-
-	/** @param array<string, mixed> $social */
-	private static function social( array $social, array &$report ): void {
-		$row   = self::row( Simple_SEO_Social::OPTION );
-		$clean = Simple_SEO_Social::sanitize( $row );
-		$count = 0;
-
-		$image = Simple_SEO_Fields::image_attachment( $social['og_default_image_id'] ?? 0 );
-		if ( $image && ! array_key_exists( 'default_image', $row ) ) {
-			$clean['default_image'] = $image;
-			self::add( $report, 'settings', 'default_image' );
-			++$count;
-		}
-		$account = Simple_SEO_Social::sanitize_account( self::scalar( $social['twitter_site'] ?? '' ) );
-		if ( '' !== $account && ! array_key_exists( 'x_account', $row ) ) {
-			$clean['x_account'] = $account;
-			self::add( $report, 'settings', 'x_account' );
-			++$count;
-		}
-
-		if ( $count ) {
-			self::save( Simple_SEO_Social::OPTION, $clean );
-		}
-	}
-
-	/**
-	 * The home and 404 pages of one language ('' — the default one): their templates and the home
-	 * page's image for social networks.
-	 *
-	 * @param array<string, mixed> $titles
-	 * @param array<string, mixed> $social
-	 */
-	private static function special( array $titles, array $social, string $code, array &$report ): void {
-		$name   = self::language_row_name( Simple_SEO_Special::OPTION, $code );
-		$before = Simple_SEO_Special::sanitize( self::row( $name ) );
-		$clean  = $before;
-
-		foreach ( array(
-			'home' => array(
-				'title'       => 'title-home-wpseo',
-				'description' => 'metadesc-home-wpseo',
-			),
-			'404'  => array( 'title' => 'title-404-wpseo' ),
-		) as $slot => $keys ) {
-			// PHP turns the key '404' into a number.
-			$slot = (string) $slot;
-			foreach ( $keys as $which => $key ) {
-				$value = isset( $before[ $slot ][ $which ] ) ? '' : self::text( self::scalar( $titles[ $key ] ?? '' ), $slot, $report );
-				if ( '' !== $value ) {
-					$clean[ $slot ][ $which ] = $value;
-				}
-			}
-		}
-
-		// Newer Yoast keeps the front page's image with the titles, older with the social settings.
-		$image = Simple_SEO_Fields::image_attachment( $titles['open_graph_frontpage_image_id'] ?? ( $social['og_frontpage_image_id'] ?? 0 ) );
-		if ( $image && empty( $before['home']['image'] ) ) {
-			$clean['home']['image'] = $image;
-		}
-
-		// What equals Simple SEO's default is not kept, nor counted.
-		$clean = Simple_SEO_Special::sanitize( $clean );
-		$count = 0;
-		foreach ( $clean as $slot => $values ) {
-			$count += count( array_diff_key( $values, (array) ( $before[ $slot ] ?? array() ) ) );
-		}
-		if ( $count ) {
-			self::add( $report, 'settings', 'special', $count );
-			self::save( $name, $clean );
-		}
+		self::indexing( $noindex, $attachments, $report );
 	}
 
 	/** @param array<string, mixed> $titles */
-	private static function breadcrumbs( array $titles, array &$report ): void {
-		$row    = self::row( Simple_SEO_Breadcrumbs::OPTION );
-		$before = Simple_SEO_Breadcrumbs::sanitize( $row );
-		$input  = array(
-			'separator'    => $before['separator'],
-			'show_current' => $before['show_current'] ? '1' : '0',
-			'show_blog'    => $before['show_blog'] ? '1' : '0',
-			'taxonomies'   => $before['taxonomies'],
-		);
-
-		$separator = self::scalar( html_entity_decode( self::scalar( $titles['breadcrumbs-sep'] ?? '' ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) );
-		if ( '' !== $separator && ! array_key_exists( 'separator', $row ) ) {
-			$input['separator'] = $separator;
-		}
-		if ( array_key_exists( 'breadcrumbs-display-blog-page', $titles ) && ! array_key_exists( 'show_blog', $row ) ) {
-			$input['show_blog'] = empty( $titles['breadcrumbs-display-blog-page'] ) ? '0' : '1';
-		}
+	private static function take_breadcrumbs( array $titles, array &$report ): void {
+		$taxonomies = array();
 		foreach ( Simple_SEO_Fields::post_types() as $type ) {
-			$taxonomy = self::scalar( $titles[ 'post_types-' . $type . '-maintax' ] ?? '' );
-			if ( '' !== $taxonomy && ! isset( $before['taxonomies'][ $type ] ) ) {
-				$input['taxonomies'][ $type ] = $taxonomy;
-			}
+			$taxonomies[ $type ] = self::scalar( $titles[ 'post_types-' . $type . '-maintax' ] ?? '' );
 		}
 
-		// Yoast's 0 (none chosen), a taxonomy the type does not have and Simple SEO's default one are
-		// not kept, nor counted.
-		$clean = Simple_SEO_Breadcrumbs::sanitize( $input );
-		$count = (int) ( $clean['separator'] !== $before['separator'] ) + (int) ( $clean['show_blog'] !== $before['show_blog'] )
-			+ count( array_diff_assoc( $clean['taxonomies'], $before['taxonomies'] ) );
-		if ( $count ) {
-			self::add( $report, 'settings', 'breadcrumbs', $count );
-			self::save( Simple_SEO_Breadcrumbs::OPTION, $clean );
-		}
-	}
-
-	/**
-	 * The breadcrumb labels of one language as Yoast had them: themes find and replace Yoast's
-	 * texts ('Home' becomes an icon), so they are not translated to Simple SEO's.
-	 *
-	 * @param array<string, mixed> $titles
-	 */
-	private static function labels( array $titles, string $code, array &$report ): void {
-		$name  = self::language_row_name( Simple_SEO_Breadcrumbs::LABELS, $code );
-		$clean = Simple_SEO_Breadcrumbs::sanitize_labels( self::row( $name ) );
-		$count = 0;
-
-		foreach ( array(
-			'home'   => 'breadcrumbs-home',
-			'prefix' => 'breadcrumbs-prefix',
-		) as $label => $key ) {
-			$value = self::scalar( $titles[ $key ] ?? '' );
-			if ( '' !== $value && '' === $clean[ $label ] ) {
-				$clean[ $label ] = $value;
-				++$count;
-			}
-		}
-
-		if ( $count ) {
-			self::add( $report, 'settings', 'labels', $count );
-			self::save( $name, Simple_SEO_Breadcrumbs::sanitize_labels( $clean ) );
-		}
+		// Yoast's 0 is "none chosen"; the sanitizer drops it, as a taxonomy the type does not have.
+		self::breadcrumbs(
+			self::scalar( $titles['breadcrumbs-sep'] ?? '' ),
+			null,
+			array_key_exists( 'breadcrumbs-display-blog-page', $titles ) ? ! empty( $titles['breadcrumbs-display-blog-page'] ) : null,
+			$taxonomies,
+			$report
+		);
 	}
 
 	/** @param array<string, mixed> $main */
-	private static function sitemaps( array $main, array &$report ): void {
-		if ( array_key_exists( 'enable_xml_sitemap', $main ) && empty( $main['enable_xml_sitemap'] ) && ! array_key_exists( 'enabled', self::row( Simple_SEO_Sitemaps::OPTION ) ) ) {
-			self::save( Simple_SEO_Sitemaps::OPTION, array( 'enabled' => false ) );
-			self::add( $report, 'settings', 'sitemaps' );
-		}
-	}
-
-	/** @param array<string, mixed> $main */
-	private static function cleanup( array $main, array &$report ): void {
+	private static function take_cleanup( array $main, array &$report ): void {
 		$row   = self::row( Simple_SEO_Cleanup::OPTION );
 		$clean = array_replace( Simple_SEO_Cleanup::defaults(), $row );
 		$count = 0;
 
-		foreach ( self::CLEANUP as $yoast => $key ) {
+		foreach ( self::CLEANUP_SWITCHES as $yoast => $key ) {
 			if ( ! empty( $main[ $yoast ] ) && ! array_key_exists( $key, $row ) && ! $clean[ $key ] ) {
 				$clean[ $key ] = true;
 				++$count;
@@ -457,12 +316,6 @@ final class Simple_SEO_Yoast_Import {
 	// ----------------------------------------------------------------------------------------
 	// Posts and terms.
 
-	/**
-	 * Take the SEO fields of the next posts after a post ID.
-	 *
-	 * @param array<string, mixed> $report
-	 * @return int The last post ID taken; 0 when no post is left.
-	 */
 	public static function posts( int $after, int $limit, array &$report ): int {
 		global $wpdb;
 
@@ -506,11 +359,11 @@ final class Simple_SEO_Yoast_Import {
 	/**
 	 * Take the SEO fields of the next terms of Yoast's list.
 	 *
+	 * @param int                  $cursor Where the batch starts in the list.
 	 * @param array<string, mixed> $report
-	 * @return int Where the next batch starts in the list; 0 when no term is left.
 	 */
-	public static function terms( int $offset, int $limit, array &$report ): int {
-		$batch = array_slice( self::term_list(), $offset, $limit );
+	public static function terms( int $cursor, int $limit, array &$report ): int {
+		$batch = array_slice( self::term_list(), $cursor, $limit );
 		if ( ! $batch ) {
 			return 0;
 		}
@@ -537,56 +390,13 @@ final class Simple_SEO_Yoast_Import {
 			self::take( 'term', $id, $fields, $report );
 		}
 
-		return $offset + count( $batch );
+		return $cursor + count( $batch );
 	}
 
-	/**
-	 * Fill the empty fields of a post or term from Yoast's values; a field Simple SEO has stays.
-	 * A field Yoast keeps in two forms (the image as ID and as address) takes the first that fits.
-	 *
-	 * @param string                                                 $type   post or term.
-	 * @param array<string, array<int, array{0: string, 1: string}>> $fields Field => Yoast's values (name of its key, value).
-	 * @param array<string, mixed>                                   $report
-	 */
-	private static function take( string $type, int $id, array $fields, array &$report ): void {
-		self::add( $report, $type, 'seen' );
-		$changed = false;
-
-		foreach ( $fields as $key => $values ) {
-			$meta_key = Simple_SEO_Fields::meta_key( $key );
-			if ( '' !== (string) get_metadata( $type, $id, $meta_key, true ) ) {
-				self::add( $report, $type, 'kept' );
-				continue;
-			}
-
-			$clean = '';
-			foreach ( $values as [ $name, $value ] ) {
-				$clean = Simple_SEO_Yoast_Meta::clean( $name, $key, in_array( $name, self::TEXTS, true ) ? self::text( $value, '', $report ) : $value );
-				if ( '' !== $clean && null !== $clean ) {
-					break;
-				}
-			}
-
-			if ( null === $clean ) {
-				self::add( $report, $type, 'refused' );
-			} elseif ( '' !== $clean ) {
-				// update_metadata() expects slashed data and unslashes it itself.
-				update_metadata( $type, $id, $meta_key, wp_slash( $clean ) );
-				self::add( $report, $type, 'fields' );
-				$changed = true;
-			}
-		}
-
-		if ( $changed ) {
-			self::add( $report, $type, 'changed' );
-		}
+	protected static function value( string $name, string $key, string $value, array &$report ) {
+		return Simple_SEO_Yoast_Meta::clean( $name, $key, in_array( $name, self::TEXTS, true ) ? self::text( $value, '', $report ) : $value );
 	}
 
-	/**
-	 * How many posts have Yoast's data Simple SEO has no field for, by what the report calls it.
-	 *
-	 * @return array<string, int>
-	 */
 	public static function left(): array {
 		global $wpdb;
 
@@ -610,7 +420,7 @@ final class Simple_SEO_Yoast_Import {
 	 *
 	 * @param array<string, mixed> $report
 	 */
-	private static function text( string $value, string $slot, array &$report ): string {
+	protected static function text( string $value, string $slot, array &$report ): string {
 		$value = (string) preg_replace_callback(
 			'/%%([A-Za-z0-9_-]+)%%/',
 			static function ( array $match ) use ( $slot, &$report ): string {
@@ -651,11 +461,6 @@ final class Simple_SEO_Yoast_Import {
 		return '( meta_key IN (' . self::in( Simple_SEO_Yoast_Meta::keys() ) . ") OR meta_key LIKE '\\_yoast\\_wpseo\\_primary\\_%' ) AND meta_value NOT IN ( '', '0' )";
 	}
 
-	/** @param string[] $values */
-	private static function in( array $values ): string {
-		return implode( ',', array_map( static fn( string $value ): string => "'" . esc_sql( $value ) . "'", $values ) );
-	}
-
 	/**
 	 * Yoast's terms with SEO data, in a fixed order: taxonomy, term ID, Yoast's values.
 	 *
@@ -677,20 +482,6 @@ final class Simple_SEO_Yoast_Import {
 	}
 
 	/**
-	 * A row of options as stored, read past every filter (wp-loc's language copies included);
-	 * null when there is none.
-	 *
-	 * @return mixed
-	 */
-	private static function option( string $name ) {
-		global $wpdb;
-
-		$value = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name ) );
-
-		return null === $value ? null : maybe_unserialize( $value );
-	}
-
-	/**
 	 * Yoast's copy of a row for a language (wp-loc names it by the language's code or slug).
 	 *
 	 * @return array<string, mixed>|null
@@ -708,54 +499,5 @@ final class Simple_SEO_Yoast_Import {
 		}
 
 		return null;
-	}
-
-	/** The name of Simple SEO's row of a language ('' — the default one: the row itself). */
-	private static function language_row_name( string $name, string $code ): string {
-		return '' !== $code ? $name . '_' . $code : $name;
-	}
-
-	/**
-	 * Simple SEO's row as stored: without defaults, so a key in it is a saved choice.
-	 *
-	 * @return array<string, mixed>
-	 */
-	private static function row( string $name ): array {
-		$row = self::option( $name );
-
-		return is_array( $row ) ? $row : array();
-	}
-
-	/**
-	 * Save a row of Simple SEO's under its exact name. wp-loc sends what an admin saves in another
-	 * language to that language's copy; the row of the default language is written as itself.
-	 *
-	 * @param array<string, mixed> $value
-	 */
-	private static function save( string $name, array $value ): void {
-		$cookie = $_COOKIE['admin_lang'] ?? null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- set aside and put back unchanged.
-		unset( $_COOKIE['admin_lang'] );
-		try {
-			update_option( $name, $value );
-		} finally {
-			if ( null !== $cookie ) {
-				$_COOKIE['admin_lang'] = $cookie;
-			}
-		}
-		Simple_SEO_Settings::flush( $name );
-	}
-
-	/** @param array<string, mixed> $report */
-	private static function add( array &$report, string $group, string $what, int $count = 1 ): void {
-		$report[ $group ][ $what ] = (int) ( $report[ $group ][ $what ] ?? 0 ) + $count;
-	}
-
-	/**
-	 * A scalar as trimmed text; '' for anything else.
-	 *
-	 * @param mixed $value
-	 */
-	private static function scalar( $value ): string {
-		return is_scalar( $value ) ? trim( (string) $value ) : '';
 	}
 }

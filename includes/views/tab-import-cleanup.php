@@ -1,11 +1,14 @@
 <?php
 /**
- * Import tab, its second part: removing what Yoast SEO left in the database.
+ * Import tab, the second part of a plugin's: removing what the plugin left in the database.
  *
+ * @var string                                        $source  Key of the plugin (Simple_SEO_Import::SOURCES).
+ * @var string                                        $name    The plugin's name.
  * @var array<string, mixed>                          $cleanup State of the clean-up.
- * @var string                                        $blocked Why removing cannot run now: yoast, import or ''.
- * @var array<string, array{rows: int, bytes: int}>   $parts   What is left of Yoast's, by part.
- * @var string[]                                      $reads   Files of the active theme that read Yoast's settings.
+ * @var string                                        $blocked Why removing cannot run now: active, import or ''.
+ * @var array<string, array{rows: int, bytes: int}>   $parts   What is left of the plugin's, by part.
+ * @var array<string, string>                         $labels  What each part holds.
+ * @var array<string, string[]>                       $reads   Files of the active theme that read a part: part => files.
  * @var string                                        $refused Why the last form was refused: backup, groups, blocked or ''.
  * @var string                                        $nonce   Nonce action of the forms.
  */
@@ -20,14 +23,14 @@ if ( ! $parts && '' === $simple_seo_state ) {
 }
 $simple_seo_n = static fn( $value ): string => number_format_i18n( (int) $value );
 ?>
-<hr />
-<h2 id="simple-seo-cleanup"><?php esc_html_e( 'Remove the data of Yoast SEO', 'simple-seo' ); ?></h2>
+<h3 id="simple-seo-cleanup-<?php echo esc_attr( $source ); ?>"><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'Remove the data of %s', 'simple-seo' ), esc_html( $name ) ); ?></h3>
 
 <?php
 $simple_seo_refusals = array(
 	'backup'  => __( 'Confirm that you have a backup of the database first.', 'simple-seo' ),
 	'groups'  => __( 'Tick at least one part to remove.', 'simple-seo' ),
-	'blocked' => __( 'Removing is not possible now: Yoast SEO is active, or the import is not done.', 'simple-seo' ),
+	/* translators: %s: name of an SEO plugin. */
+	'blocked' => sprintf( __( 'Removing is not possible now: %s is active, or the import is not done.', 'simple-seo' ), $name ),
 );
 if ( isset( $simple_seo_refusals[ $refused ] ) ) :
 	?>
@@ -37,6 +40,7 @@ if ( isset( $simple_seo_refusals[ $refused ] ) ) :
 <?php if ( 'running' === $simple_seo_state ) : ?>
 	<form method="post" action="<?php echo esc_url( Simple_SEO_Admin::url( 'import' ) ); ?>">
 		<?php wp_nonce_field( $nonce ); ?>
+		<input type="hidden" name="simple_seo_source" value="<?php echo esc_attr( $source ); ?>" />
 		<p>
 			<?php
 			/* translators: 1: rows of post meta removed so far. */
@@ -51,25 +55,19 @@ endif;
 ?>
 
 <?php if ( ! $parts ) : ?>
-	<p><?php esc_html_e( 'No data of Yoast SEO is left on this site.', 'simple-seo' ); ?></p>
-<?php elseif ( 'yoast' === $blocked ) : ?>
-	<p><?php esc_html_e( 'Yoast SEO is active, so its data is in use. Deactivate it first.', 'simple-seo' ); ?></p>
+	<p><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'No data of %s is left on this site.', 'simple-seo' ), esc_html( $name ) ); ?></p>
+<?php elseif ( 'active' === $blocked ) : ?>
+	<p><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( '%s is active, so its data is in use. Deactivate it first.', 'simple-seo' ), esc_html( $name ) ); ?></p>
 <?php elseif ( 'import' === $blocked ) : ?>
 	<p><?php esc_html_e( 'Run the import first: removing comes after it.', 'simple-seo' ); ?></p>
 <?php else : ?>
-	<p><?php esc_html_e( 'What Yoast SEO left in the database. Simple SEO does not need it: the import has taken what Simple SEO has a place for, and themes read Yoast\'s fields of posts through Simple SEO.', 'simple-seo' ); ?></p>
+	<p><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'What %s left in the database. Simple SEO does not need it: the import has taken what Simple SEO has a place for.', 'simple-seo' ), esc_html( $name ) ); ?></p>
 	<form method="post" action="<?php echo esc_url( Simple_SEO_Admin::url( 'import' ) ); ?>">
 		<?php wp_nonce_field( $nonce ); ?>
+		<input type="hidden" name="simple_seo_source" value="<?php echo esc_attr( $source ); ?>" />
 		<fieldset>
 			<?php
-			$simple_seo_labels = array(
-				'tables'    => __( 'Yoast\'s tables: its index of pages, links, primary terms and the like', 'simple-seo' ),
-				'internals' => __( 'Yoast\'s other options, cached data and scheduled tasks', 'simple-seo' ),
-				'settings'  => __( 'Yoast\'s settings: titles, social networks, the SEO of terms (with wp-loc, the copies for other languages)', 'simple-seo' ),
-				'usermeta'  => __( 'Yoast\'s data of users: SEO titles of author archives, editor preferences, notices', 'simple-seo' ),
-				'postmeta'  => __( 'Yoast\'s fields of posts: what the import took, focus keyphrases and the rest', 'simple-seo' ),
-			);
-			foreach ( $simple_seo_labels as $simple_seo_group => $simple_seo_label ) :
+			foreach ( $labels as $simple_seo_group => $simple_seo_label ) :
 				if ( ! isset( $parts[ $simple_seo_group ] ) ) {
 					continue;
 				}
@@ -81,45 +79,85 @@ endif;
 				?>
 				<p>
 					<label>
-						<input type="checkbox" name="simple_seo_groups[]" value="<?php echo esc_attr( $simple_seo_group ); ?>"<?php checked( 'settings' !== $simple_seo_group || ! $reads ); ?> />
+						<input type="checkbox" name="simple_seo_groups[]" value="<?php echo esc_attr( $simple_seo_group ); ?>"<?php checked( ! isset( $reads[ $simple_seo_group ] ) ); ?> />
 						<?php echo esc_html( $simple_seo_label ); ?>
 						<span class="description">(<?php echo esc_html( sprintf( $simple_seo_size, $simple_seo_n( $parts[ $simple_seo_group ]['rows'] ), size_format( $parts[ $simple_seo_group ]['bytes'] ) ?: '0 B' ) ); ?>)</span>
 					</label>
 				</p>
 			<?php endforeach; ?>
 		</fieldset>
-		<?php if ( $reads ) : ?>
+		<?php
+		$simple_seo_warnings = array(
+			/* translators: %s: name of an SEO plugin. */
+			'settings' => __( 'The active theme reads the settings of %s, so they are left unticked. Removed, they are gone for the theme too: an organization\'s name and logo in its Schema, say. The files:', 'simple-seo' ),
+			/* translators: %s: name of an SEO plugin. */
+			'termmeta' => __( 'The active theme reads the fields of terms of %s, so they are left unticked. Removed, the theme finds nothing there: Simple SEO keeps what it imported in its own fields. The files:', 'simple-seo' ),
+			/* translators: %s: name of an SEO plugin. */
+			'postmeta' => __( 'The active theme reads the fields of posts of %s, so they are left unticked. Removed, the theme finds nothing there: Simple SEO keeps what it imported in its own fields. The files:', 'simple-seo' ),
+		);
+		foreach ( $reads as $simple_seo_group => $simple_seo_files ) :
+			if ( ! isset( $simple_seo_warnings[ $simple_seo_group ] ) ) {
+				continue;
+			}
+			?>
 			<div class="notice notice-warning inline">
-				<p><?php esc_html_e( 'The active theme reads Yoast\'s settings, so they are left unticked. Removed, they are gone for the theme too: an organization\'s name and logo in its Schema, say. The files:', 'simple-seo' ); ?></p>
+				<p><?php echo esc_html( sprintf( $simple_seo_warnings[ $simple_seo_group ], $name ) ); ?></p>
 				<ul class="ul-disc">
-					<?php foreach ( $reads as $simple_seo_file ) : ?>
+					<?php foreach ( $simple_seo_files as $simple_seo_file ) : ?>
 						<li><code><?php echo esc_html( $simple_seo_file ); ?></code></li>
 					<?php endforeach; ?>
 				</ul>
 			</div>
-		<?php endif; ?>
-		<p><?php esc_html_e( 'Removing cannot be undone. The files of the Yoast SEO plugin stay: delete the plugin on the Plugins screen. Switched on again, Yoast starts from its defaults.', 'simple-seo' ); ?></p>
+		<?php endforeach; ?>
+		<p><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'Removing cannot be undone. The files of %s stay: delete the plugin on the Plugins screen. Switched on again, it starts from its defaults.', 'simple-seo' ), esc_html( $name ) ); ?></p>
 		<p>
 			<label>
 				<input type="checkbox" name="simple_seo_backup" value="1" required />
 				<?php esc_html_e( 'I have a backup of the database', 'simple-seo' ); ?>
 			</label>
 		</p>
-		<p><button type="submit" class="button" name="simple_seo_import" value="clean"><?php esc_html_e( 'Remove the ticked data of Yoast SEO', 'simple-seo' ); ?></button></p>
+		<p><button type="submit" class="button" name="simple_seo_import" value="clean"><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'Remove the ticked data of %s', 'simple-seo' ), esc_html( $name ) ); ?></button></p>
 	</form>
 <?php endif; ?>
 
 <?php if ( 'done' === $simple_seo_state ) : ?>
-	<h3><?php esc_html_e( 'The last clean-up', 'simple-seo' ); ?></h3>
+	<h4><?php esc_html_e( 'The last clean-up', 'simple-seo' ); ?></h4>
 	<ul class="ul-disc">
 		<?php if ( isset( $cleanup['finished'] ) ) : ?>
 			<li><?php /* translators: %s: date and time. */ printf( esc_html__( 'Finished: %s.', 'simple-seo' ), esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) $cleanup['finished'] ) ) ); ?></li>
 		<?php endif; ?>
 		<li>
 			<?php
-			$simple_seo_done = (array) ( $cleanup['report'] ?? array() );
-			/* translators: 1: tables, 2: options, 3: scheduled tasks, 4: rows of settings, 5: rows of user meta, 6: rows of post meta. */
-			printf( esc_html__( 'Removed: tables %1$s; options %2$s; scheduled tasks %3$s; rows of settings %4$s; rows of user meta %5$s; rows of post meta %6$s.', 'simple-seo' ), esc_html( $simple_seo_n( $simple_seo_done['tables'] ?? 0 ) ), esc_html( $simple_seo_n( $simple_seo_done['options'] ?? 0 ) ), esc_html( $simple_seo_n( $simple_seo_done['cron'] ?? 0 ) ), esc_html( $simple_seo_n( $simple_seo_done['settings'] ?? 0 ) ), esc_html( $simple_seo_n( $simple_seo_done['usermeta'] ?? 0 ) ), esc_html( $simple_seo_n( $simple_seo_done['postmeta'] ?? 0 ) ) );
+			$simple_seo_done  = (array) ( $cleanup['report'] ?? array() );
+			$simple_seo_items = array();
+			foreach ( array(
+				/* translators: %s: number. */
+				'tables'   => __( 'tables: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'options'  => __( 'options: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'cron'     => __( 'scheduled tasks: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'caps'     => __( 'capabilities of roles: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'settings' => __( 'rows of settings: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'usermeta' => __( 'rows of user meta: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'termmeta' => __( 'rows of term meta: %s', 'simple-seo' ),
+				/* translators: %s: number. */
+				'postmeta' => __( 'rows of post meta: %s', 'simple-seo' ),
+			) as $simple_seo_what => $simple_seo_label ) {
+				if ( ! empty( $simple_seo_done[ $simple_seo_what ] ) ) {
+					$simple_seo_items[] = sprintf( $simple_seo_label, $simple_seo_n( $simple_seo_done[ $simple_seo_what ] ) );
+				}
+			}
+			echo esc_html(
+				$simple_seo_items
+					/* translators: %s: list of what was removed. */
+					? sprintf( __( 'Removed: %s.', 'simple-seo' ), implode( '; ', $simple_seo_items ) )
+					: __( 'Removed: nothing, it was gone already.', 'simple-seo' )
+			);
 			?>
 		</li>
 	</ul>

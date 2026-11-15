@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.16.0\n"
+"Project-Id-Version: Simple SEO 0.17.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-15T13:18:22+00:00\n"
+"POT-Creation-Date: 2026-11-15T14:09:59+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -244,23 +244,33 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
-#: includes/class-simple-seo-import.php:34
+#: includes/class-simple-seo-import.php:38
 msgid "Import"
 msgstr ""
 
-#: includes/class-simple-seo-import.php:77
-msgid "Simple SEO found the data of Yoast SEO on this site: its settings and the titles, descriptions and other SEO fields of posts and terms. Import them, so the pages keep what was set for them."
+#. translators: %s: names of SEO plugins, e.g. Yoast SEO and Rank Math.
+#: includes/class-simple-seo-import.php:95
+#, php-format
+msgid "Simple SEO found the data of %s on this site: the settings and the titles, descriptions and other SEO fields of posts and terms. Import them, so the pages keep what was set for them."
 msgstr ""
 
-#: includes/class-simple-seo-import.php:80
+#: includes/class-simple-seo-import.php:98
 msgid "Go to the import"
 msgstr ""
 
-#: includes/class-simple-seo-import.php:82
+#: includes/class-simple-seo-import.php:100
 msgid "Not now"
+msgstr ""
+
+#. translators: %s: names of SEO plugins, e.g. Yoast SEO and Rank Math.
+#. translators: %s: name of an SEO plugin.
+#: includes/class-simple-seo-import.php:290
+#: includes/views/tab-import.php:74
+#, php-format
+msgid "There is no data of %s on this site."
 msgstr ""
 
 #: includes/class-simple-seo-indexing.php:58
@@ -350,6 +360,34 @@ msgstr ""
 
 #: includes/class-simple-seo-primary-term.php:76
 msgid "Automatically"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-cleanup.php:56
+msgid "Rank Math's tables: its redirections, the 404 log, internal links and the like"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-cleanup.php:57
+msgid "Rank Math's other options, cached data, scheduled tasks and the capabilities it gave to roles"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-cleanup.php:58
+msgid "Rank Math's settings: titles and meta, general settings, the sitemap, the list of its modules"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-cleanup.php:59
+msgid "Rank Math's data of users: SEO fields of author archives and the like"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-cleanup.php:60
+msgid "Rank Math's fields of terms: what the import took, focus keywords and the rest"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-cleanup.php:61
+msgid "Rank Math's fields of posts: what the import took, focus keywords, Schema and the rest"
+msgstr ""
+
+#: includes/class-simple-seo-rank-math-import.php:107
+msgid "Rank Math's %variables% become Simple SEO's {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report."
 msgstr ""
 
 #: includes/class-simple-seo-sitemaps.php:993
@@ -561,6 +599,30 @@ msgstr ""
 #: includes/class-simple-seo-variables.php:229
 msgctxt "month archive date format"
 msgid "F Y"
+msgstr ""
+
+#: includes/class-simple-seo-yoast-cleanup.php:56
+msgid "Yoast's tables: its index of pages, links, primary terms and the like"
+msgstr ""
+
+#: includes/class-simple-seo-yoast-cleanup.php:57
+msgid "Yoast's other options, cached data and scheduled tasks"
+msgstr ""
+
+#: includes/class-simple-seo-yoast-cleanup.php:58
+msgid "Yoast's settings: titles, social networks, the SEO of terms (with wp-loc, the copies for other languages)"
+msgstr ""
+
+#: includes/class-simple-seo-yoast-cleanup.php:59
+msgid "Yoast's data of users: SEO titles of author archives, editor preferences, notices"
+msgstr ""
+
+#: includes/class-simple-seo-yoast-cleanup.php:60
+msgid "Yoast's fields of posts: what the import took, focus keyphrases and the rest"
+msgstr ""
+
+#: includes/class-simple-seo-yoast-import.php:105
+msgid "Yoast's %%variables%% become Simple SEO's {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report."
 msgstr ""
 
 #: includes/views/tab-access.php:14
@@ -880,290 +942,374 @@ msgstr ""
 msgid "Restore"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:24
-msgid "Remove the data of Yoast SEO"
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:28
-msgid "Confirm that you have a backup of the database first."
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:29
-msgid "Tick at least one part to remove."
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:26
+#, php-format
+msgid "Remove the data of %s"
 msgstr ""
 
 #: includes/views/tab-import-cleanup.php:30
-msgid "Removing is not possible now: Yoast SEO is active, or the import is not done."
+msgid "Confirm that you have a backup of the database first."
+msgstr ""
+
+#: includes/views/tab-import-cleanup.php:31
+msgid "Tick at least one part to remove."
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:33
+#, php-format
+msgid "Removing is not possible now: %s is active, or the import is not done."
 msgstr ""
 
 #. translators: 1: rows of post meta removed so far.
-#: includes/views/tab-import-cleanup.php:43
+#: includes/views/tab-import-cleanup.php:47
 #, php-format
 msgid "Removing is under way: %1$s rows of post meta so far. The page goes on by itself; if it stops, press Continue."
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:46
-#: includes/views/tab-import.php:31
+#: includes/views/tab-import-cleanup.php:50
+#: includes/views/tab-import.php:35
 msgid "Continue"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:54
-msgid "No data of Yoast SEO is left on this site."
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:56
-msgid "Yoast SEO is active, so its data is in use. Deactivate it first."
-msgstr ""
-
+#. translators: %s: name of an SEO plugin.
 #: includes/views/tab-import-cleanup.php:58
+#, php-format
+msgid "No data of %s is left on this site."
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:60
+#, php-format
+msgid "%s is active, so its data is in use. Deactivate it first."
+msgstr ""
+
+#: includes/views/tab-import-cleanup.php:62
 msgid "Run the import first: removing comes after it."
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:60
-msgid "What Yoast SEO left in the database. Simple SEO does not need it: the import has taken what Simple SEO has a place for, and themes read Yoast's fields of posts through Simple SEO."
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:66
-msgid "Yoast's tables: its index of pages, links, primary terms and the like"
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:67
-msgid "Yoast's other options, cached data and scheduled tasks"
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:68
-msgid "Yoast's settings: titles, social networks, the SEO of terms (with wp-loc, the copies for other languages)"
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:69
-msgid "Yoast's data of users: SEO titles of author archives, editor preferences, notices"
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:70
-msgid "Yoast's fields of posts: what the import took, focus keyphrases and the rest"
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:64
+#, php-format
+msgid "What %s left in the database. Simple SEO does not need it: the import has taken what Simple SEO has a place for."
 msgstr ""
 
 #. translators: 1: number of tables, 2: their size.
-#: includes/views/tab-import-cleanup.php:78
+#: includes/views/tab-import-cleanup.php:76
 #, php-format
 msgid "tables: %1$s, size: %2$s"
 msgstr ""
 
 #. translators: 1: number of rows, 2: their size.
-#: includes/views/tab-import-cleanup.php:80
+#: includes/views/tab-import-cleanup.php:78
 #, php-format
 msgid "rows: %1$s, size: %2$s"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:93
-msgid "The active theme reads Yoast's settings, so they are left unticked. Removed, they are gone for the theme too: an organization's name and logo in its Schema, say. The files:"
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:92
+#, php-format
+msgid "The active theme reads the settings of %s, so they are left unticked. Removed, they are gone for the theme too: an organization's name and logo in its Schema, say. The files:"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:101
-msgid "Removing cannot be undone. The files of the Yoast SEO plugin stay: delete the plugin on the Plugins screen. Switched on again, Yoast starts from its defaults."
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:94
+#, php-format
+msgid "The active theme reads the fields of terms of %s, so they are left unticked. Removed, the theme finds nothing there: Simple SEO keeps what it imported in its own fields. The files:"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:105
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:96
+#, php-format
+msgid "The active theme reads the fields of posts of %s, so they are left unticked. Removed, the theme finds nothing there: Simple SEO keeps what it imported in its own fields. The files:"
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:112
+#, php-format
+msgid "Removing cannot be undone. The files of %s stay: delete the plugin on the Plugins screen. Switched on again, it starts from its defaults."
+msgstr ""
+
+#: includes/views/tab-import-cleanup.php:116
 msgid "I have a backup of the database"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:108
-msgid "Remove the ticked data of Yoast SEO"
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import-cleanup.php:119
+#, php-format
+msgid "Remove the ticked data of %s"
 msgstr ""
 
-#: includes/views/tab-import-cleanup.php:113
+#: includes/views/tab-import-cleanup.php:124
 msgid "The last clean-up"
 msgstr ""
 
 #. translators: %s: date and time.
-#: includes/views/tab-import-cleanup.php:116
-#: includes/views/tab-import.php:91
+#: includes/views/tab-import-cleanup.php:127
+#: includes/views/tab-import.php:108
 #, php-format
 msgid "Finished: %s."
 msgstr ""
 
-#. translators: 1: tables, 2: options, 3: scheduled tasks, 4: rows of settings, 5: rows of user meta, 6: rows of post meta.
-#: includes/views/tab-import-cleanup.php:122
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:135
 #, php-format
-msgid "Removed: tables %1$s; options %2$s; scheduled tasks %3$s; rows of settings %4$s; rows of user meta %5$s; rows of post meta %6$s."
+msgid "tables: %s"
 msgstr ""
 
-#: includes/views/tab-import.php:20
-msgid "Yoast SEO"
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:137
+#, php-format
+msgid "options: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:139
+#, php-format
+msgid "scheduled tasks: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:141
+#, php-format
+msgid "capabilities of roles: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:143
+#, php-format
+msgid "rows of settings: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:145
+#, php-format
+msgid "rows of user meta: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:147
+#, php-format
+msgid "rows of term meta: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/views/tab-import-cleanup.php:149
+#, php-format
+msgid "rows of post meta: %s"
+msgstr ""
+
+#. translators: %s: list of what was removed.
+#: includes/views/tab-import-cleanup.php:158
+#, php-format
+msgid "Removed: %s."
+msgstr ""
+
+#: includes/views/tab-import-cleanup.php:159
+msgid "Removed: nothing, it was gone already."
 msgstr ""
 
 #. translators: 1: number of posts, 2: number of terms.
-#: includes/views/tab-import.php:28
+#: includes/views/tab-import.php:32
 #, php-format
 msgid "The import is running: %1$s posts and %2$s terms so far. The page goes on by itself; if it stops, press Continue."
 msgstr ""
 
-#: includes/views/tab-import.php:39
+#: includes/views/tab-import.php:43
 msgid "Found on this site:"
 msgstr ""
 
-#: includes/views/tab-import.php:42
-msgid "the settings of Yoast SEO"
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import.php:46
+#, php-format
+msgid "the settings of %s"
 msgstr ""
 
 #. translators: %s: number of posts.
-#: includes/views/tab-import.php:45
+#: includes/views/tab-import.php:49
 #, php-format
 msgid "posts with SEO fields: %s"
 msgstr ""
 
 #. translators: %s: number of terms.
-#: includes/views/tab-import.php:48
+#: includes/views/tab-import.php:52
 #, php-format
 msgid "terms with SEO fields: %s"
 msgstr ""
 
-#: includes/views/tab-import.php:51
-msgid "The import fills only what Simple SEO does not have yet: the settings of a tab saved here, and a template or a field that has a value, stay as they are. Yoast's own data is not changed, so the import can be run again and Yoast can be switched back on."
-msgstr ""
-
-#: includes/views/tab-import.php:52
-msgid "Yoast's %%variables%% become Simple SEO's {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report."
-msgstr ""
-
+#. translators: %s: name of an SEO plugin.
 #: includes/views/tab-import.php:55
+#, php-format
+msgid "The import fills only what Simple SEO does not have yet: the settings of a tab saved here, and a template or a field that has a value, stay as they are. The data of %s is not changed, so the import can be run again and the plugin can be switched back on."
+msgstr ""
+
+#: includes/views/tab-import.php:64
 msgid "Import again"
 msgstr ""
 
-#: includes/views/tab-import.php:55
-msgid "Import from Yoast SEO"
+#. translators: %s: name of an SEO plugin.
+#: includes/views/tab-import.php:67
+#, php-format
+msgid "Import from %s"
 msgstr ""
 
-#: includes/views/tab-import.php:58
-msgid "There is no data of Yoast SEO on this site."
-msgstr ""
-
-#: includes/views/tab-import.php:62
+#: includes/views/tab-import.php:78
 msgid "The last import"
 msgstr ""
 
-#: includes/views/tab-import.php:66
+#: includes/views/tab-import.php:82
 msgid "the separator"
 msgstr ""
 
 #. translators: %s: number.
-#: includes/views/tab-import.php:68
+#: includes/views/tab-import.php:84
 #, php-format
 msgid "templates: %s"
 msgstr ""
 
-#: includes/views/tab-import.php:69
+#: includes/views/tab-import.php:85
 msgid "what search engines leave out"
 msgstr ""
 
-#: includes/views/tab-import.php:70
+#: includes/views/tab-import.php:86
 msgid "where attachment pages go"
 msgstr ""
 
-#: includes/views/tab-import.php:71
+#: includes/views/tab-import.php:87
 msgid "the default image"
 msgstr ""
 
-#: includes/views/tab-import.php:72
+#: includes/views/tab-import.php:88
 msgid "the X account"
 msgstr ""
 
 #. translators: %s: number.
-#: includes/views/tab-import.php:74
+#: includes/views/tab-import.php:90
 #, php-format
 msgid "the home and 404 pages: %s"
 msgstr ""
 
 #. translators: %s: number.
-#: includes/views/tab-import.php:76
+#: includes/views/tab-import.php:92
 #, php-format
 msgid "breadcrumbs: %s"
 msgstr ""
 
 #. translators: %s: number.
-#: includes/views/tab-import.php:78
+#: includes/views/tab-import.php:94
 #, php-format
 msgid "breadcrumb labels: %s"
 msgstr ""
 
-#: includes/views/tab-import.php:79
+#: includes/views/tab-import.php:95
 msgid "the XML sitemap switched off"
 msgstr ""
 
 #. translators: %s: number.
-#: includes/views/tab-import.php:81
+#: includes/views/tab-import.php:97
 #, php-format
 msgid "clean-up: %s"
 msgstr ""
 
-#. translators: %s: list of settings.
 #: includes/views/tab-import.php:98
+msgid "the text of robots.txt"
+msgstr ""
+
+#. translators: %s: list of settings.
+#: includes/views/tab-import.php:115
 #, php-format
 msgid "Settings taken: %s."
 msgstr ""
 
-#: includes/views/tab-import.php:99
+#: includes/views/tab-import.php:116
 msgid "Settings: nothing to take, Simple SEO has its own."
 msgstr ""
 
 #. translators: %s: language codes.
-#: includes/views/tab-import.php:104
+#: includes/views/tab-import.php:121
 #, php-format
 msgid "Also the home and 404 pages and the breadcrumb labels of the languages: %s."
 msgstr ""
 
-#. translators: 1: posts with Yoast's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
-#: includes/views/tab-import.php:109
+#. translators: 1: posts with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
+#: includes/views/tab-import.php:126
 #, php-format
-msgid "Posts: %1$s with Yoast's fields, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
+msgid "Posts with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
 msgstr ""
 
-#. translators: 1: terms with Yoast's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
-#: includes/views/tab-import.php:111
+#. translators: 1: terms with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
+#: includes/views/tab-import.php:128
 #, php-format
-msgid "Terms: %1$s with Yoast's fields, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
+msgid "Terms with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
 msgstr ""
 
 #. translators: %s: list of variables with how often each was found.
-#: includes/views/tab-import.php:124
+#: includes/views/tab-import.php:141
 #, php-format
 msgid "Left out of the texts, as Simple SEO has no such variable: %s."
 msgstr ""
 
-#: includes/views/tab-import.php:130
+#: includes/views/tab-import.php:147
 msgid "Not taken, as Simple SEO has nothing for it yet:"
 msgstr ""
 
 #. translators: %s: number of posts.
-#: includes/views/tab-import.php:135
+#: includes/views/tab-import.php:152
 #, php-format
 msgid "focus keyphrases (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of posts.
-#: includes/views/tab-import.php:137
+#: includes/views/tab-import.php:154
 #, php-format
 msgid "titles for breadcrumbs (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of posts.
-#: includes/views/tab-import.php:139
+#: includes/views/tab-import.php:156
 #, php-format
 msgid "titles, descriptions and images for X (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of posts.
-#: includes/views/tab-import.php:141
+#: includes/views/tab-import.php:158
 #, php-format
 msgid "advanced robots settings (posts: %s)"
 msgstr ""
 
-#: includes/views/tab-import.php:142
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:160
+#, php-format
+msgid "Schema of posts (posts: %s)"
+msgstr ""
+
+#. translators: %s: number of users.
+#: includes/views/tab-import.php:162
+#, php-format
+msgid "SEO titles and descriptions of author archives (authors: %s)"
+msgstr ""
+
+#: includes/views/tab-import.php:163
 msgid "templates of titles and descriptions for social networks"
 msgstr ""
 
-#: includes/views/tab-import.php:143
-msgid "the texts Yoast's breadcrumbs put before archives and search results and on the 404 page"
+#: includes/views/tab-import.php:164
+msgid "the texts the breadcrumbs put before archives and search results and on the 404 page"
+msgstr ""
+
+#: includes/views/tab-import.php:165
+msgid "the codes that confirm the site to Google, Bing and other webmaster tools: put them where the site keeps such codes, or they stop working"
+msgstr ""
+
+#: includes/views/tab-import.php:166
+msgid "addresses without the category base: with the plugin off, the addresses of categories get it back"
+msgstr ""
+
+#. translators: %s: number of redirections.
+#: includes/views/tab-import.php:168
+#, php-format
+msgid "redirections (%s): with the plugin off they stop working; move them to a redirection plugin first"
 msgstr ""
 
 #: includes/views/tab-indexing.php:16

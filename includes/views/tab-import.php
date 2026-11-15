@@ -1,8 +1,11 @@
 <?php
 /**
- * Import tab: what Yoast SEO left on the site, the button that takes it over, the run's progress
- * and the report of the last run.
+ * Import tab, a plugin's part: what the plugin left on the site, the button that takes it over, the
+ * run's progress and the report of the last run.
  *
+ * @var string                                                  $source  Key of the plugin (Simple_SEO_Import::SOURCES).
+ * @var string                                                  $class   Its import class.
+ * @var string                                                  $name    The plugin's name.
  * @var string                                                  $status  pending, none, running, done, dismissed or ''.
  * @var array{settings: bool, posts: int, terms: int}|null      $summary What there is to import; null while running.
  * @var array<string, mixed>                                    $report  Report of the last run.
@@ -17,11 +20,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 $simple_seo_n     = static fn( $value ): string => number_format_i18n( (int) $value );
 $simple_seo_count = static fn( string $group, string $what ): int => (int) ( $report[ $group ][ $what ] ?? 0 );
 ?>
-<h2><?php esc_html_e( 'Yoast SEO', 'simple-seo' ); ?></h2>
+<h2><?php echo esc_html( $name ); ?></h2>
 
 <?php if ( 'running' === $status ) : ?>
 	<form method="post" action="<?php echo esc_url( Simple_SEO_Admin::url( 'import' ) ); ?>">
 		<?php wp_nonce_field( $nonce ); ?>
+		<input type="hidden" name="simple_seo_source" value="<?php echo esc_attr( $source ); ?>" />
 		<p>
 			<?php
 			/* translators: 1: number of posts, 2: number of terms. */
@@ -39,7 +43,7 @@ endif;
 	<p><?php esc_html_e( 'Found on this site:', 'simple-seo' ); ?></p>
 	<ul class="ul-disc">
 		<?php if ( $summary['settings'] ) : ?>
-			<li><?php esc_html_e( 'the settings of Yoast SEO', 'simple-seo' ); ?></li>
+			<li><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'the settings of %s', 'simple-seo' ), esc_html( $name ) ); ?></li>
 		<?php endif; ?>
 		<?php if ( $summary['posts'] ) : ?>
 			<li><?php /* translators: %s: number of posts. */ printf( esc_html__( 'posts with SEO fields: %s', 'simple-seo' ), esc_html( $simple_seo_n( $summary['posts'] ) ) ); ?></li>
@@ -48,18 +52,30 @@ endif;
 			<li><?php /* translators: %s: number of terms. */ printf( esc_html__( 'terms with SEO fields: %s', 'simple-seo' ), esc_html( $simple_seo_n( $summary['terms'] ) ) ); ?></li>
 		<?php endif; ?>
 	</ul>
-	<p><?php esc_html_e( 'The import fills only what Simple SEO does not have yet: the settings of a tab saved here, and a template or a field that has a value, stay as they are. Yoast\'s own data is not changed, so the import can be run again and Yoast can be switched back on.', 'simple-seo' ); ?></p>
-	<p><?php esc_html_e( 'Yoast\'s %%variables%% become Simple SEO\'s {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report.', 'simple-seo' ); ?></p>
+	<p><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'The import fills only what Simple SEO does not have yet: the settings of a tab saved here, and a template or a field that has a value, stay as they are. The data of %s is not changed, so the import can be run again and the plugin can be switched back on.', 'simple-seo' ), esc_html( $name ) ); ?></p>
+	<p><?php echo esc_html( $class::variables_note() ); ?></p>
 	<form method="post" action="<?php echo esc_url( Simple_SEO_Admin::url( 'import' ) ); ?>">
 		<?php wp_nonce_field( $nonce ); ?>
-		<p><button type="submit" class="button button-primary" name="simple_seo_import" value="start"><?php 'done' === $status ? esc_html_e( 'Import again', 'simple-seo' ) : esc_html_e( 'Import from Yoast SEO', 'simple-seo' ); ?></button></p>
+		<input type="hidden" name="simple_seo_source" value="<?php echo esc_attr( $source ); ?>" />
+		<p>
+			<button type="submit" class="button button-primary" name="simple_seo_import" value="start">
+				<?php
+				if ( 'done' === $status ) {
+					esc_html_e( 'Import again', 'simple-seo' );
+				} else {
+					/* translators: %s: name of an SEO plugin. */
+					printf( esc_html__( 'Import from %s', 'simple-seo' ), esc_html( $name ) );
+				}
+				?>
+			</button>
+		</p>
 	</form>
 <?php else : ?>
-	<p><?php esc_html_e( 'There is no data of Yoast SEO on this site.', 'simple-seo' ); ?></p>
+	<p><?php /* translators: %s: name of an SEO plugin. */ printf( esc_html__( 'There is no data of %s on this site.', 'simple-seo' ), esc_html( $name ) ); ?></p>
 <?php endif; ?>
 
 <?php if ( 'done' === $status ) : ?>
-	<h2><?php esc_html_e( 'The last import', 'simple-seo' ); ?></h2>
+	<h3><?php esc_html_e( 'The last import', 'simple-seo' ); ?></h3>
 	<?php
 	$simple_seo_settings = array();
 	$simple_seo_labels   = array(
@@ -79,6 +95,7 @@ endif;
 		'sitemaps'      => __( 'the XML sitemap switched off', 'simple-seo' ),
 		/* translators: %s: number. */
 		'cleanup'       => __( 'clean-up: %s', 'simple-seo' ),
+		'robots_txt'    => __( 'the text of robots.txt', 'simple-seo' ),
 	);
 	foreach ( $simple_seo_labels as $simple_seo_what => $simple_seo_label ) {
 		if ( $simple_seo_count( 'settings', $simple_seo_what ) ) {
@@ -105,10 +122,10 @@ endif;
 		<?php endif; ?>
 		<?php
 		foreach ( array(
-			/* translators: 1: posts with Yoast's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken. */
-			'post' => __( 'Posts: %1$s with Yoast\'s fields, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s.', 'simple-seo' ),
-			/* translators: 1: terms with Yoast's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken. */
-			'term' => __( 'Terms: %1$s with Yoast\'s fields, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s.', 'simple-seo' ),
+			/* translators: 1: posts with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken. */
+			'post' => __( 'Posts with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s.', 'simple-seo' ),
+			/* translators: 1: terms with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken. */
+			'term' => __( 'Terms with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s.', 'simple-seo' ),
 		) as $simple_seo_type => $simple_seo_line ) :
 			?>
 			<li><?php echo esc_html( sprintf( $simple_seo_line, $simple_seo_n( $simple_seo_count( $simple_seo_type, 'seen' ) ), $simple_seo_n( $simple_seo_count( $simple_seo_type, 'changed' ) ), $simple_seo_n( $simple_seo_count( $simple_seo_type, 'fields' ) ), $simple_seo_n( $simple_seo_count( $simple_seo_type, 'kept' ) ), $simple_seo_n( $simple_seo_count( $simple_seo_type, 'refused' ) ) ) ); ?></li>
@@ -118,7 +135,7 @@ endif;
 				<?php
 				$simple_seo_dropped = array();
 				foreach ( (array) $report['dropped'] as $simple_seo_name => $simple_seo_times ) {
-					$simple_seo_dropped[] = '%%' . $simple_seo_name . '%% (' . $simple_seo_n( $simple_seo_times ) . ')';
+					$simple_seo_dropped[] = $class::variable( (string) $simple_seo_name ) . ' (' . $simple_seo_n( $simple_seo_times ) . ')';
 				}
 				/* translators: %s: list of variables with how often each was found. */
 				printf( esc_html__( 'Left out of the texts, as Simple SEO has no such variable: %s.', 'simple-seo' ), esc_html( implode( ', ', $simple_seo_dropped ) ) );
@@ -139,8 +156,16 @@ endif;
 						'twitter'          => __( 'titles, descriptions and images for X (posts: %s)', 'simple-seo' ),
 						/* translators: %s: number of posts. */
 						'robots_adv'       => __( 'advanced robots settings (posts: %s)', 'simple-seo' ),
+						/* translators: %s: number of posts. */
+						'schema'           => __( 'Schema of posts (posts: %s)', 'simple-seo' ),
+						/* translators: %s: number of users. */
+						'authors'          => __( 'SEO titles and descriptions of author archives (authors: %s)', 'simple-seo' ),
 						'social_templates' => __( 'templates of titles and descriptions for social networks', 'simple-seo' ),
-						'breadcrumb_texts' => __( 'the texts Yoast\'s breadcrumbs put before archives and search results and on the 404 page', 'simple-seo' ),
+						'breadcrumb_texts' => __( 'the texts the breadcrumbs put before archives and search results and on the 404 page', 'simple-seo' ),
+						'verification'     => __( 'the codes that confirm the site to Google, Bing and other webmaster tools: put them where the site keeps such codes, or they stop working', 'simple-seo' ),
+						'url_bases'        => __( 'addresses without the category base: with the plugin off, the addresses of categories get it back', 'simple-seo' ),
+						/* translators: %s: number of redirections. */
+						'redirections'     => __( 'redirections (%s): with the plugin off they stop working; move them to a redirection plugin first', 'simple-seo' ),
 					);
 					foreach ( $simple_seo_left as $simple_seo_what => $simple_seo_label ) :
 						if ( empty( $report['left'][ $simple_seo_what ] ) ) {

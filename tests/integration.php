@@ -231,8 +231,27 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	}
 	wp_cache_flush();
 	update_option( 'cron', $sseo_saved_yoast['cron'] );
-	foreach ( array( 'simple_seo_import_yoast', 'simple_seo_yoast_cleanup' ) as $sseo_name ) {
+	foreach ( array( 'simple_seo_import_yoast', 'simple_seo_yoast_cleanup', 'simple_seo_import_rank_math', 'simple_seo_rank_math_cleanup' ) as $sseo_name ) {
 		delete_option( $sseo_name );
+	}
+	// The stand has no data of Rank Math's: whatever the Rank Math sections made up goes.
+	foreach ( (array) $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'rank_math_' ) . '%' ) ) as $sseo_name ) {
+		$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_name}`" );
+	}
+	$sseo_db->query( "DELETE FROM {$sseo_db->options} WHERE option_name LIKE 'rank\\_math\\_%' OR option_name LIKE 'rank-math-%' OR option_name LIKE '\\_transient\\_%rank\\_math%'" );
+	foreach ( array( $sseo_db->usermeta, $sseo_db->termmeta, $sseo_db->postmeta ) as $sseo_name ) {
+		$sseo_db->query( "DELETE FROM {$sseo_name} WHERE meta_key LIKE 'rank\\_math\\_%'" );
+	}
+	wp_cache_flush();
+	foreach ( wp_roles()->role_objects as $sseo_role ) {
+		foreach ( array_keys( (array) $sseo_role->capabilities ) as $sseo_name ) {
+			if ( str_starts_with( (string) $sseo_name, 'rank_math_' ) ) {
+				$sseo_role->remove_cap( $sseo_name );
+			}
+		}
+	}
+	foreach ( array( 'rank_math/sseo_daily', 'rank_math_sseo_once' ) as $sseo_name ) {
+		wp_unschedule_hook( $sseo_name );
 	}
 };
 register_shutdown_function( $sseo_cleanup );
@@ -3359,15 +3378,15 @@ try {
 	sseo_section( 'Yoast import' );
 
 	require_once ABSPATH . 'wp-admin/includes/plugin.php';
-	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
-	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
-	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-cleanup.php';
+	foreach ( array( 'import-source', 'yoast-import', 'rank-math-import', 'source-cleanup', 'yoast-cleanup', 'rank-math-cleanup', 'import' ) as $sseo_name ) {
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-' . $sseo_name . '.php';
+	}
 	$sseo_wpdb = $GLOBALS['wpdb'];
 	// A site fresh from Yoast: none of Yoast's rows of the earlier sections or of the stand's own Yoast,
 	// Simple SEO's rows as install() makes them.
 	$sseo_wpdb->query( "DELETE FROM {$sseo_wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%'" );
 	wp_cache_flush();
-	foreach ( array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Import::OPTION ) as $sseo_name ) {
+	foreach ( array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Yoast_Import::STATE ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
 	$sseo_yi_rows = array( Simple_SEO_Titles::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Sitemaps::OPTION, Simple_SEO_Cleanup::OPTION );
@@ -3381,8 +3400,8 @@ try {
 	Simple_SEO_Settings::flush();
 	sseo_check( 'no data of Yoast: nothing found, nothing to import', ! Simple_SEO_Yoast_Import::found() && array( 'settings' => false, 'posts' => 0, 'terms' => 0 ) === Simple_SEO_Yoast_Import::summary() );
 	Simple_SEO_Import::detect();
-	sseo_check( 'the first admin request finds nothing to offer', 'none' === Simple_SEO_Import::state()['status'] );
-	delete_option( Simple_SEO_Import::OPTION );
+	sseo_check( 'the first admin request finds nothing to offer', 'none' === Simple_SEO_Import::state( 'yoast' )['status'] );
+	delete_option( Simple_SEO_Yoast_Import::STATE );
 	update_option( 'wpseo_taxonomy_meta', array( 'category' => array( $sseo_news => array( 'wpseo_title' => 'x' ) ) ) );
 	$sseo_yi_by     = array( Simple_SEO_Yoast_Import::found() );
 	$sseo_yi_report = array();
@@ -3566,7 +3585,7 @@ try {
 
 	sseo_check( "Yoast's data found: settings, posts and terms with SEO fields (an empty value is none)", Simple_SEO_Yoast_Import::found() && array( 'settings' => true, 'posts' => 4, 'terms' => 6 ) === Simple_SEO_Yoast_Import::summary(), Simple_SEO_Yoast_Import::summary() );
 	Simple_SEO_Import::detect();
-	sseo_check( 'the first admin request offers the import', 'pending' === Simple_SEO_Import::state()['status'] );
+	sseo_check( 'the first admin request offers the import', 'pending' === Simple_SEO_Import::state( 'yoast' )['status'] );
 
 	// Simple SEO's own choices, saved before the import.
 	update_option( Simple_SEO_Titles::OPTION, array( 'templates' => array( 'post:page' => array( 'title' => 'Own page {title}' ) ) ) );
@@ -3689,28 +3708,28 @@ try {
 	// The whole run, a few seconds at a time.
 	sseo_check( 'putting the offer off', 'dismissed' === ( static function (): string {
 		Simple_SEO_Import::act( 'dismiss' );
-		return (string) Simple_SEO_Import::state()['status'];
+		return (string) Simple_SEO_Import::state( 'yoast' )['status'];
 	} )() );
-	Simple_SEO_Import::start();
+	Simple_SEO_Import::start( 'yoast' );
 	$sseo_yi_steps = 0;
 	do {
-		$sseo_yi_state = Simple_SEO_Import::run( 0.0 );
+		$sseo_yi_state = Simple_SEO_Import::run( 'yoast', 0.0 );
 		++$sseo_yi_steps;
 	} while ( 'running' === $sseo_yi_state['status'] && $sseo_yi_steps < 20 );
 	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_yi_state['status'] && 5 === $sseo_yi_steps && isset( $sseo_yi_state['finished'] ), array( $sseo_yi_steps, $sseo_yi_state['status'] ) );
 	sseo_check( 'run again: everything is Simple SEO\'s already, kept', ! isset( $sseo_yi_state['report']['settings'] ) && 0 === ( $sseo_yi_state['report']['post']['fields'] ?? 0 ) && 13 === $sseo_yi_state['report']['post']['kept'] && 7 === $sseo_yi_state['report']['term']['kept'] && array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1, 'breadcrumb_texts' => 1, 'social_templates' => 1 ) == $sseo_yi_state['report']['left'], $sseo_yi_state['report'] ); // phpcs:ignore Universal.Operators.StrictComparisons
 	Simple_SEO_Import::act( 'dismiss' );
 	Simple_SEO_Import::detect();
-	sseo_check( 'a run done is not put off, nor offered again', 'done' === Simple_SEO_Import::state()['status'] );
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'running', 'phase' => 'terms', 'cursor' => 5, 'report' => array( 'post' => array( 'seen' => 99 ) ) ) );
-	Simple_SEO_Import::act( 'start' );
-	sseo_check( 'starting while a run goes on continues it', 'done' === Simple_SEO_Import::state()['status'] && 99 === Simple_SEO_Import::state()['report']['post']['seen'] );
-	update_option( Simple_SEO_Import::OPTION, $sseo_yi_state );
+	sseo_check( 'a run done is not put off, nor offered again', 'done' === Simple_SEO_Import::state( 'yoast' )['status'] );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'running', 'phase' => 'terms', 'cursor' => 5, 'report' => array( 'post' => array( 'seen' => 99 ) ) ) );
+	Simple_SEO_Import::act( 'start', array( 'simple_seo_source' => 'yoast' ) );
+	sseo_check( 'starting while a run goes on continues it', 'done' === Simple_SEO_Import::state( 'yoast' )['status'] && 99 === Simple_SEO_Import::state( 'yoast' )['report']['post']['seen'] );
+	update_option( Simple_SEO_Yoast_Import::STATE, $sseo_yi_state );
 
 	// The admin.
 	wp_set_current_user( $sseo_u['administrator'] );
 	Simple_SEO_Import::add_admin_tab();
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'pending' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'pending' ) );
 	set_current_screen( 'dashboard' );
 	$sseo_html = sseo_capture( array( Simple_SEO_Import::class, 'notice' ) );
 	sseo_check( 'the notice offers the import, and putting it off', str_contains( $sseo_html, 'Go to the import' ) && str_contains( $sseo_html, 'value="dismiss"' ) && str_contains( $sseo_html, 'name="_wpnonce"' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Admin::url( 'import' ) ) ) );
@@ -3720,20 +3739,20 @@ try {
 	$sseo_html          = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'] );
 	sseo_check( 'not on the Import tab itself; the tab lists what was found and the button', '' === $sseo_yi_notice_tab && str_contains( $sseo_html, 'posts with SEO fields: 4' ) && str_contains( $sseo_html, 'terms with SEO fields: 6' ) && str_contains( $sseo_html, 'value="start"' ) && str_contains( $sseo_html, 'Import from Yoast SEO' ) );
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'dismissed' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'dismissed' ) );
 	sseo_check( 'no notice once put off', '' === sseo_capture( array( Simple_SEO_Import::class, 'notice' ) ) );
 	wp_set_current_user( $sseo_ed );
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'pending' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'pending' ) );
 	sseo_check( 'no notice without the settings capability', '' === sseo_capture( array( Simple_SEO_Import::class, 'notice' ) ) );
 	wp_set_current_user( $sseo_u['administrator'] );
-	update_option( Simple_SEO_Import::OPTION, array_merge( $sseo_yi_state, array( 'status' => 'running', 'report' => array( 'post' => array( 'seen' => 1234 ) ) ) ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array_merge( $sseo_yi_state, array( 'status' => 'running', 'report' => array( 'post' => array( 'seen' => 1234 ) ) ) ) );
 	$_GET['tab'] = 'import';
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	sseo_check( 'while running: the progress and a Continue button the page presses by itself', str_contains( $sseo_html, '1,234 posts and 0 terms so far' ) && str_contains( $sseo_html, 'data-simple-seo-continue="1"' ) && str_contains( $sseo_html, 'value="continue"' ) && ! str_contains( $sseo_html, 'value="start"' ) && ! str_contains( $sseo_html, 'Remove the data of Yoast SEO' ) );
-	update_option( Simple_SEO_Import::OPTION, $sseo_yi_state );
+	update_option( Simple_SEO_Yoast_Import::STATE, $sseo_yi_state );
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'], $GLOBALS['current_screen'] );
-	sseo_check( 'after a run: the report and Import again', str_contains( $sseo_html, 'The last import' ) && str_contains( $sseo_html, 'Import again' ) && str_contains( $sseo_html, 'Posts: 3 with Yoast&#039;s fields, 0 of them changed.' ) && str_contains( $sseo_html, 'focus keyphrases (posts: 1)' ) && str_contains( $sseo_html, 'Settings: nothing to take, Simple SEO has its own.' ), $sseo_html );
+	sseo_check( 'after a run: the report and Import again', str_contains( $sseo_html, 'The last import' ) && str_contains( $sseo_html, 'Import again' ) && str_contains( $sseo_html, 'Posts with SEO fields: 3, 0 of them changed.' ) && str_contains( $sseo_html, 'focus keyphrases (posts: 1)' ) && str_contains( $sseo_html, 'Settings: nothing to take, Simple SEO has its own.' ), $sseo_html );
 	wp_set_current_user( 0 );
 
 	if ( Simple_SEO_WP_Loc::active() && count( Simple_SEO_WP_Loc::codes() ) > 1 ) {
@@ -3758,7 +3777,7 @@ try {
 		echo "  skip  the import with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
 	}
 
-	foreach ( array_merge( $sseo_yi_rows, array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Import::OPTION ) ) as $sseo_name ) {
+	foreach ( array_merge( $sseo_yi_rows, array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Yoast_Import::STATE ) ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
 	Simple_SEO_Settings::install();
@@ -3819,15 +3838,15 @@ try {
 	wp_cache_delete( $sseo_yc, 'post_meta' );
 
 	// When it may run.
-	delete_option( Simple_SEO_Import::OPTION );
+	delete_option( Simple_SEO_Yoast_Import::STATE );
 	$sseo_yc_yoast = static fn( $plugins ): array => array_merge( (array) $plugins, array( 'wordpress-seo/wp-seo.php' ) );
 	$sseo_vals     = array( Simple_SEO_Yoast_Cleanup::blocked() );
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'done' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'done' ) );
 	$sseo_vals[] = Simple_SEO_Yoast_Cleanup::blocked();
 	add_filter( 'option_active_plugins', $sseo_yc_yoast );
 	$sseo_vals[] = Simple_SEO_Yoast_Cleanup::blocked();
 	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
-	sseo_check( 'only after the import, and never while Yoast is active', array( 'import', '', 'yoast' ) === $sseo_vals, $sseo_vals );
+	sseo_check( 'only after the import, and never while Yoast is active', array( 'import', '', 'active' ) === $sseo_vals, $sseo_vals );
 
 	// What is left.
 	$sseo_yc_cron = 0;
@@ -3852,17 +3871,18 @@ try {
 	file_put_contents( $sseo_yc_theme . '/vendor/lib/x.php', "<?php WPSEO_Options::get( 'x' );" );
 	$sseo_yc_dir = static fn(): string => $sseo_yc_theme;
 	add_filter( 'stylesheet_directory', $sseo_yc_dir );
-	$sseo_vals = Simple_SEO_Yoast_Cleanup::theme_reads();
-	sseo_check( "the active theme's files (PHP and Twig) that read Yoast's settings, vendor left out", array( 'sseo-yc-theme/inc/schema.php' ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = Simple_SEO_Yoast_Cleanup::theme_reads( array( 'tables', 'settings', 'postmeta' ) );
+	sseo_check( "the active theme's files (PHP and Twig) that read Yoast's settings, vendor left out; Yoast's post meta themes read through Simple SEO", array( 'settings' => array( 'sseo-yc-theme/inc/schema.php' ) ) === $sseo_vals, $sseo_vals );
 
 	// The form.
 	$sseo_yc_all = array(
+		'simple_seo_source' => 'yoast',
 		'simple_seo_groups' => array( 'tables', 'internals', 'usermeta', 'postmeta', 'nope' ),
 		'simple_seo_backup' => '1',
 	);
 	$sseo_vals = array(
-		Simple_SEO_Import::act( 'clean', array( 'simple_seo_groups' => array( 'nope' ), 'simple_seo_backup' => '1' ) ),
-		Simple_SEO_Import::act( 'clean', array( 'simple_seo_groups' => array( 'tables' ) ) ),
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'yoast', 'simple_seo_groups' => array( 'nope' ), 'simple_seo_backup' => '1' ) ),
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'yoast', 'simple_seo_groups' => array( 'tables' ) ) ),
 	);
 	add_filter( 'option_active_plugins', $sseo_yc_yoast );
 	$sseo_vals[] = Simple_SEO_Import::act( 'clean', $sseo_yc_all );
@@ -3875,11 +3895,14 @@ try {
 	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
 	$_GET['tab']                = 'import';
 	$_GET['simple-seo-refused'] = 'backup';
+	$_GET['simple-seo-source']  = 'rank_math';
 	$sseo_html                  = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	unset( $_GET['simple-seo-refused'] );
+	$_GET['simple-seo-source']  = 'yoast';
+	$sseo_html_refused          = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['simple-seo-refused'], $_GET['simple-seo-source'] );
 	sseo_check(
-		"the tab offers the parts with their size; Yoast's settings unticked while the theme reads them, and the files named; a backup is asked for",
-		str_contains( $sseo_html, 'Remove the data of Yoast SEO' ) && str_contains( $sseo_html, 'Confirm that you have a backup of the database first.' )
+		"the tab offers the parts with their size; Yoast's settings unticked while the theme reads them, and the files named; a backup is asked for (the refusal of another plugin's form is not Yoast's)",
+		str_contains( $sseo_html, 'Remove the data of Yoast SEO' ) && ! str_contains( $sseo_html, 'Confirm that you have a backup of the database first.' ) && str_contains( $sseo_html_refused, 'Confirm that you have a backup of the database first.' )
 			&& (bool) preg_match( '/value="postmeta"\s+checked=\'checked\'/', $sseo_html ) && (bool) preg_match( '/value="settings"\s*\/>/', $sseo_html )
 			&& str_contains( $sseo_html, 'rows: 2,001, size:' ) && str_contains( $sseo_html, '<code>sseo-yc-theme/inc/schema.php</code>' )
 			&& (bool) preg_match( '/name="simple_seo_backup" value="1" required/', $sseo_html ) && str_contains( $sseo_html, 'value="clean"' )
@@ -3887,9 +3910,9 @@ try {
 	add_filter( 'option_active_plugins', $sseo_yc_yoast );
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'pending' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'pending' ) );
 	$sseo_html .= sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'done' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'done' ) );
 	sseo_check( 'with Yoast active, or before the import, only why not', str_contains( $sseo_html, 'Yoast SEO is active, so its data is in use.' ) && str_contains( $sseo_html, 'Run the import first: removing comes after it.' ) && ! str_contains( $sseo_html, 'value="clean"' ) );
 	remove_filter( 'stylesheet_directory', $sseo_yc_dir );
 
@@ -3919,7 +3942,7 @@ try {
 	sseo_check(
 		'what is not Yoast\'s stays, Simple SEO\'s fields and state included',
 		'x' === get_option( 'sseo_wpseo_keep' ) && (bool) wp_next_scheduled( 'sseo_keep_hook' ) && 'x' === get_user_meta( $sseo_yc_user, 'sseo_keep', true ) && 'x' === get_post_meta( $sseo_yc, 'sseo_keep', true )
-			&& 'Kept' === Simple_SEO_Fields::post_value( $sseo_yc, 'title' ) && 'done' === Simple_SEO_Import::state()['status'] && array( $sseo_db->prefix . 'sseo_yoast_keep' ) === $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'sseo_yoast_keep' ) ) )
+			&& 'Kept' === Simple_SEO_Fields::post_value( $sseo_yc, 'title' ) && 'done' === Simple_SEO_Import::state( 'yoast' )['status'] && array( $sseo_db->prefix . 'sseo_yoast_keep' ) === $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'sseo_yoast_keep' ) ) )
 	);
 	sseo_check( 'the cached meta of the posts and users goes too', array( 'kw', 'Author SEO title' ) === $sseo_vals && '' === get_post_meta( $sseo_yc, '_yoast_wpseo_focuskw', true ) && '' === get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
 	$sseo_yc_report = $sseo_yc_state['report'];
@@ -3931,16 +3954,16 @@ try {
 	$sseo_vals = Simple_SEO_Yoast_Cleanup::run();
 	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
 	sseo_check( 'nothing is removed while Yoast is active', 'running' === $sseo_vals['status'] && 'x' !== get_option( 'wpseo_titles', 'x' ) );
-	$sseo_vals = array( Simple_SEO_Import::act( 'clean', array( 'simple_seo_groups' => array( 'tables' ), 'simple_seo_backup' => '1' ) ), Simple_SEO_Yoast_Cleanup::state()['status'], Simple_SEO_Yoast_Cleanup::state()['report']['settings'] ?? 0, Simple_SEO_Yoast_Cleanup::preview() );
+	$sseo_vals = array( Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'yoast', 'simple_seo_groups' => array( 'tables' ), 'simple_seo_backup' => '1' ) ), Simple_SEO_Yoast_Cleanup::state()['status'], Simple_SEO_Yoast_Cleanup::state()['report']['settings'] ?? 0, Simple_SEO_Yoast_Cleanup::preview() );
 	sseo_check( 'starting while a clean-up runs goes on with it; then nothing of Yoast\'s is left', array( '', 'done', 5, array() ) === $sseo_vals, $sseo_vals );
 	$sseo_yc_done = Simple_SEO_Yoast_Cleanup::state();
 	update_option( Simple_SEO_Yoast_Cleanup::OPTION, array( 'status' => 'running', 'groups' => array( 'postmeta' ), 'report' => array( 'postmeta' => 7 ) ) );
-	sseo_check( 'Continue goes on with a clean-up', '' === Simple_SEO_Import::act( 'clean_continue' ) && 'done' === Simple_SEO_Yoast_Cleanup::state()['status'] && 7 === Simple_SEO_Yoast_Cleanup::state()['report']['postmeta'] );
+	sseo_check( 'Continue goes on with a clean-up', '' === Simple_SEO_Import::act( 'clean_continue', array( 'simple_seo_source' => 'yoast' ) ) && 'done' === Simple_SEO_Yoast_Cleanup::state()['status'] && 7 === Simple_SEO_Yoast_Cleanup::state()['report']['postmeta'] );
 	update_option( Simple_SEO_Yoast_Cleanup::OPTION, $sseo_yc_done );
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'], $GLOBALS['current_screen'] );
 	wp_set_current_user( 0 );
-	sseo_check( 'after: nothing left, and the report', str_contains( $sseo_html, 'No data of Yoast SEO is left on this site.' ) && str_contains( $sseo_html, 'The last clean-up' ) && str_contains( $sseo_html, 'rows of settings 5;' ) && ! str_contains( $sseo_html, 'value="clean"' ) );
+	sseo_check( 'after: nothing left, and the report', str_contains( $sseo_html, 'No data of Yoast SEO is left on this site.' ) && str_contains( $sseo_html, 'The last clean-up' ) && str_contains( $sseo_html, 'Removed: rows of settings: 5.' ) && ! str_contains( $sseo_html, 'value="clean"' ) );
 
 	$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_db->prefix}sseo_yoast_keep`" );
 	delete_option( 'sseo_wpseo_keep' );
@@ -3950,9 +3973,633 @@ try {
 		$sseo_name = $sseo_yc_theme . $sseo_name;
 		is_dir( $sseo_name ) ? rmdir( $sseo_name ) : unlink( $sseo_name );
 	}
-	foreach ( array( Simple_SEO_Import::OPTION, Simple_SEO_Yoast_Cleanup::OPTION ) as $sseo_name ) {
+	foreach ( array( Simple_SEO_Yoast_Import::STATE, Simple_SEO_Yoast_Cleanup::OPTION ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Rank Math import' );
+
+	$sseo_rm_db = $GLOBALS['wpdb'];
+	// A site fresh from Rank Math: Simple SEO's rows as install() makes them.
+	foreach ( $sseo_yi_rows as $sseo_name ) {
+		remove_all_filters( 'sanitize_option_' . $sseo_name );
+		delete_option( $sseo_name );
+	}
+	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION, Simple_SEO_Yoast_Import::STATE, Simple_SEO_Rank_Math_Import::STATE ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	// With wp-loc, the copies for other languages the Yoast section made would stand in for the rows.
+	foreach ( (array) $sseo_rm_db->get_col( "SELECT option_name FROM {$sseo_rm_db->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%'" ) as $sseo_name ) {
+		delete_option( (string) $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
+	sseo_check( 'no data of Rank Math: nothing found, nothing to import', ! Simple_SEO_Rank_Math_Import::found() && array( 'settings' => false, 'posts' => 0, 'terms' => 0 ) === Simple_SEO_Rank_Math_Import::summary() );
+	Simple_SEO_Import::detect();
+	sseo_check( 'the first admin request finds nothing of either plugin to offer', 'none' === Simple_SEO_Import::state( 'rank_math' )['status'] && 'none' === Simple_SEO_Import::state( 'yoast' )['status'] );
+	wp_set_current_user( $sseo_u['administrator'] );
+	Simple_SEO_Import::add_admin_tab();
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab'] = 'import';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the tab without data of either plugin says so, naming both', str_contains( $sseo_html, 'There is no data of Yoast SEO and Rank Math on this site.' ) && ! str_contains( $sseo_html, 'value="start"' ), $sseo_html );
+	// Found by Rank Math's post meta alone, or by its term meta alone.
+	$sseo_rm_by = array();
+	foreach ( array( 'postmeta' => 'post_id', 'termmeta' => 'term_id' ) as $sseo_key => $sseo_name ) {
+		$sseo_rm_db->insert( $sseo_rm_db->$sseo_key, array( $sseo_name => 99999998, 'meta_key' => 'rank_math_description', 'meta_value' => 'x' ) );
+		$sseo_rm_by[] = Simple_SEO_Rank_Math_Import::found();
+		$sseo_rm_db->query( "DELETE FROM {$sseo_rm_db->$sseo_key} WHERE {$sseo_name} = 99999998" );
+	}
+	$sseo_rm_db->insert( $sseo_rm_db->postmeta, array( 'post_id' => 99999998, 'meta_key' => 'rank_math_robots', 'meta_value' => 'a:0:{}' ) );
+	$sseo_rm_by[] = Simple_SEO_Rank_Math_Import::found();
+	$sseo_rm_db->query( "DELETE FROM {$sseo_rm_db->postmeta} WHERE post_id = 99999998" );
+	sseo_check( "found by Rank Math's post meta alone or by its term meta; an empty robots list is none", array( true, true, false ) === $sseo_rm_by, $sseo_rm_by );
+	delete_option( Simple_SEO_Rank_Math_Import::STATE );
+	delete_option( Simple_SEO_Yoast_Import::STATE );
+
+	register_post_type(
+		'sseo_rm_book',
+		array(
+			'public'      => true,
+			'has_archive' => true,
+			'label'       => 'Books',
+		)
+	);
+	foreach ( array( 'sseo_rm_shelf', 'sseo_rm_room' ) as $sseo_name ) {
+		register_taxonomy(
+			$sseo_name,
+			'sseo_rm_book',
+			array(
+				'public'       => true,
+				'hierarchical' => true,
+				'label'        => $sseo_name,
+			)
+		);
+	}
+	Simple_SEO_Fields::flush_types();
+	$sseo_rm_terms = array();
+	foreach ( array(
+		'tag'  => 'post_tag',
+		'cat'  => 'category',
+		'cat2' => 'category',
+		'fmt'  => 'post_format',
+	) as $sseo_key => $sseo_name ) {
+		$sseo_term                  = wp_insert_term( 'post_format' === $sseo_name ? 'post-format-sseo-rm' : 'Rm ' . $sseo_key, $sseo_name );
+		$sseo_rm_terms[ $sseo_key ] = (int) $sseo_term['term_id'];
+		$sseo['terms'][]            = array( (int) $sseo_term['term_id'], $sseo_name );
+	}
+
+	// Rank Math's settings, as Rank Math keeps them.
+	update_option(
+		'rank-math-options-titles',
+		array(
+			'title_separator'                  => '|',
+			'robots_global'                    => array( 'index' ),
+			'homepage_title'                   => 'Welcome %sep% %sitename%',
+			'homepage_description'             => 'All about %customfield(price)% %sitename%',
+			'homepage_facebook_image_id'       => $sseo_og,
+			'homepage_facebook_title'          => 'Social home',
+			'404_title'                        => 'Nothing here %sep% %sitename%',
+			'search_title'                     => 'Search: %search_query% %page% %sep% %sitename%',
+			'author_archive_title'             => '%name% at %sitename%',
+			'author_archive_description'       => '',
+			'date_archive_title'               => '%date(F Y)% %page% %sep% %sitename%',
+			'pt_post_title'                    => '%title% %page% %sep% %sitename%',
+			'pt_post_description'              => '%excerpt% %focuskw%',
+			'pt_page_title'                    => 'Page %title% %count(title)%',
+			'pt_page_description'              => 'About %title%, 50% off %unknown_word%',
+			'pt_sseo_rm_book_archive_title'    => '%pt_plural% Archive %sep% %sitename%',
+			'pt_post_archive_title'            => 'Never used: posts have no archive',
+			'tax_category_title'               => '%term% Archives %sep% %sitename%',
+			'tax_category_description'         => '%term_description%',
+			'pt_sseo_rm_book_custom_robots'    => 'on',
+			'pt_sseo_rm_book_robots'           => array( 'noindex' ),
+			// The installer writes switches as 'on' and 'off', the settings screen as true and false.
+			'pt_attachment_custom_robots'      => true,
+			'pt_attachment_robots'             => array( 'noindex' ),
+			'tax_post_tag_custom_robots'       => 'on',
+			'tax_post_tag_robots'              => array( 'noindex', 'nofollow' ),
+			'tax_category_custom_robots'       => 'off',
+			'tax_category_robots'              => array( 'noindex' ),
+			'author_custom_robots'             => 'on',
+			'author_robots'                    => array( 'noindex' ),
+			'disable_author_archives'          => 'off',
+			'disable_date_archives'            => 'on',
+			'open_graph_image'                 => $sseo_yi_url( $sseo_default ),
+			'twitter_author_names'             => 'rmsite',
+			'pt_post_primary_taxonomy'         => 'category',
+			'pt_sseo_rm_book_primary_taxonomy' => 'sseo_rm_room',
+		)
+	);
+	update_option(
+		'rank-math-options-general',
+		array(
+			'attachment_redirect_urls'      => true,
+			'breadcrumbs_separator'         => '&raquo;',
+			'breadcrumbs_home_label'        => 'Start',
+			'breadcrumbs_prefix'            => 'You are here:',
+			'breadcrumbs_remove_post_title' => 'on',
+			'breadcrumbs_blog_page'         => false,
+			'breadcrumbs_archive_format'    => 'Archives for %s',
+			'robots_txt_content'            => "User-agent: *\r\nDisallow: /private/",
+			'google_verify'                 => 'abc123',
+			'strip_category_base'           => 'on',
+		)
+	);
+	update_option( 'rank_math_modules', array( 'link-counter', 'redirections' ) );
+	$sseo_rm_redirections = $sseo_rm_db->prefix . 'rank_math_redirections';
+	$sseo_rm_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_rm_redirections}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, url_to TEXT NOT NULL, status VARCHAR(25) NOT NULL DEFAULT 'active' )" );
+	foreach ( array( 'active', 'active', 'inactive' ) as $sseo_name ) {
+		$sseo_rm_db->insert(
+			$sseo_rm_redirections,
+			array(
+				'url_to' => home_url( '/new/' ),
+				'status' => $sseo_name,
+			)
+		);
+	}
+
+	// Posts and terms with Rank Math's fields, written as Rank Math writes them.
+	$sseo_rm_post             = static fn( array $args ): int => (int) wp_insert_post( $args + array( 'post_status' => 'publish' ) );
+	$sseo['posts']['rm_1']    = $sseo_rm_post( array( 'post_title' => 'Rm One', 'post_category' => array( $sseo_news, $sseo_sport ) ) );
+	$sseo['posts']['rm_2']    = $sseo_rm_post( array( 'post_title' => 'Rm Two' ) );
+	$sseo['posts']['rm_page'] = $sseo_rm_post( array( 'post_title' => 'Rm Page', 'post_type' => 'page' ) );
+	$sseo['posts']['rm_menu'] = $sseo_rm_post( array( 'post_title' => 'Rm Menu', 'post_type' => 'nav_menu_item' ) );
+	$sseo['posts']['rm_none'] = $sseo_rm_post( array( 'post_title' => 'Rm None' ) );
+	$sseo_rm_1                = $sseo['posts']['rm_1'];
+	$sseo_rm_2                = $sseo['posts']['rm_2'];
+	$sseo_rm_page             = $sseo['posts']['rm_page'];
+	$sseo_rm_add              = static function ( string $type, array $objects ): void {
+		foreach ( $objects as $sseo_id => $sseo_rows ) {
+			foreach ( $sseo_rows as $sseo_key => $sseo_value ) {
+				add_metadata( $type, $sseo_id, $sseo_key, $sseo_value );
+			}
+		}
+	};
+	$sseo_rm_add(
+		'post',
+		array(
+			$sseo_rm_1                => array(
+				'rank_math_title'              => '%title% %sep% %sitename% %page%',
+				'rank_math_description'        => 'Desc %modified% here',
+				'rank_math_facebook_title'     => 'OG %title%',
+				'rank_math_facebook_image_id'  => (string) $sseo_pdf,
+				'rank_math_facebook_image'     => $sseo_yi_url( $sseo_og ),
+				'rank_math_robots'             => array( 'noindex', 'nofollow' ),
+				'rank_math_canonical_url'      => 'https://example.com/rm-one/',
+				'rank_math_primary_category'   => (string) $sseo_news,
+				'rank_math_focus_keyword'      => 'one,two',
+				'rank_math_twitter_title'      => 'X one',
+				'rank_math_schema_BlogPosting' => array( '@type' => 'BlogPosting' ),
+				'rank_math_seo_score'          => '64',
+			),
+			$sseo_rm_2                => array(
+				'rank_math_title'           => 'Rm two',
+				'rank_math_robots'          => array( 'index' ),
+				'rank_math_facebook_image'  => 'https://elsewhere.example/picture.jpg',
+				'rank_math_advanced_robots' => array( 'max-snippet' => '-1' ),
+				// Of two rows of a key the first counts, as get_post_meta() reads it.
+				'rank_math_canonical_url'   => 'https://example.com/first/',
+			),
+			$sseo_rm_page             => array(
+				'rank_math_title'            => 'Page T',
+				'rank_math_primary_category' => '5',
+				'rank_math_robots'           => array(),
+			),
+			$sseo['posts']['rm_menu'] => array( 'rank_math_title' => 'A menu item' ),
+			$sseo['posts']['rm_none'] => array( 'rank_math_robots' => array() ),
+		)
+	);
+	add_post_meta( $sseo_rm_2, 'rank_math_canonical_url', 'https://example.com/second/' );
+	$sseo_rm_add(
+		'term',
+		array(
+			$sseo_rm_terms['cat']  => array(
+				'rank_math_title'          => '%term% best %sep% %sitename%',
+				'rank_math_description'    => 'Cat desc',
+				'rank_math_robots'         => array( 'noindex' ),
+				'rank_math_canonical_url'  => 'https://example.com/rm-cat/',
+				'rank_math_facebook_image' => $sseo_yi_url( $sseo_feat ),
+				'rank_math_focus_keyword'  => 'cat',
+			),
+			$sseo_rm_terms['cat2'] => array( 'rank_math_title' => 'Rm cat two' ),
+			$sseo_rm_terms['tag']  => array(
+				'rank_math_description' => 'Tag desc',
+				'rank_math_robots'      => array( 'nofollow' ),
+			),
+			$sseo_rm_terms['fmt']  => array( 'rank_math_title' => 'A format' ),
+		)
+	);
+	// The rows of a term that is gone.
+	$sseo_rm_db->insert(
+		$sseo_rm_db->termmeta,
+		array(
+			'term_id'    => 99999999,
+			'meta_key'   => 'rank_math_title',
+			'meta_value' => 'Gone',
+		)
+	);
+	update_user_meta( (int) $sseo_u['administrator'], 'rank_math_title', 'Author %name%' );
+	update_post_meta( $sseo_rm_2, Simple_SEO_Fields::meta_key( 'title' ), 'Own two' );
+	update_term_meta( $sseo_rm_terms['cat2'], Simple_SEO_Fields::meta_key( 'title' ), 'Own cat two' );
+	$sseo_rm_raw = (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" );
+
+	sseo_check( "Rank Math's data found: settings, posts and terms with SEO fields (an empty robots list is none)", Simple_SEO_Rank_Math_Import::found() && array( 'settings' => true, 'posts' => 4, 'terms' => 5 ) === Simple_SEO_Rank_Math_Import::summary(), Simple_SEO_Rank_Math_Import::summary() );
+	Simple_SEO_Import::detect();
+	sseo_check( 'the first admin request offers the import from Rank Math', 'pending' === Simple_SEO_Import::state( 'rank_math' )['status'] && 'none' === Simple_SEO_Import::state( 'yoast' )['status'] );
+
+	// Simple SEO's own choices, saved before the import.
+	update_option( Simple_SEO_Titles::OPTION, array( 'templates' => array( 'post:page' => array( 'title' => 'Own page {title}' ) ) ) );
+	update_option( Simple_SEO_Social::OPTION, array( 'x_account' => '@mine' ) );
+	update_option( Simple_SEO_Special::OPTION, array( '404' => array( 'title' => 'Own 404' ) ) );
+	update_option( Simple_SEO_Breadcrumbs::LABELS, array( 'home' => 'My home' ) );
+	update_option( Simple_SEO_Breadcrumbs::OPTION, array( 'separator' => '/' ) );
+	Simple_SEO_Settings::flush();
+
+	// Settings.
+	$sseo_rm_report = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_report );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_titles = get_option( Simple_SEO_Titles::OPTION );
+	sseo_check( 'the separator, one of Simple SEO\'s', '|' === $sseo_rm_titles['separator'] );
+	sseo_check(
+		"templates in Simple SEO's syntax; Simple SEO's own one stays; ones equal to its defaults are not kept; a %word% that is none of Rank Math's variables stays text",
+		array(
+			'post:page'            => array(
+				'title'       => 'Own page {title}',
+				'description' => 'About {title}, 50% off %unknown_word%',
+			),
+			'author'               => array( 'title' => '{author} at {site}' ),
+			'date'                 => array( 'title' => '{date} {page} {sep} {site}' ),
+			'search'               => array( 'title' => 'Search: {search} {page} {sep} {site}' ),
+			'archive:sseo_rm_book' => array( 'title' => '{title} Archive {sep} {site}' ),
+			'term:category'        => array( 'title' => '{title} Archives {sep} {site}' ),
+		) == $sseo_rm_titles['templates'], // phpcs:ignore Universal.Operators.StrictComparisons -- the order of slots is the importer's.
+		$sseo_rm_titles['templates']
+	);
+	sseo_check( "a variable of Rank Math's Simple SEO has none for is left out and counted, with or without arguments; one in a kept template is not", array( 'focuskw' => 1, 'customfield' => 1 ) == $sseo_rm_report['dropped'], $sseo_rm_report['dropped'] ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_rm_index = get_option( Simple_SEO_Indexing::OPTION );
+	sseo_check( "indexing: kinds with robots of their own follow them, the rest the global robots; date archives switched off; attachment pages to their post", array( 'post:sseo_rm_book', 'archive:sseo_rm_book', 'post:attachment', 'term:post_tag', 'author', 'date' ) === $sseo_rm_index['noindex'] && Simple_SEO_Indexing::ATTACHMENTS_PARENT === $sseo_rm_index['attachments'], $sseo_rm_index );
+	sseo_check( "social networks: the default image by its address, Simple SEO's own X account stays", array( 'default_image' => $sseo_default, 'x_account' => '@mine' ) === get_option( Simple_SEO_Social::OPTION ) );
+	sseo_check( "home and 404: Rank Math's home page with its image, Simple SEO's own 404 title stays", array( '404' => array( 'title' => 'Own 404' ), 'home' => array( 'title' => 'Welcome {sep} {site}', 'description' => 'All about {site}', 'image' => $sseo_og ) ) == get_option( Simple_SEO_Special::OPTION ), get_option( Simple_SEO_Special::OPTION ) ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_rm_bc = get_option( Simple_SEO_Breadcrumbs::OPTION );
+	sseo_check( "breadcrumbs: Simple SEO's own separator stays, the current page and the posts page left out, a type's taxonomy", '/' === $sseo_rm_bc['separator'] && false === $sseo_rm_bc['show_current'] && false === $sseo_rm_bc['show_blog'] && array( 'sseo_rm_book' => 'sseo_rm_room' ) === $sseo_rm_bc['taxonomies'], $sseo_rm_bc );
+	sseo_check( "breadcrumb labels as Rank Math had them; Simple SEO's own one stays", array( 'home' => 'My home', 'prefix' => 'You are here:' ) === get_option( Simple_SEO_Breadcrumbs::LABELS ) );
+	sseo_check( 'no sitemap module, no sitemap', array( 'enabled' => false ) === get_option( Simple_SEO_Sitemaps::OPTION ) );
+	sseo_check( "Rank Math's robots.txt, its line endings made one", "User-agent: *\nDisallow: /private/\n" === Simple_SEO_Files::robots_option(), Simple_SEO_Files::robots_option() );
+	sseo_check(
+		'the report names what was taken and what Simple SEO has nothing for',
+		array(
+			'separator'     => 1,
+			'templates'     => 6,
+			'indexing'      => 1,
+			'attachments'   => 1,
+			'special'       => 3,
+			'default_image' => 1,
+			'breadcrumbs'   => 3,
+			'labels'        => 1,
+			'sitemaps'      => 1,
+			'robots_txt'    => 1,
+		) == $sseo_rm_report['settings'] && array( 'social_templates' => 1, 'breadcrumb_texts' => 1, 'verification' => 1, 'url_bases' => 1 ) == $sseo_rm_report['left'], // phpcs:ignore Universal.Operators.StrictComparisons
+		$sseo_rm_report
+	);
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	sseo_check( 'run again: nothing more to take', ! isset( $sseo_rm_again['settings'] ), $sseo_rm_again );
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	update_option( 'rank-math-options-titles', array_merge( get_option( 'rank-math-options-titles' ), array( 'title_separator' => 'custom' ) ) );
+	delete_option( Simple_SEO_Titles::OPTION );
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	sseo_check( "Rank Math's breadcrumb separator, its HTML entity decoded; a separator Simple SEO does not have is not taken", '»' === get_option( Simple_SEO_Breadcrumbs::OPTION )['separator'] && 4 === $sseo_rm_again['settings']['breadcrumbs'] && ! isset( $sseo_rm_again['settings']['separator'] ) && Simple_SEO_Titles::DEFAULT_SEPARATOR === get_option( Simple_SEO_Titles::OPTION )['separator'], $sseo_rm_again );
+
+	$sseo_rm_saved = array( get_option( 'rank-math-options-titles' ), get_option( 'rank-math-options-general' ) );
+	update_option(
+		'rank-math-options-titles',
+		array_merge(
+			$sseo_rm_saved[0],
+			array(
+				'robots_global'           => array( 'noindex' ),
+				'author_robots'           => array( 'index' ),
+				'disable_author_archives' => true,
+				'disable_date_archives'   => 'off',
+				'date_archive_robots'     => array( 'index' ),
+			)
+		)
+	);
+	update_option( 'rank-math-options-general', array( 'robots_txt_content' => Simple_SEO_Files::robots_default(), 'strip_category_base' => 'off', 'wc_remove_product_base' => 'off' ) );
+	$sseo_rm_own = array();
+	foreach ( array( Simple_SEO_Indexing::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Files::ROBOTS_OPTION ) as $sseo_name ) {
+		$sseo_rm_own[ $sseo_name ] = get_option( $sseo_name );
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	$sseo_rm_index = get_option( Simple_SEO_Indexing::OPTION );
+	sseo_check(
+		"with noindex as the global robots: every kind without robots of its own; author archives switched off; the robots of date archives; Rank Math's X account; robots.txt as WordPress has it is not taken",
+		in_array( 'post:post', $sseo_rm_index['noindex'], true ) && in_array( 'term:category', $sseo_rm_index['noindex'], true ) && in_array( 'author', $sseo_rm_index['noindex'], true ) && ! in_array( 'date', $sseo_rm_index['noindex'], true ) && ! isset( $sseo_rm_again['settings']['attachments'] )
+			&& '@rmsite' === get_option( Simple_SEO_Social::OPTION )['x_account'] && '' === Simple_SEO_Files::robots_option() && ! isset( $sseo_rm_again['settings']['robots_txt'] ) && ! isset( $sseo_rm_again['left']['url_bases'] ),
+		array( $sseo_rm_index, $sseo_rm_again )
+	);
+	update_option( 'rank-math-options-titles', $sseo_rm_saved[0] );
+	update_option( 'rank-math-options-general', $sseo_rm_saved[1] );
+	foreach ( $sseo_rm_own as $sseo_name => $sseo_value ) {
+		update_option( $sseo_name, $sseo_value, false );
+	}
+	Simple_SEO_Settings::flush();
+
+	// Posts.
+	$sseo_rm_report = array();
+	$sseo_rm_next   = Simple_SEO_Rank_Math_Import::posts( 0, 1, $sseo_rm_report );
+	sseo_check( 'posts in batches, by ID', $sseo_rm_1 === $sseo_rm_next && 1 === $sseo_rm_report['post']['seen'] );
+	$sseo_rm_next = Simple_SEO_Rank_Math_Import::posts( $sseo_rm_next, 100, $sseo_rm_report );
+	sseo_check( 'the last batch ends with the last post, then nothing is left', $sseo['posts']['rm_menu'] === $sseo_rm_next && 0 === Simple_SEO_Rank_Math_Import::posts( $sseo_rm_next, 100, $sseo_rm_report ) );
+	$sseo_rm_fields = array();
+	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category' ) as $sseo_key ) {
+		$sseo_rm_fields[ $sseo_key ] = Simple_SEO_Fields::post_value( $sseo_rm_1, $sseo_key );
+	}
+	sseo_check(
+		"a post's fields: texts in Simple SEO's syntax, the image by its address where its ID is no image, both robots from the list, canonical, primary category",
+		array(
+			'title'            => '{title} {sep} {site} {page}',
+			'description'      => 'Desc here',
+			'og_title'         => 'OG {title}',
+			'og_image'         => (string) $sseo_og,
+			'index'            => 'noindex',
+			'nofollow'         => '1',
+			'canonical'        => 'https://example.com/rm-one/',
+			'primary_category' => (string) $sseo_news,
+		) === $sseo_rm_fields,
+		$sseo_rm_fields
+	);
+	sseo_check( "Simple SEO's own field stays; Rank Math's explicit index is index; an image elsewhere is not taken; of two rows the first", 'Own two' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'title' ) && 'index' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'nofollow' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'og_image' ) && 'https://example.com/first/' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'canonical' ) );
+	sseo_check( 'a page: its title, no primary category (pages have none), no robots from an empty list; a post type without SEO fields is left alone', 'Page T' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'title' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'primary_category' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['rm_menu'], 'title' ) );
+	sseo_check( 'the report of the posts', array( 'seen' => 3, 'fields' => 11, 'changed' => 3, 'kept' => 1, 'refused' => 1 ) == $sseo_rm_report['post'] && array( 'modified' => 1 ) === $sseo_rm_report['dropped'], $sseo_rm_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "Rank Math's rows are left as they were", $sseo_rm_raw === (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" ) && '%title% %sep% %sitename% %page%' === get_post_meta( $sseo_rm_1, 'rank_math_title', true ) );
+
+	// Terms.
+	$sseo_rm_report = array();
+	$sseo_rm_next   = Simple_SEO_Rank_Math_Import::terms( 0, 2, $sseo_rm_report );
+	$sseo_rm_steps  = array( $sseo_rm_next );
+	while ( $sseo_rm_next && count( $sseo_rm_steps ) < 10 ) {
+		$sseo_rm_next    = Simple_SEO_Rank_Math_Import::terms( $sseo_rm_next, 2, $sseo_rm_report );
+		$sseo_rm_steps[] = $sseo_rm_next;
+	}
+	sseo_check( 'terms in batches, by ID', array( $sseo_rm_terms['cat'], $sseo_rm_terms['fmt'], 99999999, 0 ) === $sseo_rm_steps, $sseo_rm_steps );
+	$sseo_rm_fields = array();
+	foreach ( array( 'title', 'description', 'index', 'nofollow', 'canonical', 'og_image' ) as $sseo_key ) {
+		$sseo_rm_fields[ $sseo_key ] = Simple_SEO_Fields::term_value( $sseo_rm_terms['cat'], $sseo_key );
+	}
+	sseo_check(
+		"a term's fields: noindex, canonical, the image by its address",
+		array(
+			'title'       => '{title} best {sep} {site}',
+			'description' => 'Cat desc',
+			'index'       => 'noindex',
+			'nofollow'    => '',
+			'canonical'   => 'https://example.com/rm-cat/',
+			'og_image'    => (string) $sseo_feat,
+		) === $sseo_rm_fields,
+		$sseo_rm_fields
+	);
+	sseo_check( "Simple SEO's own field stays; nofollow alone leaves indexing as set for the type; terms that are gone, or of a taxonomy without SEO fields, are left alone", 'Own cat two' === Simple_SEO_Fields::term_value( $sseo_rm_terms['cat2'], 'title' ) && 'Tag desc' === Simple_SEO_Fields::term_value( $sseo_rm_terms['tag'], 'description' ) && '' === Simple_SEO_Fields::term_value( $sseo_rm_terms['tag'], 'index' ) && '1' === Simple_SEO_Fields::term_value( $sseo_rm_terms['tag'], 'nofollow' ) && '' === Simple_SEO_Fields::term_value( $sseo_rm_terms['fmt'], 'title' ) );
+	sseo_check( 'the report of the terms', array( 'seen' => 3, 'fields' => 7, 'changed' => 2, 'kept' => 1 ) == $sseo_rm_report['term'], $sseo_rm_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'what Simple SEO has nothing for: by posts, authors, and the redirections that worked', array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1, 'schema' => 1, 'authors' => 1, 'redirections' => 2 ) == Simple_SEO_Rank_Math_Import::left(), Simple_SEO_Rank_Math_Import::left() ); // phpcs:ignore Universal.Operators.StrictComparisons
+	update_option( 'rank_math_modules', array( 'link-counter' ) );
+	sseo_check( 'redirections with their module off did nothing: not named', ! isset( Simple_SEO_Rank_Math_Import::left()['redirections'] ) );
+	update_option( 'rank_math_modules', array( 'link-counter', 'redirections' ) );
+
+	// The whole run, through the tab's forms.
+	sseo_check( 'a form of an unknown plugin does nothing', '' === Simple_SEO_Import::act( 'start', array( 'simple_seo_source' => 'nope' ) ) && 'pending' === Simple_SEO_Import::state( 'rank_math' )['status'] );
+	Simple_SEO_Import::start( 'rank_math' );
+	$sseo_rm_count = 0;
+	do {
+		$sseo_rm_state = Simple_SEO_Import::run( 'rank_math', 0.0 );
+		++$sseo_rm_count;
+	} while ( 'running' === $sseo_rm_state['status'] && $sseo_rm_count < 20 );
+	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_rm_state['status'] && 5 === $sseo_rm_count && 'none' === Simple_SEO_Import::state( 'yoast' )['status'], array( $sseo_rm_count, $sseo_rm_state['status'] ) );
+	sseo_check( "run again: everything is Simple SEO's already, kept", ! isset( $sseo_rm_state['report']['settings'] ) && 0 === ( $sseo_rm_state['report']['post']['fields'] ?? 0 ) && 12 === $sseo_rm_state['report']['post']['kept'] && 8 === $sseo_rm_state['report']['term']['kept'] && 2 === $sseo_rm_state['report']['left']['redirections'] && 1 === $sseo_rm_state['report']['left']['verification'], $sseo_rm_state['report'] );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'running', 'phase' => 'terms', 'cursor' => 99999999, 'report' => array( 'post' => array( 'seen' => 99 ) ) ) );
+	Simple_SEO_Import::act( 'start', array( 'simple_seo_source' => 'rank_math' ) );
+	sseo_check( 'starting while a run goes on continues it', 'done' === Simple_SEO_Import::state( 'rank_math' )['status'] && 99 === Simple_SEO_Import::state( 'rank_math' )['report']['post']['seen'] );
+
+	// The admin.
+	wp_set_current_user( $sseo_u['administrator'] );
+	Simple_SEO_Import::add_admin_tab();
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'pending' ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'pending' ) );
+	set_current_screen( 'dashboard' );
+	$sseo_html = sseo_capture( array( Simple_SEO_Import::class, 'notice' ) );
+	sseo_check( 'the notice names every plugin with data to import', str_contains( $sseo_html, 'Simple SEO found the data of Yoast SEO and Rank Math on this site' ), $sseo_html );
+	Simple_SEO_Import::act( 'dismiss' );
+	sseo_check( 'Not now puts off both', 'dismissed' === Simple_SEO_Import::state( 'rank_math' )['status'] && 'dismissed' === Simple_SEO_Import::state( 'yoast' )['status'] );
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab'] = 'import';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check(
+		'the tab: Rank Math with what was found and its button; Yoast, which left nothing, is not named',
+		str_contains( $sseo_html, '<h2>Rank Math</h2>' ) && str_contains( $sseo_html, 'Import from Rank Math' ) && str_contains( $sseo_html, 'Rank Math&#039;s %variables% become' ) && str_contains( $sseo_html, 'posts with SEO fields: 4' ) && str_contains( $sseo_html, 'terms with SEO fields: 5' ) && str_contains( $sseo_html, 'name="simple_seo_source" value="rank_math"' ) && ! str_contains( $sseo_html, '<h2>Yoast SEO</h2>' ),
+		$sseo_html
+	);
+	update_option(
+		Simple_SEO_Rank_Math_Import::STATE,
+		array(
+			'status'   => 'done',
+			'finished' => time(),
+			'report'   => array(
+				'post'    => array( 'seen' => 3 ),
+				'dropped' => array( 'focuskw' => 2 ),
+				'left'    => array(
+					'redirections' => 2,
+					'verification' => 1,
+					'authors'      => 1,
+				),
+			),
+		)
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( "after a run: Rank Math's variables as Rank Math writes them, and what to do about the redirections and the codes", str_contains( $sseo_html, 'Posts with SEO fields: 3, 0 of them changed.' ) && str_contains( $sseo_html, '%focuskw% (2)' ) && str_contains( $sseo_html, 'redirections (2): with the plugin off they stop working' ) && str_contains( $sseo_html, 'the codes that confirm the site to Google' ) && str_contains( $sseo_html, 'author archives (authors: 1)' ), $sseo_html );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'running', 'report' => array( 'post' => array( 'seen' => 7 ) ) ) );
+	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'done' ) );
+	update_option( Simple_SEO_Rank_Math_Cleanup::OPTION, array( 'status' => 'done', 'report' => array( 'tables' => 1 ) ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	delete_option( Simple_SEO_Rank_Math_Cleanup::OPTION );
+	sseo_check( 'while one import runs, the tab shows only its progress', str_contains( $sseo_html, '7 posts and 0 terms so far' ) && str_contains( $sseo_html, 'value="rank_math"' ) && ! str_contains( $sseo_html, 'Yoast SEO' ) && ! str_contains( $sseo_html, 'The last clean-up' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	wp_set_current_user( 0 );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, $sseo_rm_state );
+	delete_option( Simple_SEO_Yoast_Import::STATE );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Rank Math clean-up' );
+
+	// Rank Math's leftovers: those of the import section and these.
+	$sseo_rm_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_rm_db->prefix}rank_math_internal_meta` ( object_id BIGINT NOT NULL PRIMARY KEY )" );
+	$sseo_rm_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_rm_db->prefix}sseo_rank_math_keep` ( id INT NOT NULL PRIMARY KEY )" );
+	update_option( 'rank_math_version', '1.0.282' );
+	update_option( 'rank-math-options-sitemap', array( 'items_per_page' => 200 ) );
+	update_option( 'sseo_rank_math_keep', 'x' );
+	set_transient( 'rank_math_sseo', 'x', HOUR_IN_SECONDS );
+	set_transient( '_rank_math_sseo_redirect', 1, HOUR_IN_SECONDS );
+	wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'rank_math/sseo_daily' );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'rank_math_sseo_once', array( 1 ) );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'rank_math_sseo_once', array( 2 ) );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'sseo_keep_hook' );
+	get_role( 'administrator' )->add_cap( 'rank_math_titles' );
+	get_role( 'editor' )->add_cap( 'rank_math_onpage_general' );
+	get_role( 'editor' )->add_cap( 'sseo_keep_cap' );
+	$sseo_rc_user = (int) $sseo_u['administrator'];
+	update_user_meta( $sseo_rc_user, 'rank_math_sseo_pref', 'x' );
+	update_user_meta( $sseo_rc_user, 'sseo_keep', 'x' );
+	add_term_meta( $sseo_rm_terms['cat'], 'sseo_keep', 'x' );
+	update_post_meta( $sseo_rm_1, 'sseo_keep', 'x' );
+	// One batch and one row more of post meta.
+	$sseo_rc_posts = (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" );
+	$sseo_rm_db->query( "INSERT INTO {$sseo_rm_db->postmeta} ( post_id, meta_key, meta_value ) VALUES " . implode( ',', array_map( static fn( int $i ): string => "( {$sseo_rm_1}, 'rank_math_filler_{$i}', 'x' )", range( 1, Simple_SEO_Rank_Math_Cleanup::BATCH + 1 - $sseo_rc_posts ) ) ) );
+	wp_cache_delete( $sseo_rm_1, 'post_meta' );
+	$sseo_rc_terms   = (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->termmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" );
+	$sseo_rc_tables  = (array) $sseo_rm_db->get_col( $sseo_rm_db->prepare( 'SHOW TABLES LIKE %s', $sseo_rm_db->esc_like( $sseo_rm_db->prefix . 'rank_math_' ) . '%' ) );
+	$sseo_rc_options = (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->options} WHERE option_name LIKE 'rank\\_math\\_%' OR option_name LIKE 'rank-math-%' OR option_name LIKE '\\_transient\\_%rank\\_math%'" ) - 4;
+
+	// When it may run.
+	$sseo_rc_active = static fn( $plugins ): array => array_merge( (array) $plugins, array( 'seo-by-rank-math/rank-math.php' ) );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'pending' ) );
+	$sseo_vals = array( Simple_SEO_Rank_Math_Cleanup::blocked() );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'done' ) );
+	$sseo_vals[] = Simple_SEO_Rank_Math_Cleanup::blocked();
+	add_filter( 'option_active_plugins', $sseo_rc_active );
+	$sseo_vals[] = Simple_SEO_Rank_Math_Cleanup::blocked();
+	remove_filter( 'option_active_plugins', $sseo_rc_active );
+	sseo_check( 'only after the import, and never while Rank Math is active', array( 'import', '', 'active' ) === $sseo_vals, $sseo_vals );
+
+	// What is left.
+	$sseo_rc_parts = Simple_SEO_Rank_Math_Cleanup::preview();
+	sseo_check(
+		"what is left of Rank Math's, by part: tables, the rest of its options with its tasks and the capabilities of roles, settings, user, term and post meta",
+		array( 'tables', 'internals', 'settings', 'usermeta', 'termmeta', 'postmeta' ) === array_keys( $sseo_rc_parts ) && count( $sseo_rc_tables ) === $sseo_rc_parts['tables']['rows'] && 4 === $sseo_rc_parts['settings']['rows'] && 2 === $sseo_rc_parts['usermeta']['rows'] && $sseo_rc_terms === $sseo_rc_parts['termmeta']['rows'] && Simple_SEO_Rank_Math_Cleanup::BATCH + 1 === $sseo_rc_parts['postmeta']['rows'] && $sseo_rc_options + 3 + 2 === $sseo_rc_parts['internals']['rows'],
+		array( $sseo_rc_parts, $sseo_rc_options, $sseo_rc_terms )
+	);
+	$sseo_rc_theme = get_theme_root() . '/sseo-rc-theme';
+	wp_mkdir_p( $sseo_rc_theme . '/inc' );
+	wp_mkdir_p( $sseo_rc_theme . '/vendor' );
+	file_put_contents( $sseo_rc_theme . '/inc/schema.php', "<?php \$name = get_option( 'rank-math-options-titles' )['knowledgegraph_name'];" );
+	file_put_contents( $sseo_rc_theme . '/inc/meta.twig', "{{ fn('get_post_meta', post.id, 'rank_math_title', true) }}" );
+	file_put_contents( $sseo_rc_theme . '/inc/readme.txt', 'rank_math_title' );
+	file_put_contents( $sseo_rc_theme . '/vendor/x.php', "<?php get_post_meta( 1, 'rank_math_title', true );" );
+	$sseo_rc_dir = static fn(): string => $sseo_rc_theme;
+	add_filter( 'stylesheet_directory', $sseo_rc_dir );
+	sseo_check( 'the theme is read only for the parts asked for', array() === Simple_SEO_Rank_Math_Cleanup::theme_reads( array( 'tables', 'usermeta' ) ) );
+	$sseo_vals = Simple_SEO_Rank_Math_Cleanup::theme_reads( array( 'tables', 'settings', 'termmeta', 'postmeta' ) );
+	sseo_check(
+		"the active theme's files that read Rank Math's settings, or its meta (Simple SEO has no aliases for it)",
+		array(
+			'settings' => array( 'sseo-rc-theme/inc/schema.php' ),
+			'termmeta' => array( 'sseo-rc-theme/inc/meta.twig' ),
+			'postmeta' => array( 'sseo-rc-theme/inc/meta.twig' ),
+		) == $sseo_vals, // phpcs:ignore Universal.Operators.StrictComparisons -- the order of parts follows the files.
+		$sseo_vals
+	);
+
+	// The form.
+	$sseo_rc_all = array(
+		'simple_seo_source' => 'rank_math',
+		'simple_seo_groups' => array( 'tables', 'internals', 'usermeta', 'termmeta', 'postmeta' ),
+		'simple_seo_backup' => '1',
+	);
+	$sseo_vals   = array(
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'rank_math', 'simple_seo_groups' => array( 'nope' ), 'simple_seo_backup' => '1' ) ),
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'rank_math', 'simple_seo_groups' => array( 'tables' ) ) ),
+	);
+	add_filter( 'option_active_plugins', $sseo_rc_active );
+	$sseo_vals[] = Simple_SEO_Import::act( 'clean', $sseo_rc_all );
+	remove_filter( 'option_active_plugins', $sseo_rc_active );
+	sseo_check( 'refused without a part, without a backup, and with Rank Math active; nothing started', array( 'groups', 'backup', 'blocked' ) === $sseo_vals && array() === Simple_SEO_Rank_Math_Cleanup::state(), $sseo_vals );
+
+	// The page, before.
+	wp_set_current_user( $sseo_rc_user );
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab'] = 'import';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check(
+		"the tab offers Rank Math's parts; what the theme reads is unticked and its files named",
+		str_contains( $sseo_html, 'Remove the data of Rank Math' ) && str_contains( $sseo_html, 'Rank Math&#039;s fields of terms' ) && str_contains( $sseo_html, 'the capabilities it gave to roles' )
+			&& (bool) preg_match( '/value="usermeta"\s+checked=\'checked\'/', $sseo_html ) && (bool) preg_match( '/value="postmeta"\s*\/>/', $sseo_html ) && (bool) preg_match( '/value="termmeta"\s*\/>/', $sseo_html ) && (bool) preg_match( '/value="settings"\s*\/>/', $sseo_html )
+			&& str_contains( $sseo_html, 'The active theme reads the fields of posts of Rank Math' ) && str_contains( $sseo_html, '<code>sseo-rc-theme/inc/meta.twig</code>' ) && str_contains( $sseo_html, 'rows: 2,001, size:' ) && str_contains( $sseo_html, 'id="simple-seo-cleanup-rank_math"' ),
+		$sseo_html
+	);
+	remove_filter( 'stylesheet_directory', $sseo_rc_dir );
+
+	// A run: a part or a batch per step.
+	$sseo_vals = array( get_post_meta( $sseo_rm_1, 'rank_math_focus_keyword', true ), get_term_meta( $sseo_rm_terms['cat'], 'rank_math_focus_keyword', true ), get_user_meta( $sseo_rc_user, 'rank_math_title', true ) );
+	Simple_SEO_Rank_Math_Cleanup::start( $sseo_rc_all['simple_seo_groups'] );
+	$sseo_rc_steps = 0;
+	do {
+		$sseo_rc_state = Simple_SEO_Rank_Math_Cleanup::run( 0.0 );
+		++$sseo_rc_steps;
+		if ( 5 === $sseo_rc_steps ) {
+			$sseo_rc_batch = (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" );
+		}
+	} while ( 'running' === $sseo_rc_state['status'] && $sseo_rc_steps < 20 );
+	sseo_check( 'one step per part, the post meta in batches', 'done' === $sseo_rc_state['status'] && 6 === $sseo_rc_steps && 1 === $sseo_rc_batch, array( $sseo_rc_steps, $sseo_rc_batch ) );
+	$sseo_rc_caps = array();
+	foreach ( wp_roles()->role_objects as $sseo_role ) {
+		foreach ( array_keys( (array) $sseo_role->capabilities ) as $sseo_name ) {
+			if ( str_starts_with( (string) $sseo_name, 'rank_math_' ) ) {
+				$sseo_rc_caps[] = $sseo_name;
+			}
+		}
+	}
+	$sseo_rc_left = array(
+		'tables'   => (array) $sseo_rm_db->get_col( $sseo_rm_db->prepare( 'SHOW TABLES LIKE %s', $sseo_rm_db->esc_like( $sseo_rm_db->prefix . 'rank_math_' ) . '%' ) ),
+		'options'  => (array) $sseo_rm_db->get_col( "SELECT option_name FROM {$sseo_rm_db->options} WHERE option_name LIKE 'rank\\_math\\_%' OR option_name LIKE 'rank-math-%' OR option_name LIKE '\\_transient\\_%rank\\_math%'" ),
+		'caps'     => $sseo_rc_caps,
+		'usermeta' => (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->usermeta} WHERE meta_key LIKE 'rank\\_math\\_%'" ),
+		'termmeta' => (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->termmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" ),
+		'postmeta' => (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" ),
+	);
+	sort( $sseo_rc_left['options'] );
+	sseo_check( "Rank Math's tables, other options, tasks, capabilities and meta are gone; its settings stay, as they were not ticked", array( 'tables' => array(), 'options' => array( 'rank-math-options-general', 'rank-math-options-sitemap', 'rank-math-options-titles', 'rank_math_modules' ), 'caps' => array(), 'usermeta' => 0, 'termmeta' => 0, 'postmeta' => 0 ) === $sseo_rc_left && false === get_transient( '_rank_math_sseo_redirect' ) && false === wp_next_scheduled( 'rank_math/sseo_daily' ) && false === wp_next_scheduled( 'rank_math_sseo_once', array( 2 ) ), $sseo_rc_left );
+	sseo_check(
+		'what is not Rank Math\'s stays, Simple SEO\'s imported fields included',
+		'x' === get_option( 'sseo_rank_math_keep' ) && (bool) wp_next_scheduled( 'sseo_keep_hook' ) && get_role( 'editor' )->has_cap( 'sseo_keep_cap' ) && 'x' === get_user_meta( $sseo_rc_user, 'sseo_keep', true ) && 'x' === get_term_meta( $sseo_rm_terms['cat'], 'sseo_keep', true ) && 'x' === get_post_meta( $sseo_rm_1, 'sseo_keep', true )
+			&& '{title} {sep} {site} {page}' === Simple_SEO_Fields::post_value( $sseo_rm_1, 'title' ) && 'Cat desc' === Simple_SEO_Fields::term_value( $sseo_rm_terms['cat'], 'description' ) && 'done' === Simple_SEO_Import::state( 'rank_math' )['status']
+			&& array( $sseo_rm_db->prefix . 'sseo_rank_math_keep' ) === $sseo_rm_db->get_col( $sseo_rm_db->prepare( 'SHOW TABLES LIKE %s', $sseo_rm_db->esc_like( $sseo_rm_db->prefix . 'sseo_rank_math_keep' ) ) )
+	);
+	sseo_check( 'the cached meta of the posts, terms and users goes too', array( 'one,two', 'cat', 'Author %name%' ) === $sseo_vals && '' === get_post_meta( $sseo_rm_1, 'rank_math_focus_keyword', true ) && '' === get_term_meta( $sseo_rm_terms['cat'], 'rank_math_focus_keyword', true ) && '' === get_user_meta( $sseo_rc_user, 'rank_math_title', true ) );
+	$sseo_rc_report = $sseo_rc_state['report'];
+	sseo_check( 'the report counts what went', array( 'tables' => count( $sseo_rc_tables ), 'options' => $sseo_rc_options, 'cron' => 3, 'caps' => 2, 'usermeta' => 2, 'termmeta' => $sseo_rc_terms, 'postmeta' => Simple_SEO_Rank_Math_Cleanup::BATCH + 1 ) == $sseo_rc_report, $sseo_rc_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+
+	// The settings, through the form.
+	$sseo_vals = Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'rank_math', 'simple_seo_groups' => array( 'settings' ), 'simple_seo_backup' => '1' ) );
+	sseo_check( 'the settings, on their own; then nothing of Rank Math\'s is left', '' === $sseo_vals && 4 === Simple_SEO_Rank_Math_Cleanup::state()['report']['settings'] && array() === Simple_SEO_Rank_Math_Cleanup::preview() );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'after: nothing left, and the report', str_contains( $sseo_html, 'No data of Rank Math is left on this site.' ) && str_contains( $sseo_html, 'Removed: rows of settings: 4.' ) && ! str_contains( $sseo_html, 'value="clean"' ), $sseo_html );
+
+	$sseo_rm_db->query( "DROP TABLE IF EXISTS `{$sseo_rm_db->prefix}sseo_rank_math_keep`" );
+	delete_option( 'sseo_rank_math_keep' );
+	wp_clear_scheduled_hook( 'sseo_keep_hook' );
+	get_role( 'editor' )->remove_cap( 'sseo_keep_cap' );
+	delete_user_meta( $sseo_rc_user, 'sseo_keep' );
+	foreach ( array( '/inc/schema.php', '/inc/meta.twig', '/inc/readme.txt', '/vendor/x.php', '/vendor', '/inc', '' ) as $sseo_name ) {
+		$sseo_name = $sseo_rc_theme . $sseo_name;
+		is_dir( $sseo_name ) ? rmdir( $sseo_name ) : unlink( $sseo_name );
+	}
+	foreach ( array_merge( $sseo_yi_rows, array( Simple_SEO_Files::ROBOTS_OPTION, Simple_SEO_Rank_Math_Import::STATE, Simple_SEO_Rank_Math_Cleanup::OPTION ) ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
+	unregister_taxonomy( 'sseo_rm_shelf' );
+	unregister_taxonomy( 'sseo_rm_room' );
+	unregister_post_type( 'sseo_rm_book' );
+	Simple_SEO_Fields::flush_types();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
@@ -3972,7 +4619,7 @@ try {
 	sseo_check( 'the llms.txt tab is translated', 'Посилань у розділі' === __( 'Links in a section', 'simple-seo' ) && 'Інші мови:' === __( 'Other languages:', 'simple-seo' ) );
 	sseo_check( 'the Clean-up tab is translated', 'Чистка коду' === __( 'Clean-up', 'simple-seo' ) && 'Версія WordPress' === __( 'WordPress version', 'simple-seo' ) );
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
-	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з Yoast SEO' === __( 'Import from Yoast SEO', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) && 'Прибрати дані Yoast SEO' === __( 'Remove the data of Yoast SEO', 'simple-seo' ) );
+	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з %s' === __( 'Import from %s', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) && 'Прибрати дані %s' === __( 'Remove the data of %s', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 

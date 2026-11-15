@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.16.0
+Stable tag: 0.17.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.17.0 =
+* Import from Rank Math on the Import tab, next to Yoast SEO: the separator, the title and description templates (Rank Math's %variables% as Simple SEO's {variables}), what search engines leave out (robots of each kind of page, or the global ones) and where attachment pages go, the default image and the X account, the home and 404 pages, the breadcrumbs, the sitemap switch and the text of robots.txt; the SEO fields of posts and terms. As with Yoast, only what Simple SEO does not have is filled. The report also names what needs a hand: redirections, webmaster verification codes, addresses without the category base.
+* Removing what Rank Math left: its tables, other options, scheduled tasks and the capabilities it gave to roles, its settings, and its user, term and post meta. Rank Math's meta has no aliases in Simple SEO, so a theme that reads it keeps it unticked, and the files are named.
 
 = 0.16.0 =
 * Removing the data of Yoast SEO, on the Import tab once the import is done and Yoast is inactive: its tables, its other options with cached data and scheduled tasks, its settings (with wp-loc's copies for other languages), its user meta and its post meta, each part ticked on its own with its size shown, after a backup is confirmed.
