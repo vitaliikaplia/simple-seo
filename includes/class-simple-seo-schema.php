@@ -14,7 +14,9 @@
  *   breadcrumb   — the trail of Simple_SEO_Breadcrumbs.
  * The pieces refer to each other by @id. A 404 page gets the site and whom it represents only.
  * A post has a type of page (WebPage, AboutPage, FAQPage, …) and of article, its own or its post
- * type's; questions and answers on it (Simple_SEO_FAQ) make it a FAQPage too.
+ * type's; questions and answers on it (Simple_SEO_FAQ) make it a FAQPage too. A post or term may
+ * have JSON-LD of its own (the field schema_custom): its nodes go last, past the filters, and are
+ * printed in every mode — alone where Simple SEO's graph is not.
  *
  * Who prints the graph (decisions/schema): in the mode Auto Simple SEO stays silent where the theme
  * switches off the graph of SEO plugins with the filter wpseo_json_ld_output, as themes with a graph
@@ -35,6 +37,9 @@ final class Simple_SEO_Schema {
 	public const MODES = array( 'auto', 'always', 'off' );
 
 	public const MAX_PROFILES = 20;
+
+	/** The longest own JSON-LD of a page, in characters. */
+	public const MAX_CUSTOM = 50000;
 
 	/** Types of a web page (schema.org's WebPage and its kinds) a post may be. */
 	public const PAGE_TYPES = array( 'WebPage', 'AboutPage', 'CheckoutPage', 'CollectionPage', 'ContactPage', 'FAQPage', 'ItemPage', 'MedicalWebPage', 'ProfilePage', 'QAPage', 'RealEstateListing', 'SearchResultsPage' );
@@ -114,6 +119,108 @@ final class Simple_SEO_Schema {
 				'group'    => 'schema',
 			)
 		);
+		Simple_SEO_Fields::register(
+			'schema_custom',
+			array(
+				'label'       => __( 'Own JSON-LD', 'simple-seo' ),
+				'description' => __( 'Structured data of this page only: a JSON-LD object, a list of them or a document with @graph. It goes into the page\'s graph as written, in every mode of the Schema tab.', 'simple-seo' ),
+				'type'        => 'code',
+				'objects'     => array( 'post', 'term' ),
+				'level'       => Simple_SEO_Fields::LEVEL_ADVANCED,
+				'sanitize'    => array( self::class, 'sanitize_custom' ),
+				'order'       => 87,
+				'group'       => 'schema',
+				'preview'     => static fn( string $type, $object ): string => self::custom_now( $type, $object ),
+			)
+		);
+	}
+
+	/**
+	 * Own JSON-LD as typed: the text itself, trimmed, so a mistake can be seen and mended; it is
+	 * decoded and encoded again when printed. '' when too long.
+	 *
+	 * @param mixed $value
+	 */
+	public static function sanitize_custom( $value ): string {
+		$value = is_scalar( $value ) ? trim( wp_check_invalid_utf8( (string) $value ) ) : '';
+
+		return mb_strlen( $value ) <= self::MAX_CUSTOM ? $value : '';
+	}
+
+	/**
+	 * The nodes of own JSON-LD — an object, a list of objects or a document with @graph — each
+	 * with its @type and without @context (the graph has one); or why there are none.
+	 *
+	 * @return array{nodes: array<int, array<string, mixed>>, error: string}
+	 */
+	public static function parse_custom( string $json ): array {
+		$json = trim( $json );
+		if ( '' === $json ) {
+			return array(
+				'nodes' => array(),
+				'error' => '',
+			);
+		}
+
+		$data = json_decode( $json, true );
+		if ( JSON_ERROR_NONE !== json_last_error() ) {
+			/* translators: %s: what is wrong with the JSON, as PHP says it, e.g. Syntax error. */
+			$error = sprintf( __( 'Not valid JSON: %s.', 'simple-seo' ), json_last_error_msg() );
+		} elseif ( ! is_array( $data ) ) {
+			$error = __( 'Not a JSON-LD object: a JSON object or a list of them is needed.', 'simple-seo' );
+		}
+		if ( isset( $error ) ) {
+			return array(
+				'nodes' => array(),
+				'error' => $error,
+			);
+		}
+
+		if ( isset( $data['@graph'] ) && is_array( $data['@graph'] ) ) {
+			$list = $data['@graph'];
+		} else {
+			$list = array_is_list( $data ) ? $data : array( $data );
+		}
+
+		$nodes = array();
+		foreach ( $list as $node ) {
+			if ( is_array( $node ) && ! array_is_list( $node ) && isset( $node['@type'] ) ) {
+				unset( $node['@context'] );
+				$nodes[] = $node;
+			}
+		}
+
+		return array(
+			'nodes' => $nodes,
+			'error' => $nodes ? '' : __( 'No node with a @type: each object of JSON-LD needs one.', 'simple-seo' ),
+		);
+	}
+
+	/** The nodes of a page's own JSON-LD; none while the page asks for a password. */
+	public static function custom_nodes( Simple_SEO_Context $context ): array {
+		if ( $context->password_required ) {
+			return array();
+		}
+
+		return self::parse_custom( $context->field( 'schema_custom' ) )['nodes'];
+	}
+
+	/**
+	 * Under the field in the editor: the types of the nodes that go into the graph, or what is wrong.
+	 *
+	 * @param WP_Post|WP_Term $object
+	 */
+	private static function custom_now( string $type, $object ): string {
+		$value  = 'term' === $type && $object instanceof WP_Term ? Simple_SEO_Fields::term_value( (int) $object->term_id, 'schema_custom' ) : ( $object instanceof WP_Post ? Simple_SEO_Fields::post_value( (int) $object->ID, 'schema_custom' ) : '' );
+		$parsed = self::parse_custom( $value );
+		if ( '' !== $parsed['error'] ) {
+			return $parsed['error'];
+		}
+
+		$types = array_map( static fn( array $node ): string => implode( ', ', array_map( 'strval', array_filter( (array) $node['@type'], 'is_scalar' ) ) ), $parsed['nodes'] );
+
+		/* translators: %s: the types of the nodes, e.g. Event, Product. */
+		return $types ? sprintf( __( 'nodes of the graph: %s', 'simple-seo' ), implode( '; ', $types ) ) : '';
 	}
 
 	/** @return array<string, string> Type => its name. */
@@ -288,6 +395,9 @@ final class Simple_SEO_Schema {
 		$context = Simple_SEO_Context::current();
 		if ( self::prints( $context ) ) {
 			echo self::script( self::graph( $context ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- JSON with < and > escaped.
+		} elseif ( '' === Simple_SEO_Plugin::conflicting_plugin() ) {
+			// The page's own JSON-LD is printed whatever the mode: it is what the editor wrote for it.
+			echo self::script( self::custom_nodes( $context ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- JSON with < and > escaped.
 		}
 	}
 
@@ -342,6 +452,10 @@ final class Simple_SEO_Schema {
 		 */
 		$graph = apply_filters( 'simple_seo_schema_graph', $graph, $context );
 		$graph = self::nodes( is_array( $graph ) ? $graph : array() );
+
+		// The page's own JSON-LD goes last, past the filters: a theme's filter of Yoast's graph
+		// (wpseo_schema_graph) does not take out what the editor wrote for the page.
+		$graph = array_merge( $graph, self::custom_nodes( $context ) );
 
 		self::$graphs[ $context ] = $graph;
 

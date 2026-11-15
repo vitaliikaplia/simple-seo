@@ -49,7 +49,8 @@ final class Simple_SEO_Fields {
 	 * @param array<string, mixed> $args {
 	 *     @type string   $label       Field label.
 	 *     @type string   $description Help text under the field.
-	 *     @type string   $type        text, textarea, url, checkbox, select or image (attachment ID).
+	 *     @type string   $type        text, textarea, code (a text kept as typed, monospaced), url,
+	 *                                 checkbox, select or image (attachment ID).
 	 *     @type string[] $objects     Where the field exists: post, term or both.
 	 *     @type string[] $post_types  Only posts of these types get the field ([] — every type with fields).
 	 *     @type string   $level       LEVEL_BASIC or LEVEL_ADVANCED.
@@ -231,6 +232,8 @@ final class Simple_SEO_Fields {
 				return (bool) $value;
 			case 'textarea':
 				return trim( sanitize_textarea_field( (string) $value ) );
+			case 'code':
+				return is_scalar( $value ) ? trim( wp_check_invalid_utf8( (string) $value ) ) : '';
 			case 'url':
 				return esc_url_raw( trim( (string) $value ) );
 			case 'select':

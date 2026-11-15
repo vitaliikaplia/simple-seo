@@ -221,6 +221,8 @@ final class Simple_SEO_Editor {
 		switch ( $field['type'] ) {
 			case 'textarea':
 				return sprintf( '<textarea id="%s" name="%s" rows="3" class="large-text"%s>%s</textarea>', $id, $name, $placeholder, esc_textarea( $value ) );
+			case 'code':
+				return sprintf( '<textarea id="%s" name="%s" rows="8" class="large-text code" spellcheck="false"%s>%s</textarea>', $id, $name, $placeholder, esc_textarea( $value ) );
 			case 'checkbox':
 				// The hidden empty value is what arrives when the box is unchecked.
 				return sprintf( '<input type="hidden" name="%2$s" value=""><input type="checkbox" id="%1$s" name="%2$s" value="1"%3$s>', $id, $name, checked( '' !== $value && '0' !== $value, true, false ) );

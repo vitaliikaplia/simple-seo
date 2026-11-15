@@ -446,7 +446,7 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'schema_page_type', 'schema_article_type', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'schema_page_type', 'schema_article_type', 'schema_custom', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -3195,6 +3195,94 @@ try {
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['sc_faq'] ) ) );
 	wp_set_current_user( 0 );
 	sseo_check( 'the SEO block: Schema with both types and what the page is now', str_contains( $sseo_html, '>Schema</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_page_type]"' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>As set for this post type: Web page</option>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_article_type]"' ) && str_contains( $sseo_html, 'Now: FAQ page with questions and answers: 3' ), $sseo_html );
+
+	// A page's own JSON-LD.
+	$sseo_field = Simple_SEO_Fields::get( 'schema_custom' );
+	sseo_check( 'own JSON-LD: a field of posts and terms under Schema, for whoever edits the advanced fields', null !== $sseo_field && array( 'post', 'term' ) === $sseo_field['objects'] && 'schema' === $sseo_field['group'] && Simple_SEO_Fields::LEVEL_ADVANCED === $sseo_field['level'] && ! Simple_SEO_Fields::user_can_edit( $sseo_au, 'post', $sseo['posts']['sc'], 'schema_custom' ) && Simple_SEO_Fields::user_can_edit( $sseo_ed, 'post', $sseo['posts']['sc'], 'schema_custom' ) );
+	$sseo_json = wp_json_encode( array( '@context' => 'https://schema.org', '@type' => 'Event', 'name' => 'Launch <b>day</b>', 'description' => 'He said "go"' ) );
+	sseo_check( 'own JSON-LD is kept as typed, trimmed; too long is nothing', $sseo_json === Simple_SEO_Fields::sanitize_value( 'schema_custom', "  {$sseo_json}\n" ) && '' === Simple_SEO_Fields::sanitize_value( 'schema_custom', str_repeat( 'x', Simple_SEO_Schema::MAX_CUSTOM + 1 ) ) && '' === Simple_SEO_Fields::sanitize_value( 'schema_custom', array( 'no' ) ) );
+	$sseo_parsed = array(
+		Simple_SEO_Schema::parse_custom( $sseo_json ),
+		Simple_SEO_Schema::parse_custom( wp_json_encode( array( array( '@type' => 'Product', 'name' => 'P' ), array( 'name' => 'no type' ), 'junk', array( '@type' => 'Offer' ) ) ) ),
+		Simple_SEO_Schema::parse_custom( wp_json_encode( array( '@context' => 'https://schema.org', '@graph' => array( array( '@type' => 'Place', '@context' => 'x' ) ) ) ) ),
+		Simple_SEO_Schema::parse_custom( '{"@type": "Event",' ),
+		Simple_SEO_Schema::parse_custom( '"text"' ),
+		Simple_SEO_Schema::parse_custom( '[1, 2]' ),
+		Simple_SEO_Schema::parse_custom( '  ' ),
+	);
+	sseo_check(
+		'own JSON-LD: an object, a list or a document with @graph; nodes with a @type, without @context; what is wrong said',
+		array( array( '@type' => 'Event', 'name' => 'Launch <b>day</b>', 'description' => 'He said "go"' ) ) === $sseo_parsed[0]['nodes'] && '' === $sseo_parsed[0]['error']
+			&& array( 'Product', 'Offer' ) === array_column( $sseo_parsed[1]['nodes'], '@type' ) && 2 === count( $sseo_parsed[1]['nodes'] )
+			&& array( array( '@type' => 'Place' ) ) === $sseo_parsed[2]['nodes']
+			&& array() === $sseo_parsed[3]['nodes'] && str_starts_with( $sseo_parsed[3]['error'], 'Not valid JSON: ' )
+			&& 'Not a JSON-LD object: a JSON object or a list of them is needed.' === $sseo_parsed[4]['error']
+			&& 'No node with a @type: each object of JSON-LD needs one.' === $sseo_parsed[5]['error']
+			&& array( 'nodes' => array(), 'error' => '' ) === $sseo_parsed[6],
+		$sseo_parsed
+	);
+	update_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_custom' ), wp_slash( wp_json_encode( array( array( '@type' => 'Event', 'name' => 'Close </script><script>alert(1)</script>' ), array( '@type' => 'Product', 'name' => 'P' ) ) ) ) );
+	add_filter( 'simple_seo_schema_graph', static fn( array $graph ): array => array_slice( $graph, 0, 1 ) );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	remove_all_filters( 'simple_seo_schema_graph', 10 );
+	sseo_check( "own JSON-LD goes last in the page's graph, past the filters that thin it out", array( 'WebSite', 'Event', 'Product' ) === $sseo_sc_types( $sseo_g ), $sseo_sc_types( $sseo_g ) );
+	update_term_meta( $sseo_news, Simple_SEO_Fields::meta_key( 'schema_custom' ), wp_slash( '{"@type":"Place","name":"News room"}' ) );
+	$sseo_g = $sseo_sc_graph( array( 'cat' => $sseo_news ) );
+	delete_term_meta( $sseo_news, Simple_SEO_Fields::meta_key( 'schema_custom' ) );
+	sseo_check( "a term's own JSON-LD in its archive's graph", 'News room' === ( $sseo_sc_node( $sseo_g, 'Place' )['name'] ?? '' ), $sseo_sc_types( $sseo_g ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['sc'], 'post_password' => 'secret' ) );
+	$sseo_g = Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['sc'] ) ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['sc'], 'post_password' => '' ) );
+	sseo_check( 'no own JSON-LD while a password is asked', array() === $sseo_sc_node( $sseo_g, 'Event' ) );
+
+	// Printed in every mode: in the graph, or alone where the graph is not.
+	$sseo_sc_query               = $GLOBALS['wp_query'];
+	$sseo_sc_actions             = $GLOBALS['wp_actions']['wp'] ?? null;
+	$GLOBALS['wp_actions']['wp'] = 1;
+	$sseo_sc_printed             = static function () use ( $sseo ): array {
+		$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo['posts']['sc'] ) );
+		Simple_SEO_Context::reset();
+		$html = sseo_capture( array( Simple_SEO_Schema::class, 'output' ) );
+		$json = preg_match( '~<script type="application/ld\+json" class="simple-seo-schema">(.*)</script>~s', $html, $match ) ? json_decode( $match[1], true ) : null;
+		return array( $html, is_array( $json ) ? array_map( static fn( array $node ) => $node['@type'] ?? '', $json['@graph'] ) : null );
+	};
+	$sseo_sc_out = array( 'auto' => $sseo_sc_printed() );
+	update_option( Simple_SEO_Schema::OPTION, array( 'mode' => 'off' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_out['off'] = $sseo_sc_printed();
+	update_option( Simple_SEO_Schema::OPTION, array( 'mode' => 'auto' ) );
+	Simple_SEO_Settings::flush();
+	add_filter( 'wpseo_json_ld_output', '__return_false' );
+	$sseo_sc_out['banned'] = $sseo_sc_printed();
+	remove_all_filters( 'wpseo_json_ld_output' );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	$sseo_sc_out['yoast'] = $sseo_sc_printed();
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	delete_post_meta( $sseo['posts']['sc'], Simple_SEO_Fields::meta_key( 'schema_custom' ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'mode' => 'off' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_out['off_none'] = $sseo_sc_printed();
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	$GLOBALS['wp_query'] = $sseo_sc_query;
+	if ( null === $sseo_sc_actions ) {
+		unset( $GLOBALS['wp_actions']['wp'] );
+	} else {
+		$GLOBALS['wp_actions']['wp'] = $sseo_sc_actions;
+	}
+	Simple_SEO_Context::reset();
+	sseo_check( "own JSON-LD in the graph, or alone in every mode where the graph is not; nothing next to another SEO plugin or without any", 'Event' === ( $sseo_sc_out['auto'][1][ count( $sseo_sc_out['auto'][1] ) - 2 ] ?? '' ) && 'WebSite' === $sseo_sc_out['auto'][1][0] && array( 'Event', 'Product' ) === $sseo_sc_out['off'][1] && array( 'Event', 'Product' ) === $sseo_sc_out['banned'][1] && '' === $sseo_sc_out['yoast'][0] && '' === $sseo_sc_out['off_none'][0], array_map( static fn( array $out ) => $out[1], $sseo_sc_out ) );
+	sseo_check( 'own JSON-LD cannot close the script: < and > escaped', 1 === substr_count( $sseo_sc_out['off'][0], '</script>' ) && str_contains( $sseo_sc_out['off'][0], chr( 92 ) . 'u003C/script' . chr( 92 ) . 'u003E' ), $sseo_sc_out['off'][0] );
+
+	// The field in the editor: a code box, and what goes into the graph or what is wrong.
+	update_post_meta( $sseo['posts']['sc_faq'], Simple_SEO_Fields::meta_key( 'schema_custom' ), wp_slash( '[{"@type":"Event"},{"@type":["Product","Thing"]}]' ) );
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['sc_faq'] ) ) );
+	update_post_meta( $sseo['posts']['sc_faq'], Simple_SEO_Fields::meta_key( 'schema_custom' ), wp_slash( '{"@type": oops}' ) );
+	$sseo_html_bad = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['sc_faq'] ) ) );
+	wp_set_current_user( 0 );
+	delete_post_meta( $sseo['posts']['sc_faq'], Simple_SEO_Fields::meta_key( 'schema_custom' ) );
+	sseo_check( 'the editor: a code box with the JSON as typed, the types of its nodes, or what is wrong', str_contains( $sseo_html, '<textarea id="simple-seo-field-schema_custom" name="simple_seo[schema_custom]" rows="8" class="large-text code" spellcheck="false">[{&quot;@type&quot;:&quot;Event&quot;}' ) && str_contains( $sseo_html, 'Now: nodes of the graph: Event; Product, Thing' ) && str_contains( $sseo_html_bad, 'Now: Not valid JSON: Syntax error.' ), $sseo_html_bad );
 
 	// The tab.
 	Simple_SEO_Schema::add_admin_tab();
