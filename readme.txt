@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.15.0
+Stable tag: 0.16.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.16.0 =
+* Removing the data of Yoast SEO, on the Import tab once the import is done and Yoast is inactive: its tables, its other options with cached data and scheduled tasks, its settings (with wp-loc's copies for other languages), its user meta and its post meta, each part ticked on its own with its size shown, after a backup is confirmed.
+* Yoast's settings stay unticked, and the files are named, when the active theme reads them (an organization's name and logo for its Schema, say). The post meta goes in batches, a few seconds per request, and the page goes on by itself. Yoast's plugin files are not touched.
 
 = 0.15.0 =
 * Import from Yoast SEO, on the new Import tab (offered by a notice once Yoast's data is found): the separator, the title and description templates (Yoast's %%variables%% as Simple SEO's {variables}), what search engines leave out and where attachment pages go, the default image and the X account, the home and 404 pages, the breadcrumbs with their labels as Yoast had them, the sitemap switch and the clean-up switches; the SEO fields of posts (title, description, Open Graph, noindex, nofollow, canonical, primary terms) and of terms; with wp-loc, Yoast's settings of the other languages.

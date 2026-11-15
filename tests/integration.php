@@ -110,17 +110,24 @@ $sseo_saved_options = array(
 	'blogname'       => get_option( 'blogname' ),
 	'blogdescription' => get_option( 'blogdescription' ),
 	'file_backups'   => get_option( Simple_SEO_Files::BACKUPS_OPTION ),
-	// Yoast's rows as the stand has them (from Yoast's own activation in an earlier check).
-	'yoast'          => array_filter(
-		array(
-			'wpseo'               => get_option( 'wpseo' ),
-			'wpseo_titles'        => get_option( 'wpseo_titles' ),
-			'wpseo_social'        => get_option( 'wpseo_social' ),
-			'wpseo_taxonomy_meta' => get_option( 'wpseo_taxonomy_meta' ),
-		),
-		static fn( $value ): bool => false !== $value
-	),
 );
+
+// Yoast's tables, options, user meta and scheduled tasks as the stand has them (from Yoast's own
+// activation in an earlier check): the import and clean-up sections change them, the end puts them back.
+$sseo_yoast_options = "option_name = 'wpseo' OR option_name LIKE 'wpseo\\_%' OR option_name LIKE 'wpseo-%' OR option_name LIKE 'yoast\\_%' OR option_name LIKE 'yoast-%' OR option_name LIKE '\\_transient\\_%wpseo%' OR option_name LIKE '\\_transient\\_%yoast%'";
+$sseo_yoast_users   = "meta_key LIKE 'wpseo%' OR meta_key LIKE '\\_yoast\\_%' OR meta_key = '" . esc_sql( $GLOBALS['wpdb']->get_blog_prefix() . 'yoast_notifications' ) . "'";
+$sseo_saved_yoast   = array(
+	'tables'   => array(),
+	'options'  => $GLOBALS['wpdb']->get_results( "SELECT option_name, option_value, autoload FROM {$GLOBALS['wpdb']->options} WHERE {$sseo_yoast_options}", ARRAY_A ),
+	'usermeta' => $GLOBALS['wpdb']->get_results( "SELECT user_id, meta_key, meta_value FROM {$GLOBALS['wpdb']->usermeta} WHERE {$sseo_yoast_users}", ARRAY_A ),
+	'cron'     => get_option( 'cron' ),
+);
+foreach ( (array) $GLOBALS['wpdb']->get_col( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', $GLOBALS['wpdb']->esc_like( $GLOBALS['wpdb']->prefix . 'yoast_' ) . '%' ) ) as $sseo_name ) {
+	$sseo_saved_yoast['tables'][ $sseo_name ] = array(
+		'create' => $GLOBALS['wpdb']->get_row( "SHOW CREATE TABLE `{$sseo_name}`", ARRAY_N )[1],
+		'rows'   => $GLOBALS['wpdb']->get_results( "SELECT * FROM `{$sseo_name}`", ARRAY_A ),
+	);
+}
 
 // robots.txt, .htaccess and the copy next to it as they were: the Files section changes them.
 require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -135,7 +142,7 @@ $sseo_saved_apache = $GLOBALS['is_apache'] ?? false;
 // code under test exits (a served file, or a mutation that makes it serve one), so a broken run
 // never leaves users, posts, options or files behind for the next one.
 $sseo_cleaned = false;
-$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned ): void {
+$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned, $sseo_saved_yoast, $sseo_yoast_options, $sseo_yoast_users ): void {
 	if ( $sseo_cleaned ) {
 		return;
 	}
@@ -203,12 +210,29 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%' OR option_name LIKE 'simple\\_seo\\_llms\\_text\\_%'" ) as $sseo_name ) {
 		delete_option( (string) $sseo_name );
 	}
-	// Yoast's rows the import section makes up go; the ones the stand had come back.
-	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name IN ( 'wpseo', 'wpseo_social', 'wpseo_taxonomy_meta', 'simple_seo_import_yoast' ) OR option_name LIKE 'wpseo\\_titles%'" ) as $sseo_name ) {
-		delete_option( (string) $sseo_name );
+	// Yoast's data as the stand had it: what the import and clean-up sections made up or removed.
+	$sseo_db = $GLOBALS['wpdb'];
+	foreach ( (array) $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'yoast_' ) . '%' ) ) as $sseo_name ) {
+		$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_name}`" );
 	}
-	foreach ( $sseo_saved_options['yoast'] as $sseo_name => $sseo_value ) {
-		add_option( $sseo_name, $sseo_value );
+	foreach ( $sseo_saved_yoast['tables'] as $sseo_name => $sseo_table ) {
+		$sseo_db->query( $sseo_table['create'] );
+		foreach ( $sseo_table['rows'] as $sseo_row ) {
+			$sseo_db->insert( $sseo_name, $sseo_row );
+		}
+	}
+	$sseo_db->query( "DELETE FROM {$sseo_db->options} WHERE {$sseo_yoast_options}" );
+	foreach ( $sseo_saved_yoast['options'] as $sseo_row ) {
+		$sseo_db->insert( $sseo_db->options, $sseo_row );
+	}
+	$sseo_db->query( "DELETE FROM {$sseo_db->usermeta} WHERE {$sseo_yoast_users}" );
+	foreach ( $sseo_saved_yoast['usermeta'] as $sseo_row ) {
+		$sseo_db->insert( $sseo_db->usermeta, $sseo_row );
+	}
+	wp_cache_flush();
+	update_option( 'cron', $sseo_saved_yoast['cron'] );
+	foreach ( array( 'simple_seo_import_yoast', 'simple_seo_yoast_cleanup' ) as $sseo_name ) {
+		delete_option( $sseo_name );
 	}
 };
 register_shutdown_function( $sseo_cleanup );
@@ -3334,8 +3358,10 @@ try {
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Yoast import' );
 
+	require_once ABSPATH . 'wp-admin/includes/plugin.php';
 	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
 	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
+	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-cleanup.php';
 	$sseo_wpdb = $GLOBALS['wpdb'];
 	// A site fresh from Yoast: none of Yoast's rows of the earlier sections or of the stand's own Yoast,
 	// Simple SEO's rows as install() makes them.
@@ -3703,7 +3729,7 @@ try {
 	update_option( Simple_SEO_Import::OPTION, array_merge( $sseo_yi_state, array( 'status' => 'running', 'report' => array( 'post' => array( 'seen' => 1234 ) ) ) ) );
 	$_GET['tab'] = 'import';
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	sseo_check( 'while running: the progress and a Continue button the page presses by itself', str_contains( $sseo_html, '1,234 posts and 0 terms so far' ) && str_contains( $sseo_html, 'data-simple-seo-continue="1"' ) && str_contains( $sseo_html, 'value="continue"' ) && ! str_contains( $sseo_html, 'value="start"' ) );
+	sseo_check( 'while running: the progress and a Continue button the page presses by itself', str_contains( $sseo_html, '1,234 posts and 0 terms so far' ) && str_contains( $sseo_html, 'data-simple-seo-continue="1"' ) && str_contains( $sseo_html, 'value="continue"' ) && ! str_contains( $sseo_html, 'value="start"' ) && ! str_contains( $sseo_html, 'Remove the data of Yoast SEO' ) );
 	update_option( Simple_SEO_Import::OPTION, $sseo_yi_state );
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'], $GLOBALS['current_screen'] );
@@ -3743,6 +3769,192 @@ try {
 	Simple_SEO_Fields::flush_types();
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Yoast clean-up' );
+
+	$sseo_db = $GLOBALS['wpdb'];
+	// Yoast's leftovers: the stand's own (from Yoast's activation; the end puts them back) and these.
+	$sseo_db->query( "DELETE FROM {$sseo_db->postmeta} WHERE meta_key LIKE '\\_yoast\\_%'" );
+	$sseo_db->query( "DELETE FROM {$sseo_db->usermeta} WHERE {$sseo_yoast_users}" );
+	wp_cache_flush();
+	$sseo_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_db->prefix}yoast_indexable` ( id INT NOT NULL PRIMARY KEY )" );
+	$sseo_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_db->prefix}sseo_yoast_keep` ( id INT NOT NULL PRIMARY KEY )" );
+	$sseo_yc_tables = (array) $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'yoast_' ) . '%' ) );
+	foreach ( array(
+		'wpseo'                      => array( 'version' => '28.6' ),
+		'wpseo_titles'               => array( 'company_name' => 'Acme' ),
+		'wpseo_titles_en'            => array( 'title-home-wpseo' => 'Home' ),
+		'wpseo_social'               => array( 'twitter_site' => 'acme' ),
+		'wpseo_taxonomy_meta'        => array( 'category' => array() ),
+		'wpseo_llmstxt'              => array( 'x' => 1 ),
+		'yoast_migrations_free'      => array( 'version' => '28.6' ),
+		'wpseo-cleanup-current-task' => 'x',
+		'sseo_wpseo_keep'            => 'x',
+	) as $sseo_name => $sseo_value ) {
+		update_option( $sseo_name, $sseo_value );
+	}
+	set_transient( 'wpseo_sseo_test', 'x', HOUR_IN_SECONDS );
+	wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'wpseo_sseo_daily' );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'yoast_sseo_once', array( 1 ) );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'yoast_sseo_once', array( 2 ) );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'sseo_keep_hook' );
+	$sseo_yc_user = (int) $sseo_u['administrator'];
+	update_user_meta( $sseo_yc_user, 'wpseo_title', 'Author SEO title' );
+	update_user_meta( $sseo_yc_user, '_yoast_wpseo_profile_updated', '1' );
+	update_user_meta( $sseo_yc_user, $sseo_db->get_blog_prefix() . 'yoast_notifications', 'x' );
+	update_user_meta( $sseo_yc_user, 'sseo_keep', 'x' );
+	$sseo['posts']['yc'] = (int) wp_insert_post( array( 'post_title' => 'Yc Post', 'post_status' => 'publish' ) );
+	$sseo_yc             = $sseo['posts']['yc'];
+	update_post_meta( $sseo_yc, Simple_SEO_Fields::meta_key( 'title' ), 'Kept' );
+	update_post_meta( $sseo_yc, 'sseo_keep', 'x' );
+	// One batch and one row more: three of Yoast's keys and fillers.
+	$sseo_ym_insert(
+		$sseo_yc,
+		array(
+			'_yoast_wpseo_title'        => 'Yoast title',
+			'_yoast_wpseo_focuskw'      => 'kw',
+			'_yoast_indexnow_last_ping' => '1',
+		)
+	);
+	$sseo_db->query( "INSERT INTO {$sseo_db->postmeta} ( post_id, meta_key, meta_value ) VALUES " . implode( ',', array_map( static fn( int $i ): string => "( {$sseo_yc}, '_yoast_wpseo_filler_{$i}', 'x' )", range( 1, Simple_SEO_Yoast_Cleanup::BATCH - 2 ) ) ) );
+	wp_cache_delete( $sseo_yc, 'post_meta' );
+
+	// When it may run.
+	delete_option( Simple_SEO_Import::OPTION );
+	$sseo_yc_yoast = static fn( $plugins ): array => array_merge( (array) $plugins, array( 'wordpress-seo/wp-seo.php' ) );
+	$sseo_vals     = array( Simple_SEO_Yoast_Cleanup::blocked() );
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'done' ) );
+	$sseo_vals[] = Simple_SEO_Yoast_Cleanup::blocked();
+	add_filter( 'option_active_plugins', $sseo_yc_yoast );
+	$sseo_vals[] = Simple_SEO_Yoast_Cleanup::blocked();
+	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
+	sseo_check( 'only after the import, and never while Yoast is active', array( 'import', '', 'yoast' ) === $sseo_vals, $sseo_vals );
+
+	// What is left.
+	$sseo_yc_cron = 0;
+	foreach ( (array) _get_cron_array() as $sseo_events ) {
+		foreach ( (array) $sseo_events as $sseo_hook => $sseo_instances ) {
+			$sseo_yc_cron += preg_match( '/^(?:wpseo|yoast)/i', (string) $sseo_hook ) ? count( (array) $sseo_instances ) : 0;
+		}
+	}
+	$sseo_yc_internal = (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_db->options} WHERE {$sseo_yoast_options}" ) - 5 + $sseo_yc_cron;
+	$sseo_yc_parts    = Simple_SEO_Yoast_Cleanup::preview();
+	sseo_check(
+		"what is left of Yoast's, by part: tables, the rest of its options and its tasks, settings with the copies for languages, user and post meta",
+		array( 'tables', 'internals', 'settings', 'usermeta', 'postmeta' ) === array_keys( $sseo_yc_parts ) && count( $sseo_yc_tables ) === $sseo_yc_parts['tables']['rows'] && 5 === $sseo_yc_parts['settings']['rows'] && 3 === $sseo_yc_parts['usermeta']['rows'] && Simple_SEO_Yoast_Cleanup::BATCH + 1 === $sseo_yc_parts['postmeta']['rows'] && $sseo_yc_internal === $sseo_yc_parts['internals']['rows'] && $sseo_yc_parts['settings']['bytes'] > 0,
+		$sseo_yc_parts
+	);
+	$sseo_yc_theme = get_theme_root() . '/sseo-yc-theme';
+	wp_mkdir_p( $sseo_yc_theme . '/inc' );
+	wp_mkdir_p( $sseo_yc_theme . '/vendor/lib' );
+	file_put_contents( $sseo_yc_theme . '/inc/schema.php', "<?php \$name = get_option( 'wpseo_titles' )['company_name'];" );
+	file_put_contents( $sseo_yc_theme . '/inc/other.php', '<?php // nothing of Yoast' );
+	file_put_contents( $sseo_yc_theme . '/inc/readme.txt', 'wpseo_titles' );
+	file_put_contents( $sseo_yc_theme . '/vendor/lib/x.php', "<?php WPSEO_Options::get( 'x' );" );
+	$sseo_yc_dir = static fn(): string => $sseo_yc_theme;
+	add_filter( 'stylesheet_directory', $sseo_yc_dir );
+	$sseo_vals = Simple_SEO_Yoast_Cleanup::theme_reads();
+	sseo_check( "the active theme's files (PHP and Twig) that read Yoast's settings, vendor left out", array( 'sseo-yc-theme/inc/schema.php' ) === $sseo_vals, $sseo_vals );
+
+	// The form.
+	$sseo_yc_all = array(
+		'simple_seo_groups' => array( 'tables', 'internals', 'usermeta', 'postmeta', 'nope' ),
+		'simple_seo_backup' => '1',
+	);
+	$sseo_vals = array(
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_groups' => array( 'nope' ), 'simple_seo_backup' => '1' ) ),
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_groups' => array( 'tables' ) ) ),
+	);
+	add_filter( 'option_active_plugins', $sseo_yc_yoast );
+	$sseo_vals[] = Simple_SEO_Import::act( 'clean', $sseo_yc_all );
+	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
+	sseo_check( 'refused without a part, without a backup, and with Yoast active; nothing started', array( 'groups', 'backup', 'blocked' ) === $sseo_vals && array() === Simple_SEO_Yoast_Cleanup::state(), $sseo_vals );
+
+	// The page, before.
+	wp_set_current_user( $sseo_yc_user );
+	Simple_SEO_Import::add_admin_tab();
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab']                = 'import';
+	$_GET['simple-seo-refused'] = 'backup';
+	$sseo_html                  = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['simple-seo-refused'] );
+	sseo_check(
+		"the tab offers the parts with their size; Yoast's settings unticked while the theme reads them, and the files named; a backup is asked for",
+		str_contains( $sseo_html, 'Remove the data of Yoast SEO' ) && str_contains( $sseo_html, 'Confirm that you have a backup of the database first.' )
+			&& (bool) preg_match( '/value="postmeta"\s+checked=\'checked\'/', $sseo_html ) && (bool) preg_match( '/value="settings"\s*\/>/', $sseo_html )
+			&& str_contains( $sseo_html, 'rows: 2,001, size:' ) && str_contains( $sseo_html, '<code>sseo-yc-theme/inc/schema.php</code>' )
+			&& (bool) preg_match( '/name="simple_seo_backup" value="1" required/', $sseo_html ) && str_contains( $sseo_html, 'value="clean"' )
+	);
+	add_filter( 'option_active_plugins', $sseo_yc_yoast );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'pending' ) );
+	$sseo_html .= sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'done' ) );
+	sseo_check( 'with Yoast active, or before the import, only why not', str_contains( $sseo_html, 'Yoast SEO is active, so its data is in use.' ) && str_contains( $sseo_html, 'Run the import first: removing comes after it.' ) && ! str_contains( $sseo_html, 'value="clean"' ) );
+	remove_filter( 'stylesheet_directory', $sseo_yc_dir );
+
+	// A run: a part or a batch per step, the settings left as asked.
+	$sseo_vals = array( get_post_meta( $sseo_yc, '_yoast_wpseo_focuskw', true ), get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
+	Simple_SEO_Yoast_Cleanup::start( $sseo_yc_all['simple_seo_groups'] );
+	$sseo_yc_steps = 0;
+	do {
+		$sseo_yc_state = Simple_SEO_Yoast_Cleanup::run( 0.0 );
+		++$sseo_yc_steps;
+		if ( 1 === $sseo_yc_steps ) {
+			$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+		}
+		if ( 4 === $sseo_yc_steps ) {
+			$sseo_yc_batch = (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_db->postmeta} WHERE meta_key LIKE '\\_yoast\\_%'" );
+		}
+	} while ( 'running' === $sseo_yc_state['status'] && $sseo_yc_steps < 20 );
+	sseo_check( 'while running: the progress and a Continue button the page presses by itself', str_contains( $sseo_html, 'Removing is under way' ) && str_contains( $sseo_html, 'value="clean_continue"' ) && str_contains( $sseo_html, 'data-simple-seo-continue="1"' ) );
+	sseo_check( 'one step per part, the post meta in batches: a full batch, then the rest', 'done' === $sseo_yc_state['status'] && 5 === $sseo_yc_steps && 1 === $sseo_yc_batch && isset( $sseo_yc_state['finished'] ), array( $sseo_yc_steps, $sseo_yc_batch ) );
+	$sseo_yc_left = array(
+		'tables'   => (array) $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'yoast_' ) . '%' ) ),
+		'options'  => (array) $sseo_db->get_col( "SELECT option_name FROM {$sseo_db->options} WHERE {$sseo_yoast_options} ORDER BY option_name" ),
+		'usermeta' => (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_db->usermeta} WHERE {$sseo_yoast_users}" ),
+		'postmeta' => (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_db->postmeta} WHERE meta_key LIKE '\\_yoast\\_%'" ),
+	);
+	sseo_check( "Yoast's tables, other options, tasks and meta are gone; its settings stay, as they were not ticked", array( 'tables' => array(), 'options' => array( 'wpseo', 'wpseo_social', 'wpseo_taxonomy_meta', 'wpseo_titles', 'wpseo_titles_en' ), 'usermeta' => 0, 'postmeta' => 0 ) === $sseo_yc_left && false === get_transient( 'wpseo_sseo_test' ) && false === wp_next_scheduled( 'wpseo_sseo_daily' ) && false === wp_next_scheduled( 'yoast_sseo_once', array( 1 ) ) && false === wp_next_scheduled( 'yoast_sseo_once', array( 2 ) ), $sseo_yc_left );
+	sseo_check(
+		'what is not Yoast\'s stays, Simple SEO\'s fields and state included',
+		'x' === get_option( 'sseo_wpseo_keep' ) && (bool) wp_next_scheduled( 'sseo_keep_hook' ) && 'x' === get_user_meta( $sseo_yc_user, 'sseo_keep', true ) && 'x' === get_post_meta( $sseo_yc, 'sseo_keep', true )
+			&& 'Kept' === Simple_SEO_Fields::post_value( $sseo_yc, 'title' ) && 'done' === Simple_SEO_Import::state()['status'] && array( $sseo_db->prefix . 'sseo_yoast_keep' ) === $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'sseo_yoast_keep' ) ) )
+	);
+	sseo_check( 'the cached meta of the posts and users goes too', array( 'kw', 'Author SEO title' ) === $sseo_vals && '' === get_post_meta( $sseo_yc, '_yoast_wpseo_focuskw', true ) && '' === get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
+	$sseo_yc_report = $sseo_yc_state['report'];
+	sseo_check( 'the report counts what went', count( $sseo_yc_tables ) === $sseo_yc_report['tables'] && 3 === $sseo_yc_report['usermeta'] && Simple_SEO_Yoast_Cleanup::BATCH + 1 === $sseo_yc_report['postmeta'] && $sseo_yc_internal === $sseo_yc_report['options'] + $sseo_yc_report['cron'] && $sseo_yc_report['cron'] === $sseo_yc_cron && ! isset( $sseo_yc_report['settings'] ), $sseo_yc_report );
+
+	// The settings, on their own; nothing while Yoast is active.
+	Simple_SEO_Yoast_Cleanup::start( array( 'settings' ) );
+	add_filter( 'option_active_plugins', $sseo_yc_yoast );
+	$sseo_vals = Simple_SEO_Yoast_Cleanup::run();
+	remove_filter( 'option_active_plugins', $sseo_yc_yoast );
+	sseo_check( 'nothing is removed while Yoast is active', 'running' === $sseo_vals['status'] && 'x' !== get_option( 'wpseo_titles', 'x' ) );
+	$sseo_vals = array( Simple_SEO_Import::act( 'clean', array( 'simple_seo_groups' => array( 'tables' ), 'simple_seo_backup' => '1' ) ), Simple_SEO_Yoast_Cleanup::state()['status'], Simple_SEO_Yoast_Cleanup::state()['report']['settings'] ?? 0, Simple_SEO_Yoast_Cleanup::preview() );
+	sseo_check( 'starting while a clean-up runs goes on with it; then nothing of Yoast\'s is left', array( '', 'done', 5, array() ) === $sseo_vals, $sseo_vals );
+	$sseo_yc_done = Simple_SEO_Yoast_Cleanup::state();
+	update_option( Simple_SEO_Yoast_Cleanup::OPTION, array( 'status' => 'running', 'groups' => array( 'postmeta' ), 'report' => array( 'postmeta' => 7 ) ) );
+	sseo_check( 'Continue goes on with a clean-up', '' === Simple_SEO_Import::act( 'clean_continue' ) && 'done' === Simple_SEO_Yoast_Cleanup::state()['status'] && 7 === Simple_SEO_Yoast_Cleanup::state()['report']['postmeta'] );
+	update_option( Simple_SEO_Yoast_Cleanup::OPTION, $sseo_yc_done );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'after: nothing left, and the report', str_contains( $sseo_html, 'No data of Yoast SEO is left on this site.' ) && str_contains( $sseo_html, 'The last clean-up' ) && str_contains( $sseo_html, 'rows of settings 5;' ) && ! str_contains( $sseo_html, 'value="clean"' ) );
+
+	$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_db->prefix}sseo_yoast_keep`" );
+	delete_option( 'sseo_wpseo_keep' );
+	wp_clear_scheduled_hook( 'sseo_keep_hook' );
+	delete_user_meta( $sseo_yc_user, 'sseo_keep' );
+	foreach ( array( '/inc/schema.php', '/inc/other.php', '/inc/readme.txt', '/vendor/lib/x.php', '/vendor/lib', '/vendor', '/inc', '' ) as $sseo_name ) {
+		$sseo_name = $sseo_yc_theme . $sseo_name;
+		is_dir( $sseo_name ) ? rmdir( $sseo_name ) : unlink( $sseo_name );
+	}
+	foreach ( array( Simple_SEO_Import::OPTION, Simple_SEO_Yoast_Cleanup::OPTION ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -3760,7 +3972,7 @@ try {
 	sseo_check( 'the llms.txt tab is translated', 'Посилань у розділі' === __( 'Links in a section', 'simple-seo' ) && 'Інші мови:' === __( 'Other languages:', 'simple-seo' ) );
 	sseo_check( 'the Clean-up tab is translated', 'Чистка коду' === __( 'Clean-up', 'simple-seo' ) && 'Версія WordPress' === __( 'WordPress version', 'simple-seo' ) );
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
-	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з Yoast SEO' === __( 'Import from Yoast SEO', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) );
+	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з Yoast SEO' === __( 'Import from Yoast SEO', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) && 'Прибрати дані Yoast SEO' === __( 'Remove the data of Yoast SEO', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 

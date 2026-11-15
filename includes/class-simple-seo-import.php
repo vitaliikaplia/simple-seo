@@ -4,6 +4,7 @@
  * data is found, and the run itself — settings, then posts, then terms, in batches that a request
  * goes through for a few seconds before the page continues with the next request. The state and
  * the report are kept in one row (not autoloaded), so a run broken off goes on where it stopped.
+ * The tab also offers removing Yoast's data afterwards (Simple_SEO_Yoast_Cleanup).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -82,7 +83,7 @@ final class Simple_SEO_Import {
 		);
 	}
 
-	/** A form of the Import tab or of the notice: start, continue or put off; then back to the tab. */
+	/** A form of the Import tab or of the notice; then back to the tab, with what went wrong if anything. */
 	public static function handle(): void {
 		$do = isset( $_POST['simple_seo_import'] ) ? sanitize_key( wp_unslash( $_POST['simple_seo_import'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified below.
 		if ( '' === $do || ! current_user_can( Simple_SEO_Access::CAP_SETTINGS ) ) {
@@ -90,19 +91,29 @@ final class Simple_SEO_Import {
 		}
 		check_admin_referer( self::NONCE );
 
-		self::act( $do );
-		wp_safe_redirect( Simple_SEO_Admin::url( 'import' ) );
+		$refused = self::act( $do, wp_unslash( $_POST ) );
+		wp_safe_redirect( '' !== $refused ? add_query_arg( 'simple-seo-refused', $refused, Simple_SEO_Admin::url( 'import' ) ) : Simple_SEO_Admin::url( 'import' ) );
 		exit;
 	}
 
-	/** What a form asks for: start (again), continue a run, or put the offer off. */
-	public static function act( string $do ): void {
+	/**
+	 * What a form asks for: start (again), continue a run, or put the offer off; remove Yoast's data
+	 * (the parts ticked, a backup confirmed) or continue removing it.
+	 *
+	 * @param array<string, mixed> $input The form, unslashed.
+	 * @return string Why a clean-up was refused (backup, groups, blocked); '' otherwise.
+	 */
+	public static function act( string $do, array $input = array() ): string {
+		if ( in_array( $do, array( 'clean', 'clean_continue' ), true ) ) {
+			return self::clean( $do, $input );
+		}
+
 		$state = self::state();
 		if ( 'dismiss' === $do ) {
 			if ( 'pending' === ( $state['status'] ?? '' ) ) {
 				self::store( array_merge( $state, array( 'status' => 'dismissed' ) ) );
 			}
-			return;
+			return '';
 		}
 		if ( 'start' === $do && 'running' !== ( $state['status'] ?? '' ) ) {
 			self::start();
@@ -110,6 +121,33 @@ final class Simple_SEO_Import {
 		if ( in_array( $do, array( 'start', 'continue' ), true ) ) {
 			self::run();
 		}
+
+		return '';
+	}
+
+	/**
+	 * Begin removing Yoast's data, or go on with it.
+	 *
+	 * @param array<string, mixed> $input
+	 */
+	private static function clean( string $do, array $input ): string {
+		if ( '' !== Simple_SEO_Yoast_Cleanup::blocked() ) {
+			return 'blocked';
+		}
+
+		if ( 'clean' === $do && 'running' !== ( Simple_SEO_Yoast_Cleanup::state()['status'] ?? '' ) ) {
+			$groups = array_intersect( Simple_SEO_Yoast_Cleanup::GROUPS, array_map( 'strval', (array) ( $input['simple_seo_groups'] ?? array() ) ) );
+			if ( ! $groups ) {
+				return 'groups';
+			}
+			if ( '1' !== (string) ( $input['simple_seo_backup'] ?? '' ) ) {
+				return 'backup';
+			}
+			Simple_SEO_Yoast_Cleanup::start( $groups );
+		}
+		Simple_SEO_Yoast_Cleanup::run();
+
+		return '';
 	}
 
 	/** Begin a run from the start; a report of an earlier one goes. */
@@ -174,5 +212,16 @@ final class Simple_SEO_Import {
 		$nonce   = self::NONCE;
 
 		require SIMPLE_SEO_DIR . 'includes/views/tab-import.php';
+
+		if ( 'running' !== $status ) {
+			$cleanup = Simple_SEO_Yoast_Cleanup::state();
+			$blocked = Simple_SEO_Yoast_Cleanup::blocked();
+			// Nothing to count while a clean-up runs; the theme is read only where removing is offered.
+			$parts   = 'running' === ( $cleanup['status'] ?? '' ) ? array() : Simple_SEO_Yoast_Cleanup::preview();
+			$reads   = '' === $blocked && isset( $parts['settings'] ) ? Simple_SEO_Yoast_Cleanup::theme_reads() : array();
+			$refused = isset( $_GET['simple-seo-refused'] ) ? sanitize_key( wp_unslash( $_GET['simple-seo-refused'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a message only.
+
+			require SIMPLE_SEO_DIR . 'includes/views/tab-import-cleanup.php';
+		}
 	}
 }
