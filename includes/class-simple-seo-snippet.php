@@ -64,18 +64,8 @@ final class Simple_SEO_Snippet {
 	 * @return array<string, mixed>
 	 */
 	public static function data( string $object_type, $object ): array {
-		$language = self::language( $object_type, $object );
 		// Words a variable brings (a date, "Page 2 of 5") in the language of the page, not the admin's.
-		$locale   = Simple_SEO_WP_Loc::locale_of( $language );
-		$switched = '' !== $locale && switch_to_locale( $locale );
-
-		try {
-			return (array) Simple_SEO_WP_Loc::in_language( $language, static fn(): array => self::build( $object_type, $object ) );
-		} finally {
-			if ( $switched ) {
-				restore_previous_locale();
-			}
-		}
+		return (array) Simple_SEO_WP_Loc::in_object_language( $object, static fn(): array => self::build( $object_type, $object ) );
 	}
 
 	/**
@@ -156,21 +146,6 @@ final class Simple_SEO_Snippet {
 			'typeNoindex'     => ! get_option( 'blog_public' ) || Simple_SEO_Indexing::slot_is_noindex( Simple_SEO_Titles::slot_for( $context ) ),
 			'public'          => (bool) get_option( 'blog_public' ),
 		);
-	}
-
-	/**
-	 * @param WP_Post|WP_Term $object
-	 */
-	private static function language( string $object_type, $object ): string {
-		if ( 'term' === $object_type && $object instanceof WP_Term ) {
-			$id   = (int) $object->term_taxonomy_id;
-			$type = 'tax_' . $object->taxonomy;
-		} else {
-			$id   = (int) $object->ID;
-			$type = 'post_' . $object->post_type;
-		}
-
-		return Simple_SEO_WP_Loc::element_languages( array( $id ), $type )[ $id ] ?? '';
 	}
 
 	/** The address a post has, or will have once published; '' for a new post without one yet. */

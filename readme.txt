@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.19.0
+Stable tag: 0.20.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,9 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.20.0 =
+* Groundwork for the content analysis that comes next: Simple SEO reads the text of a page as visitors see it, whatever editor made it. Blocks are rendered the way the site renders them, so ACF blocks and the blocks of the Builder theme give the text their templates print; classic content gets its paragraphs. It finds the headings with their levels, the paragraphs, the links (to the site or elsewhere, nofollow) and the images with their alt text, and counts the words, in the language of the post with wp-loc. Code, lists of other posts, menus, forms, maps and embeds are left out.
 
 = 0.19.0 =
 * A search result preview above the SEO fields of posts and terms: the card a search engine shows for the page, on a computer and on a phone, redone while the SEO title and description, the title, the excerpt and the address are typed. It counts the characters of the title and the description, says whether search engines will cut them, and marks a page hidden from search results. It replaces the "Now:" lines under the title and the description.

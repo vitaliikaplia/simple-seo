@@ -1635,6 +1635,86 @@ try {
 	wp_set_current_user( $sseo_u['administrator'] );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Page text' );
+
+	$sseo_pt_post                = wp_insert_post( array( 'post_title' => 'Page text', 'post_status' => 'publish', 'post_content' => 'Saved text of the post.' ) );
+	$sseo['posts']['page_text']  = $sseo_pt_post;
+	$sseo_pt_other               = wp_insert_post( array( 'post_title' => 'Another post shown before', 'post_status' => 'publish' ) );
+	$sseo['posts']['page_other'] = $sseo_pt_other;
+	$sseo_pt                     = Simple_SEO_Content::read( get_post( $sseo_pt_post ) );
+	sseo_check( 'the saved content when none is given', 'Saved text of the post.' === $sseo_pt['text'] && 5 === $sseo_pt['words'] && array( array( 'type' => 'text', 'tag' => 'p', 'text' => 'Saved text of the post.' ) ) === $sseo_pt['blocks'], $sseo_pt );
+
+	add_shortcode( 'sseo_pt', static fn(): string => 'SHORTCODE OUTPUT' );
+	$sseo_pt = Simple_SEO_Content::read(
+		get_post( $sseo_pt_post ),
+		"First paragraph with a <a href=\"/about/\">link home</a> and <a href=\"https://example.org/x\" rel=\"noopener nofollow\">an outside one</a>.\n\n<h2>A &amp; B <em>heading</em></h2>\n\nSecond paragraph [sseo_pt] here.<script>var hidden = 1;</script>\n\n<img src=\"/a.png\" alt=\"An  image\"> <img src=\"/b.png\">\n\n<a href=\"#top\">Up</a> <a href=\"mailto:a@b.c\">Mail</a> <a href=\"" . home_url( '/contacts/' ) . "\">Contacts</a>"
+	);
+	sseo_check( 'classic content: paragraphs from its blank lines, headings between them', array( 'text', 'heading', 'text', 'text' ) === array_column( $sseo_pt['blocks'], 'type' ) && 'First paragraph with a link home and an outside one.' === $sseo_pt['blocks'][0]['text'] && 'Second paragraph here.' === $sseo_pt['blocks'][2]['text'], $sseo_pt['blocks'] );
+	sseo_check( 'a heading: its level and its text, entities decoded', array( array( 'level' => 2, 'text' => 'A & B heading' ) ) === $sseo_pt['headings'] && 2 === $sseo_pt['blocks'][1]['level'], $sseo_pt['headings'] );
+	sseo_check( 'no scripts and no shortcodes in the text', ! str_contains( $sseo_pt['text'], 'hidden' ) && ! str_contains( $sseo_pt['text'], 'SHORTCODE' ) && ! str_contains( $sseo_pt['text'], '[sseo_pt]' ) );
+	sseo_check(
+		'links: inside the site or out, nofollow; anchors and mail left out',
+		array(
+			array( 'url' => '/about/', 'text' => 'link home', 'internal' => true, 'nofollow' => false ),
+			array( 'url' => 'https://example.org/x', 'text' => 'an outside one', 'internal' => false, 'nofollow' => true ),
+			array( 'url' => home_url( '/contacts/' ), 'text' => 'Contacts', 'internal' => true, 'nofollow' => false ),
+		) === $sseo_pt['links'],
+		$sseo_pt['links']
+	);
+	sseo_check( 'images with their alt text, an empty one where there is none', array( array( 'src' => '/a.png', 'alt' => 'An image' ), array( 'src' => '/b.png', 'alt' => '' ) ) === $sseo_pt['images'], $sseo_pt['images'] );
+	sseo_check( 'the text: blocks one after another, the words counted', "First paragraph with a link home and an outside one.\n\nA & B heading\n\nSecond paragraph here.\n\nUp Mail Contacts" === $sseo_pt['text'] && 19 === $sseo_pt['words'], array( $sseo_pt['text'], $sseo_pt['words'] ) );
+
+	register_block_type(
+		'sseo/acf-like',
+		array(
+			'attributes'      => array( 'data' => array( 'type' => 'object' ) ),
+			// As ACF renders a block: its fields from the comment, through the theme's template.
+			'render_callback' => static fn( array $attributes ): string => '<section class="hero"><h3>' . esc_html( $attributes['data']['title'] ?? '' ) . '</h3><div>' . esc_html( $attributes['data']['text'] ?? '' ) . ' #' . get_the_ID() . '</div></section>',
+		)
+	);
+	register_block_type( 'sseo/box', array( 'render_callback' => static fn( array $attributes, string $content ): string => '<div class="box">' . $content . '</div>' ) );
+	register_block_type( 'sseo/broken', array( 'render_callback' => static function (): string { throw new RuntimeException( 'template failed' ); } ) );
+	$sseo_pt_builder = ! WP_Block_Type_Registry::get_instance()->is_registered( 'builder/code' );
+	if ( $sseo_pt_builder ) {
+		register_block_type( 'builder/code', array( 'render_callback' => static fn(): string => '<pre>SECRET CODE</pre>' ) );
+	}
+	$sseo_pt_blocks = '<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">Core heading</h3><!-- /wp:heading -->'
+		. '<!-- wp:paragraph --><p>Core paragraph.</p><!-- /wp:paragraph -->'
+		. '<!-- wp:list --><ul class="wp-block-list"><!-- wp:list-item --><li>One</li><!-- /wp:list-item --><!-- wp:list-item --><li>Two</li><!-- /wp:list-item --></ul><!-- /wp:list -->'
+		. '<!-- wp:code --><pre class="wp-block-code"><code>skipped code</code></pre><!-- /wp:code -->'
+		. '<!-- wp:latest-posts /-->'
+		. '<!-- wp:post-content /-->'
+		. '<!-- wp:sseo/acf-like {"name":"sseo/acf-like","data":{"title":"ACF heading","_title":"field_1","text":"ACF text","_text":"field_2"},"mode":"preview"} /-->'
+		. '<!-- wp:sseo/broken /-->'
+		. '<!-- wp:sseo/box --><!-- wp:builder/code {"code":"echo 1;"} /--><!-- wp:paragraph --><p>Inside the box.</p><!-- /wp:paragraph --><!-- /wp:sseo/box -->';
+	$GLOBALS['post'] = get_post( $sseo_pt_other );
+	$sseo_pt         = Simple_SEO_Content::read( get_post( $sseo_pt_post ), $sseo_pt_blocks );
+	$sseo_pt_seen    = array_map( static fn( array $block ): string => $block['tag'] . ':' . $block['text'], $sseo_pt['blocks'] );
+	sseo_check( 'blocks: core ones as saved, dynamic ones as their templates render them, in order', array( 'h3:Core heading', 'p:Core paragraph.', 'li:One', 'li:Two', 'h3:ACF heading', 'div:ACF text #' . $sseo_pt_post, 'p:Inside the box.' ) === $sseo_pt_seen, $sseo_pt_seen );
+	sseo_check( 'headings of blocks with their levels', array( array( 'level' => 3, 'text' => 'Core heading' ), array( 'level' => 3, 'text' => 'ACF heading' ) ) === $sseo_pt['headings'], $sseo_pt['headings'] );
+	sseo_check( 'left out: code (nested too), lists of other posts, the post content block, a block that fails', ! str_contains( $sseo_pt['text'], 'code' ) && ! str_contains( $sseo_pt['text'], 'SECRET' ) && ! str_contains( $sseo_pt['text'], 'Another post shown before' ) && ! str_contains( $sseo_pt['text'], 'Saved text' ), $sseo_pt['text'] );
+	sseo_check( 'templates see the post being read; the post shown before comes back, and blocks render again', $sseo_pt_other === ( $GLOBALS['post']->ID ?? 0 ) && str_contains( do_blocks( '<!-- wp:code --><pre class="wp-block-code"><code>shown again</code></pre><!-- /wp:code -->' ), 'shown again' ) );
+	$sseo_pt_skip = static fn( array $blocks ): array => array_merge( $blocks, array( 'sseo/acf-like' ) );
+	add_filter( 'simple_seo_content_skip_blocks', $sseo_pt_skip );
+	$sseo_pt = Simple_SEO_Content::read( get_post( $sseo_pt_post ), $sseo_pt_blocks );
+	remove_filter( 'simple_seo_content_skip_blocks', $sseo_pt_skip );
+	sseo_check( 'a theme can leave its own blocks out', ! str_contains( $sseo_pt['text'], 'ACF' ) && str_contains( $sseo_pt['text'], 'Inside the box.' ) );
+	unset( $GLOBALS['post'] );
+
+	sseo_check( 'words: Cyrillic, apostrophes and hyphens inside a word, numbers', 5 === Simple_SEO_Content::count_words( "Мар'яна п’є каву-латте, 2026 року!" ) && 0 === Simple_SEO_Content::count_words( ' — , ! ' ) );
+	$sseo_pt = Simple_SEO_Content::parse( 'Loose <b>text</b><p>A&nbsp;&nbsp;B</p><p hidden>Hidden text</p><nav><a href="/menu/">Menu</a></nav><div>Outer <p>inner</p> tail</div><p>Line<br>break</p>Loose end' );
+	sseo_check( 'loose text, no-break spaces, hidden elements, menus, line breaks', array( 'Loose text', 'A B', 'Outer', 'inner', 'tail', 'Line break', 'Loose end' ) === array_column( $sseo_pt['blocks'], 'text' ) && array() === $sseo_pt['links'], $sseo_pt['blocks'] );
+	$sseo_pt = Simple_SEO_Content::read( get_post( $sseo_pt_post ), '' );
+	sseo_check( 'empty content: nothing to read', array() === $sseo_pt['blocks'] && '' === $sseo_pt['text'] && 0 === $sseo_pt['words'] );
+	foreach ( array( 'sseo/acf-like', 'sseo/box', 'sseo/broken' ) as $sseo_name ) {
+		unregister_block_type( $sseo_name );
+	}
+	if ( $sseo_pt_builder ) {
+		unregister_block_type( 'builder/code' );
+	}
+	remove_shortcode( 'sseo_pt' );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'wp-loc' );
 
 	if ( ! Simple_SEO_WP_Loc::active() || count( WP_LOC_Languages::get_active_languages() ) < 2 ) {
@@ -1699,6 +1779,14 @@ try {
 			sseo_check( "admin in {$sseo_admin}: no language left switched afterwards", ! WP_LOC_Routing::has_switched_language() && 'Locked {title}' === Simple_SEO_Special::saved_template( 'password', 'title' ) );
 		}
 		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
+
+		// The text of a page: its blocks render in its language (translated patterns, menus, labels).
+		register_block_type( 'sseo/language', array( 'render_callback' => static fn(): string => '<p>language ' . apply_filters( 'wpml_current_language', null ) . '</p>' ) );
+		foreach ( $sseo_locked as $sseo_code => $sseo_id ) {
+			$sseo_pt = Simple_SEO_Content::read( get_post( $sseo_id ), '<!-- wp:sseo/language /-->' );
+			sseo_check( "the text of a post in {$sseo_code} is rendered in its language, and the language is back afterwards", 'language ' . $sseo_code === $sseo_pt['text'] && ! WP_LOC_Routing::has_switched_language(), $sseo_pt['text'] );
+		}
+		unregister_block_type( 'sseo/language' );
 		delete_option( $sseo_other_row );
 	}
 

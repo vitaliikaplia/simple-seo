@@ -301,6 +301,37 @@ final class Simple_SEO_WP_Loc {
 	}
 
 	/**
+	 * Run a callback in the language of a post or term, as the site shows it: wp-loc switched to
+	 * that language (options, links, translations) and the locale with it, so the dates and words
+	 * of the page come in that language — in the admin wp-loc leaves the locale to the user.
+	 * Without wp-loc it just runs.
+	 *
+	 * @param WP_Post|WP_Term $object
+	 * @return mixed What the callback returns.
+	 */
+	public static function in_object_language( $object, callable $callback ) {
+		if ( $object instanceof WP_Term ) {
+			$id   = (int) $object->term_taxonomy_id;
+			$type = 'tax_' . $object->taxonomy;
+		} else {
+			$id   = (int) $object->ID;
+			$type = 'post_' . $object->post_type;
+		}
+
+		$language = self::element_languages( array( $id ), $type )[ $id ] ?? '';
+		$locale   = self::locale_of( $language );
+		$switched = '' !== $locale && switch_to_locale( $locale );
+
+		try {
+			return self::in_language( $language, $callback );
+		} finally {
+			if ( $switched ) {
+				restore_previous_locale();
+			}
+		}
+	}
+
+	/**
 	 * The language whose options get_option() gives now. In the admin the wpml_* filters name the
 	 * admin's language, but wp-loc reads the options of the language of the request (the default
 	 * one) until something switches it: a post in the admin's language would be read in the
