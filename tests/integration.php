@@ -107,6 +107,7 @@ $sseo_saved_options = array(
 	'schema_names'   => get_option( Simple_SEO_Schema::NAMES ),
 	'local'          => get_option( Simple_SEO_Local::OPTION ),
 	'local_names'    => get_option( Simple_SEO_Local::NAMES ),
+	'images'         => get_option( Simple_SEO_Images::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -179,7 +180,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -3602,6 +3603,189 @@ try {
 		echo "  skip  Local SEO with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
 	}
 	$sseo_lc_clear();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Images' );
+
+	delete_option( Simple_SEO_Images::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'the defaults: alt texts and titles of new images from their names; the row is for the admin only', array( 'alt' => true, 'title' => true ) === Simple_SEO_Settings::get( Simple_SEO_Images::OPTION ) && false === Simple_SEO_Settings::registered()[ Simple_SEO_Images::OPTION ]['autoload'] );
+	sseo_check( 'the switches: the form sends 0 or 1; what is not sent is on', array( 'alt' => false, 'title' => true ) === Simple_SEO_Images::sanitize( array( 'alt' => '0', 'title' => '1' ) ) && array( 'alt' => true, 'title' => false ) === Simple_SEO_Images::sanitize( array( 'title' => '0' ) ) );
+
+	// The words of a name.
+	$sseo_im_words = array(
+		'chervonyi-dyvan-1024x768.jpg'          => 'Chervonyi dyvan',
+		'red-sofa-scaled.jpg'                   => 'Red sofa',
+		'red-sofa-e1740669105281-150x150.jpg'   => 'Red sofa',
+		'red-sofa-rotated.png'                  => 'Red sofa',
+		'red-sofa-2.webp'                       => 'Red sofa',
+		'Червоний диван (3)'                    => 'Червоний диван',
+		rawurlencode( 'Червоний-диван' ) . '.jpg' => 'Червоний диван',
+		'Олександр'                             => 'Олександр',
+		'Кава & круасан'                        => 'Кава & круасан',
+		'Офіс — вхід'                           => 'Офіс — вхід',
+		'Офіс - вхід_2'                         => 'Офіс - вхід',
+		'blue_wall_living-room'                 => 'Blue wall living room',
+		'kitchenTableOak'                       => 'Kitchen Table Oak',
+		'SUMMER_SALE_BANNER'                    => 'Summer sale banner',
+		'2024_05_spring-garden'                 => 'Spring garden',
+		'garden-2024-05-01'                     => 'Garden',
+		'icons-set[1].svg'                      => 'Icons set',
+		'v2.1-release'                          => 'V2.1 release',
+		'<b>Red</b> sofa'                       => 'Red sofa',
+		'Mozart.Requiem.jpg'                    => 'Mozart Requiem',
+		'oak-28x28x60-table'                    => 'Oak table',
+		'garden 2024-05-01 view'                => 'Garden view',
+		'Red ~ sofa'                            => 'Red sofa',
+	);
+	$sseo_val = array();
+	foreach ( $sseo_im_words as $sseo_name => $sseo_value ) {
+		if ( Simple_SEO_Images::text_from_name( (string) $sseo_name ) !== $sseo_value ) {
+			$sseo_val[ $sseo_name ] = Simple_SEO_Images::text_from_name( (string) $sseo_name );
+		}
+	}
+	sseo_check( 'the words of a name: no extension, no copies and sizes of WordPress, no counters and dates at the ends; dashes and underscores of a file as spaces, of words kept; a capital at the start', array() === $sseo_val, $sseo_val );
+	$sseo_val = array();
+	foreach ( array( '', 'IMG_3630', 'img_20260409_140943.jpg', 'DSC01234', 'DSCN0042', 'PXL_20240101_120000000', 'MVIMG_20240101_1200', 'photo_2025-10-21 15.03.17', 'Screenshot 2022-05-18 at 23.11.56', 'Screen Shot 2020-01-01 at 10.00.00', 'Знімок екрана 2024-01-01 о 12.00.00', 'Снимок экрана 2024-01-01', 'WhatsApp Image 2024-03-01 at 10.00.00', 'vlcsnap-2025-11-04-04h53m09s779', '1506688019', '13-7', '21743253_894582634028490_772729846561178927_n', '0d2511d6-572f-393c-88fe-6aba7c81030e', 'john-doe-2EHRBs1gefY-unsplash', 'Photo: someone/Depositphotos', 'pexels-photo-1234567', 'Дизайн без названия (3)', 'Dizajn-bez-nazvaniya-63', 'Без назви', 'Untitled design (2)', 'lorem_ipsum_1_4059991578', 'cover', 'Image', 'фото 10 (2)', 'PE8A7927', 'DW-0679', 'File_000', 'IMAGE 2026-05-17 15:52:11', 'ab', '---' ) as $sseo_name ) {
+		if ( '' !== Simple_SEO_Images::text_from_name( $sseo_name ) ) {
+			$sseo_val[ $sseo_name ] = Simple_SEO_Images::text_from_name( $sseo_name );
+		}
+	}
+	sseo_check( 'names that say nothing of the picture give nothing: cameras, phones, screenshots, messengers, numbers, hashes, codes, stock photos, untitled designs, a word for a picture, two letters', array() === $sseo_val, $sseo_val );
+	$sseo_val = Simple_SEO_Images::text_from_name( str_repeat( 'gardens ', 30 ) . 'end' );
+	sseo_check( 'a long name: at most 125 characters, cut between words', mb_strlen( $sseo_val ) <= Simple_SEO_Images::MAX_LENGTH && mb_strlen( $sseo_val ) > 110 && str_ends_with( $sseo_val, ' gardens' ), $sseo_val );
+	sseo_check( "a file's name is a title without spaces with dashes, underscores or dots", Simple_SEO_Images::is_file_name( 'red-sofa' ) && Simple_SEO_Images::is_file_name( 'IMG_3630' ) && ! Simple_SEO_Images::is_file_name( 'Red sofa' ) && ! Simple_SEO_Images::is_file_name( 'Red sofa-set' ) && ! Simple_SEO_Images::is_file_name( 'Redsofa' ) && ! Simple_SEO_Images::is_file_name( '' ) );
+
+	// New images.
+	$sseo_im_new = static function ( string $title, string $file, string $mime = 'image/jpeg', array $meta = array() ) use ( &$sseo ): int {
+		$id = (int) wp_insert_attachment(
+			array(
+				'post_title'     => $title,
+				'post_mime_type' => $mime,
+				'post_status'    => 'inherit',
+				'meta_input'     => $meta,
+			),
+			$file
+		);
+		$sseo['posts'][] = $id;
+		return $id;
+	};
+	$sseo_im_alt  = static fn( int $id ): string => (string) get_post_meta( $id, '_wp_attachment_image_alt', true );
+	$sseo_im_a    = $sseo_im_new( 'red-sofa-1024x768', 'red-sofa-1024x768.jpg' );
+	$sseo_im_b    = $sseo_im_new( 'Червоний диван (2)', 'chervonyi-dyvan.jpg' );
+	$sseo_im_c    = $sseo_im_new( 'IMG_1234', 'img-1234.jpg' );
+	$sseo_im_d    = $sseo_im_new( 'IMG_5678', 'blue-wall.jpg' );
+	$sseo_im_e    = $sseo_im_new( 'green-chair', 'green-chair.jpg', 'image/jpeg', array( '_wp_attachment_image_alt' => 'Own alt' ) );
+	$sseo_im_pdf  = $sseo_im_new( 'price-list', 'price-list.pdf', 'application/pdf' );
+	sseo_check( 'a new image: the alt text and the title from its name', 'Red sofa' === $sseo_im_alt( $sseo_im_a ) && 'Red sofa' === get_the_title( $sseo_im_a ), array( $sseo_im_alt( $sseo_im_a ), get_the_title( $sseo_im_a ) ) );
+	sseo_check( 'a new image: its title in words (as the file was named on the computer) gives the alt text and stays as it is', 'Червоний диван' === $sseo_im_alt( $sseo_im_b ) && 'Червоний диван (2)' === get_the_title( $sseo_im_b ), array( $sseo_im_alt( $sseo_im_b ), get_the_title( $sseo_im_b ) ) );
+	sseo_check( 'a new image whose name says nothing: neither; its title of a camera, the name of its file then', '' === $sseo_im_alt( $sseo_im_c ) && 'IMG_1234' === get_the_title( $sseo_im_c ) && 'Blue wall' === $sseo_im_alt( $sseo_im_d ) && 'Blue wall' === get_the_title( $sseo_im_d ), array( $sseo_im_alt( $sseo_im_c ), $sseo_im_alt( $sseo_im_d ), get_the_title( $sseo_im_d ) ) );
+	sseo_check( 'a new image with an alt text of its own keeps it; a file that is no image is left alone', 'Own alt' === $sseo_im_alt( $sseo_im_e ) && 'Green chair' === get_the_title( $sseo_im_e ) && '' === $sseo_im_alt( $sseo_im_pdf ) && 'price-list' === get_the_title( $sseo_im_pdf ) );
+	update_option( Simple_SEO_Images::OPTION, array( 'alt' => false, 'title' => true ) );
+	Simple_SEO_Settings::flush();
+	$sseo_im_f = $sseo_im_new( 'oak-table', 'oak-table.jpg' );
+	update_option( Simple_SEO_Images::OPTION, array( 'alt' => true, 'title' => false ) );
+	Simple_SEO_Settings::flush();
+	$sseo_im_g = $sseo_im_new( 'pine-table', 'pine-table.jpg' );
+	delete_option( Simple_SEO_Images::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'each switch does its own: no alt text, the title; the alt text, not the title', '' === $sseo_im_alt( $sseo_im_f ) && 'Oak table' === get_the_title( $sseo_im_f ) && 'Pine table' === $sseo_im_alt( $sseo_im_g ) && 'pine-table' === get_the_title( $sseo_im_g ) );
+	sseo_check( 'the ImageObject of an image takes its alt text as the caption', 'Red sofa' === ( Simple_SEO_Schema::image_object( $sseo_im_a, 'x#image' )['caption'] ?? '' ), Simple_SEO_Schema::image_object( $sseo_im_a, 'x#image' ) );
+
+	// Bulk editing: the images.
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_val = array( isset( Simple_SEO_Bulk::objects()[ Simple_SEO_Bulk::IMAGES ] ), array_keys( Simple_SEO_Bulk::filters( Simple_SEO_Bulk::IMAGES ) ) );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_val[] = isset( Simple_SEO_Bulk::objects()[ Simple_SEO_Bulk::IMAGES ] );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( 'bulk editing lists the images for whoever edits them, all or without alt text', array( true, array( '', 'alt' ), false ) === $sseo_val, $sseo_val );
+	$sseo_val = Simple_SEO_Bulk::query( Simple_SEO_Bulk::IMAGES, 'alt', '', 1, 500 );
+	$sseo_ids = array_map( static fn( WP_Post $post ): int => $post->ID, $sseo_val['items'] );
+	sseo_check( 'without alt text: the images that have none, not the rest nor what is no image', in_array( $sseo_im_c, $sseo_ids, true ) && in_array( $sseo_im_f, $sseo_ids, true ) && ! in_array( $sseo_im_a, $sseo_ids, true ) && ! in_array( $sseo_im_e, $sseo_ids, true ) && ! in_array( $sseo_im_pdf, $sseo_ids, true ) && count( $sseo_ids ) === $sseo_val['total'], $sseo_ids );
+	$sseo_val = Simple_SEO_Bulk::query( Simple_SEO_Bulk::IMAGES, '', 'pine', 1, 50 );
+	// With wp-loc the copy of the admin's language: the same title.
+	sseo_check( 'the images found by their title', 1 === count( $sseo_val['items'] ) && 'pine-table' === $sseo_val['items'][0]->post_title && 'Pine table' === $sseo_im_alt( $sseo_val['items'][0]->ID ), $sseo_val['items'] );
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_val = get_posts(
+			array(
+				'post_type'   => 'attachment',
+				'post_status' => 'inherit',
+				'title'       => 'Red sofa',
+				'numberposts' => -1,
+				'fields'      => 'ids',
+			)
+		);
+		sseo_check( "wp-loc: the copies of a new image for the other languages have its alt text and title", count( Simple_SEO_WP_Loc::codes() ) === count( $sseo_val ) && array( 'Red sofa' ) === array_values( array_unique( array_map( $sseo_im_alt, $sseo_val ) ) ), $sseo_val );
+		$_GET      = array(
+			'page'   => Simple_SEO_Bulk::PAGE,
+			'object' => Simple_SEO_Bulk::IMAGES,
+		);
+		$sseo_html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+		$_GET      = array();
+		sseo_check( 'wp-loc: the images are listed in the language of the admin, and the page says so', str_contains( $sseo_html, 'the language of the admin' ), $sseo_html );
+	} else {
+		echo "  skip  Images with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+	$sseo_html = Simple_SEO_Bulk::row( get_post( $sseo_im_f ) );
+	$sseo_html_junk = Simple_SEO_Bulk::row( get_post( $sseo_im_c ) );
+	sseo_check( 'a row of an image: its file, the alt text with the text of its name to fill it with, the title', str_contains( $sseo_html, '<tr data-object="media" data-id="' . $sseo_im_f . '">' ) && str_contains( $sseo_html, '<code>oak-table.jpg</code>' ) && str_contains( $sseo_html, 'value="" data-field="alt"' ) && str_contains( $sseo_html, 'placeholder="Oak table" data-suggest="Oak table"' ) && str_contains( $sseo_html, 'From its name: Oak table' ) && str_contains( $sseo_html, 'value="Oak table" data-field="title"' ), $sseo_html );
+	sseo_check( 'a row of an image whose name says nothing: no text to fill with, a word on it', ! str_contains( $sseo_html_junk, 'data-suggest' ) && str_contains( $sseo_html_junk, 'Its name says nothing of the picture' ) );
+	wp_set_current_user( $sseo_au );
+	$sseo_html = Simple_SEO_Bulk::row( get_post( $sseo_im_f ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( "a row of another's image for an author: its fields disabled", 2 === substr_count( $sseo_html, ' disabled' ), $sseo_html );
+	$_GET = array(
+		'page'   => Simple_SEO_Bulk::PAGE,
+		'object' => Simple_SEO_Bulk::IMAGES,
+		'filter' => 'title',
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+	$_GET      = array( 'page' => Simple_SEO_Bulk::PAGE );
+	$sseo_html_posts = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+	$_GET      = array();
+	sseo_check( 'the page of images: their columns, the filters of images (one of posts is none), the button that fills the empty alt texts; not for posts', str_contains( $sseo_html, '<th scope="col" class="column-primary">Image</th>' ) && str_contains( $sseo_html, '<th scope="col">Alt text</th>' ) && str_contains( $sseo_html, '<option value="alt">Without alt text</option>' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>All</option>' ) && str_contains( $sseo_html, 'simple-seo-bulk-suggest' ) && ! str_contains( $sseo_html_posts, 'simple-seo-bulk-suggest' ) && str_contains( $sseo_html_posts, '<th scope="col">SEO title</th>' ), $sseo_html );
+
+	// Saving an image.
+	$sseo_val = Simple_SEO_Bulk::save(
+		array(
+			'object' => 'media',
+			'id'     => $sseo_im_f,
+			'alt'    => ' <b>Oak</b> table ',
+			'title'  => 'Oak table, side',
+		)
+	);
+	sseo_check( 'saving an image: the alt text as plain text and the title', true === $sseo_val['saved'] && array( 'alt' => 'Oak table', 'title' => 'Oak table, side' ) === $sseo_val['fields'] && array() === $sseo_val['now'] && 'Oak table' === $sseo_im_alt( $sseo_im_f ) && 'Oak table, side' === get_the_title( $sseo_im_f ), $sseo_val );
+	$sseo_val = array(
+		Simple_SEO_Bulk::save( array( 'object' => 'media', 'id' => $sseo_im_f, 'alt' => 'Oak table', 'title' => array( 'no' ) ) )['saved'],
+		Simple_SEO_Bulk::save( array( 'object' => 'media', 'id' => $sseo_im_pdf, 'alt' => 'x' ) )['error'] ?? '',
+		Simple_SEO_Bulk::save( array( 'object' => 'media', 'id' => 99999999, 'alt' => 'x' ) )['error'] ?? '',
+	);
+	wp_set_current_user( $sseo_au );
+	$sseo_val[] = Simple_SEO_Bulk::save( array( 'object' => 'media', 'id' => $sseo_im_f, 'alt' => 'Not mine' ) )['error'] ?? '';
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( 'saving an image: nothing changed is not saved, what is no text is left; no image, or not the user\'s to edit, is said', array( false, 'There is no such image.', 'There is no such image.', 'You may not edit this image.' ) === $sseo_val && 'Oak table' === $sseo_im_alt( $sseo_im_f ) && 'Oak table, side' === get_the_title( $sseo_im_f ), $sseo_val );
+	Simple_SEO_Bulk::save( array( 'object' => 'media', 'id' => $sseo_im_f, 'alt' => 'Oak ' . chr( 92 ) . ' table' ) );
+	$sseo_val = array( $sseo_im_alt( $sseo_im_f ) );
+	$sseo_val[] = Simple_SEO_Bulk::save( array( 'object' => 'media', 'id' => $sseo_im_f, 'alt' => '' ) )['saved'];
+	$sseo_val[] = $sseo_im_alt( $sseo_im_f );
+	$sseo_val[] = in_array( $sseo_im_f, array_map( static fn( WP_Post $post ): int => $post->ID, Simple_SEO_Bulk::query( Simple_SEO_Bulk::IMAGES, 'alt', '', 1, 500 )['items'] ), true );
+	sseo_check( 'saving an image: a backslash kept; an empty alt text is empty, and the image is without alt text again', array( 'Oak ' . chr( 92 ) . ' table', true, '', true ) === $sseo_val, $sseo_val );
+
+	// The tab.
+	Simple_SEO_Images::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	$_GET['tab'] = 'images';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	update_option( Simple_SEO_Images::OPTION, array( 'alt' => false, 'title' => true ) );
+	Simple_SEO_Settings::flush();
+	$sseo_html_off = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	delete_option( Simple_SEO_Images::OPTION );
+	Simple_SEO_Settings::flush();
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the Images tab sits between Local SEO and Indexing', strpos( $sseo_html, '>Local SEO<' ) < strpos( $sseo_html, '>Images<' ) && strpos( $sseo_html, '>Images<' ) < strpos( $sseo_html, '>Indexing<' ) );
+	sseo_check( 'the tab: a switch turned off is shown off', str_contains( $sseo_html_off, 'name="simple_seo_images[alt]" value="1" >' ) && str_contains( $sseo_html_off, 'name="simple_seo_images[title]" value="1"  checked=\'checked\'' ) );
+	sseo_check( 'the tab: both switches on, each with its 0, and the way to the images without alt text', str_contains( $sseo_html, 'name="simple_seo_images[alt]" value="1"  checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_images[title]" value="1"  checked=\'checked\'' ) && 2 === substr_count( $sseo_html, 'value="0"' ) && str_contains( $sseo_html, esc_url( add_query_arg( array( 'page' => Simple_SEO_Bulk::PAGE, 'object' => Simple_SEO_Bulk::IMAGES, 'filter' => 'alt' ), admin_url( 'admin.php' ) ) ) ) && 'simple-seo-images' === ( get_registered_settings()[ Simple_SEO_Images::OPTION ]['group'] ?? '' ), $sseo_html );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );

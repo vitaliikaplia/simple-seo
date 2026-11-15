@@ -1,6 +1,7 @@
 <?php
 /**
- * Bulk SEO editing: what to list, the table of SEO titles and descriptions, pages.
+ * Bulk SEO editing: what to list, the table of SEO titles and descriptions (or of the alt texts
+ * and titles of images), pages.
  *
  * @var array<string, string>                                     $objects  Value => label.
  * @var string                                                    $object   The one listed.
@@ -11,6 +12,8 @@
  * @var array{items: array<int, WP_Post|WP_Term>, total: int}     $result
  * @var array<string, string>                                     $data     For assets/js/admin.js.
  * @var string                                                    $language With wp-loc: the language listed.
+ * @var bool                                                      $images   Whether the images are listed.
+ * @var string[]                                                  $columns  Names of the three columns.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -45,7 +48,7 @@ $simple_seo_links = paginate_links(
 			</select>
 			<label for="simple-seo-bulk-filter" class="screen-reader-text"><?php esc_html_e( 'Which of them', 'simple-seo' ); ?></label>
 			<select id="simple-seo-bulk-filter" name="filter">
-				<?php foreach ( Simple_SEO_Bulk::filters() as $simple_seo_value => $simple_seo_label ) : ?>
+				<?php foreach ( Simple_SEO_Bulk::filters( $object ) as $simple_seo_value => $simple_seo_label ) : ?>
 					<option value="<?php echo esc_attr( $simple_seo_value ); ?>"<?php selected( $filter, $simple_seo_value ); ?>><?php echo esc_html( $simple_seo_label ); ?></option>
 				<?php endforeach; ?>
 			</select>
@@ -60,8 +63,15 @@ $simple_seo_links = paginate_links(
 		require SIMPLE_SEO_DIR . 'includes/views/language-notice.php';
 		?>
 
+		<?php if ( $images ) : ?>
+			<p><?php esc_html_e( 'The alt text tells search engines and people who do not see the picture what it shows. A name of a file that says what is in the picture gives one: fill the empty alt texts with them, look them over, mend what is wrong, then save.', 'simple-seo' ); ?></p>
+		<?php endif; ?>
+
 		<div class="simple-seo-bulk-bar">
 			<button type="button" class="button button-primary simple-seo-bulk-save" disabled><?php esc_html_e( 'Save changes', 'simple-seo' ); ?></button>
+			<?php if ( $images ) : ?>
+				<button type="button" class="button simple-seo-bulk-suggest"><?php esc_html_e( 'Fill the empty alt texts from the names', 'simple-seo' ); ?></button>
+			<?php endif; ?>
 			<span class="simple-seo-bulk-status" role="status" aria-live="polite"></span>
 			<?php /* translators: %s: number of posts or terms. */ ?>
 			<span class="displaying-num"><?php echo esc_html( sprintf( __( 'Found: %s', 'simple-seo' ), number_format_i18n( $result['total'] ) ) ); ?></span>
@@ -70,9 +80,9 @@ $simple_seo_links = paginate_links(
 		<table class="widefat fixed striped simple-seo-bulk-table">
 			<thead>
 				<tr>
-					<th scope="col" class="column-primary"><?php esc_html_e( 'Title', 'simple-seo' ); ?></th>
-					<th scope="col"><?php esc_html_e( 'SEO title', 'simple-seo' ); ?></th>
-					<th scope="col"><?php esc_html_e( 'Meta description', 'simple-seo' ); ?></th>
+					<th scope="col" class="column-primary"><?php echo esc_html( $columns[0] ); ?></th>
+					<th scope="col"><?php echo esc_html( $columns[1] ); ?></th>
+					<th scope="col"><?php echo esc_html( $columns[2] ); ?></th>
 				</tr>
 			</thead>
 			<tbody>

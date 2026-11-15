@@ -1,6 +1,7 @@
 /**
  * Simple SEO admin: the "Insert structure" buttons next to title and description fields, the image
- * pickers, the search result preview and the import that goes on by itself.
+ * pickers, the search result preview, bulk editing (with alt texts of images filled from their
+ * names), the rows of Local SEO for a local business and the import that goes on by itself.
  *
  * Empty field: the structure goes in as it is. Plain text without variables: the text takes the
  * place of {title} (or {excerpt}) in the structure, so the editor's words stay. A field that
@@ -649,6 +650,18 @@
 		Array.prototype.forEach.call( buttons, function ( button ) {
 			button.addEventListener( 'click', save );
 		} );
+		// Images: the empty alt texts take the text of their names, changed but not saved yet.
+		var suggest = root.querySelector( '.simple-seo-bulk-suggest' );
+		if ( suggest ) {
+			suggest.addEventListener( 'click', function () {
+				Array.prototype.forEach.call( root.querySelectorAll( 'input[data-field="alt"][data-suggest]:not([disabled])' ), function ( field ) {
+					if ( '' === field.value.trim() ) {
+						field.value = field.getAttribute( 'data-suggest' );
+						field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+					}
+				} );
+			} );
+		}
 		// Leaving with changes not saved asks first.
 		window.addEventListener( 'beforeunload', function ( event ) {
 			if ( Object.keys( changed ).length ) {
