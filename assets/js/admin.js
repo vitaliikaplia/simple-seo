@@ -540,6 +540,126 @@
 
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-analysis]' ), initAnalysis );
 
+	/*
+	 * Bulk editing (Simple_SEO_Bulk): the rows changed are saved together through the REST route,
+	 * without reloading the page; each row then shows what the page has now.
+	 */
+	function initBulk( root ) {
+		var data;
+		try {
+			data = JSON.parse( root.getAttribute( 'data-simple-seo-bulk' ) );
+		} catch ( error ) {
+			return;
+		}
+
+		var buttons = root.querySelectorAll( '.simple-seo-bulk-save' );
+		var status  = root.querySelector( '.simple-seo-bulk-status' );
+		var changed = {};
+		var running = false;
+
+		function key( row ) {
+			return row.getAttribute( 'data-object' ) + ':' + row.getAttribute( 'data-id' );
+		}
+
+		function values( row ) {
+			var item = { object: row.getAttribute( 'data-object' ), id: parseInt( row.getAttribute( 'data-id' ), 10 ) };
+			Array.prototype.forEach.call( row.querySelectorAll( '[data-field]:not([disabled])' ), function ( field ) {
+				item[ field.getAttribute( 'data-field' ) ] = field.value;
+			} );
+
+			return item;
+		}
+
+		function update() {
+			var count = Object.keys( changed ).length;
+			Array.prototype.forEach.call( buttons, function ( button ) {
+				button.disabled = running || 0 === count;
+			} );
+			if ( ! running && count ) {
+				status.textContent = data.unsaved + ' ' + count;
+			}
+		}
+
+		function show( row, item ) {
+			var error = row.querySelector( '.simple-seo-bulk-error' );
+			error.hidden      = ! item.error;
+			error.textContent = item.error || '';
+			if ( item.error ) {
+				return;
+			}
+			Object.keys( item.now ).forEach( function ( name ) {
+				var now = row.querySelector( '[data-now="' + name + '"]' );
+				if ( now ) {
+					now.textContent = item.now[ name ] ? data.now.replace( '%s', item.now[ name ] ) : data.none;
+				}
+			} );
+		}
+
+		function save() {
+			var rows = Object.keys( changed ).map( function ( name ) {
+				return changed[ name ];
+			} );
+			if ( running || ! rows.length ) {
+				return;
+			}
+
+			var sent = rows.map( values );
+			running = true;
+			status.textContent = data.saving;
+			update();
+			window.fetch( data.url + ( -1 === data.url.indexOf( '?' ) ? '?' : '&' ) + '_locale=user', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': data.nonce },
+				body: JSON.stringify( { items: sent } )
+			} ).then( function ( response ) {
+				if ( ! response.ok ) {
+					throw new Error( String( response.status ) );
+				}
+				return response.json();
+			} ).then( function ( result ) {
+				var done = 0;
+				result.items.forEach( function ( item, index ) {
+					var row = rows[ index ];
+					show( row, item );
+					// A row typed into again while it was saved stays changed.
+					if ( ! item.error && JSON.stringify( values( row ) ) === JSON.stringify( sent[ index ] ) ) {
+						delete changed[ key( row ) ];
+						row.classList.remove( 'is-changed' );
+						done++;
+					}
+				} );
+				status.textContent = data.saved.replace( '%s', String( done ) );
+			} ).catch( function () {
+				status.textContent = data.failed;
+			} ).then( function () {
+				running = false;
+				update();
+			} );
+		}
+
+		root.addEventListener( 'input', function ( event ) {
+			var row = event.target && event.target.closest ? event.target.closest( 'tr[data-id]' ) : null;
+			if ( row && event.target.hasAttribute( 'data-field' ) ) {
+				changed[ key( row ) ] = row;
+				row.classList.add( 'is-changed' );
+				update();
+			}
+		} );
+		Array.prototype.forEach.call( buttons, function ( button ) {
+			button.addEventListener( 'click', save );
+		} );
+		// Leaving with changes not saved asks first.
+		window.addEventListener( 'beforeunload', function ( event ) {
+			if ( Object.keys( changed ).length ) {
+				event.preventDefault();
+				event.returnValue = '';
+			}
+		} );
+	}
+
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-bulk]' ), initBulk );
+
 	// The import goes on by itself, a request at a time; the button stays for a page that stops.
 	var next = document.querySelector( '[data-simple-seo-continue]' );
 	if ( next ) {

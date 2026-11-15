@@ -196,3 +196,65 @@
 .simple-seo-score::before {
 	margin-right: 6px;
 }
+
+/* Bulk editing: the filters, the table of fields, a row changed and not saved yet. */
+.simple-seo-bulk-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 1em 0;
+}
+
+.simple-seo-bulk-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+	margin: 1em 0;
+}
+
+.simple-seo-bulk-bar .displaying-num,
+.simple-seo-bulk-bar .pagination-links {
+	margin-left: auto;
+}
+
+.simple-seo-bulk-table th:first-child {
+	width: 22%;
+}
+
+.simple-seo-bulk-table td {
+	vertical-align: top;
+}
+
+.simple-seo-bulk-table textarea {
+	resize: vertical;
+}
+
+.simple-seo-bulk-now {
+	overflow-wrap: anywhere;
+}
+
+.simple-seo-bulk-table tr.is-changed td:first-child {
+	box-shadow: inset 4px 0 0 #dba617;
+}
+
+.simple-seo-bulk-error {
+	margin: 0.5em 0 0;
+	color: #d63638;
+}
+
+/* On a phone each row is a block: the title, then the two fields. */
+@media screen and (max-width: 782px) {
+	.simple-seo-bulk-table thead {
+		display: none;
+	}
+
+	.simple-seo-bulk-table,
+	.simple-seo-bulk-table tbody,
+	.simple-seo-bulk-table tr,
+	.simple-seo-bulk-table td {
+		display: block;
+		width: auto;
+	}
+}

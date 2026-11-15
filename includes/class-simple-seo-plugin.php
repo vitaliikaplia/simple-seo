@@ -38,6 +38,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Llms::init();
 		Simple_SEO_Analysis::init();
 		Simple_SEO_Scores::init();
+		Simple_SEO_Bulk::init();
 		Simple_SEO_Yoast_Compat::init();
 
 		if ( is_admin() ) {

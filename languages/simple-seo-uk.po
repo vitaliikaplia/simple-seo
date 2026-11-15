@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.23.0\n"
+"Project-Id-Version: Simple SEO 0.24.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -15,6 +15,7 @@ msgstr ""
 #. Plugin Name of the plugin
 #: simple-seo.php
 #: includes/class-simple-seo-admin.php:61
+#: includes/class-simple-seo-admin.php:70
 #: includes/views/settings.php:14
 msgid "Simple SEO"
 msgstr "Simple SEO"
@@ -66,43 +67,45 @@ msgstr "Доступ"
 #: includes/class-simple-seo-admin.php:62
 #: includes/class-simple-seo-editor.php:28
 #: includes/class-simple-seo-editor.php:109
-#: includes/class-simple-seo-scores.php:106
+#: includes/class-simple-seo-scores.php:112
 msgid "SEO"
 msgstr "SEO"
 
-#: includes/class-simple-seo-admin.php:119
+#: includes/class-simple-seo-admin.php:70
+#: includes/class-simple-seo-admin.php:230
+msgid "Settings"
+msgstr "Налаштування"
+
+#: includes/class-simple-seo-admin.php:121
+#: includes/class-simple-seo-bulk.php:252
 msgid "Sorry, you are not allowed to access this page."
 msgstr "На жаль, у вас немає доступу до цієї сторінки."
 
 #. translators: %s: name of another SEO plugin, e.g. Yoast SEO.
-#: includes/class-simple-seo-admin.php:145
+#: includes/class-simple-seo-admin.php:147
 #, php-format
 msgid "%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime."
 msgstr "%s активний, тому Simple SEO нічого не виводить на сайті — ні заголовків, ні описів, ні інших тегів, — і сторінки ніколи не отримують їх двічі. Вимкніть його, коли переходитимете на Simple SEO; налаштування й поля тут можна підготувати заздалегідь."
 
-#: includes/class-simple-seo-admin.php:202
+#: includes/class-simple-seo-admin.php:205
 msgid "Choose an image"
 msgstr "Оберіть зображення"
 
-#: includes/class-simple-seo-admin.php:203
+#: includes/class-simple-seo-admin.php:206
 msgid "Use this image"
 msgstr "Використати це зображення"
 
-#: includes/class-simple-seo-admin.php:205
+#: includes/class-simple-seo-admin.php:208
 msgid "Choose image"
 msgstr "Обрати зображення"
 
-#: includes/class-simple-seo-admin.php:206
+#: includes/class-simple-seo-admin.php:209
 msgid "Remove image"
 msgstr "Прибрати зображення"
 
-#: includes/class-simple-seo-admin.php:217
+#: includes/class-simple-seo-admin.php:220
 msgid "Insert structure"
 msgstr "Вставити структуру"
-
-#: includes/class-simple-seo-admin.php:227
-msgid "Settings"
-msgstr "Налаштування"
 
 #: includes/class-simple-seo-aioseo-cleanup.php:61
 msgid "AIOSEO's tables: the SEO fields of posts (what the import took), its cache, notifications and the like"
@@ -332,11 +335,13 @@ msgstr "Сторінка не має мета-опису: пошуковики �
 
 #: includes/class-simple-seo-analysis.php:359
 #: includes/class-simple-seo-titles.php:53
+#: includes/views/bulk.php:74
 msgid "SEO title"
 msgstr "SEO-заголовок"
 
 #: includes/class-simple-seo-analysis.php:359
 #: includes/class-simple-seo-titles.php:63
+#: includes/views/bulk.php:75
 msgid "Meta description"
 msgstr "Мета-опис"
 
@@ -376,19 +381,78 @@ msgstr "Сторінка %d"
 msgid "Home"
 msgstr "Головна"
 
-#: includes/class-simple-seo-cleanup.php:106
-msgid "Clean-up"
-msgstr "Чистка коду"
+#: includes/class-simple-seo-bulk.php:45
+#: includes/views/bulk.php:33
+msgid "Bulk SEO editing"
+msgstr "Масове редагування SEO"
+
+#: includes/class-simple-seo-bulk.php:46
+msgid "Bulk edit"
+msgstr "Масове редагування"
+
+#: includes/class-simple-seo-bulk.php:111
+msgid "All"
+msgstr "Усі"
+
+#: includes/class-simple-seo-bulk.php:112
+msgid "Without an SEO title of their own"
+msgstr "Без власного SEO-заголовка"
+
+#: includes/class-simple-seo-bulk.php:113
+msgid "Without a meta description of their own"
+msgstr "Без власного мета-опису"
+
+#: includes/class-simple-seo-bulk.php:114
+msgid "Without either of their own"
+msgstr "Без власного заголовка чи опису"
+
+#: includes/class-simple-seo-bulk.php:273
+msgid "Saving…"
+msgstr "Збереження…"
+
+#. translators: %s: number of posts or terms.
+#: includes/class-simple-seo-bulk.php:275
+#, php-format
+msgid "Saved: %s."
+msgstr "Збережено: %s."
+
+#: includes/class-simple-seo-bulk.php:276
+msgid "The changes could not be saved. Try again."
+msgstr "Зміни не вдалося зберегти. Спробуйте ще раз."
 
 #. translators: %s: the title or description the page has with the saved values.
+#: includes/class-simple-seo-bulk.php:278
+#: includes/class-simple-seo-bulk.php:323
 #: includes/class-simple-seo-editor.php:205
 #, php-format
 msgid "Now: %s"
 msgstr "Зараз: %s"
 
+#: includes/class-simple-seo-bulk.php:279
+#: includes/class-simple-seo-bulk.php:324
 #: includes/class-simple-seo-editor.php:206
 msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
+
+#: includes/class-simple-seo-bulk.php:280
+msgid "Changes not saved yet:"
+msgstr "Незбережені зміни:"
+
+#: includes/class-simple-seo-bulk.php:299
+msgid "(no title)"
+msgstr "(без назви)"
+
+#: includes/class-simple-seo-bulk.php:391
+msgid "There is no such post or term with SEO fields."
+msgstr "Такого запису чи терміна із SEO-полями немає."
+
+#: includes/class-simple-seo-bulk.php:398
+msgid "You may not edit these fields."
+msgstr "Ви не можете редагувати ці поля."
+
+#: includes/class-simple-seo-cleanup.php:106
+msgid "Clean-up"
+msgstr "Чистка коду"
 
 #: includes/class-simple-seo-files.php:60
 msgid "Files"
@@ -497,8 +561,8 @@ msgid "The page has expired. Open it again and repeat."
 msgstr "Сторінка застаріла. Відкрийте її знову й повторіть."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.23.0: читабельність тексту з власною оцінкою та колонка з SEO-оцінкою й оцінкою читабельності в списках записів. Версія 0.22.0: імпорт переносить також ключові фрази з Yoast SEO, Rank Math і All in One SEO. Версія 0.21.0: аналіз контенту в SEO-блоці записів — основна й додаткові ключові фрази, перевірки сторінки на них і оцінка. Версія 0.20.0: основа для аналізу контенту — Simple SEO читає текст сторінки з будь-якого редактора, разом із блоками ACF і Builder. Версія 0.19.0: над SEO-полями записів і термінів — вигляд сторінки в пошуковій видачі, на комп'ютері й на телефоні, що оновлюється під час набору. Версія 0.18.0: вкладка «Імпорт» переносить налаштування й SEO-поля також з All in One SEO і прибирає з бази те, що лишилося від AIOSEO. Версія 0.17.0: вкладка «Імпорт» переносить налаштування й SEO-поля також із Rank Math і прибирає з бази те, що лишилося від Rank Math. Версія 0.16.0: вкладка «Імпорт» також прибирає з бази те, що лишив Yoast SEO, після імпорту його даних — частинами й після підтвердження резервної копії. Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.24.0: масове редагування SEO-заголовків і описів у таблиці — для всіх, хто редагує SEO-поля. Версія 0.23.0: читабельність тексту з власною оцінкою та колонка з SEO-оцінкою й оцінкою читабельності в списках записів. Версія 0.22.0: імпорт переносить також ключові фрази з Yoast SEO, Rank Math і All in One SEO. Версія 0.21.0: аналіз контенту в SEO-блоці записів — основна й додаткові ключові фрази, перевірки сторінки на них і оцінка. Версія 0.20.0: основа для аналізу контенту — Simple SEO читає текст сторінки з будь-якого редактора, разом із блоками ACF і Builder. Версія 0.19.0: над SEO-полями записів і термінів — вигляд сторінки в пошуковій видачі, на комп'ютері й на телефоні, що оновлюється під час набору. Версія 0.18.0: вкладка «Імпорт» переносить налаштування й SEO-поля також з All in One SEO і прибирає з бази те, що лишилося від AIOSEO. Версія 0.17.0: вкладка «Імпорт» переносить налаштування й SEO-поля також із Rank Math і прибирає з бази те, що лишилося від Rank Math. Версія 0.16.0: вкладка «Імпорт» також прибирає з бази те, що лишив Yoast SEO, після імпорту його даних — частинами й після підтвердження резервної копії. Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-import.php:39
 msgid "Import"
@@ -699,18 +763,18 @@ msgstr "Речення поспіль починаються з різних с�
 msgid "%1$s or more sentences in a row start with the same word: %2$s. Begin them differently."
 msgstr "%1$s і більше речень поспіль починаються з того самого слова: %2$s. Почніть їх по-різному."
 
-#: includes/class-simple-seo-scores.php:122
+#: includes/class-simple-seo-scores.php:128
 msgid "Not analysed since the last change: open or save the post."
 msgstr "Не проаналізовано після останньої зміни: відкрийте або збережіть запис."
 
 #. translators: %s: score out of 100.
-#: includes/class-simple-seo-scores.php:132
+#: includes/class-simple-seo-scores.php:138
 #, php-format
 msgid "SEO: %s"
 msgstr "SEO: %s"
 
 #. translators: %s: score out of 100, or a dash for a post without text.
-#: includes/class-simple-seo-scores.php:135
+#: includes/class-simple-seo-scores.php:141
 #, php-format
 msgid "Readability: %s"
 msgstr "Читабельність: %s"
@@ -1001,6 +1065,52 @@ msgstr "Поля Yoast у записах: те, що взяв імпорт, кл
 #: includes/class-simple-seo-yoast-import.php:107
 msgid "Yoast's %%variables%% become Simple SEO's {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report."
 msgstr "%%змінні%% Yoast стають {змінними} Simple SEO. Змінну, якій у Simple SEO немає відповідника, прибрано з тексту й названо у звіті."
+
+#: includes/views/bulk.php:36
+msgid "There is nothing here you may edit."
+msgstr "Тут немає нічого, що ви можете редагувати."
+
+#: includes/views/bulk.php:40
+msgid "What to list"
+msgstr "Що показати"
+
+#: includes/views/bulk.php:46
+msgid "Which of them"
+msgstr "Які саме"
+
+#: includes/views/bulk.php:52
+msgid "Search"
+msgstr "Пошук"
+
+#: includes/views/bulk.php:54
+#: includes/views/tab-files.php:173
+msgid "Show"
+msgstr "Показати"
+
+#. translators: %s: name of a language.
+#: includes/views/bulk.php:59
+#, php-format
+msgid "Listed in %s, the language of the admin: switch it to edit the others."
+msgstr "Мова списку — %s, мова адмінки: перемкніть її, щоб редагувати інші."
+
+#: includes/views/bulk.php:64
+#: includes/views/bulk.php:91
+msgid "Save changes"
+msgstr "Зберегти зміни"
+
+#. translators: %s: number of posts or terms.
+#: includes/views/bulk.php:67
+#, php-format
+msgid "Found: %s"
+msgstr "Знайдено: %s"
+
+#: includes/views/bulk.php:73
+msgid "Title"
+msgstr "Назва"
+
+#: includes/views/bulk.php:80
+msgid "Nothing found."
+msgstr "Нічого не знайдено."
 
 #: includes/views/tab-access.php:14
 msgid "Choose which roles can do what. Editing SEO fields of a post or term also needs the right to edit that post or term itself."
@@ -1310,10 +1420,6 @@ msgstr "Текст"
 #: includes/views/tab-files.php:170
 msgid "empty"
 msgstr "порожньо"
-
-#: includes/views/tab-files.php:173
-msgid "Show"
-msgstr "Показати"
 
 #: includes/views/tab-files.php:177
 msgid "Restore"

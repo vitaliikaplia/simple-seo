@@ -1035,7 +1035,7 @@ try {
 	sseo_check( 'term screen: structure button and the preview of what the term shows now', str_contains( $sseo_html, 'data-mask="{excerpt}"' ) && str_contains( $sseo_html, '<div class="simple-seo-snippet-title">Saved from the term form</div>' ) && str_contains( $sseo_html, '<tr class="form-field simple-seo-snippet-row">' ) );
 
 	// Hook, screen, whether admin.js loads, whether admin.css loads (the list of posts has the column of scores).
-	foreach ( array( array( 'toplevel_page_simple-seo', '', true, true ), array( 'post.php', 'post', true, true ), array( 'edit.php', 'edit-post', false, true ), array( 'edit.php', 'edit-attachment', false, false ), array( 'term.php', 'edit-category', true, true ) ) as [ $sseo_hook, $sseo_screen, $sseo_script, $sseo_style ] ) {
+	foreach ( array( array( '', '', false, false ), array( 'toplevel_page_simple-seo', '', true, true ), array( 'post.php', 'post', true, true ), array( 'edit.php', 'edit-post', false, true ), array( 'edit.php', 'edit-attachment', false, false ), array( 'term.php', 'edit-category', true, true ) ) as [ $sseo_hook, $sseo_screen, $sseo_script, $sseo_style ] ) {
 		wp_dequeue_script( 'simple-seo-admin' );
 		wp_dequeue_style( 'simple-seo-admin' );
 		if ( '' !== $sseo_screen ) {
@@ -2009,6 +2009,202 @@ try {
 	wp_set_current_user( $sseo_u['administrator'] );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Bulk editing' );
+
+	require_once ABSPATH . 'wp-admin/includes/plugin.php';
+	require_once ABSPATH . 'wp-admin/includes/template.php';
+	wp_set_current_user( $sseo_ed );
+	$sseo_bk_ids = array();
+	foreach ( array( 'one', 'two', 'three', 'four' ) as $sseo_i => $sseo_name ) {
+		$sseo_bk_ids[ $sseo_name ]          = (int) wp_insert_post(
+			array(
+				'post_title'  => 'Bulk Тест ' . $sseo_name,
+				'post_status' => 'four' === $sseo_name ? 'draft' : 'publish',
+				'post_date'   => gmdate( 'Y-m-d H:i:s', strtotime( '2001-01-0' . ( $sseo_i + 1 ) . ' 10:00:00' ) ),
+			)
+		);
+		$sseo['posts'][ 'bulk_' . $sseo_name ] = $sseo_bk_ids[ $sseo_name ];
+	}
+	$sseo['posts']['bulk_trash'] = (int) wp_insert_post( array( 'post_title' => 'Bulk Тест trash', 'post_status' => 'trash' ) );
+	$sseo['posts']['bulk_author'] = (int) wp_insert_post( array( 'post_title' => 'Bulk Тест author', 'post_status' => 'publish', 'post_author' => $sseo_au ) );
+	$sseo['posts']['bulk_author_private'] = (int) wp_insert_post( array( 'post_title' => 'Bulk Тест author private', 'post_status' => 'private', 'post_author' => $sseo_au, 'post_date' => '2000-06-01 10:00:00' ) );
+	update_post_meta( $sseo_bk_ids['one'], Simple_SEO_Fields::meta_key( 'title' ), 'Own "one" {sep} {site}' );
+	update_post_meta( $sseo_bk_ids['three'], Simple_SEO_Fields::meta_key( 'description' ), 'Own description three' );
+	// An empty row, as the REST API of WordPress leaves one: no value of its own either.
+	add_post_meta( $sseo_bk_ids['two'], Simple_SEO_Fields::meta_key( 'title' ), '' );
+	$sseo_bk_ids_of = static fn( array $result ): array => array_map( static fn( $item ): int => $item instanceof WP_Term ? (int) $item->term_id : (int) $item->ID, $result['items'] );
+	$sseo_bk_query  = static fn( string $filter = '', int $page = 1, int $per_page = 20, string $object = 'post:post' ): array => Simple_SEO_Bulk::query( $object, $filter, 'Bulk Тест', $page, $per_page );
+
+	$sseo_vals = Simple_SEO_Bulk::objects();
+	sseo_check( 'what an editor may list: the post types and taxonomies with SEO fields', isset( $sseo_vals['post:post'], $sseo_vals['post:page'], $sseo_vals['term:category'], $sseo_vals['term:post_tag'] ) && ! isset( $sseo_vals['post:sseo_private'] ) && 'post:post' === array_key_first( $sseo_vals ), $sseo_vals );
+	wp_set_current_user( $sseo_au );
+	$sseo_vals = array( Simple_SEO_Bulk::objects() );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_vals[] = Simple_SEO_Bulk::objects();
+	wp_set_current_user( $sseo_ed );
+	sseo_check( 'an author lists posts, not the terms the author may not edit; a subscriber nothing', isset( $sseo_vals[0]['post:post'] ) && ! isset( $sseo_vals[0]['term:category'] ) && array() === $sseo_vals[1], $sseo_vals );
+	sseo_check( 'the filters', array( '', 'title', 'description', 'either' ) === array_keys( Simple_SEO_Bulk::filters() ) );
+
+	$sseo_res = $sseo_bk_query();
+	sseo_check( 'posts: the newest first, drafts and private ones too, not the trash', array( $sseo['posts']['bulk_author'], $sseo_bk_ids['four'], $sseo_bk_ids['three'], $sseo_bk_ids['two'], $sseo_bk_ids['one'], $sseo['posts']['bulk_author_private'] ) === $sseo_bk_ids_of( $sseo_res ) && 6 === $sseo_res['total'], $sseo_bk_ids_of( $sseo_res ) );
+	$sseo_vals = array( $sseo_bk_ids_of( $sseo_bk_query( 'title' ) ), $sseo_bk_ids_of( $sseo_bk_query( 'description' ) ), $sseo_bk_ids_of( $sseo_bk_query( 'either' ) ) );
+	$sseo_bk_private = $sseo['posts']['bulk_author_private'];
+	sseo_check( 'filters: without an SEO title of their own (an empty row is none), without a description, without either', array( array( $sseo['posts']['bulk_author'], $sseo_bk_ids['four'], $sseo_bk_ids['three'], $sseo_bk_ids['two'], $sseo_bk_private ), array( $sseo['posts']['bulk_author'], $sseo_bk_ids['four'], $sseo_bk_ids['two'], $sseo_bk_ids['one'], $sseo_bk_private ), array( $sseo['posts']['bulk_author'], $sseo_bk_ids['four'], $sseo_bk_ids['three'], $sseo_bk_ids['two'], $sseo_bk_ids['one'], $sseo_bk_private ) ) === $sseo_vals, $sseo_vals );
+	$sseo_res = $sseo_bk_query( '', 2, 2 );
+	sseo_check( 'posts in pages', array( $sseo_bk_ids['three'], $sseo_bk_ids['two'] ) === $sseo_bk_ids_of( $sseo_res ) && 6 === $sseo_res['total'], $sseo_bk_ids_of( $sseo_res ) );
+	wp_set_current_user( $sseo_au );
+	$sseo_res = $sseo_bk_query();
+	wp_set_current_user( $sseo_ed );
+	sseo_check( 'an author lists only the posts of their own, the private one too: the rest could not be saved', array( $sseo['posts']['bulk_author'], $sseo['posts']['bulk_author_private'] ) === $sseo_bk_ids_of( $sseo_res ), $sseo_bk_ids_of( $sseo_res ) );
+
+	$sseo_bk_terms = array();
+	foreach ( array( 'alpha', 'beta', 'gamma' ) as $sseo_name ) {
+		$sseo_term                    = wp_insert_term( 'Bulk Тест ' . $sseo_name, 'category' );
+		$sseo_bk_terms[ $sseo_name ]  = (int) $sseo_term['term_id'];
+		$sseo['terms'][]              = array( (int) $sseo_term['term_id'], 'category' );
+	}
+	update_term_meta( $sseo_bk_terms['beta'], Simple_SEO_Fields::meta_key( 'title' ), 'Own beta' );
+	$sseo_vals = array( $sseo_bk_ids_of( $sseo_bk_query( '', 1, 20, 'term:category' ) ), $sseo_bk_query( '', 2, 1, 'term:category' ), $sseo_bk_ids_of( $sseo_bk_query( 'title', 1, 20, 'term:category' ) ) );
+	sseo_check( 'terms: by name, in pages, filtered', array( $sseo_bk_terms['alpha'], $sseo_bk_terms['beta'], $sseo_bk_terms['gamma'] ) === $sseo_vals[0] && array( $sseo_bk_terms['beta'] ) === $sseo_bk_ids_of( $sseo_vals[1] ) && 3 === $sseo_vals[1]['total'] && array( $sseo_bk_terms['alpha'], $sseo_bk_terms['gamma'] ) === $sseo_vals[2], $sseo_vals );
+
+	$sseo_vals = array( Simple_SEO_Bulk::now( get_post( $sseo_bk_ids['one'] ) ), Simple_SEO_Bulk::now( get_term( $sseo_bk_terms['beta'] ) ) );
+	sseo_check( 'what a post and a term show now', array( 'title' => Simple_SEO_Titles::title( Simple_SEO_Context::for_post( get_post( $sseo_bk_ids['one'] ) ) ), 'description' => Simple_SEO_Titles::description( Simple_SEO_Context::for_post( get_post( $sseo_bk_ids['one'] ) ) ) ) === $sseo_vals[0] && str_starts_with( $sseo_vals[0]['title'], 'Own "one" ' ) && 'Own beta' === $sseo_vals[1]['title'], $sseo_vals );
+
+	$sseo_html = Simple_SEO_Bulk::row( get_post( $sseo_bk_ids['four'] ) );
+	$sseo_mask = (string) call_user_func( Simple_SEO_Fields::get( 'title' )['mask'], 'post', get_post( $sseo_bk_ids['four'] ) );
+	sseo_check(
+		'a row: the post with its link and state, both fields with the template as placeholder, what shows now',
+		str_contains( $sseo_html, '<tr data-object="post" data-id="' . $sseo_bk_ids['four'] . '">' )
+			&& str_contains( $sseo_html, '<a href="' . esc_url( get_edit_post_link( $sseo_bk_ids['four'] ) ) . '">Bulk Тест four</a>' )
+			&& str_contains( $sseo_html, '<span class="post-state">Draft</span>' )
+			&& str_contains( $sseo_html, '<input type="text" class="large-text" value="" data-field="title" aria-label="SEO title: Bulk Тест four" placeholder="' . esc_attr( $sseo_mask ) . '">' )
+			&& str_contains( $sseo_html, '<textarea rows="2" class="large-text" data-field="description"' )
+			&& str_contains( $sseo_html, 'data-now="title">Now: ' . esc_html( Simple_SEO_Bulk::now( get_post( $sseo_bk_ids['four'] ) )['title'] ) . '</p>' )
+			&& str_contains( $sseo_html, 'data-now="description">Now: none from Simple SEO.</p>' )
+			&& ! str_contains( $sseo_html, 'disabled' ),
+		$sseo_html
+	);
+	$sseo_html = Simple_SEO_Bulk::row( get_post( $sseo_bk_ids['one'] ) );
+	sseo_check( 'a row: its own value in the field, escaped', str_contains( $sseo_html, 'value="Own &quot;one&quot; {sep} {site}"' ), $sseo_html );
+	wp_set_current_user( $sseo_au );
+	$sseo_html = Simple_SEO_Bulk::row( get_post( $sseo_bk_ids['one'] ) );
+	wp_set_current_user( $sseo_ed );
+	sseo_check( 'a row the user may not edit: the fields disabled, the name without a link', 2 === substr_count( $sseo_html, ' disabled>' ) && str_contains( $sseo_html, '<strong>Bulk Тест one</strong>' ), $sseo_html );
+	$sseo['posts']['bulk_untitled'] = (int) wp_insert_post( array( 'post_title' => '', 'post_content' => 'Text', 'post_status' => 'draft' ) );
+	sseo_check( 'a row of a post without a title', str_contains( Simple_SEO_Bulk::row( get_post( $sseo['posts']['bulk_untitled'] ) ), '>(no title)</a>' ) );
+	$sseo_html = Simple_SEO_Bulk::row( get_term( $sseo_bk_terms['alpha'] ) );
+	sseo_check( 'a row of a term', str_contains( $sseo_html, '<tr data-object="term" data-id="' . $sseo_bk_terms['alpha'] . '">' ) && str_contains( $sseo_html, esc_url( get_edit_term_link( $sseo_bk_terms['alpha'] ) ) ) && ! str_contains( $sseo_html, 'post-state' ) );
+
+	// The page.
+	update_user_option( $sseo_ed, Simple_SEO_Bulk::PER_PAGE, 2 );
+	$_GET      = array( 'object' => 'post:post', 'filter' => 'either', 's' => 'Bulk Тест', 'paged' => '2' );
+	$sseo_html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+	sseo_check(
+		'the page: what to list and how, the rows of its page, the count, the pages, the data for the script',
+		str_contains( $sseo_html, '<option value="post:post" selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="either" selected=\'selected\'>' ) && str_contains( $sseo_html, 'value="Bulk Тест"' )
+			&& 2 === substr_count( $sseo_html, '<tr data-object="post"' ) && str_contains( $sseo_html, 'data-id="' . $sseo_bk_ids['three'] . '"' ) && str_contains( $sseo_html, 'Found: 6' )
+			&& str_contains( $sseo_html, 'paged=3' ) && str_contains( $sseo_html, 'data-simple-seo-bulk="' ) && str_contains( $sseo_html, esc_attr( wp_json_encode( rest_url( 'simple-seo/v1/fields' ) ) ) )
+			&& ( '' !== Simple_SEO_WP_Loc::admin_language() ) === str_contains( $sseo_html, 'notice-info' ),
+		$sseo_html
+	);
+	$_GET      = array( 'object' => 'nope', 'filter' => 'nope', 's' => 'Nothing like this' );
+	$sseo_html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+	sseo_check( 'the page: an unknown choice is the first one, an unknown filter none; nothing found', str_contains( $sseo_html, '<option value="post:post" selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>' ) && str_contains( $sseo_html, 'Nothing found.' ) && str_contains( $sseo_html, 'Found: 0' ), $sseo_html );
+	$_GET = array();
+	delete_user_option( $sseo_ed, Simple_SEO_Bulk::PER_PAGE );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_die = static fn(): callable => static function (): void {
+		throw new RuntimeException( 'wp_die' );
+	};
+	add_filter( 'wp_die_handler', $sseo_die, 99 );
+	try {
+		sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+		$sseo_val = 'shown';
+	} catch ( RuntimeException $sseo_error ) {
+		$sseo_val = $sseo_error->getMessage();
+	}
+	remove_filter( 'wp_die_handler', $sseo_die, 99 );
+	sseo_check( 'the page: not for whoever does not edit SEO fields', 'wp_die' === $sseo_val, $sseo_val );
+	wp_set_current_user( $sseo_ed );
+	set_current_screen( 'dashboard' );
+	Simple_SEO_Bulk::load();
+	sseo_check( 'rows on a page: the screen option of the page', Simple_SEO_Bulk::PER_PAGE === get_current_screen()->get_option( 'per_page', 'option' ) && 20 === get_current_screen()->get_option( 'per_page', 'default' ) );
+	unset( $GLOBALS['current_screen'] );
+	sseo_check( 'rows on a page: a screen option of 1 to 200', 200 === Simple_SEO_Bulk::set_per_page( false, Simple_SEO_Bulk::PER_PAGE, '500' ) && 1 === Simple_SEO_Bulk::set_per_page( false, Simple_SEO_Bulk::PER_PAGE, '0' ) && 'other' === Simple_SEO_Bulk::set_per_page( 'other', 'edit_post_per_page', '5' ) && 10 === has_filter( 'set_screen_option_' . Simple_SEO_Bulk::PER_PAGE, array( Simple_SEO_Bulk::class, 'set_per_page' ) ) );
+
+	// The menu: the settings first, then bulk editing for whoever edits SEO fields.
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_saved_menu = array( $GLOBALS['menu'] ?? null, $GLOBALS['submenu'] ?? null );
+	$GLOBALS['menu'] = array();
+	$GLOBALS['submenu'] = array();
+	Simple_SEO_Admin::add_menu();
+	Simple_SEO_Bulk::add_menu();
+	$sseo_vals = array_column( $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ] ?? array(), 2 );
+	sseo_check( 'menu: Settings, then Bulk edit for the right capability', array( Simple_SEO_Admin::PAGE, Simple_SEO_Bulk::PAGE ) === $sseo_vals && 'Settings' === $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ][0][0] && Simple_SEO_Access::CAP_FIELDS === $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ][1][1] && '' !== Simple_SEO_Bulk::hook() && false !== has_action( 'load-' . Simple_SEO_Bulk::hook(), array( Simple_SEO_Bulk::class, 'load' ) ) && 20 === has_action( 'admin_menu', array( Simple_SEO_Bulk::class, 'add_menu' ) ), $GLOBALS['submenu'] );
+	[ $GLOBALS['menu'], $GLOBALS['submenu'] ] = $sseo_saved_menu;
+	wp_dequeue_script( 'simple-seo-admin' );
+	wp_dequeue_style( 'simple-seo-admin' );
+	// wp_enqueue_media() runs once a request: let it run again here, and count.
+	$sseo_val = $GLOBALS['wp_actions']['wp_enqueue_media'] ?? null;
+	unset( $GLOBALS['wp_actions']['wp_enqueue_media'] );
+	set_current_screen( 'dashboard' );
+	Simple_SEO_Admin::enqueue( Simple_SEO_Bulk::hook() );
+	sseo_check( 'the page loads admin.js and admin.css, not the media library', wp_script_is( 'simple-seo-admin', 'enqueued' ) && wp_style_is( 'simple-seo-admin', 'enqueued' ) && 0 === did_action( 'wp_enqueue_media' ) );
+	if ( null !== $sseo_val ) {
+		$GLOBALS['wp_actions']['wp_enqueue_media'] = $sseo_val;
+	}
+	wp_dequeue_script( 'simple-seo-admin' );
+	wp_dequeue_style( 'simple-seo-admin' );
+	unset( $GLOBALS['current_screen'] );
+
+	// Saving through the REST route.
+	wp_set_current_user( $sseo_ed );
+	$sseo_bk_rest = static function ( array $items ): WP_REST_Response {
+		$request = new WP_REST_Request( 'POST', '/simple-seo/v1/fields' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body( (string) wp_json_encode( array( 'items' => $items ) ) );
+
+		return rest_do_request( $request );
+	};
+	update_post_meta( $sseo_bk_ids['two'], Simple_SEO_Fields::meta_key( 'canonical' ), 'https://example.com/kept/' );
+	$sseo_res  = $sseo_bk_rest(
+		array(
+			array( 'object' => 'post', 'id' => $sseo_bk_ids['two'], 'title' => '  New {title}  ', 'description' => 'New description', 'canonical' => 'https://example.com/not/' ),
+			array( 'object' => 'post', 'id' => $sseo_bk_ids['one'], 'title' => '' ),
+			array( 'object' => 'term', 'id' => $sseo_bk_terms['alpha'], 'description' => 'Term description' ),
+			array( 'object' => 'post', 'id' => 99999999, 'title' => 'x' ),
+			array( 'object' => 'post', 'id' => $sseo_an_private, 'title' => 'x' ),
+			array( 'object' => 'post', 'id' => $sseo_bk_ids['three'], 'title' => array( 'x' ) ),
+		)
+	);
+	$sseo_vals = $sseo_res->get_data()['items'] ?? array();
+	sseo_check( 'REST: saved, each item in order', 200 === $sseo_res->get_status() && 6 === count( $sseo_vals ), $sseo_res->get_data() );
+	sseo_check(
+		'REST: the fields of a post sanitized and saved, what it shows now with the variables, other fields untouched',
+		array( 'title', 'description' ) === $sseo_vals[0]['saved'] && array( 'title' => 'New {title}', 'description' => 'New description' ) === $sseo_vals[0]['fields'] && 'New Bulk Тест two' === $sseo_vals[0]['now']['title'] && 'New description' === $sseo_vals[0]['now']['description']
+			&& 'New {title}' === Simple_SEO_Fields::post_value( $sseo_bk_ids['two'], 'title' ) && 'https://example.com/kept/' === Simple_SEO_Fields::post_value( $sseo_bk_ids['two'], 'canonical' ),
+		$sseo_vals[0]
+	);
+	sseo_check( 'REST: an empty title clears it, the template shows again', array( 'title' ) === $sseo_vals[1]['saved'] && '' === $sseo_vals[1]['fields']['title'] && ! metadata_exists( 'post', $sseo_bk_ids['one'], Simple_SEO_Fields::meta_key( 'title' ) ) && $sseo_vals[1]['now']['title'] === Simple_SEO_Titles::title( Simple_SEO_Context::for_post( get_post( $sseo_bk_ids['one'] ) ) ), $sseo_vals[1] );
+	sseo_check( 'REST: a term', 'term' === $sseo_vals[2]['object'] && 'Term description' === Simple_SEO_Fields::term_value( $sseo_bk_terms['alpha'], 'description' ) && 'Term description' === $sseo_vals[2]['now']['description'], $sseo_vals[2] );
+	sseo_check( 'REST: a post that is not there, or of a type without SEO fields, is an error', 'There is no such post or term with SEO fields.' === ( $sseo_vals[3]['error'] ?? '' ) && 'There is no such post or term with SEO fields.' === ( $sseo_vals[4]['error'] ?? '' ) && ! isset( $sseo_vals[3]['saved'] ) && 99999999 === $sseo_vals[3]['id'], array( $sseo_vals[3], $sseo_vals[4] ) );
+	sseo_check( 'REST: what is not text leaves the field as it was', array() === $sseo_vals[5]['saved'] && ! isset( $sseo_vals[5]['error'] ) && 'Own description three' === Simple_SEO_Fields::post_value( $sseo_bk_ids['three'], 'description' ), $sseo_vals[5] );
+	$sseo_val = get_post_meta( $sseo_bk_ids['two'], Simple_SEO_Scores::META, true );
+	sseo_check( 'REST: the scores of a post saved, with its new title', is_array( $sseo_val ) && Simple_SEO_Analysis::run( get_post( $sseo_bk_ids['two'] ) )['score'] === $sseo_val['seo'] && null !== Simple_SEO_Scores::get( get_post( $sseo_bk_ids['two'] ) ) && '' === get_post_meta( $sseo_bk_ids['three'], Simple_SEO_Scores::META, true ), $sseo_val );
+	wp_set_current_user( $sseo_au );
+	$sseo_vals = $sseo_bk_rest( array( array( 'object' => 'post', 'id' => $sseo_bk_ids['three'], 'title' => 'By the author' ) ) )->get_data()['items'] ?? array();
+	sseo_check( 'REST: not the fields of a post the user may not edit', isset( $sseo_vals[0]['error'] ) && '' === Simple_SEO_Fields::post_value( $sseo_bk_ids['three'], 'title' ), $sseo_vals );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_val = $sseo_bk_rest( array( array( 'object' => 'post', 'id' => $sseo_bk_ids['three'], 'title' => 'x' ) ) )->get_status();
+	wp_set_current_user( $sseo_ed );
+	sseo_check( 'REST: not for whoever does not edit SEO fields', in_array( $sseo_val, array( 401, 403 ), true ), $sseo_val );
+	$sseo_val = $sseo_bk_rest( array_fill( 0, Simple_SEO_Bulk::MAX_ITEMS + 1, array( 'object' => 'post', 'id' => $sseo_bk_ids['three'] ) ) )->get_status();
+	sseo_check( 'REST: a hundred items at most', 400 === $sseo_val, $sseo_val );
+	$sseo_request = new WP_REST_Request( 'POST', '/simple-seo/v1/fields' );
+	sseo_check( 'REST: the items are required', 400 === rest_do_request( $sseo_request )->get_status() );
+	wp_set_current_user( $sseo_u['administrator'] );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'wp-loc' );
 
 	if ( ! Simple_SEO_WP_Loc::active() || count( WP_LOC_Languages::get_active_languages() ) < 2 ) {
@@ -2072,6 +2268,36 @@ try {
 			}
 			sseo_check( "admin in {$sseo_admin}: no language left switched afterwards", ! WP_LOC_Routing::has_switched_language() && 'Locked {title}' === Simple_SEO_Special::saved_template( 'password', 'title' ) );
 		}
+		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
+
+		// Bulk editing lists the posts and terms of the admin's language, as the lists of WordPress do.
+		$sseo_bk_lang = array();
+		foreach ( $sseo_codes as $sseo_code ) {
+			$sseo_bk_lang[ $sseo_code ]            = (int) wp_insert_post( array( 'post_title' => 'Bulk мова ' . $sseo_code, 'post_status' => 'publish' ) );
+			$sseo['posts'][ 'bulk_lang_' . $sseo_code ] = $sseo_bk_lang[ $sseo_code ];
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo_bk_lang[ $sseo_code ], 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_code, 'source_language_code' => null ) );
+		}
+		set_current_screen( 'dashboard' );
+		foreach ( array( $sseo_default_lang, $sseo_other_lang ) as $sseo_index => $sseo_admin ) {
+			$_COOKIE['admin_lang'] = WP_LOC_Languages::get_language_locale( $sseo_admin );
+			$sseo_res              = Simple_SEO_Bulk::query( 'post:post', '', 'Bulk мова', 1, 20 );
+			sseo_check( "bulk editing, admin in {$sseo_admin}: the posts of that language only", array( $sseo_bk_lang[ $sseo_codes[ $sseo_index ] ] ) === wp_list_pluck( $sseo_res['items'], 'ID' ) && 1 === $sseo_res['total'], wp_list_pluck( $sseo_res['items'], 'ID' ) );
+		}
+		$_GET      = array( 'object' => 'post:post', 's' => 'Bulk мова' );
+		$sseo_html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+		$_GET      = array();
+		sseo_check( 'bulk editing names the language listed', str_contains( $sseo_html, 'the language of the admin' ) && str_contains( $sseo_html, '<strong>' . esc_html( WP_LOC_Languages::get_display_name( $sseo_other_lang ) ) . '</strong>' ), $sseo_html );
+		$_GET      = array( 'object' => 'term:category' );
+		$sseo_html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+		$_GET      = array();
+		sseo_check( 'bulk editing names the language of terms too', str_contains( $sseo_html, 'the language of the admin' ), $sseo_html );
+		register_post_type( 'sseo_bulk_plain', array( 'public' => true, 'label' => 'Plain' ) );
+		Simple_SEO_Fields::flush_types();
+		$sseo['posts']['bulk_plain'] = (int) wp_insert_post( array( 'post_type' => 'sseo_bulk_plain', 'post_title' => 'Bulk мова plain', 'post_status' => 'publish' ) );
+		$sseo_res = Simple_SEO_Bulk::query( 'post:sseo_bulk_plain', '', 'Bulk мова', 1, 20 );
+		sseo_check( 'bulk editing: a type wp-loc does not translate is listed whatever the admin\'s language', array( $sseo['posts']['bulk_plain'] ) === wp_list_pluck( $sseo_res['items'], 'ID' ), wp_list_pluck( $sseo_res['items'], 'ID' ) );
+		unregister_post_type( 'sseo_bulk_plain' );
+		Simple_SEO_Fields::flush_types();
 		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
 
 		// The text of a page: its blocks render in its language (translated patterns, menus, labels).
@@ -5603,6 +5829,7 @@ try {
 	sseo_check( 'the search result preview is translated', 'Вигляд у пошуковій видачі' === __( 'Search result preview', 'simple-seo' ) && 'SEO-заголовок: символів — %s, пошуковик його обріже.' === __( 'SEO title: %s characters, search engines will cut it.', 'simple-seo' ) );
 	sseo_check( 'the content analysis is translated', 'Аналіз контенту' === __( 'Content analysis', 'simple-seo' ) && 'SEO-оцінка: %s зі 100' === __( 'SEO score: %s of 100', 'simple-seo' ) );
 	sseo_check( 'readability and the column of scores are translated', 'Читабельність: %s зі 100' === __( 'Readability: %s of 100', 'simple-seo' ) && 'Читабельність: %s' === __( 'Readability: %s', 'simple-seo' ) && 'Речення поспіль починаються з різних слів.' === __( 'Sentences in a row start with different words.', 'simple-seo' ) );
+	sseo_check( 'bulk editing is translated', 'Масове редагування' === __( 'Bulk edit', 'simple-seo' ) && 'Без власного SEO-заголовка' === __( 'Without an SEO title of their own', 'simple-seo' ) && 'Збережено: %s.' === __( 'Saved: %s.', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 

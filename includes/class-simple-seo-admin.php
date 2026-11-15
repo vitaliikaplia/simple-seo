@@ -66,6 +66,8 @@ final class Simple_SEO_Admin {
 			'dashicons-search',
 			99
 		);
+		// The first item of the menu: the settings, beside the pages others add (bulk editing).
+		add_submenu_page( self::PAGE, __( 'Simple SEO', 'simple-seo' ), __( 'Settings', 'simple-seo' ), Simple_SEO_Access::CAP_SETTINGS, self::PAGE, array( self::class, 'render_page' ) );
 	}
 
 	/** One settings group per tab, saved through options.php with the plugin's own capability. */
@@ -149,23 +151,24 @@ final class Simple_SEO_Admin {
 		);
 	}
 
-	/** The script and styles of the SEO fields and the settings page, only where those are. */
+	/** The script and styles of the SEO fields, the settings and bulk editing, only where those are. */
 	public static function enqueue( string $hook ): void {
 		$screen = get_current_screen();
 		$ours   = 'toplevel_page_' . self::PAGE === $hook
 			|| ( in_array( $hook, array( 'post.php', 'post-new.php' ), true ) && $screen && in_array( $screen->post_type, Simple_SEO_Fields::post_types(), true ) )
 			|| ( in_array( $hook, array( 'term.php', 'edit-tags.php' ), true ) && $screen && in_array( $screen->taxonomy, Simple_SEO_Fields::taxonomies(), true ) );
-
+		$bulk   = '' !== Simple_SEO_Bulk::hook() && Simple_SEO_Bulk::hook() === $hook;
 		// The list of posts has the column of scores, and nothing else of Simple SEO's.
-		if ( 'edit.php' === $hook && $screen && in_array( $screen->post_type, Simple_SEO_Fields::post_types(), true ) ) {
+		$list = 'edit.php' === $hook && $screen && in_array( $screen->post_type, Simple_SEO_Fields::post_types(), true );
+
+		if ( $ours || $bulk || $list ) {
 			wp_enqueue_style( 'simple-seo-admin', SIMPLE_SEO_URL . 'assets/css/admin.css', array(), SIMPLE_SEO_VERSION );
 		}
-
 		if ( $ours ) {
-			// The search result preview of the editors.
-			wp_enqueue_style( 'simple-seo-admin', SIMPLE_SEO_URL . 'assets/css/admin.css', array(), SIMPLE_SEO_VERSION );
 			// The image fields pick from the media library.
 			wp_enqueue_media();
+		}
+		if ( $ours || $bulk ) {
 			wp_enqueue_script(
 				'simple-seo-admin',
 				SIMPLE_SEO_URL . 'assets/js/admin.js',
