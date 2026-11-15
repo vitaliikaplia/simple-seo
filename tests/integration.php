@@ -105,6 +105,8 @@ $sseo_saved_options = array(
 	'bc_labels'      => get_option( Simple_SEO_Breadcrumbs::LABELS ),
 	'schema'         => get_option( Simple_SEO_Schema::OPTION ),
 	'schema_names'   => get_option( Simple_SEO_Schema::NAMES ),
+	'local'          => get_option( Simple_SEO_Local::OPTION ),
+	'local_names'    => get_option( Simple_SEO_Local::NAMES ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -177,7 +179,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -1427,7 +1429,7 @@ try {
 	Simple_SEO_Context::reset();
 	$sseo_404 = static fn(): Simple_SEO_Context => Simple_SEO_Context::from_query( $sseo_q404 );
 
-	sseo_check( 'only the special pages row, the breadcrumb labels, the Schema names and the llms.txt text are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Schema::NAMES, Simple_SEO_Llms::TEXT ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
+	sseo_check( 'only the special pages row, the breadcrumb labels, the Schema names, the texts of Local SEO and the llms.txt text are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Schema::NAMES, Simple_SEO_Local::NAMES, Simple_SEO_Llms::TEXT ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
 	Simple_SEO_Settings::install();
 	sseo_check( 'install() creates the special pages row', array() === get_option( Simple_SEO_Special::OPTION, null ) );
 
@@ -2796,7 +2798,7 @@ try {
 	sseo_section( 'Schema' );
 
 	unset( $GLOBALS['current_screen'] );
-	foreach ( array( Simple_SEO_Schema::OPTION, Simple_SEO_Schema::NAMES, Simple_SEO_Social::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS ) as $sseo_name ) {
+	foreach ( array( Simple_SEO_Schema::OPTION, Simple_SEO_Schema::NAMES, Simple_SEO_Local::OPTION, Simple_SEO_Local::NAMES, Simple_SEO_Social::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
 	update_option( 'show_on_front', 'posts' );
@@ -3341,6 +3343,265 @@ try {
 	if ( false !== $sseo_sc_logo ) {
 		set_theme_mod( 'custom_logo', $sseo_sc_logo );
 	}
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Local SEO' );
+
+	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import-source.php';
+	$sseo_lc_theme_keys = array( 'schema_org_type', 'schema_org_email', 'schema_org_phone', 'schema_org_street', 'schema_org_city', 'schema_org_postal_code', 'schema_org_country', 'schema_org_description', 'schema_org_name', 'schema_org_alternate_name', 'schema_org_legal_name', 'schema_org_area_served', 'options_opening_hours', 'options_footer_phone', 'options_footer_email' );
+	$sseo_lc_clear      = static function () use ( $sseo_lc_theme_keys ): void {
+		foreach ( array_merge( array( Simple_SEO_Local::OPTION, Simple_SEO_Local::NAMES, Simple_SEO_Schema::OPTION, Simple_SEO_Schema::NAMES ), $sseo_lc_theme_keys ) as $sseo_name ) {
+			delete_option( $sseo_name );
+		}
+		Simple_SEO_Settings::flush();
+	};
+	$sseo_lc_clear();
+	$sseo_lc_org = static fn(): array => (array) Simple_SEO_Schema::publisher();
+	$sseo_lc_set = static function ( array $local, array $names = array() ): void {
+		update_option( Simple_SEO_Local::OPTION, Simple_SEO_Local::sanitize( $local ) );
+		update_option( Simple_SEO_Local::NAMES, Simple_SEO_Local::sanitize_names( $names ) );
+		Simple_SEO_Settings::flush();
+	};
+	$sseo_lc_details = array( 'description', 'address', 'telephone', 'email', 'areaServed', 'geo', 'hasMap', 'openingHoursSpecification', 'priceRange' );
+
+	sseo_check( 'the defaults: an organization without details', array( 'type' => 'Organization', 'phone' => '', 'email' => '', 'postal_code' => '', 'country' => '', 'geo' => '', 'map' => '', 'hours' => array() ) === Simple_SEO_Settings::get( Simple_SEO_Local::OPTION ) && array( 'description' => '', 'street' => '', 'locality' => '', 'region' => '', 'area_served' => '', 'price_range' => '' ) === Simple_SEO_Settings::get( Simple_SEO_Local::NAMES ) );
+	sseo_check( 'the texts are kept per language, the rest is common', in_array( Simple_SEO_Local::NAMES, Simple_SEO_Settings::localized(), true ) && ! in_array( Simple_SEO_Local::OPTION, Simple_SEO_Settings::localized(), true ) );
+	$sseo_n = $sseo_lc_org();
+	sseo_check( 'without details the organization is as it was: an Organization with its @id, no details', 'Organization' === $sseo_n['@type'] && home_url( '/' ) . '#organization' === $sseo_n['@id'] && ! array_intersect( $sseo_lc_details, array_keys( $sseo_n ) ), $sseo_n );
+
+	// The settings.
+	$sseo_clean = Simple_SEO_Local::sanitize( array( 'type' => 'Spaceship', 'phone' => 'call 12-34', 'email' => 'not an email', 'postal_code' => ' <b>01001</b>' . str_repeat( '9', 30 ), 'country' => 'Ukraine', 'geo' => '91, 30', 'map' => 'javascript:alert(1)', 'hours' => 'no' ) );
+	sseo_check( 'sanitized: an unknown type is an organization; a phone of few digits, a wrong e-mail, coordinates out of range, a map that is no address and hours that are no list are nothing; a country by name stays', array( 'type' => 'Organization', 'phone' => '', 'email' => '', 'postal_code' => '01001' . str_repeat( '9', 15 ), 'country' => 'Ukraine', 'geo' => '', 'map' => '', 'hours' => array() ) === $sseo_clean, $sseo_clean );
+	$sseo_clean = Simple_SEO_Local::sanitize( array( 'type' => 'Dentist', 'phone' => ' tel. +380 (44) x 123-45-67 ext. ', 'email' => ' Info@Example.com ', 'country' => 'ua', 'geo' => '50,4501, 30,5234', 'map' => ' https://maps.app.goo.gl/abc ', 'hours' => array( 'Mo' => array( 'open' => '1', 'opens' => '09:00', 'closes' => '18:00' ) ) ) );
+	sseo_check( 'sanitized: a type of the list, the phone without letters, the e-mail, the country code in capitals, coordinates with decimal commas, the map; a clean row stays as it is', 'Dentist' === $sseo_clean['type'] && '+380 (44) 123-45-67' === $sseo_clean['phone'] && 'Info@Example.com' === $sseo_clean['email'] && 'UA' === $sseo_clean['country'] && '50.4501,30.5234' === $sseo_clean['geo'] && 'https://maps.app.goo.gl/abc' === $sseo_clean['map'] && array( 'Mo' => array( 'opens' => '09:00', 'closes' => '18:00' ) ) === $sseo_clean['hours'] && Simple_SEO_Local::sanitize( $sseo_clean ) === $sseo_clean, $sseo_clean );
+	$sseo_val = array_map( array( Simple_SEO_Local::class, 'sanitize_geo' ), array( '50.4501, 30.5234', '50.4501,30.5234', '50,4501 30,5234', '50.45;30.52', '-33.86880, 151.2093000', '50, 30', '0, 0', '50.4501', '50.45, 30.52, 1', '91, 30', '50, 181', 'abc', array( 1 ) ) );
+	sseo_check( 'coordinates as maps copy them, kept as latitude,longitude; one number, three, out of range or no numbers are nothing', array( '50.4501,30.5234', '50.4501,30.5234', '50.4501,30.5234', '50.45,30.52', '-33.8688,151.2093', '50,30', '0,0', '', '', '', '', '', '' ) === $sseo_val, $sseo_val );
+	$sseo_val = Simple_SEO_Local::sanitize_hours(
+		array(
+			'Mo' => array( 'open' => '1', 'opens' => '9:00', 'closes' => '18:00' ),
+			'Tu' => array( 'open' => '1', 'opens' => '09.30', 'closes' => '24:00' ),
+			'We' => array( 'open' => '0', 'opens' => '09:00', 'closes' => '18:00' ),
+			'Th' => array( 'open' => '1', 'opens' => '', 'closes' => '' ),
+			'Fr' => array( 'open' => '1', 'opens' => '09:00', 'closes' => '' ),
+			'Sa' => array( 'open' => '1', 'opens' => '25:00', 'closes' => '12:00' ),
+			'Su' => array( 'opens' => '18:00', 'closes' => '02:00:00' ),
+			'Xx' => array( 'open' => '1', 'opens' => '09:00', 'closes' => '18:00' ),
+		)
+	);
+	sseo_check( 'opening hours: the open days with their times as HH:MM, 24:00 as 23:59; without times round the clock; a day with one time or a wrong one, a closed day, an unknown day are left out; a stored day has no switch and may close after midnight', array( 'Mo' => array( 'opens' => '09:00', 'closes' => '18:00' ), 'Tu' => array( 'opens' => '09:30', 'closes' => '23:59' ), 'Th' => array( 'opens' => '00:00', 'closes' => '23:59' ), 'Su' => array( 'opens' => '18:00', 'closes' => '02:00' ) ) === $sseo_val && Simple_SEO_Local::sanitize_hours( $sseo_val ) === $sseo_val, $sseo_val );
+	$sseo_clean = Simple_SEO_Local::sanitize_names( array( 'description' => ' <b>We</b> fix teeth ' . str_repeat( 'я', 600 ), 'street' => str_repeat( 'с', 250 ), 'locality' => array( 'no' ), 'region' => str_repeat( 'r', 150 ), 'area_served' => str_repeat( 'a', 400 ), 'price_range' => str_repeat( '$', 150 ), 'bogus' => 'x' ) );
+	$sseo_val   = Simple_SEO_Local::sanitize_names( array( 'locality' => str_repeat( 'l', 150 ) ) )['locality'];
+	sseo_check( 'the texts: plain, cut to their lengths, nothing that is no text', array( 'description' => mb_substr( 'We fix teeth ' . str_repeat( 'я', 600 ), 0, 500 ), 'street' => str_repeat( 'с', 200 ), 'locality' => '', 'region' => str_repeat( 'r', 100 ), 'area_served' => str_repeat( 'a', 300 ), 'price_range' => str_repeat( '$', 100 ) ) === $sseo_clean && str_repeat( 'l', 100 ) === $sseo_val, $sseo_clean );
+	sseo_check( 'coordinates of the row: two numbers, else none', array( 50.45, -30.5 ) === Simple_SEO_Local::coordinates( '50.45,-30.5' ) && null === Simple_SEO_Local::coordinates( 'a,b' ) && null === Simple_SEO_Local::coordinates( '1,2,3' ) && null === Simple_SEO_Local::coordinates( '50.45' ) && null === Simple_SEO_Local::coordinates( '' ) );
+
+	// The types: the list, the filter.
+	$sseo_lc_types  = new ReflectionProperty( Simple_SEO_Local::class, 'types' );
+	$sseo_lc_filter = static fn( array $types ): array => array_diff_key( $types, array( 'Organization' => 1 ) ) + array( 'Winery' => 1, 'bad type' => true, 'lowercase' => false, 7 => true );
+	add_filter( 'simple_seo_local_types', $sseo_lc_filter );
+	$sseo_lc_types->setValue( null, null );
+	$sseo_val = array( Simple_SEO_Local::types(), Simple_SEO_Local::type_labels() );
+	remove_filter( 'simple_seo_local_types', $sseo_lc_filter );
+	$sseo_lc_types->setValue( null, null );
+	sseo_check( 'the filter adds types; names that are no type go; Organization is always there; a type added is named as itself', true === ( $sseo_val[0]['Winery'] ?? null ) && ! isset( $sseo_val[0]['bad type'] ) && ! isset( $sseo_val[0]['lowercase'] ) && ! isset( $sseo_val[0][7] ) && false === ( $sseo_val[0]['Organization'] ?? null ) && 'Winery' === ( $sseo_val[1]['Winery'] ?? '' ), $sseo_val );
+	sseo_check( 'without the filter: the list, each type with its name; local businesses and organizations told apart', Simple_SEO_Local::TYPES === Simple_SEO_Local::types() && array_keys( Simple_SEO_Local::TYPES ) === array_keys( Simple_SEO_Local::type_labels() ) && 'Real estate agency' === Simple_SEO_Local::type_labels()['RealEstateAgent'] && Simple_SEO_Local::is_local( 'Dentist' ) && ! Simple_SEO_Local::is_local( 'NGO' ) && ! Simple_SEO_Local::is_local( 'Winery' ) );
+	// pre_option: the row is not there, and get_option() then skips option_{row}.
+	$sseo_lc_filter = static fn(): array => array( 'type' => 'Winery' );
+	add_filter( 'pre_option_' . Simple_SEO_Local::OPTION, $sseo_lc_filter );
+	Simple_SEO_Settings::flush();
+	$sseo_val = array( Simple_SEO_Local::type(), $sseo_lc_org()['@type'] ?? '' );
+	remove_filter( 'pre_option_' . Simple_SEO_Local::OPTION, $sseo_lc_filter );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'a type saved that is no longer in the list is an organization', array( 'Organization', 'Organization' ) === $sseo_val, $sseo_val );
+
+	// The graph.
+	$sseo_lc_hours = array(
+		'Mo' => array( 'opens' => '09:00', 'closes' => '18:00' ),
+		'Tu' => array( 'opens' => '09:00', 'closes' => '18:00' ),
+		'We' => array( 'opens' => '09:00', 'closes' => '18:00' ),
+		'Th' => array( 'opens' => '09:00', 'closes' => '18:00' ),
+		'Fr' => array( 'opens' => '09:00', 'closes' => '17:00' ),
+		'Sa' => array( 'opens' => '09:00', 'closes' => '18:00' ),
+	);
+	$sseo_lc_set(
+		array( 'type' => 'Dentist', 'phone' => '+380 44 123 45 67', 'email' => 'info@acme.test', 'postal_code' => '01001', 'country' => 'UA', 'geo' => '50.4501, 30.5234', 'map' => 'https://maps.test/acme', 'hours' => $sseo_lc_hours ),
+		array( 'description' => 'We fix <b>teeth</b> &amp; smiles', 'street' => 'Khreshchatyk 1', 'locality' => 'Kyiv', 'region' => 'Kyiv region', 'area_served' => 'Kyiv, Brovary ,, Irpin', 'price_range' => '$$' )
+	);
+	$sseo_n = $sseo_lc_org();
+	sseo_check( 'a local business: its type under the same @id, the description, the address, phone, e-mail, the areas served, the coordinates and the map', 'Dentist' === $sseo_n['@type'] && home_url( '/' ) . '#organization' === $sseo_n['@id'] && 'We fix teeth & smiles' === $sseo_n['description'] && array( '@type' => 'PostalAddress', 'streetAddress' => 'Khreshchatyk 1', 'addressLocality' => 'Kyiv', 'addressRegion' => 'Kyiv region', 'postalCode' => '01001', 'addressCountry' => 'UA' ) === $sseo_n['address'] && '+380 44 123 45 67' === $sseo_n['telephone'] && 'info@acme.test' === $sseo_n['email'] && array( 'Kyiv', 'Brovary', 'Irpin' ) === $sseo_n['areaServed'] && array( '@type' => 'GeoCoordinates', 'latitude' => 50.4501, 'longitude' => 30.5234 ) === $sseo_n['geo'] && 'https://maps.test/acme' === $sseo_n['hasMap'], $sseo_n );
+	sseo_check( 'a local business: the hours, the days that open and close alike in one specification, and the price range', array( array( '@type' => 'OpeningHoursSpecification', 'dayOfWeek' => array( 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Saturday' ), 'opens' => '09:00', 'closes' => '18:00' ), array( '@type' => 'OpeningHoursSpecification', 'dayOfWeek' => array( 'Friday' ), 'opens' => '09:00', 'closes' => '17:00' ) ) === $sseo_n['openingHoursSpecification'] && '$$' === $sseo_n['priceRange'], $sseo_n );
+	$sseo_g = Simple_SEO_Schema::graph( Simple_SEO_Context::for_home() );
+	sseo_check( "the graph: the site's publisher is the local business, every reference holds", array( '@id' => home_url( '/' ) . '#organization' ) === ( $sseo_sc_node( $sseo_g, 'WebSite' )['publisher'] ?? null ) && '+380 44 123 45 67' === ( $sseo_sc_node( $sseo_g, 'Dentist' )['telephone'] ?? '' ) && $sseo_sc_linked( $sseo_g ), $sseo_g );
+	$sseo_lc_set( array_merge( Simple_SEO_Settings::get( Simple_SEO_Local::OPTION ), array( 'type' => 'NGO' ) ), Simple_SEO_Settings::get( Simple_SEO_Local::NAMES ) );
+	$sseo_n = $sseo_lc_org();
+	sseo_check( 'an organization that is no local business: the description, address, phone, e-mail and areas, without coordinates, map, hours or price range', 'NGO' === $sseo_n['@type'] && isset( $sseo_n['description'], $sseo_n['address'], $sseo_n['telephone'], $sseo_n['email'], $sseo_n['areaServed'] ) && ! array_intersect( array( 'geo', 'hasMap', 'openingHoursSpecification', 'priceRange' ), array_keys( $sseo_n ) ), $sseo_n );
+	$sseo_lc_set( array( 'type' => 'Store' ), array( 'locality' => 'Lviv', 'area_served' => ' Lviv , ' ) );
+	$sseo_n = $sseo_lc_org();
+	sseo_check( 'a part of the address is an address; one area is a text; what is not set is not there', array( '@type' => 'PostalAddress', 'addressLocality' => 'Lviv' ) === $sseo_n['address'] && 'Lviv' === $sseo_n['areaServed'] && 'Store' === $sseo_n['@type'] && ! array_intersect( array( 'geo', 'hasMap', 'openingHoursSpecification', 'priceRange', 'telephone', 'email', 'description' ), array_keys( $sseo_n ) ), $sseo_n );
+	update_option( Simple_SEO_Schema::OPTION, array( 'represents' => 'person', 'person' => $sseo_au ) );
+	$sseo_lc_set( array( 'type' => 'Dentist', 'phone' => '+380 44 123 45 67' ), array( 'street' => 'Khreshchatyk 1' ) );
+	$sseo_n = $sseo_lc_org();
+	sseo_check( "a person's site: the person, without the organization's details", array( 'Person', 'Organization' ) === $sseo_n['@type'] && ! array_intersect( $sseo_lc_details, array_keys( $sseo_n ) ), $sseo_n );
+
+	// The tab.
+	Simple_SEO_Local::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab']       = 'local';
+	$sseo_html_person  = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	$sseo_lc_set( array( 'type' => 'Dentist', 'phone' => '+380 44 123 45 67', 'geo' => '50.4501,30.5234', 'hours' => array( 'Mo' => array( 'opens' => '09:00', 'closes' => '18:00' ) ) ) );
+	$sseo_html_noaddr  = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	$sseo_lc_set( array( 'type' => 'Dentist', 'phone' => '+380 44 123 45 67', 'geo' => '50.4501,30.5234', 'hours' => array( 'Mo' => array( 'opens' => '09:00', 'closes' => '18:00' ) ) ), array( 'street' => 'Khreshchatyk 1', 'price_range' => '$$' ) );
+	$sseo_html         = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	$sseo_lc_set( array() );
+	update_option( 'schema_org_phone', '+380 50 000 00 00' );
+	$sseo_html_org     = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	delete_option( 'schema_org_phone' );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the Local SEO tab sits between Schema and Indexing', strpos( $sseo_html, '>Schema<' ) < strpos( $sseo_html, '>Local SEO<' ) && strpos( $sseo_html, '>Local SEO<' ) < strpos( $sseo_html, '>Indexing<' ) );
+	sseo_check( 'the tab: the types in two groups with the chosen one, each named once, a local business told by data-local', 1 === substr_count( $sseo_html, '<option value="NGO"' ) && 1 === substr_count( $sseo_html, '<option value="Dentist"' ) && str_contains( $sseo_html, '<select id="simple-seo-local-type" name="simple_seo_local[type]" data-simple-seo-local-type>' ) && strpos( $sseo_html, '<optgroup label="Organizations">' ) < strpos( $sseo_html, '<option value="NGO" data-local="0">Non-governmental organization (NGO)</option>' ) && strpos( $sseo_html, '<option value="NGO"' ) < strpos( $sseo_html, '<optgroup label="Local businesses">' ) && strpos( $sseo_html, '<optgroup label="Local businesses">' ) < strpos( $sseo_html, '<option value="Dentist" data-local="1" selected=\'selected\'>Dentist</option>' ), $sseo_html );
+	sseo_check( 'the tab: the phone, the coordinates as one types them, the texts, the hours of the open days', str_contains( $sseo_html, 'name="simple_seo_local[phone]" value="+380 44 123 45 67"' ) && str_contains( $sseo_html, 'name="simple_seo_local[geo]" value="50.4501, 30.5234"' ) && str_contains( $sseo_html, 'name="simple_seo_local_names[street]" value="Khreshchatyk 1"' ) && str_contains( $sseo_html, 'name="simple_seo_local_names[price_range]" value="$$"' ) && str_contains( $sseo_html, 'name="simple_seo_local[hours][Mo][open]" value="1"  checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_local[hours][Mo][opens]" value="09:00"' ) && str_contains( $sseo_html, 'name="simple_seo_local[hours][Tu][open]" value="1" >' ) && str_contains( $sseo_html, 'name="simple_seo_local[hours][Su][open]" value="0"' ) && str_contains( $sseo_html, 'Sunday' ), $sseo_html );
+	sseo_check( 'the tab: coordinates, map, price range and hours shown for a local business only', ! str_contains( $sseo_html, 'class="simple-seo-local-only" hidden' ) && 4 === substr_count( $sseo_html_org, 'class="simple-seo-local-only" hidden' ) );
+	sseo_check( 'the tab: a person instead of an organization is said, an address missing for a local business is said', str_contains( $sseo_html_person, 'The site represents a person' ) && str_contains( $sseo_html_noaddr, 'A local business needs its address' ) && ! str_contains( $sseo_html, 'The site represents a person' ) && ! str_contains( $sseo_html, 'A local business needs its address' ) && ! str_contains( $sseo_html_org, 'A local business needs its address' ) );
+	sseo_check( 'the tab shows the organization as saved; not for a person', str_contains( $sseo_html, '&quot;@type&quot;: &quot;Dentist&quot;' ) && ! str_contains( $sseo_html_person, 'The organization in the graph as saved now' ) );
+	sseo_check( 'the tab offers the theme\'s details only where the theme has them: a button with its nonce to the tab', ! str_contains( $sseo_html, 'Take from the theme' ) && str_contains( $sseo_html_org, 'name="simple_seo_local_theme" value="1" formaction="' . esc_url( Simple_SEO_Admin::url( 'local' ) ) . '"' ) && str_contains( $sseo_html_org, 'name="simple_seo_local_nonce"' ), $sseo_html_org );
+	sseo_check( 'the tab saves both rows', 'simple-seo-local' === ( get_registered_settings()[ Simple_SEO_Local::OPTION ]['group'] ?? '' ) && 'simple-seo-local' === ( get_registered_settings()[ Simple_SEO_Local::NAMES ]['group'] ?? '' ) );
+
+	// From the theme: WP Base keeps the details in schema_org_* and the hours in ACF.
+	$sseo_lc_clear();
+	sseo_check( 'no theme options: nothing found', ! Simple_SEO_Local::theme_found() );
+	$sseo_lc_theme = array(
+		'schema_org_type'           => 'ProfessionalService',
+		'schema_org_email'          => 'hello@theme.test',
+		'schema_org_phone'          => '+380 50 000 00 00',
+		'schema_org_street'         => 'Theme street 5',
+		'schema_org_city'           => 'Odesa',
+		'schema_org_postal_code'    => '65000',
+		'schema_org_country'        => 'UA',
+		'schema_org_description'    => '<p>Theme description</p>',
+		'schema_org_name'           => 'Theme Org',
+		'schema_org_alternate_name' => 'Theme Alt',
+		'schema_org_legal_name'     => 'Theme Org LLC',
+		'schema_org_area_served'    => 'Odesa',
+		'options_opening_hours'     => array(
+			'Mo' => array( 'enabled' => true, 'opens' => '10:00', 'closes' => '19:00' ),
+			'Tu' => array( 'enabled' => false, 'opens' => '10:00', 'closes' => '19:00' ),
+			'Sa' => array( 'enabled' => 1, 'opens' => '11:00', 'closes' => '15:00' ),
+			'Xx' => array( 'enabled' => true, 'opens' => '11:00', 'closes' => '15:00' ),
+		),
+	);
+	foreach ( $sseo_lc_theme as $sseo_name => $sseo_value ) {
+		update_option( $sseo_name, $sseo_value );
+	}
+	update_option( Simple_SEO_Local::OPTION, array( 'phone' => '+380 44 111 22 33' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_val   = Simple_SEO_Local::from_theme();
+	$sseo_local = get_option( Simple_SEO_Local::OPTION );
+	sseo_check( 'from the theme: its type, e-mail, postal code, country and the hours of its open days fill the empty fields; the own phone stays', Simple_SEO_Local::theme_found() && 'ProfessionalService' === $sseo_local['type'] && '+380 44 111 22 33' === $sseo_local['phone'] && 'hello@theme.test' === $sseo_local['email'] && '65000' === $sseo_local['postal_code'] && 'UA' === $sseo_local['country'] && array( 'Mo' => array( 'opens' => '10:00', 'closes' => '19:00' ), 'Sa' => array( 'opens' => '11:00', 'closes' => '15:00' ) ) === $sseo_local['hours'], $sseo_local );
+	sseo_check( 'from the theme: the texts as plain text, the names of the organization; how many fields were filled', array( 'description' => 'Theme description', 'street' => 'Theme street 5', 'locality' => 'Odesa', 'region' => '', 'area_served' => 'Odesa', 'price_range' => '' ) === get_option( Simple_SEO_Local::NAMES ) && 'Theme Org' === ( get_option( Simple_SEO_Schema::NAMES )['name'] ?? '' ) && 'Theme Alt' === ( get_option( Simple_SEO_Schema::NAMES )['alternate'] ?? '' ) && 11 === $sseo_val, array( get_option( Simple_SEO_Local::NAMES ), get_option( Simple_SEO_Schema::NAMES ), $sseo_val ) );
+	sseo_check( 'from the theme again: nothing more to fill', 0 === Simple_SEO_Local::from_theme() );
+	foreach ( array( 'schema_org_phone', 'schema_org_email', 'schema_org_alternate_name' ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	update_option( 'schema_org_type', 'Winery' );
+	update_option( 'schema_org_name', get_option( 'blogname' ) );
+	update_option( 'options_footer_phone', '+380 67 765 43 21' );
+	update_option( 'options_footer_email', 'footer@theme.test' );
+	foreach ( array( Simple_SEO_Local::OPTION, Simple_SEO_Local::NAMES, Simple_SEO_Schema::NAMES ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Local::from_theme();
+	$sseo_local = get_option( Simple_SEO_Local::OPTION );
+	sseo_check( "from the theme: the footer's phone and e-mail where it has none of its own, the legal name as the other name; not a type outside the list, not a name that is the title of the site", '+380 67 765 43 21' === $sseo_local['phone'] && 'footer@theme.test' === $sseo_local['email'] && 'Organization' === $sseo_local['type'] && array( 'site_name' => '', 'site_alternate' => '', 'name' => '', 'alternate' => 'Theme Org LLC' ) === get_option( Simple_SEO_Schema::NAMES ), array( $sseo_local, get_option( Simple_SEO_Schema::NAMES ) ) );
+
+	// The button: its nonce and the right to change settings; then back to the tab with the count.
+	foreach ( array( Simple_SEO_Local::OPTION, Simple_SEO_Local::NAMES, Simple_SEO_Schema::NAMES ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::flush();
+	// Before WP-CLI's own filter of redirects (10), which only warns.
+	$sseo_lc_stop = static function ( $location ) {
+		throw new RuntimeException( (string) $location );
+	};
+	$sseo_lc_die  = static fn(): callable => static function (): void {
+		throw new RuntimeException( 'wp_die' );
+	};
+	$sseo_lc_run  = static function ( array $post ) use ( $sseo_lc_stop, $sseo_lc_die ): string {
+		$_POST    = $post;
+		$_REQUEST = $post;
+		add_filter( 'wp_redirect', $sseo_lc_stop, 1 );
+		add_filter( 'wp_die_handler', $sseo_lc_die, 99 );
+		try {
+			Simple_SEO_Local::handle();
+			$result = 'nothing';
+		} catch ( RuntimeException $error ) {
+			$result = $error->getMessage();
+		}
+		remove_filter( 'wp_redirect', $sseo_lc_stop, 1 );
+		remove_filter( 'wp_die_handler', $sseo_lc_die, 99 );
+		$_POST    = array();
+		$_REQUEST = array();
+		Simple_SEO_Settings::flush();
+		return $result;
+	};
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_val = array( $sseo_lc_run( array( 'simple_seo_local_theme' => '1', 'simple_seo_local_nonce' => wp_create_nonce( 'simple_seo_local_theme' ) ) ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_val[] = $sseo_lc_run( array( 'simple_seo_local_theme' => '1', 'simple_seo_local_nonce' => 'forged' ) );
+	$sseo_val[] = '' === Simple_SEO_Settings::get( Simple_SEO_Local::NAMES )['street'];
+	$sseo_val[] = $sseo_lc_run( array( 'simple_seo_local_theme' => '1', 'simple_seo_local_nonce' => wp_create_nonce( 'simple_seo_local_theme' ) ) );
+	$sseo_val[] = Simple_SEO_Settings::get( Simple_SEO_Local::NAMES )['street'];
+	sseo_check( 'the button: nothing for whoever may not change settings or without its nonce; else the theme\'s details, then back to the tab with the count', array( 'nothing', 'wp_die', true, add_query_arg( 'simple-seo-theme', 10, Simple_SEO_Admin::url( 'local' ) ), 'Theme street 5' ) === $sseo_val, $sseo_val );
+	$GLOBALS['wp_settings_errors'] = array();
+	$sseo_lc_uri                   = $_SERVER['REQUEST_URI'] ?? null;
+	$sseo_lc_uris                  = array();
+	foreach ( array( array( 'local', '3' ), array( 'local', '0' ), array( 'schema', '3' ) ) as $sseo_value ) {
+		$_GET                   = array(
+			'tab'              => $sseo_value[0],
+			'simple-seo-theme' => $sseo_value[1],
+		);
+		$_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?page=simple-seo&tab=' . $sseo_value[0] . '&simple-seo-theme=' . $sseo_value[1];
+		Simple_SEO_Local::handle();
+		$sseo_lc_uris[] = $_SERVER['REQUEST_URI'];
+	}
+	if ( null === $sseo_lc_uri ) {
+		unset( $_SERVER['REQUEST_URI'] );
+	} else {
+		$_SERVER['REQUEST_URI'] = $sseo_lc_uri;
+	}
+	sseo_check( 'the count leaves the address once said, so the form\'s referer has it no more and a save does not say it again', array( '/wp-admin/admin.php?page=simple-seo&tab=local', '/wp-admin/admin.php?page=simple-seo&tab=local', '/wp-admin/admin.php?page=simple-seo&tab=schema&simple-seo-theme=3' ) === $sseo_lc_uris, $sseo_lc_uris );
+	$_GET     = array();
+	$sseo_val = array_map( static fn( array $error ): array => array( $error['message'], $error['type'] ), get_settings_errors( 'simple-seo-local' ) );
+	$GLOBALS['wp_settings_errors'] = array();
+	wp_set_current_user( 0 );
+	sseo_check( 'after the button the tab says how many fields were taken, or that there was nothing to take', array( array( 'Fields taken from the theme: 3.', 'success' ), array( 'Nothing was taken from the theme: the fields it has are filled in already.', 'info' ) ) === $sseo_val, $sseo_val );
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_o = (string) current( array_diff( Simple_SEO_WP_Loc::codes(), array( Simple_SEO_WP_Loc::default_language() ) ) );
+		// Gotcha 33: a screen of Simple SEO earlier in the run left wp-loc's filter of the rows of its language.
+		remove_all_filters( 'option_' . Simple_SEO_Local::NAMES );
+		$sseo_lc_clear();
+		update_option( 'schema_org_street', 'Default street' );
+		update_option( 'schema_org_street_' . $sseo_o, 'Other street' );
+		update_option( 'schema_org_name_' . $sseo_o, 'Other Org' );
+		foreach ( array( Simple_SEO_Local::NAMES, Simple_SEO_Schema::NAMES ) as $sseo_name ) {
+			delete_option( $sseo_name . '_' . $sseo_o );
+		}
+		Simple_SEO_Settings::flush();
+		Simple_SEO_Local::from_theme();
+		$sseo_val = array( Simple_SEO_Import_Source::option( Simple_SEO_Local::NAMES )['street'] ?? '', Simple_SEO_Import_Source::option( Simple_SEO_Local::NAMES . '_' . $sseo_o )['street'] ?? '', Simple_SEO_Import_Source::option( Simple_SEO_Schema::NAMES . '_' . $sseo_o )['name'] ?? '' );
+		sseo_check( "wp-loc: the theme's copies of another language go to that language's rows", array( 'Default street', 'Other street', 'Other Org' ) === $sseo_val, $sseo_val );
+		$sseo_val = array( Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Schema::publisher()['address']['streetAddress'] ?? '' ), Simple_SEO_Schema::publisher()['address']['streetAddress'] ?? '' );
+		sseo_check( "wp-loc: the organization in another language has that language's street", array( 'Other street', 'Default street' ) === $sseo_val, $sseo_val );
+		foreach ( array( Simple_SEO_Local::NAMES, Simple_SEO_Schema::NAMES, 'schema_org_street', 'schema_org_name' ) as $sseo_name ) {
+			delete_option( $sseo_name . '_' . $sseo_o );
+		}
+	} else {
+		echo "  skip  Local SEO with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+	$sseo_lc_clear();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );
@@ -5043,6 +5304,28 @@ try {
 	update_option( 'wpseo_titles', $sseo_yi_saved[0] );
 	delete_option( Simple_SEO_Schema::OPTION );
 	Simple_SEO_Settings::flush();
+	// Local SEO: the organization's description, e-mail and phone.
+	update_option( 'wpseo_titles', array_merge( $sseo_yi_saved[0], array( 'company_or_person' => 'company', 'org-description' => 'Yoast <b>does</b> SEO', 'org-email' => 'yoast@acme.test', 'org-phone' => '+31 20 000 0000' ) ) );
+	delete_option( Simple_SEO_Local::NAMES );
+	update_option( Simple_SEO_Local::OPTION, array( 'email' => 'own@acme.test' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	$sseo_val = array( Simple_SEO_Settings::get( Simple_SEO_Local::NAMES )['description'], Simple_SEO_Settings::get( Simple_SEO_Local::OPTION )['phone'], Simple_SEO_Settings::get( Simple_SEO_Local::OPTION )['email'], $sseo_yi_again['settings']['local'] ?? 0 );
+	sseo_check( "Local SEO from Yoast: the organization's description and phone; the own e-mail stays", array( 'Yoast does SEO', '+31 20 000 0000', 'own@acme.test', 2 ) === $sseo_val, $sseo_val );
+	update_option( 'wpseo_titles', array_merge( get_option( 'wpseo_titles' ), array( 'company_or_person' => 'person' ) ) );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	sseo_check( "Local SEO from Yoast: nothing for a person's site", ! isset( $sseo_yi_again['settings']['local'] ) && '' === Simple_SEO_Settings::get( Simple_SEO_Local::NAMES )['description'], $sseo_yi_again );
+	update_option( 'wpseo_titles', $sseo_yi_saved[0] );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
 	$sseo['posts']['yi_types'] = (int) wp_insert_post( array( 'post_title' => 'Yi Types', 'post_status' => 'publish' ) );
 	$sseo_ym_insert( $sseo['posts']['yi_types'], array( '_yoast_wpseo_schema_page_type' => 'FAQPage', '_yoast_wpseo_schema_article_type' => 'None' ) );
 	$sseo_yi_again = array();
@@ -5164,8 +5447,8 @@ try {
 		// wp-loc keeps Yoast's settings of another language in a copy of the row named after it.
 		$sseo_yi_code = Simple_SEO_WP_Loc::codes()[1];
 		$sseo_yi_slug = (string) ( WP_LOC_DB::from_db_language_code( $sseo_yi_code ) ?: $sseo_yi_code );
-		update_option( 'wpseo_titles_' . $sseo_yi_code, array( 'title-home-wpseo' => 'Other %%sitename%%', 'breadcrumbs-home' => 'Startseite' ) );
-		foreach ( array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS ) as $sseo_name ) {
+		update_option( 'wpseo_titles_' . $sseo_yi_code, array( 'title-home-wpseo' => 'Other %%sitename%%', 'breadcrumbs-home' => 'Startseite', 'org-description' => 'Andere Beschreibung', 'org-phone' => '+49 30 000000' ) );
+		foreach ( array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Local::NAMES ) as $sseo_name ) {
 			delete_option( $sseo_name );
 			delete_option( $sseo_name . '_' . $sseo_yi_code );
 		}
@@ -5177,6 +5460,9 @@ try {
 		$sseo_yi_cookie = $_COOKIE['admin_lang'] ?? '';
 		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
 		sseo_check( "wp-loc: the other language's home page and breadcrumb label go to its rows", array( 'home' => array( 'title' => 'Other {site}' ) ) === get_option( Simple_SEO_Special::OPTION . '_' . $sseo_yi_code ) && 'Startseite' === ( get_option( Simple_SEO_Breadcrumbs::LABELS . '_' . $sseo_yi_code )['home'] ?? '' ) && array( $sseo_yi_code ) === $sseo_yi_report['languages'], $sseo_yi_report );
+		sseo_check( "wp-loc: the other language's description of the organization goes to its row of Local SEO, its phone nowhere (the phone is common)", 'Andere Beschreibung' === ( Simple_SEO_Import_Source::option( Simple_SEO_Local::NAMES . '_' . $sseo_yi_code )['description'] ?? '' ) && '+49 30 000000' !== ( Simple_SEO_Import_Source::option( Simple_SEO_Local::OPTION )['phone'] ?? '' ) );
+		// Gotcha 29: a language copy left here would stand in for the row in the next sections.
+		delete_option( Simple_SEO_Local::NAMES . '_' . $sseo_yi_code );
 		sseo_check( "wp-loc: the default language's rows are written as themselves, whatever language the admin edits", 'Home of {site}' === ( WP_LOC_Options::get_unfiltered_option( Simple_SEO_Special::OPTION )[1]['home']['description'] ?? '' ) && 'Home' === ( WP_LOC_Options::get_unfiltered_option( Simple_SEO_Breadcrumbs::LABELS )[1]['home'] ?? '' ) && WP_LOC_Languages::get_language_locale( $sseo_yi_slug ) === $sseo_yi_cookie );
 	} else {
 		echo "  skip  the import with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
@@ -5716,6 +6002,45 @@ try {
 	delete_option( Simple_SEO_Schema::OPTION );
 	Simple_SEO_Settings::flush();
 
+	// Local SEO: Rank Math's business.
+	$sseo_rm_saved = get_option( 'rank-math-options-titles' );
+	update_option( 'rank-math-options-titles', array_merge( $sseo_rm_saved, array( 'knowledgegraph_type' => 'company', 'local_business_type' => 'Dentist', 'organization_description' => 'RM teeth', 'email' => 'rm@acme.test', 'phone' => '', 'phone_numbers' => array( array( 'type' => 'customer support', 'number' => '+380 44 000 00 01' ), array( 'type' => 'sales', 'number' => '+380 44 000 00 02' ) ), 'local_address' => array( 'streetAddress' => 'RM street 1', 'addressLocality' => 'Kyiv', 'addressRegion' => 'Kyiv region', 'postalCode' => '02000', 'addressCountry' => 'ua' ), 'geo' => '50.45, 30.52', 'price_range' => '$$$', 'opening_hours' => array( array( 'day' => 'Monday', 'time' => '09:00-13:00' ), array( 'day' => 'Monday', 'time' => '14:00-18:00' ), array( 'day' => 'Saturday', 'time' => '10:00 ' . "\u{2013}" . ' 15:00' ), array( 'day' => 'Sunday', 'time' => 'closed' ), array( 'day' => 'Someday', 'time' => '09:00-18:00' ), 'no row' ) ) ) );
+	delete_option( Simple_SEO_Local::OPTION );
+	update_option( Simple_SEO_Local::NAMES, array( 'region' => 'Own region' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	$sseo_rm_local = get_option( Simple_SEO_Local::OPTION );
+	sseo_check( "Local SEO from Rank Math: the type of business, the e-mail, the first phone number, the postal code, the country, the coordinates and the first hours of each day", array( 'type' => 'Dentist', 'phone' => '+380 44 000 00 01', 'email' => 'rm@acme.test', 'postal_code' => '02000', 'country' => 'UA', 'geo' => '50.45,30.52', 'map' => '', 'hours' => array( 'Mo' => array( 'opens' => '09:00', 'closes' => '13:00' ), 'Sa' => array( 'opens' => '10:00', 'closes' => '15:00' ) ) ) === $sseo_rm_local, $sseo_rm_local );
+	sseo_check( "Local SEO from Rank Math: the description, street, city and price range; the own region stays; the count", array( 'description' => 'RM teeth', 'street' => 'RM street 1', 'locality' => 'Kyiv', 'region' => 'Own region', 'area_served' => '', 'price_range' => '$$$' ) === get_option( Simple_SEO_Local::NAMES ) && 11 === ( $sseo_rm_again['settings']['local'] ?? 0 ), array( get_option( Simple_SEO_Local::NAMES ), $sseo_rm_again ) );
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	sseo_check( 'Local SEO from Rank Math, run again: nothing more to take', ! isset( $sseo_rm_again['settings']['local'] ), $sseo_rm_again );
+	$sseo_rm_user  = get_current_user_id();
+	$sseo_rm_state = get_option( Simple_SEO_Rank_Math_Import::STATE );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'done', 'phase' => 'terms', 'report' => array( 'settings' => array( 'local' => 11 ) ), 'started' => time(), 'finished' => time() ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_html = sseo_capture( array( Simple_SEO_Import::class, 'render_tab' ) );
+	wp_set_current_user( $sseo_rm_user );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, $sseo_rm_state );
+	sseo_check( 'the report of the import names what Local SEO took', str_contains( $sseo_html, 'Local SEO: 11' ), $sseo_html );
+	update_option( 'rank-math-options-titles', array_merge( get_option( 'rank-math-options-titles' ), array( 'knowledgegraph_type' => 'person', 'phone' => '+380 44 000 00 09' ) ) );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	sseo_check( "Local SEO from Rank Math: nothing for a person's site", ! isset( $sseo_rm_again['settings']['local'] ) && 'Organization' === Simple_SEO_Local::type() && '' === Simple_SEO_Settings::get( Simple_SEO_Local::OPTION )['phone'], $sseo_rm_again );
+	update_option( 'rank-math-options-titles', array_merge( get_option( 'rank-math-options-titles' ), array( 'knowledgegraph_type' => 'company' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	sseo_check( "Local SEO from Rank Math: its own phone before its phone numbers", '+380 44 000 00 09' === Simple_SEO_Settings::get( Simple_SEO_Local::OPTION )['phone'], Simple_SEO_Settings::get( Simple_SEO_Local::OPTION ) );
+	update_option( 'rank-math-options-titles', $sseo_rm_saved );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
+
 	$sseo_rm_saved = array( get_option( 'rank-math-options-titles' ), get_option( 'rank-math-options-general' ) );
 	update_option(
 		'rank-math-options-titles',
@@ -6251,6 +6576,32 @@ try {
 	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
 	$sseo_ai_schema = get_option( Simple_SEO_Schema::OPTION );
 	sseo_check( "Schema: AIOSEO's logo by its address, its profiles once each without the X account (that goes to Social networks), the names but its tags", $sseo_og === $sseo_ai_schema['logo'] && in_array( 'https://facebook.test/ai', $sseo_ai_schema['profiles'], true ) && in_array( 'https://youtube.test/ai', $sseo_ai_schema['profiles'], true ) && ! in_array( 'https://x.com/aisite', $sseo_ai_schema['profiles'], true ) && count( $sseo_ai_schema['profiles'] ) === count( array_unique( $sseo_ai_schema['profiles'] ) ) && array( 'site_name' => '', 'site_alternate' => 'AIS', 'name' => 'AI Acme', 'alternate' => '' ) === get_option( Simple_SEO_Schema::NAMES ), array( $sseo_ai_schema, get_option( Simple_SEO_Schema::NAMES ) ) );
+	// Local SEO: the organization's phone, e-mail and description, but a tag of AIOSEO's.
+	$sseo_ai_opts['searchAppearance']['global']['schema'] += array( 'phone' => '+1 555 0100', 'email' => 'ai@acme.test', 'organizationDescription' => '#tagline' );
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	$sseo_val = array( Simple_SEO_Settings::get( Simple_SEO_Local::OPTION )['phone'], Simple_SEO_Settings::get( Simple_SEO_Local::OPTION )['email'], Simple_SEO_Settings::get( Simple_SEO_Local::NAMES )['description'], $sseo_ai_again['settings']['local'] ?? 0 );
+	$sseo_ai_opts['searchAppearance']['global']['schema']['organizationDescription'] = 'AI does SEO';
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	$sseo_val[] = Simple_SEO_Settings::get( Simple_SEO_Local::NAMES )['description'];
+	sseo_check( "Local SEO from AIOSEO: the phone and e-mail; a description that is a tag of AIOSEO's is none, a written one is taken", array( '+1 555 0100', 'ai@acme.test', '', 2, 'AI does SEO' ) === $sseo_val, $sseo_val );
+	$sseo_ai_opts['searchAppearance']['global']['schema']['siteRepresents'] = 'person';
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	sseo_check( "Local SEO from AIOSEO: nothing for a person's site", ! isset( $sseo_ai_again['settings']['local'] ), $sseo_ai_again );
+	delete_option( Simple_SEO_Local::OPTION );
+	delete_option( Simple_SEO_Local::NAMES );
+	Simple_SEO_Settings::flush();
 	$sseo_ai_opts['searchAppearance']['global']['schema'] = array( 'siteRepresents' => 'person', 'person' => (string) $sseo_au, 'personLogo' => wp_get_attachment_url( $sseo_default ), 'organizationName' => 'Not taken' );
 	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
 	delete_option( Simple_SEO_Schema::OPTION );

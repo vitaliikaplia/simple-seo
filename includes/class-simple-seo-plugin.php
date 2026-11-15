@@ -35,6 +35,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Breadcrumbs::init();
 		Simple_SEO_FAQ::init();
 		Simple_SEO_Schema::init();
+		Simple_SEO_Local::init();
 		Simple_SEO_Files::init();
 		Simple_SEO_Cleanup::init();
 		Simple_SEO_Llms::init();

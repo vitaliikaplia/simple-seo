@@ -660,6 +660,18 @@
 
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-bulk]' ), initBulk );
 
+	// Local SEO: the coordinates, map, price range and hours are shown for a local business only.
+	var localType = document.querySelector( '[data-simple-seo-local-type]' );
+	if ( localType ) {
+		localType.addEventListener( 'change', function () {
+			var option = localType.options[ localType.selectedIndex ];
+			var local  = option && '1' === option.getAttribute( 'data-local' );
+			Array.prototype.forEach.call( document.querySelectorAll( '.simple-seo-local-only' ), function ( element ) {
+				element.hidden = ! local;
+			} );
+		} );
+	}
+
 	// The import goes on by itself, a request at a time; the button stays for a page that stops.
 	var next = document.querySelector( '[data-simple-seo-continue]' );
 	if ( next ) {

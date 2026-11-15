@@ -535,6 +535,22 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 			),
 			$report
 		);
+
+		// The organization's description, phone and e-mail, for the tab Local SEO.
+		if ( ! $person ) {
+			self::local(
+				'',
+				array_filter(
+					array(
+						'phone' => self::scalar( $get( 'searchAppearance.global.schema.phone' ) ),
+						'email' => self::scalar( $get( 'searchAppearance.global.schema.email' ) ),
+					),
+					'strlen'
+				),
+				array( 'description' => $name( 'searchAppearance.global.schema.organizationDescription' ) ),
+				$report
+			);
+		}
 	}
 
 	/** An image from the media library by its address; 0 for none. */

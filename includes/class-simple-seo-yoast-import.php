@@ -142,6 +142,7 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 		if ( is_array( $titles ) || $social ) {
 			$titles = is_array( $titles ) ? $titles : array();
 			self::schema( '', self::schema_common( $titles, $social, $report ), self::schema_names( $titles ), $report );
+			self::take_local( '', $titles, $report );
 		}
 		if ( is_array( $main ) ) {
 			if ( array_key_exists( 'enable_xml_sitemap', $main ) && empty( $main['enable_xml_sitemap'] ) ) {
@@ -157,6 +158,7 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 				self::special( $code, self::special_templates( $row ), $row['open_graph_frontpage_image_id'] ?? 0, $report );
 				self::labels( $code, self::label_texts( $row ), $report );
 				self::schema( $code, array(), self::schema_names( $row ), $report );
+				self::take_local( $code, $row, $report );
 				$report['languages'][] = $code;
 			}
 		}
@@ -343,6 +345,29 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 		}
 
 		return $common;
+	}
+
+	/**
+	 * The organization's description, e-mail and phone of Yoast's site representation, for the tab
+	 * Local SEO; a person's site has none. The e-mail and phone are common: local() takes them from
+	 * the default language only.
+	 *
+	 * @param array<string, mixed> $titles
+	 * @param array<string, mixed> $report
+	 */
+	private static function take_local( string $code, array $titles, array &$report ): void {
+		if ( 'person' === self::scalar( $titles['company_or_person'] ?? '' ) ) {
+			return;
+		}
+
+		$common = array_filter(
+			array(
+				'email' => self::scalar( $titles['org-email'] ?? '' ),
+				'phone' => self::scalar( $titles['org-phone'] ?? '' ),
+			),
+			'strlen'
+		);
+		self::local( $code, $common, array( 'description' => self::scalar( $titles['org-description'] ?? '' ) ), $report );
 	}
 
 	/**

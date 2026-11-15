@@ -146,6 +146,7 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 			);
 			self::social( self::image( $titles, 'open_graph_image' ), self::scalar( $titles['twitter_author_names'] ?? '' ), $report );
 			self::take_schema( $titles, $report );
+			self::take_local( $titles, $report );
 		}
 		if ( $general || is_array( $titles ) ) {
 			self::take_breadcrumbs( $general, is_array( $titles ) ? $titles : array(), $report );
@@ -358,6 +359,75 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 			),
 			$report
 		);
+	}
+
+	/**
+	 * The organization of Rank Math's Local SEO, for the tab Local SEO: the type of business, the
+	 * description, e-mail, phone (else the first of its phone numbers), address, coordinates, price
+	 * range and opening hours. A person's site has none.
+	 *
+	 * @param array<string, mixed> $titles
+	 * @param array<string, mixed> $report
+	 */
+	private static function take_local( array $titles, array &$report ): void {
+		if ( 'person' === self::scalar( $titles['knowledgegraph_type'] ?? '' ) ) {
+			return;
+		}
+
+		$phone = self::scalar( $titles['phone'] ?? '' );
+		foreach ( is_array( $titles['phone_numbers'] ?? null ) ? $titles['phone_numbers'] : array() as $number ) {
+			if ( '' === $phone && is_array( $number ) ) {
+				$phone = self::scalar( $number['number'] ?? '' );
+			}
+		}
+		$address = is_array( $titles['local_address'] ?? null ) ? $titles['local_address'] : array();
+
+		self::local(
+			'',
+			array_filter(
+				array(
+					'type'        => self::scalar( $titles['local_business_type'] ?? '' ),
+					'email'       => self::scalar( $titles['email'] ?? '' ),
+					'phone'       => $phone,
+					'postal_code' => self::scalar( $address['postalCode'] ?? '' ),
+					'country'     => self::scalar( $address['addressCountry'] ?? '' ),
+					'geo'         => self::scalar( $titles['geo'] ?? '' ),
+					'hours'       => self::opening_hours( $titles['opening_hours'] ?? null ),
+				)
+			),
+			array(
+				'description' => self::scalar( $titles['organization_description'] ?? '' ),
+				'street'      => self::scalar( $address['streetAddress'] ?? '' ),
+				'locality'    => self::scalar( $address['addressLocality'] ?? '' ),
+				'region'      => self::scalar( $address['addressRegion'] ?? '' ),
+				'price_range' => self::scalar( $titles['price_range'] ?? '' ),
+			),
+			$report
+		);
+	}
+
+	/**
+	 * Rank Math's opening hours — rows of a day (Monday) and a time (09:00-17:00) — by Simple SEO's
+	 * day. A day of several rows (a break at midday) keeps the first: Simple SEO has one per day.
+	 *
+	 * @param mixed $rows
+	 * @return array<string, array{opens: string, closes: string}>
+	 */
+	private static function opening_hours( $rows ): array {
+		$days  = array_flip( Simple_SEO_Local::DAYS );
+		$hours = array();
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			$day = is_array( $row ) ? ( $days[ self::scalar( $row['day'] ?? '' ) ] ?? '' ) : '';
+			if ( '' === $day || isset( $hours[ $day ] ) || ! preg_match( '/^\s*(\d{1,2}[:.]\d{2})\s*[-\x{2013}\x{2014}]\s*(\d{1,2}[:.]\d{2})\s*$/u', self::scalar( $row['time'] ?? '' ), $match ) ) {
+				continue;
+			}
+			$hours[ $day ] = array(
+				'opens'  => $match[1],
+				'closes' => $match[2],
+			);
+		}
+
+		return $hours;
 	}
 
 	/**

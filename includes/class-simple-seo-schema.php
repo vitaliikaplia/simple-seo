@@ -6,6 +6,8 @@
  * The pieces of the graph, keyed as the filters know them:
  *   website      — the site, with its search;
  *   organization — or person: whom the site represents, with the logo and the profiles elsewhere;
+ *                  an organization is of the type chosen on the tab Local SEO, with its address,
+ *                  phone and the rest (Simple_SEO_Local);
  *   webpage      — the page, of its kind: CollectionPage for archives, ProfilePage for authors,
  *                  SearchResultsPage for search results;
  *   mainimage    — the featured image of a post;
@@ -686,7 +688,8 @@ final class Simple_SEO_Schema {
 			$organization['image'] = array( '@id' => $logo['@id'] );
 		}
 
-		return self::clean( $organization );
+		// Its type, address, phone, hours and the rest of the tab Local SEO.
+		return self::clean( Simple_SEO_Local::organization( $organization ) );
 	}
 
 	/**

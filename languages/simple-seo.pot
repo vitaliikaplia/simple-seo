@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.27.0\n"
+"Project-Id-Version: Simple SEO 0.28.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-15T21:13:44+00:00\n"
+"POT-Creation-Date: 2026-11-15T22:19:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -595,7 +595,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-import.php:39
@@ -699,6 +699,240 @@ msgstr ""
 msgid "Tags"
 msgstr ""
 
+#: includes/class-simple-seo-local.php:144
+msgid "Local SEO"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:180
+msgid "Organization"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:181
+msgid "Corporation"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:182
+msgid "Online business"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:183
+msgid "Online store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:184
+msgid "Non-governmental organization"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:185
+msgid "News media"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:186
+msgid "Educational organization"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:187
+msgid "Government organization"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:188
+msgid "Medical organization"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:189
+msgid "Sports organization"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:190
+msgid "Performing group"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:191
+msgid "Local business"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:192
+msgid "Professional service"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:193
+msgid "Legal service"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:194
+msgid "Attorney"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:195
+msgid "Notary"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:196
+msgid "Accounting service"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:197
+msgid "Financial service"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:198
+msgid "Insurance agency"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:199
+msgid "Real estate agency"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:200
+msgid "Travel agency"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:201
+msgid "Employment agency"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:202
+msgid "Medical clinic"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:203
+msgid "Dentist"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:204
+msgid "Physician"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:205
+msgid "Pharmacy"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:206
+msgid "Optician"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:207
+msgid "Health and beauty"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:208
+msgid "Beauty salon"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:209
+msgid "Hair salon"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:210
+msgid "Spa"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:211
+msgid "Gym"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:212
+msgid "Place to eat"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:213
+msgid "Restaurant"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:214
+msgid "Café or coffee shop"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:215
+msgid "Bar or pub"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:216
+msgid "Bakery"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:217
+msgid "Lodging"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:218
+msgid "Hotel"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:219
+msgid "Store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:220
+msgid "Clothing store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:221
+msgid "Electronics store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:222
+msgid "Furniture store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:223
+msgid "Grocery store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:224
+msgid "Hardware store"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:225
+msgid "Automotive business"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:226
+msgid "Car dealer"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:227
+msgid "Car repair"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:228
+msgid "Home and construction"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:229
+msgid "General contractor"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:230
+msgid "Electrician"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:231
+msgid "Plumber"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:232
+msgid "Heating and air conditioning"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:233
+msgid "Child care"
+msgstr ""
+
+#: includes/class-simple-seo-local.php:234
+msgid "Entertainment"
+msgstr ""
+
+#. translators: %s: number of fields.
+#: includes/class-simple-seo-local.php:671
+#, php-format
+msgid "Fields taken from the theme: %s."
+msgstr ""
+
+#: includes/class-simple-seo-local.php:672
+msgid "Nothing was taken from the theme: the fields it has are filled in already."
+msgstr ""
+
 #. translators: %s: taxonomy name, singular, e.g. Category.
 #: includes/class-simple-seo-primary-term.php:55
 #, php-format
@@ -797,157 +1031,157 @@ msgstr ""
 msgid "%1$s or more sentences in a row start with the same word: %2$s. Begin them differently."
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:96
-#: includes/class-simple-seo-schema.php:355
+#: includes/class-simple-seo-schema.php:98
+#: includes/class-simple-seo-schema.php:357
 msgid "Schema"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:100
+#: includes/class-simple-seo-schema.php:102
 #: includes/views/tab-schema.php:129
 #: includes/views/tab-schema.php:142
 msgid "Type of page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:113
+#: includes/class-simple-seo-schema.php:115
 #: includes/views/tab-schema.php:130
 #: includes/views/tab-schema.php:150
 msgid "Type of article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:125
+#: includes/class-simple-seo-schema.php:127
 msgid "Own JSON-LD"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:126
+#: includes/class-simple-seo-schema.php:128
 msgid "Structured data of this page only: a JSON-LD object, a list of them or a document with @graph. It goes into the page's graph as written, in every mode of the Schema tab."
 msgstr ""
 
 #. translators: %s: what is wrong with the JSON, as PHP says it, e.g. Syntax error.
-#: includes/class-simple-seo-schema.php:168
+#: includes/class-simple-seo-schema.php:170
 #, php-format
 msgid "Not valid JSON: %s."
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:170
+#: includes/class-simple-seo-schema.php:172
 msgid "Not a JSON-LD object: a JSON object or a list of them is needed."
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:195
+#: includes/class-simple-seo-schema.php:197
 msgid "No node with a @type: each object of JSON-LD needs one."
 msgstr ""
 
 #. translators: %s: the types of the nodes, e.g. Event, Product.
-#: includes/class-simple-seo-schema.php:223
+#: includes/class-simple-seo-schema.php:225
 #, php-format
 msgid "nodes of the graph: %s"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:229
+#: includes/class-simple-seo-schema.php:231
 msgid "Web page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:230
+#: includes/class-simple-seo-schema.php:232
 msgid "About page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:231
+#: includes/class-simple-seo-schema.php:233
 msgid "Checkout page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:232
+#: includes/class-simple-seo-schema.php:234
 msgid "Collection page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:233
+#: includes/class-simple-seo-schema.php:235
 msgid "Contact page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:234
+#: includes/class-simple-seo-schema.php:236
 msgid "FAQ page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:235
+#: includes/class-simple-seo-schema.php:237
 msgid "Item page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:236
+#: includes/class-simple-seo-schema.php:238
 msgid "Medical page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:237
+#: includes/class-simple-seo-schema.php:239
 msgid "Profile page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:238
+#: includes/class-simple-seo-schema.php:240
 msgid "Question and answer page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:239
+#: includes/class-simple-seo-schema.php:241
 msgid "Real estate listing"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:240
+#: includes/class-simple-seo-schema.php:242
 msgid "Search results page"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:247
+#: includes/class-simple-seo-schema.php:249
 msgid "Not an article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:248
+#: includes/class-simple-seo-schema.php:250
 msgid "Article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:249
+#: includes/class-simple-seo-schema.php:251
 msgid "Blog post"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:250
+#: includes/class-simple-seo-schema.php:252
 msgid "News article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:251
+#: includes/class-simple-seo-schema.php:253
 msgid "Report"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:252
+#: includes/class-simple-seo-schema.php:254
 msgid "Scholarly article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:253
+#: includes/class-simple-seo-schema.php:255
 msgid "Technical article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:254
+#: includes/class-simple-seo-schema.php:256
 msgid "Satirical article"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:255
+#: includes/class-simple-seo-schema.php:257
 msgid "Advertiser content"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:256
+#: includes/class-simple-seo-schema.php:258
 msgid "Social media post"
 msgstr ""
 
 #. translators: %s: name of a type of page or article, e.g. Web page.
-#: includes/class-simple-seo-schema.php:263
+#: includes/class-simple-seo-schema.php:265
 #, php-format
 msgid "As set for this post type: %s"
 msgstr ""
 
 #. translators: 1: type of page, 2: number of questions.
-#: includes/class-simple-seo-schema.php:341
+#: includes/class-simple-seo-schema.php:343
 #, php-format
 msgid "%1$s with questions and answers: %2$s"
 msgstr ""
 
-#: includes/class-simple-seo-schema.php:344
+#: includes/class-simple-seo-schema.php:346
 msgid "Web page: no questions and answers were found. Add the block Questions and answers, or an accordion, to the page."
 msgstr ""
 
 #. translators: 1: type of page, 2: number of items of the accordion.
-#: includes/class-simple-seo-schema.php:348
+#: includes/class-simple-seo-schema.php:350
 #, php-format
 msgid "%1$s. The page has an accordion (items: %2$s): choose FAQ page to mark it up as questions and answers."
 msgstr ""
@@ -1715,7 +1949,7 @@ msgstr ""
 
 #. translators: %s: date and time.
 #: includes/views/tab-import-cleanup.php:127
-#: includes/views/tab-import.php:110
+#: includes/views/tab-import.php:112
 #, php-format
 msgid "Finished: %s."
 msgstr ""
@@ -1890,100 +2124,106 @@ msgstr ""
 msgid "Schema: %s"
 msgstr ""
 
+#. translators: %s: number.
+#: includes/views/tab-import.php:102
+#, php-format
+msgid "Local SEO: %s"
+msgstr ""
+
 #. translators: %s: list of settings.
-#: includes/views/tab-import.php:117
+#: includes/views/tab-import.php:119
 #, php-format
 msgid "Settings taken: %s."
 msgstr ""
 
-#: includes/views/tab-import.php:118
+#: includes/views/tab-import.php:120
 msgid "Settings: nothing to take, Simple SEO has its own."
 msgstr ""
 
 #. translators: %s: language codes.
-#: includes/views/tab-import.php:123
+#: includes/views/tab-import.php:125
 #, php-format
 msgid "Also the home and 404 pages, the breadcrumb labels and the Schema names of the languages: %s."
 msgstr ""
 
 #. translators: 1: posts with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
-#: includes/views/tab-import.php:128
+#: includes/views/tab-import.php:130
 #, php-format
 msgid "Posts with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
 msgstr ""
 
 #. translators: 1: terms with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
-#: includes/views/tab-import.php:130
+#: includes/views/tab-import.php:132
 #, php-format
 msgid "Terms with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
 msgstr ""
 
 #. translators: %s: list of variables with how often each was found.
-#: includes/views/tab-import.php:143
+#: includes/views/tab-import.php:145
 #, php-format
 msgid "Left out of the texts, as Simple SEO has no such variable: %s."
 msgstr ""
 
-#: includes/views/tab-import.php:149
+#: includes/views/tab-import.php:151
 msgid "Not taken, as Simple SEO has nothing for it yet:"
-msgstr ""
-
-#. translators: %s: number of posts.
-#: includes/views/tab-import.php:154
-#, php-format
-msgid "titles for breadcrumbs (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of posts.
 #: includes/views/tab-import.php:156
 #, php-format
-msgid "titles, descriptions and images for X (posts: %s)"
+msgid "titles for breadcrumbs (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of posts.
 #: includes/views/tab-import.php:158
 #, php-format
-msgid "advanced robots settings (posts: %s)"
+msgid "titles, descriptions and images for X (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of posts.
 #: includes/views/tab-import.php:160
 #, php-format
+msgid "advanced robots settings (posts: %s)"
+msgstr ""
+
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:162
+#, php-format
 msgid "Schema of posts (posts: %s)"
 msgstr ""
 
 #. translators: %s: number of users.
-#: includes/views/tab-import.php:162
+#: includes/views/tab-import.php:164
 #, php-format
 msgid "SEO titles and descriptions of author archives (authors: %s)"
 msgstr ""
 
-#: includes/views/tab-import.php:163
+#: includes/views/tab-import.php:165
 msgid "templates of titles and descriptions for social networks"
 msgstr ""
 
-#: includes/views/tab-import.php:164
+#: includes/views/tab-import.php:166
 msgid "the texts the breadcrumbs put before archives and search results and on the 404 page"
 msgstr ""
 
-#: includes/views/tab-import.php:165
+#: includes/views/tab-import.php:167
 msgid "the person the site represents: choose the user on the Schema tab"
 msgstr ""
 
-#: includes/views/tab-import.php:166
+#: includes/views/tab-import.php:168
 msgid "the codes that confirm the site to Google, Bing and other webmaster tools: put them where the site keeps such codes, or they stop working"
 msgstr ""
 
-#: includes/views/tab-import.php:167
+#: includes/views/tab-import.php:169
 msgid "addresses without the category base: with the plugin off, the addresses of categories get it back"
 msgstr ""
 
-#: includes/views/tab-import.php:168
+#: includes/views/tab-import.php:170
 msgid "the rules added to robots.txt: put them on the Files tab"
 msgstr ""
 
 #. translators: %s: number of redirections.
-#: includes/views/tab-import.php:170
+#: includes/views/tab-import.php:172
 #, php-format
 msgid "redirections (%s): with the plugin off they stop working; move them to a redirection plugin first"
 msgstr ""
@@ -2127,6 +2367,158 @@ msgstr ""
 
 #: includes/views/tab-llms.php:131
 msgid "As saved; it is built again whenever content or settings change."
+msgstr ""
+
+#: includes/views/tab-local.php:29
+msgid "What kind of organization the site represents and how to find it: the address, phone and opening hours go into the organization of the Schema graph, so search engines and maps can show them."
+msgstr ""
+
+#: includes/views/tab-local.php:33
+msgid "The site represents a person (the Schema tab). These details go into the graph once it represents an organization."
+msgstr ""
+
+#: includes/views/tab-local.php:37
+msgid "A local business needs its address: search engines show local businesses with one."
+msgstr ""
+
+#: includes/views/tab-local.php:44
+msgid "The theme keeps details of the organization (its options of Schema.org and the opening hours). Simple SEO can take them into the empty fields of this tab and of the names on the Schema tab, in every language; what is filled in stays."
+msgstr ""
+
+#: includes/views/tab-local.php:48
+msgid "Take from the theme"
+msgstr ""
+
+#: includes/views/tab-local.php:56
+msgid "Type of the organization"
+msgstr ""
+
+#: includes/views/tab-local.php:61
+msgid "Organizations"
+msgstr ""
+
+#: includes/views/tab-local.php:62
+msgid "Local businesses"
+msgstr ""
+
+#: includes/views/tab-local.php:77
+msgid "The narrowest type that fits. A local business — a place people come to, or an area it serves — also gets its coordinates, map, opening hours and price range."
+msgstr ""
+
+#: includes/views/tab-local.php:81
+msgid "Phone"
+msgstr ""
+
+#: includes/views/tab-local.php:84
+msgid "With the country code."
+msgstr ""
+
+#: includes/views/tab-local.php:88
+msgid "E-mail"
+msgstr ""
+
+#: includes/views/tab-local.php:94
+msgid "Postal code"
+msgstr ""
+
+#: includes/views/tab-local.php:100
+msgid "Country"
+msgstr ""
+
+#: includes/views/tab-local.php:103
+msgid "A code of two letters, as search engines prefer it: UA, PL, US."
+msgstr ""
+
+#: includes/views/tab-local.php:107
+msgid "Coordinates"
+msgstr ""
+
+#: includes/views/tab-local.php:110
+msgid "Latitude and longitude, as a map copies them (in Google Maps: right-click the place and click the numbers)."
+msgstr ""
+
+#: includes/views/tab-local.php:114
+msgid "Link to the map"
+msgstr ""
+
+#: includes/views/tab-local.php:117
+msgid "The address of the place on a map, such as its share link in Google Maps."
+msgstr ""
+
+#: includes/views/tab-local.php:123
+msgid "Address and description"
+msgstr ""
+
+#. translators: %s: language name, e.g. English.
+#: includes/views/tab-local.php:126
+#, php-format
+msgid "These texts are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages."
+msgstr ""
+
+#: includes/views/tab-local.php:132
+msgid "Description"
+msgstr ""
+
+#: includes/views/tab-local.php:135
+msgid "What the organization does, in a sentence or two."
+msgstr ""
+
+#: includes/views/tab-local.php:139
+msgid "Street address"
+msgstr ""
+
+#: includes/views/tab-local.php:142
+msgid "The street, the building and the office."
+msgstr ""
+
+#: includes/views/tab-local.php:146
+msgid "City"
+msgstr ""
+
+#: includes/views/tab-local.php:152
+msgid "Region"
+msgstr ""
+
+#: includes/views/tab-local.php:158
+msgid "Area served"
+msgstr ""
+
+#: includes/views/tab-local.php:161
+msgid "Where it works: a city, a region, a country; several with commas between them."
+msgstr ""
+
+#: includes/views/tab-local.php:165
+msgid "Price range"
+msgstr ""
+
+#: includes/views/tab-local.php:168
+msgid "How dear it is: $ to $$$$, or the prices, such as 500–2000 UAH."
+msgstr ""
+
+#: includes/views/tab-local.php:175
+msgid "Opening hours"
+msgstr ""
+
+#: includes/views/tab-local.php:176
+msgid "The days it is open, with the time it opens and closes. Without the times a day is open round the clock; a day that closes after midnight closes earlier than it opens."
+msgstr ""
+
+#: includes/views/tab-local.php:180
+msgid "Day"
+msgstr ""
+
+#: includes/views/tab-local.php:181
+#: includes/views/tab-local.php:201
+msgid "Opens"
+msgstr ""
+
+#: includes/views/tab-local.php:182
+#: includes/views/tab-local.php:205
+msgid "Closes"
+msgstr ""
+
+#: includes/views/tab-local.php:216
+msgid "The organization in the graph as saved now"
 msgstr ""
 
 #: includes/views/tab-schema.php:21

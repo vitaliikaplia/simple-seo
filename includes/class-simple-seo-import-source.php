@@ -403,6 +403,24 @@ abstract class Simple_SEO_Import_Source {
 	}
 
 	/**
+	 * The details of the organization for the tab Local SEO: those common to all languages (taken
+	 * with $code '' only) and the texts of one language. Only empty fields are filled.
+	 *
+	 * @param array<string, mixed>  $common type, phone, email, postal_code, country, geo, map, hours
+	 *                                      (day Mo… => opens, closes); what the plugin does not say is left out.
+	 * @param array<string, string> $names  description, street, locality, region, area_served, price_range.
+	 * @param array<string, mixed>  $report
+	 */
+	protected static function local( string $code, array $common, array $names, array &$report ): void {
+		$count  = '' === $code && $common ? Simple_SEO_Local::fill( Simple_SEO_Local::OPTION, '', $common ) : 0;
+		$count += $names ? Simple_SEO_Local::fill( Simple_SEO_Local::NAMES, $code, array_map( array( self::class, 'scalar' ), $names ) ) : 0;
+
+		if ( $count ) {
+			self::add( $report, 'settings', 'local', $count );
+		}
+	}
+
+	/**
 	 * What the plugin removed from pages: Simple SEO's switches of the Clean-up tab go on, unless
 	 * its tab has a choice of its own. What the plugin kept does not switch Simple SEO's off.
 	 *
@@ -574,7 +592,7 @@ abstract class Simple_SEO_Import_Source {
 	 *
 	 * @return mixed
 	 */
-	protected static function option( string $name ) {
+	public static function option( string $name ) {
 		global $wpdb;
 
 		$value = $wpdb->get_var( $wpdb->prepare( "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", $name ) );
@@ -583,7 +601,7 @@ abstract class Simple_SEO_Import_Source {
 	}
 
 	/** The name of Simple SEO's row of a language ('' — the default one: the row itself). */
-	protected static function language_row_name( string $name, string $code ): string {
+	public static function language_row_name( string $name, string $code ): string {
 		return '' !== $code ? $name . '_' . $code : $name;
 	}
 
@@ -604,7 +622,7 @@ abstract class Simple_SEO_Import_Source {
 	 *
 	 * @param mixed $value
 	 */
-	protected static function save( string $name, $value ): void {
+	public static function save( string $name, $value ): void {
 		$cookie = $_COOKIE['admin_lang'] ?? null; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- set aside and put back unchanged.
 		unset( $_COOKIE['admin_lang'] );
 		try {

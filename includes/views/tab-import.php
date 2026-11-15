@@ -98,6 +98,8 @@ endif;
 		'robots_txt'    => __( 'the text of robots.txt', 'simple-seo' ),
 		/* translators: %s: number. */
 		'schema'        => __( 'Schema: %s', 'simple-seo' ),
+		/* translators: %s: number. */
+		'local'         => __( 'Local SEO: %s', 'simple-seo' ),
 	);
 	foreach ( $simple_seo_labels as $simple_seo_what => $simple_seo_label ) {
 		if ( $simple_seo_count( 'settings', $simple_seo_what ) ) {
