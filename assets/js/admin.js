@@ -1,5 +1,6 @@
 /**
- * Simple SEO admin: the "Insert structure" buttons next to title and description fields.
+ * Simple SEO admin: the "Insert structure" buttons next to title and description fields, the image
+ * pickers, the search result preview and the import that goes on by itself.
  *
  * Empty field: the structure goes in as it is. Plain text without variables: the text takes the
  * place of {title} (or {excerpt}) in the structure, so the editor's words stay. A field that
@@ -102,6 +103,310 @@
 		field.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 		field.focus();
 	} );
+
+	/*
+	 * The search result preview (Simple_SEO_Snippet): redone from the form while the SEO fields, the
+	 * title, the excerpt and the address change. Until something changes it shows what PHP printed,
+	 * with the filters of the theme, which the browser cannot run.
+	 */
+	var SEPARATOR_MARK = '\x1F';
+
+	// The width search engines give a title and a description, and the font they measure it in.
+	var LIMITS = {
+		desktop: { title: [ 600, '20px Arial, sans-serif' ], description: [ 920, '14px Arial, sans-serif' ] },
+		mobile: { title: [ 660, '18px Arial, sans-serif' ], description: [ 680, '14px Arial, sans-serif' ] }
+	};
+
+	// Fewer characters than this leave room for words that would help the page.
+	var SHORT = { title: 30, description: 70 };
+
+	var canvas = null;
+
+	function textWidth( text, font ) {
+		canvas = canvas || document.createElement( 'canvas' );
+		var context = canvas.getContext( '2d' );
+		context.font = font;
+
+		return context.measureText( text ).width;
+	}
+
+	/** The longest start of the parts that fits with an ellipsis after it. */
+	function fitting( parts, glue, width, font ) {
+		var low  = 0;
+		var high = parts.length;
+		while ( low < high ) {
+			var middle = Math.ceil( ( low + high ) / 2 );
+			if ( textWidth( parts.slice( 0, middle ).join( glue ) + ' …', font ) <= width ) {
+				low = middle;
+			} else {
+				high = middle - 1;
+			}
+		}
+
+		return parts.slice( 0, low ).join( glue );
+	}
+
+	/** What a search engine shows of a text in the width it gives: cut at a word, with an ellipsis. */
+	function fit( text, limit ) {
+		if ( textWidth( text, limit[ 1 ] ) <= limit[ 0 ] ) {
+			return { text: text, cut: false };
+		}
+
+		var kept = fitting( text.split( ' ' ), ' ', limit[ 0 ], limit[ 1 ] );
+		if ( '' === kept ) {
+			// One long word: as many characters as fit.
+			kept = fitting( Array.from( text ), '', limit[ 0 ], limit[ 1 ] );
+		}
+
+		return { text: kept.replace( /[\s,.;:–—-]+$/, '' ) + ' …', cut: true };
+	}
+
+	/** Text without tags and entities, on one line, as Simple_SEO_Variables::plain() makes it. */
+	function plain( value ) {
+		var parsed = new DOMParser().parseFromString( '<body>' + String( null == value ? '' : value ), 'text/html' );
+
+		return ( parsed.body.textContent || '' ).replace( /\s+/g, ' ' ).trim();
+	}
+
+	/** A template filled as Simple_SEO_Variables::replace() fills it. */
+	function fillTemplate( template, values, separator ) {
+		if ( '' === template.trim() ) {
+			return '';
+		}
+
+		var text = template.replace( /\{([a-z][a-z0-9_]*)\}/g, function ( match, name ) {
+			if ( ! Object.prototype.hasOwnProperty.call( values, name ) ) {
+				return match;
+			}
+			if ( 'sep' === name ) {
+				return SEPARATOR_MARK;
+			}
+
+			return String( values[ name ] ).split( SEPARATOR_MARK ).join( '' );
+		} );
+
+		text = text.replace( /\s+/g, ' ' );
+		// Separators with nothing between them collapse to one; none at the start or the end.
+		text = text.replace( new RegExp( SEPARATOR_MARK + '(?:\\s*' + SEPARATOR_MARK + ')+', 'g' ), SEPARATOR_MARK );
+		text = text.replace( new RegExp( '^[\\s' + SEPARATOR_MARK + ']+|[\\s' + SEPARATOR_MARK + ']+$', 'g' ), '' );
+
+		return text.split( SEPARATOR_MARK ).join( separator ).trim();
+	}
+
+	/** "https://example.com › blog › post", as search engines show an address. */
+	function addressParts( url ) {
+		var parsed;
+		try {
+			parsed = new URL( url );
+		} catch ( error ) {
+			return [ url ];
+		}
+
+		return [ parsed.origin ].concat( parsed.pathname.split( '/' ).filter( Boolean ).map( function ( segment ) {
+			try {
+				return decodeURIComponent( segment );
+			} catch ( error ) {
+				return segment;
+			}
+		} ) );
+	}
+
+	/** The block editor's data, on its screens. */
+	function blockEditor() {
+		var data   = window.wp && window.wp.data;
+		var select = data && 'function' === typeof data.select ? data.select( 'core/editor' ) : null;
+
+		return select && 'function' === typeof select.getEditedPostAttribute && document.body.classList.contains( 'block-editor-page' ) ? select : null;
+	}
+
+	function fieldValue( id ) {
+		var element = document.getElementById( id );
+
+		return element ? element.value : null;
+	}
+
+	/** What the form has now; whatever this screen has no field for stays as printed. */
+	function readForm( data ) {
+		var source = {
+			seoTitle: fieldValue( 'simple-seo-field-title' ),
+			seoDescription: fieldValue( 'simple-seo-field-description' ),
+			index: fieldValue( 'simple-seo-field-index' ),
+			url: null
+		};
+		var block = 'post' === data.kind ? blockEditor() : null;
+
+		if ( 'term' === data.kind ) {
+			source.title   = fieldValue( 'name' );
+			source.excerpt = fieldValue( 'description' );
+			source.slug    = fieldValue( 'slug' );
+		} else if ( block ) {
+			source.title   = block.getEditedPostAttribute( 'title' );
+			source.excerpt = block.getEditedPostAttribute( 'excerpt' );
+			source.slug    = block.getEditedPostAttribute( 'slug' );
+			source.url     = 'function' === typeof block.getPermalink ? block.getPermalink() : null;
+		} else {
+			source.title   = fieldValue( 'title' );
+			source.excerpt = fieldValue( 'excerpt' );
+			source.slug    = fieldValue( 'post_name' );
+			// The classic editor prints the address the post has or will have, the slug as typed.
+			var shown = document.querySelector( '#sample-permalink a' );
+			source.url = shown && /^https?:\/\//.test( shown.textContent.trim() ) ? shown.textContent.trim() : null;
+		}
+
+		[ 'title', 'excerpt', 'slug' ].forEach( function ( key ) {
+			if ( null == source[ key ] ) {
+				source[ key ] = data.raw[ key ];
+			}
+		} );
+
+		return source;
+	}
+
+	function snippetNote( data, which, text, cut ) {
+		var count = Array.from( text ).length;
+		var name  = which + ( '' === text ? 'None' : ( cut ? 'Cut' : ( count < SHORT[ which ] ? 'Short' : 'Fits' ) ) );
+		var note  = document.createElement( 'span' );
+
+		note.textContent = data.l10n[ name ].replace( '%s', String( count ) );
+		// No title of ours leaves the theme's: nothing to warn about.
+		if ( /(Cut|Short)$/.test( name ) || 'descriptionNone' === name ) {
+			note.className = 'is-warning';
+		}
+
+		return note;
+	}
+
+	function renderSnippet( state ) {
+		var data    = state.data;
+		var source  = readForm( data );
+		var initial = state.initial;
+		var changed = source.title !== initial.title || source.excerpt !== initial.excerpt;
+
+		var values = Object.assign( {}, data.values, { title: plain( source.title ) } );
+		if ( 'term' === data.kind ) {
+			values.excerpt = plain( source.excerpt );
+		} else if ( data.excerptField && ! data.protected ) {
+			values.excerpt = plain( source.excerpt ) || data.excerptFromText;
+		}
+
+		var texts = {};
+		[ 'title', 'description' ].forEach( function ( which ) {
+			var key = 'seo' + which.charAt( 0 ).toUpperCase() + which.slice( 1 );
+			var own = null !== source[ key ] ? source[ key ] : data.own[ which ];
+			texts[ which ] = changed || source[ key ] !== initial[ key ]
+				? fillTemplate( '' !== own.trim() ? own : data.templates[ which ], values, data.separator )
+				: data[ which ];
+		} );
+
+		var noindex = data.noindex;
+		if ( null !== source.index && source.index !== initial.index ) {
+			noindex = 'noindex' === source.index || ( 'index' === source.index ? ! data.public : data.typeNoindex );
+		}
+
+		var url   = source.url || data.url || data.home;
+		var parts = addressParts( url );
+		if ( 'term' === data.kind && source.slug !== data.raw.slug && '' !== source.slug.trim() ) {
+			var at = parts.lastIndexOf( data.raw.slug );
+			if ( at > 0 ) {
+				parts[ at ] = source.slug.trim().toLowerCase().replace( /\s+/g, '-' );
+			}
+		}
+
+		var limits      = LIMITS[ state.view ];
+		// Without a title of ours search engines show the theme's: close to the post's own title.
+		var title       = fit( texts.title || plain( source.title ), limits.title );
+		var description = fit( texts.description, limits.description );
+
+		state.elements.title.textContent       = title.text;
+		state.elements.description.textContent = description.text;
+		state.elements.url.textContent         = parts.join( ' › ' );
+		state.elements.noindex.hidden          = ! noindex;
+		state.root.classList.toggle( 'is-noindex', noindex );
+
+		state.elements.notes.textContent = '';
+		state.elements.notes.appendChild( snippetNote( data, 'title', texts.title, title.cut ) );
+		state.elements.notes.appendChild( snippetNote( data, 'description', texts.description, description.cut ) );
+	}
+
+	function initSnippet( root ) {
+		var data;
+		try {
+			data = JSON.parse( root.getAttribute( 'data-simple-seo-snippet' ) );
+		} catch ( error ) {
+			return;
+		}
+
+		var state = {
+			root: root,
+			data: data,
+			view: 'desktop',
+			elements: {
+				title: root.querySelector( '.simple-seo-snippet-title' ),
+				description: root.querySelector( '.simple-seo-snippet-description' ),
+				url: root.querySelector( '.simple-seo-snippet-url' ),
+				noindex: root.querySelector( '.simple-seo-snippet-noindex' ),
+				notes: root.querySelector( '.simple-seo-snippet-notes' )
+			}
+		};
+		state.initial = readForm( data );
+
+		var waiting = false;
+		function schedule() {
+			if ( waiting ) {
+				return;
+			}
+			waiting = true;
+			window.setTimeout( function () {
+				waiting = false;
+				renderSnippet( state );
+			}, 60 );
+		}
+
+		var views = root.querySelector( '.simple-seo-snippet-views' );
+		views.hidden = false;
+		views.addEventListener( 'click', function ( event ) {
+			var button = event.target.closest( '[data-simple-seo-view]' );
+			if ( ! button ) {
+				return;
+			}
+			state.view = button.getAttribute( 'data-simple-seo-view' );
+			Array.prototype.forEach.call( views.querySelectorAll( 'button' ), function ( other ) {
+				other.setAttribute( 'aria-pressed', String( other === button ) );
+			} );
+			root.classList.toggle( 'is-mobile', 'mobile' === state.view );
+			renderSnippet( state );
+		} );
+
+		document.addEventListener( 'input', schedule );
+		document.addEventListener( 'change', schedule );
+
+		// The classic editor rewrites the address once the slug is edited.
+		var slugBox = document.getElementById( 'edit-slug-box' );
+		if ( slugBox && window.MutationObserver ) {
+			new MutationObserver( schedule ).observe( slugBox, { childList: true, subtree: true, characterData: true } );
+		}
+
+		// The block editor keeps the title, the excerpt and the address in its store: redo the card
+		// only when one of them changes, not on every keystroke in the text.
+		if ( 'post' === data.kind && window.wp && window.wp.data && 'function' === typeof window.wp.data.subscribe ) {
+			var last = '';
+			window.wp.data.subscribe( function () {
+				var block = blockEditor();
+				if ( ! block ) {
+					return;
+				}
+				var now = JSON.stringify( [ block.getEditedPostAttribute( 'title' ), block.getEditedPostAttribute( 'excerpt' ), 'function' === typeof block.getPermalink ? block.getPermalink() : '' ] );
+				if ( now !== last ) {
+					last = now;
+					schedule();
+				}
+			} );
+		}
+
+		renderSnippet( state );
+	}
+
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-snippet]' ), initSnippet );
 
 	// The import goes on by itself, a request at a time; the button stays for a page that stops.
 	var next = document.querySelector( '[data-simple-seo-continue]' );

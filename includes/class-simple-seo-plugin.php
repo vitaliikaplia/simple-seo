@@ -41,6 +41,7 @@ final class Simple_SEO_Plugin {
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-editor.php';
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-snippet.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import-source.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-import.php';

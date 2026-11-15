@@ -149,7 +149,7 @@ final class Simple_SEO_Admin {
 		);
 	}
 
-	/** The small script of the "Insert structure" buttons, only where those buttons are. */
+	/** The script and styles of the SEO fields and the settings page, only where those are. */
 	public static function enqueue( string $hook ): void {
 		$screen = get_current_screen();
 		$ours   = 'toplevel_page_' . self::PAGE === $hook
@@ -157,6 +157,8 @@ final class Simple_SEO_Admin {
 			|| ( in_array( $hook, array( 'term.php', 'edit-tags.php' ), true ) && $screen && in_array( $screen->taxonomy, Simple_SEO_Fields::taxonomies(), true ) );
 
 		if ( $ours ) {
+			// The search result preview of the editors.
+			wp_enqueue_style( 'simple-seo-admin', SIMPLE_SEO_URL . 'assets/css/admin.css', array(), SIMPLE_SEO_VERSION );
 			// The image fields pick from the media library.
 			wp_enqueue_media();
 			wp_enqueue_script(

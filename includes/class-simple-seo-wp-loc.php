@@ -287,7 +287,7 @@ final class Simple_SEO_WP_Loc {
 			return $callback();
 		}
 
-		$current = (string) apply_filters( 'wpml_current_language', null );
+		$current = self::options_language();
 		if ( $code === $current ) {
 			return $callback();
 		}
@@ -298,6 +298,22 @@ final class Simple_SEO_WP_Loc {
 		} finally {
 			do_action( 'wpml_switch_language', $current );
 		}
+	}
+
+	/**
+	 * The language whose options get_option() gives now. In the admin the wpml_* filters name the
+	 * admin's language, but wp-loc reads the options of the language of the request (the default
+	 * one) until something switches it: a post in the admin's language would be read in the
+	 * default's, and switching back to the admin's language would leave it switched.
+	 */
+	private static function options_language(): string {
+		if ( ! function_exists( 'wp_loc_get_current_lang' ) ) {
+			return (string) apply_filters( 'wpml_current_language', null );
+		}
+
+		$slug = (string) wp_loc_get_current_lang();
+
+		return method_exists( 'WP_LOC_DB', 'to_db_language_code' ) ? (string) ( WP_LOC_DB::to_db_language_code( $slug ) ?: $slug ) : $slug;
 	}
 
 	/**

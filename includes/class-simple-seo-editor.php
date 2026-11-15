@@ -38,6 +38,7 @@ final class Simple_SEO_Editor {
 
 		$group = '';
 		echo '<div class="simple-seo-fields">';
+		echo Simple_SEO_Snippet::render( 'post', $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 		foreach ( $fields as $key => $field ) {
 			$value = Simple_SEO_Fields::post_value( (int) $post->ID, $key );
 			if ( $group !== $field['group'] ) {
@@ -106,6 +107,7 @@ final class Simple_SEO_Editor {
 		echo '<tr class="form-field simple-seo-heading"><th scope="row" colspan="2"><h2 style="margin:1em 0 0">' . esc_html__( 'SEO', 'simple-seo' ) . '</h2>';
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 		echo '</th></tr>';
+		echo '<tr class="form-field simple-seo-snippet-row"><td colspan="2" style="padding-left:0">' . Simple_SEO_Snippet::render( 'term', $term ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 
 		$group = '';
 		foreach ( $fields as $key => $field ) {

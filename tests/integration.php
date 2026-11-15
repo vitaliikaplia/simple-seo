@@ -24,6 +24,7 @@ require_once ABSPATH . 'wp-admin/includes/user.php';
 require_once ABSPATH . 'wp-admin/includes/post.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
 require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-editor.php';
+require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-snippet.php';
 
 $GLOBALS['sseo_results'] = array( 'pass' => 0, 'fail' => 0 );
 
@@ -1023,25 +1024,28 @@ try {
 	preg_match_all( '/\sid="([^"]+)"/', $sseo_html, $sseo_ids );
 	$sseo_dupes = array_keys( array_filter( array_count_values( $sseo_ids[1] ), static fn( int $n ): bool => $n > 1 ) );
 	sseo_check( 'meta box inside the core postbox: every id is unique', str_contains( $sseo_html, 'id="simple-seo-field-title"' ) && array() === $sseo_dupes, $sseo_dupes );
-	sseo_check( 'meta box: what the page shows now', str_contains( $sseo_html, 'Now: Editor post – ' . esc_html( $sseo_site ) ) && str_contains( $sseo_html, 'Now: sibling saved in the same request' ) );
+	sseo_check( 'meta box: the search result preview shows what the page shows now', str_contains( $sseo_html, '<div class="simple-seo-snippet-title">Editor post – ' . esc_html( $sseo_site ) . '</div>' ) && str_contains( $sseo_html, '<div class="simple-seo-snippet-description">sibling saved in the same request</div>' ) );
+	sseo_check( 'meta box: the preview comes before the fields, and no "Now" under the title and the description', strpos( $sseo_html, 'simple-seo-snippet' ) < strpos( $sseo_html, 'id="simple-seo-field-title"' ) && preg_match( '#id="simple-seo-field-title".*?</p>#s', $sseo_html, $sseo_m1 ) && ! str_contains( $sseo_m1[0], 'Now:' ) && preg_match( '#id="simple-seo-field-description".*?</p>#s', $sseo_html, $sseo_m2 ) && ! str_contains( $sseo_m2[0], 'Now:' ) );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
-	sseo_check( 'meta box: no description says so', str_contains( $sseo_html, 'Now: none from Simple SEO.' ) );
+	sseo_check( 'meta box: no description, an empty one in the preview', str_contains( $sseo_html, '<div class="simple-seo-snippet-description"></div>' ) );
 	$sseo['posts']['draft'] = wp_insert_post( array( 'post_title' => 'Auto Draft', 'post_status' => 'auto-draft' ) );
 	$sseo_html              = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['draft'] ) ) );
-	sseo_check( 'meta box of a new post: no "Now"', ! str_contains( $sseo_html, 'Now:' ) && str_contains( $sseo_html, 'simple-seo-mask' ) );
+	sseo_check( 'meta box of a new post: no "Now", the preview with the home address', ! str_contains( $sseo_html, 'Now:' ) && str_contains( $sseo_html, 'simple-seo-mask' ) && str_contains( $sseo_html, 'simple-seo-snippet-url">' . esc_html( Simple_SEO_Snippet::display_url( home_url( '/' ) ) ) . '<' ) );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
-	sseo_check( 'term screen: structure button and what the term shows now', str_contains( $sseo_html, 'data-mask="{excerpt}"' ) && str_contains( $sseo_html, 'Now: Saved from the term form' ) );
+	sseo_check( 'term screen: structure button and the preview of what the term shows now', str_contains( $sseo_html, 'data-mask="{excerpt}"' ) && str_contains( $sseo_html, '<div class="simple-seo-snippet-title">Saved from the term form</div>' ) && str_contains( $sseo_html, '<tr class="form-field simple-seo-snippet-row">' ) );
 
 	foreach ( array( 'toplevel_page_simple-seo' => '', 'post.php' => 'post', 'edit.php' => 'edit-post', 'term.php' => 'edit-category' ) as $sseo_hook => $sseo_screen ) {
 		wp_dequeue_script( 'simple-seo-admin' );
+		wp_dequeue_style( 'simple-seo-admin' );
 		if ( '' !== $sseo_screen ) {
 			set_current_screen( $sseo_screen );
 		}
 		Simple_SEO_Admin::enqueue( $sseo_hook );
 		$sseo_expected = 'edit.php' !== $sseo_hook;
-		sseo_check( "admin.js " . ( $sseo_expected ? 'loads' : 'does not load' ) . " on {$sseo_hook}", $sseo_expected === wp_script_is( 'simple-seo-admin', 'enqueued' ) );
+		sseo_check( "admin.js and admin.css " . ( $sseo_expected ? 'load' : 'do not load' ) . " on {$sseo_hook}", $sseo_expected === wp_script_is( 'simple-seo-admin', 'enqueued' ) && $sseo_expected === wp_style_is( 'simple-seo-admin', 'enqueued' ) );
 	}
 	wp_dequeue_script( 'simple-seo-admin' );
+	wp_dequeue_style( 'simple-seo-admin' );
 	update_option( 'blogdescription', $sseo_tagline );
 
 	// ------------------------------------------------------------------------------------------
@@ -1557,6 +1561,80 @@ try {
 	sseo_check( 'so does a locale switch', 'Home of {site}' === Simple_SEO_Special::saved_template( 'home', 'title' ) );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Search result preview' );
+
+	wp_set_current_user( $sseo_ed );
+	$sseo_sn_post             = wp_insert_post( array( 'post_title' => 'Snippet post', 'post_name' => 'snippet-post', 'post_status' => 'publish', 'post_excerpt' => 'Own excerpt', 'post_content' => '<p>Text of the snippet post.</p>' ) );
+	$sseo['posts']['snippet'] = $sseo_sn_post;
+	$sseo_sn                  = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_post ) );
+	sseo_check( 'the card shows what the page shows', 'post' === $sseo_sn['kind'] && Simple_SEO_Titles::title( Simple_SEO_Context::for_post( get_post( $sseo_sn_post ) ) ) === $sseo_sn['title'] && "Snippet post – {$sseo_site}" === $sseo_sn['title'] && 'Own excerpt' === $sseo_sn['description'], $sseo_sn );
+	sseo_check( 'the templates of its kind and the separator', array( 'title' => '{title} {page} {sep} {site}', 'description' => '{excerpt}' ) === $sseo_sn['templates'] && Simple_SEO_Titles::separator() === $sseo_sn['separator'], $sseo_sn['templates'] );
+	sseo_check( 'a value for every variable', array_keys( Simple_SEO_Variables::labels() ) === array_keys( $sseo_sn['values'] ) && $sseo_site === $sseo_sn['values']['site'] && 'Snippet post' === $sseo_sn['values']['title'] && 'Own excerpt' === $sseo_sn['values']['excerpt'] && '' === $sseo_sn['values']['page'] && wp_date( 'Y' ) === $sseo_sn['values']['year'], $sseo_sn['values'] );
+	sseo_check( 'what {excerpt} becomes once the excerpt box is emptied: the start of the text', 'Text of the snippet post.' === $sseo_sn['excerptFromText'] && true === $sseo_sn['excerptField'] && false === $sseo_sn['protected'], $sseo_sn['excerptFromText'] );
+	sseo_check( 'the excerpt of the post itself is left as it is', 'Own excerpt' === get_post( $sseo_sn_post )->post_excerpt );
+	sseo_check( 'what the form had: title, excerpt, slug', array( 'title' => 'Snippet post', 'excerpt' => 'Own excerpt', 'slug' => 'snippet-post' ) === $sseo_sn['raw'], $sseo_sn['raw'] );
+	sseo_check( 'the address, the site, its icon and the home', get_permalink( $sseo_sn_post ) === $sseo_sn['url'] && $sseo_site === $sseo_sn['site'] && (string) get_site_icon_url( 64 ) === $sseo_sn['icon'] && home_url( '/' ) === $sseo_sn['home'] );
+	sseo_check( 'shown in search results, and so is its kind', false === $sseo_sn['noindex'] && false === $sseo_sn['typeNoindex'] && true === $sseo_sn['public'] );
+	sseo_check( 'no saved fields yet', array( 'title' => '', 'description' => '' ) === $sseo_sn['own'] );
+
+	update_post_meta( $sseo_sn_post, '_simple_seo_title', 'Own {title} {sep} {year}' );
+	update_post_meta( $sseo_sn_post, '_simple_seo_index', 'noindex' );
+	$sseo_sn = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_post ) );
+	sseo_check( 'the own title filled, and the field as saved', 'Own Snippet post – ' . wp_date( 'Y' ) === $sseo_sn['title'] && 'Own {title} {sep} {year}' === $sseo_sn['own']['title'], $sseo_sn['title'] );
+	sseo_check( 'hidden by its own choice, while its kind is not', true === $sseo_sn['noindex'] && false === $sseo_sn['typeNoindex'] );
+	$sseo_html = Simple_SEO_Snippet::render( 'post', get_post( $sseo_sn_post ) );
+	sseo_check( 'a hidden page: the card is marked and the note shown', str_contains( $sseo_html, '<div class="simple-seo-snippet is-noindex"' ) && str_contains( $sseo_html, '<p class="simple-seo-snippet-noindex description">' ) );
+	delete_post_meta( $sseo_sn_post, '_simple_seo_index' );
+
+	$sseo_sn_indexing = get_option( Simple_SEO_Indexing::OPTION, null );
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'post:post' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_sn = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_post ) );
+	sseo_check( 'hidden as its kind is', true === $sseo_sn['noindex'] && true === $sseo_sn['typeNoindex'] );
+	null === $sseo_sn_indexing ? delete_option( Simple_SEO_Indexing::OPTION ) : update_option( Simple_SEO_Indexing::OPTION, $sseo_sn_indexing );
+	update_option( 'blog_public', '0' );
+	Simple_SEO_Settings::flush();
+	$sseo_sn = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_post ) );
+	sseo_check( 'a site closed to search engines: hidden whatever the page and its kind say', true === $sseo_sn['noindex'] && true === $sseo_sn['typeNoindex'] && false === $sseo_sn['public'] );
+	update_option( 'blog_public', '1' );
+
+	update_post_meta( $sseo_sn_post, '_simple_seo_description', 'Says "quoted" & <b>bold</b>' );
+	$sseo_html = Simple_SEO_Snippet::render( 'post', get_post( $sseo_sn_post ) );
+	preg_match( '/data-simple-seo-snippet="([^"]*)"/', $sseo_html, $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check( 'the card carries its data and its labels', is_array( $sseo_json ) && 'Says "quoted" & bold' === $sseo_json['description'] && 'Search result preview' === $sseo_json['l10n']['heading'] && str_contains( $sseo_json['l10n']['titleCut'], '%s' ) && 12 === count( $sseo_json['l10n'] ), $sseo_json['l10n'] ?? $sseo_html );
+	sseo_check( 'the card escapes what it prints', str_contains( $sseo_html, '<div class="simple-seo-snippet-description">Says &quot;quoted&quot; &amp; bold</div>' ) && ! str_contains( $sseo_html, '<b>' ) );
+	sseo_check( 'the switch waits for the script; a shown page has the note hidden', str_contains( $sseo_html, 'role="group" aria-label="Search result preview" hidden>' ) && str_contains( $sseo_html, '<p class="simple-seo-snippet-noindex description" hidden>' ) && ! str_contains( $sseo_html, 'is-noindex' ) );
+	sseo_check( 'the card: site, address and the title of the page', str_contains( $sseo_html, '<span class="simple-seo-snippet-name">' . esc_html( $sseo_site ) . '</span>' ) && str_contains( $sseo_html, '<span class="simple-seo-snippet-url">' . esc_html( Simple_SEO_Snippet::display_url( get_permalink( $sseo_sn_post ) ) ) . '</span>' ) && str_contains( $sseo_html, '<div class="simple-seo-snippet-title">Own Snippet post – ' ) );
+	sseo_check( 'without a site icon, a globe', '' !== (string) get_site_icon_url( 64 ) || str_contains( $sseo_html, 'dashicons-admin-site-alt3' ) );
+	update_post_meta( $sseo_sn_post, '_simple_seo_title', '{sep}' );
+	$sseo_html = Simple_SEO_Snippet::render( 'post', get_post( $sseo_sn_post ) );
+	sseo_check( 'no title of ours: the card shows the post\'s own', str_contains( $sseo_html, '<div class="simple-seo-snippet-title">Snippet post</div>' ) );
+
+	$sseo_sn_draft                  = wp_insert_post( array( 'post_title' => 'Snippet draft', 'post_name' => 'snippet-draft', 'post_status' => 'draft' ) );
+	$sseo['posts']['snippet_draft'] = $sseo_sn_draft;
+	$sseo_sn                        = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_draft ) );
+	sseo_check( 'a draft: the address it will get, not ?p=', home_url( '/snippet-draft/' ) === $sseo_sn['url'], $sseo_sn['url'] );
+	$sseo_sn = Simple_SEO_Snippet::data( 'post', get_post( $sseo['posts']['draft'] ) );
+	sseo_check( 'a new post: no address yet', '' === $sseo_sn['url'] );
+	$sseo_sn_page                  = wp_insert_post( array( 'post_type' => 'page', 'post_title' => 'Snippet page', 'post_status' => 'publish', 'post_excerpt' => 'Stored excerpt' ) );
+	$sseo['posts']['snippet_page'] = $sseo_sn_page;
+	$sseo_sn                       = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_page ) );
+	sseo_check( 'a type without the excerpt box: the stored excerpt stays', false === $sseo_sn['excerptField'] && 'Stored excerpt' === $sseo_sn['values']['excerpt'] && 'post:page' === Simple_SEO_Titles::template_slot( Simple_SEO_Context::for_post( get_post( $sseo_sn_page ) ) ) );
+	$sseo_sn = Simple_SEO_Snippet::data( 'post', get_post( $sseo_p['secret'] ) );
+	sseo_check( 'a protected post: the password templates and nothing of its text', true === $sseo_sn['protected'] && Simple_SEO_Titles::template( 'password', 'title' ) === $sseo_sn['templates']['title'] && '' === $sseo_sn['values']['excerpt'] && '' === $sseo_sn['excerptFromText'] );
+	$sseo_sn_cyr                  = wp_insert_post( array( 'post_title' => 'Кирилиця', 'post_name' => 'пост-сніпет', 'post_status' => 'publish' ) );
+	$sseo['posts']['snippet_cyr'] = $sseo_sn_cyr;
+	$sseo_sn                      = Simple_SEO_Snippet::data( 'post', get_post( $sseo_sn_cyr ) );
+	sseo_check( 'the slug as its field shows it: decoded', 'пост-сніпет' === $sseo_sn['raw']['slug'] && str_contains( $sseo_sn['url'], '%d0%bf' ), $sseo_sn['raw'] );
+
+	$sseo_sn_term = get_term( $sseo_cat_id );
+	$sseo_sn      = Simple_SEO_Snippet::data( 'term', $sseo_sn_term );
+	sseo_check( 'a term: its name, description, slug and address', 'term' === $sseo_sn['kind'] && array( 'title' => $sseo_sn_term->name, 'excerpt' => $sseo_sn_term->description, 'slug' => $sseo_sn_term->slug ) === $sseo_sn['raw'] && get_term_link( $sseo_sn_term ) === $sseo_sn['url'] && false === $sseo_sn['excerptField'] && Simple_SEO_Variables::plain( $sseo_sn_term->description ) === $sseo_sn['values']['excerpt'] && Simple_SEO_Titles::template( 'term:category', 'title' ) === $sseo_sn['templates']['title'], $sseo_sn );
+	sseo_check( 'an address as search engines show it', 'https://example.com › blog › пост' === Simple_SEO_Snippet::display_url( 'https://example.com/blog/%D0%BF%D0%BE%D1%81%D1%82/' ) && 'http://127.0.0.1:8892' === Simple_SEO_Snippet::display_url( 'http://127.0.0.1:8892/' ) && 'not an address' === Simple_SEO_Snippet::display_url( 'not an address' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'wp-loc' );
 
 	if ( ! Simple_SEO_WP_Loc::active() || count( WP_LOC_Languages::get_active_languages() ) < 2 ) {
@@ -1588,6 +1666,38 @@ try {
 		$sseo_base  = WP_LOC_Options::get_unfiltered_option( Simple_SEO_Special::OPTION )[1];
 		$sseo_local = get_option( $sseo_other_row );
 		sseo_check( 'saving in the other admin language writes its row, sanitized, and leaves the default\'s', 'Saved in the other language' === ( $sseo_local['home']['title'] ?? null ) && 'Home of {site}' === ( $sseo_base['home']['title'] ?? null ), array( $sseo_base, $sseo_local ) );
+		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
+
+		// The search result preview in the editor: the post's language, whatever the admin's is.
+		$sseo_codes = array();
+		foreach ( array( $sseo_default_lang, $sseo_other_lang ) as $sseo_lang ) {
+			$sseo_codes[] = WP_LOC_DB::to_db_language_code( $sseo_lang ) ?: $sseo_lang;
+		}
+		update_option( Simple_SEO_Special::OPTION, array( 'password' => array( 'title' => 'Locked {title}' ) ) );
+		update_option( $sseo_other_row, array( 'password' => array( 'title' => 'Other locked {title}' ) ) );
+		$sseo_locked = array();
+		foreach ( $sseo_codes as $sseo_code ) {
+			$sseo_locked[ $sseo_code ]             = wp_insert_post( array( 'post_title' => 'Post ' . $sseo_code, 'post_status' => 'publish', 'post_password' => 'pw' ) );
+			$sseo['posts'][ 'locked_' . $sseo_code ] = $sseo_locked[ $sseo_code ];
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo_locked[ $sseo_code ], 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_code, 'source_language_code' => null ) );
+		}
+		// The settings page above left wp-loc's filter of the admin language on the row for the rest
+		// of this process (a real request has one screen): without it the row reads as it is stored.
+		remove_all_filters( 'option_' . Simple_SEO_Special::OPTION );
+		set_current_screen( 'post' );
+		foreach ( array( $sseo_default_lang, $sseo_other_lang ) as $sseo_admin ) {
+			$_COOKIE['admin_lang'] = WP_LOC_Languages::get_language_locale( $sseo_admin );
+			Simple_SEO_Settings::flush();
+			foreach ( $sseo_locked as $sseo_code => $sseo_id ) {
+				$sseo_locale = determine_locale();
+				$sseo_sn     = Simple_SEO_Snippet::data( 'post', get_post( $sseo_id ) );
+				$sseo_want   = ( $sseo_code === $sseo_codes[0] ? 'Locked ' : 'Other locked ' ) . 'Post ' . $sseo_code;
+				sseo_check( "admin in {$sseo_admin}: the preview of a post in {$sseo_code} takes that language's templates", $sseo_want === $sseo_sn['title'] && ( $sseo_code === $sseo_codes[0] ? 'Locked {title}' : 'Other locked {title}' ) === $sseo_sn['templates']['title'], $sseo_sn['title'] );
+				// The default language here is Ukrainian: its month names are Cyrillic, English ones are not.
+				sseo_check( "admin in {$sseo_admin}: the date of a post in {$sseo_code} in that language, and the locale back afterwards", ( $sseo_code === $sseo_codes[0] ) === (bool) preg_match( '/\p{Cyrillic}/u', $sseo_sn['values']['date'] ) && $sseo_locale === determine_locale(), array( $sseo_sn['values']['date'], $sseo_locale, determine_locale() ) );
+			}
+			sseo_check( "admin in {$sseo_admin}: no language left switched afterwards", ! WP_LOC_Routing::has_switched_language() && 'Locked {title}' === Simple_SEO_Special::saved_template( 'password', 'title' ) );
+		}
 		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
 		delete_option( $sseo_other_row );
 	}
@@ -5046,6 +5156,7 @@ try {
 	sseo_check( 'the Clean-up tab is translated', 'Чистка коду' === __( 'Clean-up', 'simple-seo' ) && 'Версія WordPress' === __( 'WordPress version', 'simple-seo' ) );
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
 	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з %s' === __( 'Import from %s', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) && 'Прибрати дані %s' === __( 'Remove the data of %s', 'simple-seo' ) );
+	sseo_check( 'the search result preview is translated', 'Вигляд у пошуковій видачі' === __( 'Search result preview', 'simple-seo' ) && 'SEO-заголовок: символів — %s, пошуковик його обріже.' === __( 'SEO title: %s characters, search engines will cut it.', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 

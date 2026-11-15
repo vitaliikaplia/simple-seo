@@ -53,8 +53,8 @@ final class Simple_SEO_Titles {
 				'label'       => __( 'SEO title', 'simple-seo' ),
 				'description' => __( 'The title search engines show. Leave empty to use the template; variables like {title}, {sep} and {site} work here too.', 'simple-seo' ),
 				'order'       => 10,
+				// What the page shows is in the search result preview above the fields (Simple_SEO_Snippet).
 				'mask'        => static fn( string $type, $object ): string => self::template( self::slot_for( self::object_context( $type, $object ) ), 'title' ),
-				'preview'     => static fn( string $type, $object ): string => self::title( self::object_context( $type, $object ) ),
 			)
 		);
 		Simple_SEO_Fields::register(
@@ -65,7 +65,6 @@ final class Simple_SEO_Titles {
 				'type'        => 'textarea',
 				'order'       => 20,
 				'mask'        => static fn( string $type, $object ): string => self::template( self::slot_for( self::object_context( $type, $object ) ), 'description' ),
-				'preview'     => static fn( string $type, $object ): string => self::description( self::object_context( $type, $object ) ),
 			)
 		);
 	}
