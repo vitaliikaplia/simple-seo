@@ -180,6 +180,27 @@ final class Simple_SEO_WP_Loc {
 		return is_object( $db ) && method_exists( $db, 'get_table' ) ? (string) $db->get_table() : '';
 	}
 
+	/**
+	 * A term in the language of a post: a value copied from another translation names the term of
+	 * that translation's language. The term itself without wp-loc or without a translation.
+	 */
+	public static function term_for_post( int $term_id, string $taxonomy, WP_Post $post ): int {
+		if ( ! $term_id || ! self::languages() ) {
+			return $term_id;
+		}
+
+		$language = (string) apply_filters(
+			'wpml_element_language_code',
+			'',
+			array(
+				'element_id'   => (int) $post->ID,
+				'element_type' => 'post_' . $post->post_type,
+			)
+		);
+
+		return '' !== $language ? (int) apply_filters( 'wpml_object_id', $term_id, $taxonomy, true, $language ) : $term_id;
+	}
+
 	/** Forget the remembered language list (after the languages or their hreflang filter change). */
 	public static function flush(): void {
 		self::$languages = null;
@@ -294,6 +315,28 @@ final class Simple_SEO_WP_Loc {
 		if ( is_object( $db ) && method_exists( $db, 'prime_elements' ) ) {
 			$db->prime_elements( array_map( 'intval', $ids ), $element_type );
 		}
+	}
+
+	/** The WordPress locale of a language code (uk, en_US); '' for none. */
+	public static function locale_of( string $code ): string {
+		if ( '' === $code || ! self::languages() ) {
+			return '';
+		}
+
+		$languages = (array) apply_filters( 'wpml_active_languages', null );
+
+		return (string) ( $languages[ $code ]['default_locale'] ?? '' );
+	}
+
+	/** Code of the language the admin edits (as the wpml_* filters name it), '' without wp-loc. */
+	public static function admin_language_code(): string {
+		if ( ! self::languages() || ! function_exists( 'wp_loc_get_admin_lang' ) ) {
+			return '';
+		}
+
+		$slug = (string) wp_loc_get_admin_lang();
+
+		return method_exists( 'WP_LOC_DB', 'to_db_language_code' ) ? (string) ( WP_LOC_DB::to_db_language_code( $slug ) ?: $slug ) : $slug;
 	}
 
 	/** Name of the language the admin edits, '' without wp-loc or with only one language. */

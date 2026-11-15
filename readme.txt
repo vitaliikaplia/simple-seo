@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.7.0
+Stable tag: 0.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; gives themes breadcrumbs and the primary category of a post; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,11 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.8.0 =
+* Breadcrumbs for themes: simple_seo_the_breadcrumbs() in PHP, {{ simple_seo_breadcrumbs() }} in Twig (Timber), [simple_seo_breadcrumbs] shortcode. Home, the posts page or the post type archive, the primary category with its parents, parent pages, the page itself and its page number; terms, archives, authors, dates, search results and 404 have their own trails.
+* Breadcrumbs tab: separator, home label and text before (per language with wp-loc), whether to end with the page itself and to show the posts page, and the taxonomy each post type's trail goes through.
+* Primary category: for a post with several categories (or terms of another hierarchical taxonomy) the SEO box picks the one the breadcrumbs go through; without a pick, the deepest one. {category} names it. With wp-loc a pick copied into a translation is read in the translation's language.
 
 = 0.7.0 =
 * XML sitemap at /sitemap_index.xml, with a sitemap for each post type, taxonomy and (while author archives are shown) the authors, 1000 addresses a page. The addresses are the ones Yoast SEO used, so a sitemap submitted to Google Search Console keeps working; /sitemap.xml and WordPress's /wp-sitemap.xml redirect to it.

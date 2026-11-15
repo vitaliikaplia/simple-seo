@@ -100,6 +100,8 @@ $sseo_saved_options = array(
 	'social'         => get_option( Simple_SEO_Social::OPTION ),
 	'special'        => get_option( Simple_SEO_Special::OPTION ),
 	'sitemaps'       => get_option( Simple_SEO_Sitemaps::OPTION ),
+	'breadcrumbs'    => get_option( Simple_SEO_Breadcrumbs::OPTION ),
+	'bc_labels'      => get_option( Simple_SEO_Breadcrumbs::LABELS ),
 	'blog_public'    => get_option( 'blog_public' ),
 );
 
@@ -288,7 +290,7 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'index', 'nofollow', 'canonical', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -1093,7 +1095,8 @@ try {
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
 	sseo_check( 'meta box: an Indexing heading before the indexing fields', str_contains( $sseo_html, '>Indexing</h4>' ) && strpos( $sseo_html, '>Indexing</h4>' ) < strpos( $sseo_html, 'name="simple_seo[index]"' ) );
 	sseo_check( 'meta box: what search engines do now, and the canonical', str_contains( $sseo_html, 'Now: shown in search results' ) && str_contains( $sseo_html, 'Now: ' . get_permalink( $sseo_p['bare'] ) ) );
-	sseo_check( 'meta box: three choices for search engines', 3 === substr_count( $sseo_html, '<option value=' ) - substr_count( $sseo_html, 'name="simple_seo[test_choice]"' ) * 2 );
+	$sseo_select = preg_match( '#<select id="simple-seo-field-index"[^>]*>(.*?)</select>#s', $sseo_html, $sseo_m ) ? $sseo_m[1] : '';
+	sseo_check( 'meta box: three choices for search engines', 3 === substr_count( $sseo_select, '<option value=' ) );
 	wp_set_current_user( $sseo_au );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
 	sseo_check( 'meta box of an author: no indexing fields, no heading', ! str_contains( $sseo_html, 'Indexing' ) && ! str_contains( $sseo_html, 'simple_seo[index]' ) );
@@ -1263,7 +1266,7 @@ try {
 	Simple_SEO_Context::reset();
 	$sseo_404 = static fn(): Simple_SEO_Context => Simple_SEO_Context::from_query( $sseo_q404 );
 
-	sseo_check( 'only the special pages row is kept per language', array( Simple_SEO_Special::OPTION ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
+	sseo_check( 'only the special pages row and the breadcrumb labels are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
 	Simple_SEO_Settings::install();
 	sseo_check( 'install() creates the special pages row', array() === get_option( Simple_SEO_Special::OPTION, null ) );
 
@@ -1708,6 +1711,201 @@ try {
 	Simple_SEO_Settings::flush();
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Breadcrumbs and primary term' );
+
+	unset( $GLOBALS['current_screen'] );
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	delete_option( Simple_SEO_Breadcrumbs::LABELS );
+	update_option( 'show_on_front', 'posts' );
+	Simple_SEO_Settings::flush();
+	$sseo_cat_term = static function ( string $name, int $parent = 0 ) use ( &$sseo ): int {
+		$term            = wp_insert_term( $name, 'category', array( 'parent' => $parent ) );
+		$sseo['terms'][] = array( (int) $term['term_id'], 'category' );
+		return (int) $term['term_id'];
+	};
+	$sseo_news  = $sseo_cat_term( 'Bc News' );
+	$sseo_sport = $sseo_cat_term( 'Bc Sport', $sseo_news );
+	$sseo_other = $sseo_cat_term( 'Bc Other' );
+	$sseo_unused = $sseo_cat_term( 'Bc Unused' );
+	$sseo['posts']['bc'] = wp_insert_post( array( 'post_title' => 'Bc Post', 'post_status' => 'publish', 'post_category' => array( $sseo_news, $sseo_sport, $sseo_other ) ) );
+	$sseo['posts']['bc_parent'] = wp_insert_post( array( 'post_title' => 'Bc Parent', 'post_type' => 'page', 'post_status' => 'publish' ) );
+	$sseo['posts']['bc_child']  = wp_insert_post( array( 'post_title' => 'Bc Child', 'post_type' => 'page', 'post_status' => 'publish', 'post_parent' => $sseo['posts']['bc_parent'] ) );
+	$sseo['posts']['bc_map']    = wp_insert_post( array( 'post_title' => 'Bc Map', 'post_type' => 'sseo_map', 'post_status' => 'publish' ) );
+	$sseo_p      = $sseo['posts'];
+	$sseo_bc     = get_post( $sseo_p['bc'] );
+	$sseo_labels = static fn( array $items ): array => array_column( $items, 'label' );
+	$sseo_trail  = static fn( array $vars ): array => $sseo_labels( Simple_SEO_Breadcrumbs::items( $sseo_ctx_of( $vars ) ) );
+
+	// The primary term.
+	$sseo_field = Simple_SEO_Fields::get( 'primary_category' );
+	sseo_check( 'a primary category field, for posts only', null !== $sseo_field && in_array( 'post', $sseo_field['post_types'], true ) && ! in_array( 'page', $sseo_field['post_types'], true ) && array( 'post' ) === $sseo_field['objects'] && ! Simple_SEO_Fields::user_can_edit( $sseo_u['administrator'], 'post', $sseo_p['bc_parent'], 'primary_category' ) && Simple_SEO_Fields::user_can_edit( $sseo_u['administrator'], 'post', $sseo_p['bc'], 'primary_category' ) && ! Simple_SEO_Fields::user_can_edit( $sseo_u['administrator'], 'term', $sseo_news, 'primary_category' ) );
+	sseo_check( 'no primary field for a flat taxonomy', null === Simple_SEO_Fields::get( 'primary_post_tag' ) && null === Simple_SEO_Fields::get( 'primary_sseo_genre' ) );
+	sseo_check( 'sanitize: a category ID, nothing else', $sseo_sport === Simple_SEO_Primary_Term::sanitize( (string) $sseo_sport, 'category' ) && '' === Simple_SEO_Primary_Term::sanitize( 99999999, 'category' ) && '' === Simple_SEO_Primary_Term::sanitize( 'abc', 'category' ) );
+	$sseo_tag = wp_insert_term( 'Bc Tag', 'post_tag' );
+	$sseo['terms'][] = array( (int) $sseo_tag['term_id'], 'post_tag' );
+	sseo_check( 'sanitize: a term of another taxonomy is no category', '' === Simple_SEO_Primary_Term::sanitize( $sseo_tag['term_id'], 'category' ) );
+	$sseo_options = Simple_SEO_Primary_Term::options( 'category' );
+	sseo_check( 'options: automatic first, children indented under their parent', '' === array_key_first( $sseo_options ) && '— Bc Sport' === ( $sseo_options[ (string) $sseo_sport ] ?? '' ) && array_search( (string) $sseo_news, array_map( 'strval', array_keys( $sseo_options ) ), true ) + 1 === array_search( (string) $sseo_sport, array_map( 'strval', array_keys( $sseo_options ) ), true ) );
+
+	sseo_check( 'automatically: the deepest of the post\'s categories', $sseo_sport === ( Simple_SEO_Primary_Term::get( $sseo_bc, 'category' )->term_id ?? 0 ) );
+	update_post_meta( $sseo_p['bc'], '_simple_seo_primary_category', $sseo_other );
+	sseo_check( 'a picked category wins', $sseo_other === ( Simple_SEO_Primary_Term::get( $sseo_bc, 'category' )->term_id ?? 0 ) && 'Bc Other' === ( simple_seo_primary_term( $sseo_p['bc'] )->name ?? '' ) );
+	sseo_check( '{category} names the primary category', 'Bc Other' === Simple_SEO_Variables::replace( '{category}', Simple_SEO_Context::for_post( $sseo_bc ), '–' ) );
+	update_post_meta( $sseo_p['bc'], '_simple_seo_primary_category', $sseo_unused );
+	sseo_check( 'a picked category the post no longer has is ignored', $sseo_sport === ( Simple_SEO_Primary_Term::get( $sseo_bc, 'category' )->term_id ?? 0 ) );
+	add_filter( 'simple_seo_primary_term', static fn() => get_term( $sseo_news, 'category' ) );
+	sseo_check( 'simple_seo_primary_term changes it', $sseo_news === ( Simple_SEO_Primary_Term::get( $sseo_bc, 'category' )->term_id ?? 0 ) );
+	remove_all_filters( 'simple_seo_primary_term' );
+	update_post_meta( $sseo_p['bc'], '_simple_seo_primary_category', $sseo_sport );
+
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( $sseo_bc ) );
+	sseo_check( 'meta box: the primary category under a Breadcrumbs heading, the picked one selected', str_contains( $sseo_html, '>Breadcrumbs</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[primary_category]"' ) && (bool) preg_match( '/<option value="' . $sseo_sport . '" selected=\'selected\'>— Bc Sport<\/option>/', $sseo_html ), $sseo_html );
+	sseo_check( 'meta box: the trail the post has now', str_contains( $sseo_html, 'Now: Home › Bc News › Bc Sport › Bc Post' ) );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bc_parent'] ) ) );
+	sseo_check( 'meta box of a page: no primary category', ! str_contains( $sseo_html, 'primary_category' ) );
+	sseo_post_form( $sseo_p['bc'], array( 'primary_category' => (string) $sseo_other ) );
+	Simple_SEO_Editor::save_post( $sseo_p['bc'], $sseo_bc );
+	sseo_check( 'the editor form saves the pick', (string) $sseo_other === Simple_SEO_Fields::post_value( $sseo_p['bc'], 'primary_category' ) );
+	sseo_post_form( $sseo_p['bc'], array( 'primary_category' => '' ) );
+	Simple_SEO_Editor::save_post( $sseo_p['bc'], $sseo_bc );
+	sseo_check( 'Automatically deletes the pick', ! metadata_exists( 'post', $sseo_p['bc'], '_simple_seo_primary_category' ) );
+	$_POST = array();
+	wp_set_current_user( 0 );
+
+	// The trail.
+	sseo_check( 'a post: home, the primary category with its parent, the post', array( 'Home', 'Bc News', 'Bc Sport', 'Bc Post' ) === $sseo_trail( array( 'p' => $sseo_p['bc'] ) ), $sseo_trail( array( 'p' => $sseo_p['bc'] ) ) );
+	$sseo_items = Simple_SEO_Breadcrumbs::items( $sseo_ctx_of( array( 'p' => $sseo_p['bc'] ) ) );
+	sseo_check( 'items link home, the categories and the post', home_url( '/' ) === $sseo_items[0]['url'] && get_term_link( $sseo_news, 'category' ) === $sseo_items[1]['url'] && get_permalink( $sseo_p['bc'] ) === $sseo_items[3]['url'] );
+	sseo_check( 'a child page: its parent between', array( 'Home', 'Bc Parent', 'Bc Child' ) === $sseo_trail( array( 'page_id' => $sseo_p['bc_child'] ) ) );
+	sseo_check( 'a custom type: its archive between', array( 'Home', 'Maps', 'Bc Map' ) === $sseo_trail( array( 'p' => $sseo_p['bc_map'], 'post_type' => 'sseo_map' ) ), $sseo_trail( array( 'p' => $sseo_p['bc_map'], 'post_type' => 'sseo_map' ) ) );
+	sseo_check( 'a category: its parent, then itself', array( 'Home', 'Bc News', 'Bc Sport' ) === $sseo_trail( array( 'cat' => $sseo_sport ) ) );
+	sseo_check( 'a post type archive', array( 'Home', 'Maps' ) === $sseo_trail( array( 'post_type' => 'sseo_map' ) ) );
+	sseo_check( 'an author', array( 'Home', get_userdata( $sseo_ed )->display_name ) === $sseo_trail( array( 'author' => $sseo_ed ) ) );
+	$sseo_day = Simple_SEO_Breadcrumbs::items( $sseo_ctx_of( array( 'm' => gmdate( 'Ymd' ) ) ) );
+	sseo_check( 'a day archive: year, month, day', array( 'Home', gmdate( 'Y' ), date_i18n( 'F', gmmktime( 0, 0, 0, (int) gmdate( 'n' ), 1, (int) gmdate( 'Y' ) ) ), (string) (int) gmdate( 'j' ) ) === $sseo_labels( $sseo_day ) && get_year_link( (int) gmdate( 'Y' ) ) === $sseo_day[1]['url'], $sseo_labels( $sseo_day ) );
+	sseo_check( 'search results and 404: the phrase', array( 'Home', 'Search results for "x"' ) === $sseo_trail( array( 's' => 'x' ) ) && array( 'Home', 'Page not found' ) === $sseo_labels( Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::from_query( $sseo_q404 ) ) ) );
+	$sseo_items = Simple_SEO_Breadcrumbs::items( $sseo_ctx_of( array( 'cat' => $sseo_sport, 'paged' => 2 ) ) );
+	sseo_check( 'a second page ends with its number', 'Page 2' === end( $sseo_items )['label'] && str_contains( end( $sseo_items )['url'], '/page/2' ), $sseo_items );
+	sseo_check( 'the home page has no trail to print', '' === Simple_SEO_Breadcrumbs::render( array(), $sseo_ctx_of( array() ) ) );
+
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_p['front'] );
+	update_option( 'page_for_posts', $sseo_p['blog'] );
+	sseo_check( 'with a posts page: it comes before posts and their categories', array( 'Home', 'Blog', 'Bc News', 'Bc Sport', 'Bc Post' ) === $sseo_trail( array( 'p' => $sseo_p['bc'] ) ) && array( 'Home', 'Blog', 'Bc News' ) === $sseo_trail( array( 'cat' => $sseo_news ) ) );
+	sseo_check( 'the posts page itself', array( 'Home', 'Blog' ) === $sseo_labels( Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::for_post( get_post( $sseo_p['blog'] ) ) ) ) );
+	sseo_check( 'a static front page has no trail', '' === Simple_SEO_Breadcrumbs::render( array(), Simple_SEO_Context::for_post( get_post( $sseo_p['front'] ) ) ) );
+	update_option( Simple_SEO_Breadcrumbs::OPTION, array( 'show_blog' => false, 'taxonomies' => array( 'post' => '' ) ) );
+	sseo_check( 'settings: no posts page, no categories', array( 'Home', 'Bc Post' ) === $sseo_trail( array( 'p' => $sseo_p['bc'] ) ) );
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	update_option( 'show_on_front', 'posts' );
+
+	sseo_check( 'default taxonomies: categories for posts, parents for pages, the first hierarchical one for others', 'category' === Simple_SEO_Breadcrumbs::taxonomy_for( 'post' ) && '' === Simple_SEO_Breadcrumbs::taxonomy_for( 'page' ) && '' === Simple_SEO_Breadcrumbs::taxonomy_for( 'sseo_map' ) );
+	$sseo_clean = Simple_SEO_Breadcrumbs::sanitize(
+		array(
+			'separator'    => ' <b>»</b> »»»»»»»»»»»» ',
+			'show_current' => '0',
+			'taxonomies'   => array(
+				'post'     => 'category',
+				'page'     => 'category',
+				'sseo_map' => 'post_tag',
+			),
+		)
+	);
+	sseo_check( 'sanitize: the separator without tags, ten characters at most', '» ' . str_repeat( '»', 8 ) === $sseo_clean['separator'], $sseo_clean['separator'] );
+	sseo_check( 'sanitize: switches, and only taxonomies that differ from the default and belong to the type', false === $sseo_clean['show_current'] && true === $sseo_clean['show_blog'] && array() === $sseo_clean['taxonomies'], $sseo_clean );
+	$sseo_clean = Simple_SEO_Breadcrumbs::sanitize( array( 'separator' => '', 'taxonomies' => array( 'post' => '' ) ) );
+	sseo_check( 'sanitize: an empty separator is the default, "none" for posts is kept', Simple_SEO_Breadcrumbs::DEFAULT_SEPARATOR === $sseo_clean['separator'] && array( 'post' => '' ) === $sseo_clean['taxonomies'], $sseo_clean );
+
+	// HTML.
+	update_option( Simple_SEO_Breadcrumbs::OPTION, array( 'separator' => '<i>/</i>' ) );
+	update_option( Simple_SEO_Breadcrumbs::LABELS, array( 'home' => 'Start & go', 'prefix' => 'You are here:' ) );
+	$sseo_html = Simple_SEO_Breadcrumbs::render( array( 'class' => 'theme" onload', 'before' => '<div class="wrap">', 'after' => '</div>' ), $sseo_ctx_of( array( 'p' => $sseo_p['bc'] ) ) );
+	sseo_check( 'HTML: a labelled nav, links, the page itself as text', str_contains( $sseo_html, '<nav class="simple-seo-breadcrumbs themeonload" aria-label="Breadcrumbs">' ) && str_contains( $sseo_html, '<a href="' . esc_url( home_url( '/' ) ) . '">Start &amp; go</a>' ) && str_contains( $sseo_html, '<span class="simple-seo-breadcrumbs__current" aria-current="page">Bc Post</span>' ), $sseo_html );
+	sseo_check( 'HTML: the separator and labels escaped, prefix, before and after', str_contains( $sseo_html, '&lt;i&gt;/&lt;/i&gt;' ) && str_contains( $sseo_html, '<span class="simple-seo-breadcrumbs__prefix">You are here:</span>' ) && str_starts_with( $sseo_html, '<div class="wrap">' ) && str_ends_with( $sseo_html, '</div>' ), $sseo_html );
+	sseo_check( 'text for previews', 'Start & go <i>/</i> Bc News <i>/</i> Bc Sport <i>/</i> Bc Post' === Simple_SEO_Breadcrumbs::text( $sseo_ctx_of( array( 'p' => $sseo_p['bc'] ) ) ) );
+	update_option( Simple_SEO_Breadcrumbs::OPTION, array( 'show_current' => false ) );
+	$sseo_html = Simple_SEO_Breadcrumbs::render( array(), $sseo_ctx_of( array( 'p' => $sseo_p['bc'] ) ) );
+	sseo_check( 'without the page itself: the trail ends with a link to its category', ! str_contains( $sseo_html, 'Bc Post' ) && (bool) preg_match( '#<a href="[^"]+">Bc Sport</a></nav>$#', $sseo_html ), $sseo_html );
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	delete_option( Simple_SEO_Breadcrumbs::LABELS );
+
+	add_filter( 'simple_seo_breadcrumbs', static fn( array $items ): array => array_merge( $items, array( array( 'label' => 'Extra', 'url' => '' ), array( 'label' => '', 'url' => 'x' ) ) ) );
+	sseo_check( 'simple_seo_breadcrumbs changes the items; empty labels are dropped', array( 'Home', 'Bc News', 'Bc Sport', 'Bc Post', 'Extra' ) === $sseo_trail( array( 'p' => $sseo_p['bc'] ) ) );
+	remove_all_filters( 'simple_seo_breadcrumbs' );
+
+	$sseo_saved_query    = $GLOBALS['wp_query'];
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['bc'] ) );
+	$GLOBALS['wp_actions']['wp'] = max( 1, (int) ( $GLOBALS['wp_actions']['wp'] ?? 0 ) );
+	Simple_SEO_Context::reset();
+	$sseo_html = do_shortcode( '[simple_seo_breadcrumbs class="in-content"]' );
+	sseo_check( 'the shortcode prints the trail of the page', str_contains( $sseo_html, 'class="simple-seo-breadcrumbs in-content"' ) && str_contains( $sseo_html, '>Bc Post</span>' ), $sseo_html );
+	sseo_check( 'the template functions', simple_seo_breadcrumbs() === Simple_SEO_Breadcrumbs::render() && simple_seo_breadcrumbs() === sseo_capture( 'simple_seo_the_breadcrumbs' ) && '' !== simple_seo_breadcrumbs() );
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+	Simple_SEO_Context::reset();
+	sseo_check( 'Twig: the function goes to Timber', 10 === has_filter( 'timber/twig', array( Simple_SEO_Breadcrumbs::class, 'twig' ) ) );
+	if ( class_exists( '\Twig\Environment' ) ) {
+		$sseo_twig = Simple_SEO_Breadcrumbs::twig( new \Twig\Environment( new \Twig\Loader\ArrayLoader( array() ) ) );
+		sseo_check( 'Twig: simple_seo_breadcrumbs() is registered, its HTML not escaped', false !== $sseo_twig->getFunction( 'simple_seo_breadcrumbs' ) );
+	}
+
+	// The tab.
+	Simple_SEO_Breadcrumbs::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab'] = 'breadcrumbs';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the Breadcrumbs tab sits between Indexing and Access', strpos( $sseo_html, '>Indexing<' ) < strpos( $sseo_html, '>Breadcrumbs<' ) && strpos( $sseo_html, '>Breadcrumbs<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check( 'the tab: how to use it, the newest post\'s trail, the settings', str_contains( $sseo_html, 'simple_seo_the_breadcrumbs()' ) && str_contains( $sseo_html, '[simple_seo_breadcrumbs]' ) && str_contains( $sseo_html, 'The newest post now:' ) && str_contains( $sseo_html, 'name="simple_seo_breadcrumbs[separator]" value="›"' ) && str_contains( $sseo_html, 'name="simple_seo_breadcrumb_labels[home]"' ) && str_contains( $sseo_html, 'name="simple_seo_breadcrumbs[taxonomies][post]"' ) );
+	sseo_check( 'the tab saves both rows', 'simple-seo-breadcrumbs' === ( get_registered_settings()[ Simple_SEO_Breadcrumbs::OPTION ]['group'] ?? '' ) && 'simple-seo-breadcrumbs' === ( get_registered_settings()[ Simple_SEO_Breadcrumbs::LABELS ]['group'] ?? '' ) );
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_d    = Simple_SEO_WP_Loc::default_language();
+		$sseo_o    = (string) current( array_diff( Simple_SEO_WP_Loc::codes(), array( $sseo_d ) ) );
+		$sseo_lang = static function ( int $id, string $type, string $code, int $trid = 0 ) use ( $sseo_d ): void {
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => $id, 'element_type' => $type, 'trid' => $trid ?: null, 'language_code' => $code, 'source_language_code' => $trid ? $sseo_d : null ) );
+		};
+		$sseo_c_d = wp_insert_term( 'Bc Ml default', 'category' );
+		$sseo_c_o = wp_insert_term( 'Bc Ml other', 'category' );
+		$sseo['terms'][] = array( (int) $sseo_c_d['term_id'], 'category' );
+		$sseo['terms'][] = array( (int) $sseo_c_o['term_id'], 'category' );
+		$sseo_lang( (int) $sseo_c_d['term_taxonomy_id'], 'tax_category', $sseo_d );
+		$sseo_lang( (int) $sseo_c_o['term_taxonomy_id'], 'tax_category', $sseo_o, (int) apply_filters( 'wpml_element_trid', 0, $sseo_c_d['term_taxonomy_id'], 'tax_category' ) );
+		$sseo['posts']['bc_ml_d'] = wp_insert_post( array( 'post_title' => 'Bc Ml post default', 'post_status' => 'publish' ) );
+		$sseo['posts']['bc_ml_o'] = wp_insert_post( array( 'post_title' => 'Bc Ml post other', 'post_status' => 'publish' ) );
+		$sseo_lang( $sseo['posts']['bc_ml_d'], 'post_post', $sseo_d );
+		$sseo_lang( $sseo['posts']['bc_ml_o'], 'post_post', $sseo_o, (int) apply_filters( 'wpml_element_trid', 0, $sseo['posts']['bc_ml_d'], 'post_post' ) );
+		// A deeper category of the same language: the automatic choice would take it.
+		$sseo_c_deep = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => wp_insert_term( 'Bc Ml other deep', 'category', array( 'parent' => (int) $sseo_c_o['term_id'] ) ) );
+		$sseo['terms'][] = array( (int) $sseo_c_deep['term_id'], 'category' );
+		$sseo_lang( (int) $sseo_c_deep['term_taxonomy_id'], 'tax_category', $sseo_o );
+		// wp-loc drops a category given to a post of another language than the current one.
+		Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => wp_set_post_categories( $sseo['posts']['bc_ml_o'], array( (int) $sseo_c_o['term_id'], (int) $sseo_c_deep['term_id'] ) ) );
+		// A pick copied from the default language's post names that language's category.
+		update_post_meta( $sseo['posts']['bc_ml_o'], '_simple_seo_primary_category', (int) $sseo_c_d['term_id'] );
+		$sseo_primary = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Primary_Term::get( get_post( $sseo['posts']['bc_ml_o'] ), 'category' ) );
+		sseo_check( 'wp-loc: a copied pick is read as its translation', (int) $sseo_c_o['term_id'] === ( $sseo_primary->term_id ?? 0 ), $sseo_primary );
+		$sseo_items = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::for_post( get_post( $sseo['posts']['bc_ml_o'] ) ) ) );
+		$sseo_prefix = '/' . WP_LOC_DB::from_db_language_code( $sseo_o ) . '/';
+		sseo_check( 'wp-loc: the trail of a translation goes through its own language\'s category and links', 'Bc Ml other' === ( $sseo_items[1]['label'] ?? '' ) && str_contains( $sseo_items[1]['url'] ?? '', $sseo_prefix ) && str_contains( end( $sseo_items )['url'], $sseo_prefix ), $sseo_items );
+		update_option( Simple_SEO_Breadcrumbs::LABELS . '_' . $sseo_o, array( 'home' => 'Other home' ) );
+		$sseo_home = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Breadcrumbs::home_label() );
+		delete_option( Simple_SEO_Breadcrumbs::LABELS . '_' . $sseo_o );
+		Simple_SEO_Settings::flush();
+		sseo_check( 'wp-loc: the labels are the language\'s own', 'Other home' === $sseo_home && 'Home' === Simple_SEO_Breadcrumbs::home_label(), $sseo_home );
+		wp_set_current_user( $sseo_u['administrator'] );
+		$_GET['tab'] = 'breadcrumbs';
+		$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+		unset( $_GET['tab'] );
+		wp_set_current_user( 0 );
+		sseo_check( 'wp-loc: the tab\'s example is a post of the admin language, not the newest of all', str_contains( $sseo_html, 'The newest post now:' ) && ! str_contains( $sseo_html, 'Bc Ml post other' ) );
+	} else {
+		echo "  skip  breadcrumbs with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -1721,6 +1919,7 @@ try {
 	sseo_check( 'the Social networks tab is translated', 'Соцмережі' === __( 'Social networks', 'simple-seo' ) );
 	sseo_check( 'the Special pages tab is translated', 'Спецсторінки' === __( 'Special pages', 'simple-seo' ) );
 	sseo_check( 'the sitemap switch is translated', 'Створювати XML-карту сайту' === __( 'Create an XML sitemap', 'simple-seo' ) );
+	sseo_check( 'the breadcrumbs are translated', 'Хлібні крихти' === __( 'Breadcrumbs', 'simple-seo' ) && 'Головна' === __( 'Home', 'simple-seo' ) && '%s у хлібних крихтах' === __( '%s in breadcrumbs', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -1763,7 +1962,7 @@ try {
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -1773,7 +1972,7 @@ try {
 	flush_rewrite_rules( false );
 	// Rows of other languages that a broken run may have left behind.
 	unset( $_COOKIE['admin_lang'] );
-	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%'" ) as $sseo_name ) {
+	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%'" ) as $sseo_name ) {
 		delete_option( (string) $sseo_name );
 	}
 }

@@ -160,15 +160,15 @@ final class Simple_SEO_Variables {
 		return '';
 	}
 
-	/** The post's category; the primary category once 1.7 adds it. */
+	/** The post's primary category (Simple_SEO_Primary_Term). */
 	public static function category( Simple_SEO_Context $context ): string {
 		if ( ! $context->object instanceof WP_Post || ! is_object_in_taxonomy( $context->object->post_type, 'category' ) ) {
 			return '';
 		}
 
-		$terms = get_the_terms( $context->object, 'category' );
+		$term = Simple_SEO_Primary_Term::get( $context->object, 'category' );
 
-		return is_array( $terms ) && $terms ? (string) reset( $terms )->name : '';
+		return $term ? (string) $term->name : '';
 	}
 
 	public static function author( Simple_SEO_Context $context ): string {

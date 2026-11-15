@@ -51,8 +51,9 @@ final class Simple_SEO_Fields {
 	 *     @type string   $description Help text under the field.
 	 *     @type string   $type        text, textarea, url, checkbox, select or image (attachment ID).
 	 *     @type string[] $objects     Where the field exists: post, term or both.
+	 *     @type string[] $post_types  Only posts of these types get the field ([] — every type with fields).
 	 *     @type string   $level       LEVEL_BASIC or LEVEL_ADVANCED.
-	 *     @type array    $options     Value => label, for select.
+	 *     @type array|callable $options Value => label, for select; or ( 'post'|'term', WP_Post|WP_Term ) → that.
 	 *     @type callable $sanitize    Sanitizer of one value; the type decides when omitted.
 	 *     @type int      $order       Position in the editor, lower first.
 	 *     @type string   $group       Group in the editor ('' for the main fields): its heading is
@@ -73,6 +74,7 @@ final class Simple_SEO_Fields {
 				'description' => '',
 				'type'        => 'text',
 				'objects'     => array( 'post', 'term' ),
+				'post_types'  => array(),
 				'level'       => self::LEVEL_BASIC,
 				'options'     => array(),
 				'sanitize'    => null,
@@ -198,6 +200,13 @@ final class Simple_SEO_Fields {
 			return false;
 		}
 
+		if ( ! in_array( $object_type, (array) $field['objects'], true ) ) {
+			return false;
+		}
+		if ( 'post' === $object_type && $field['post_types'] && ! in_array( get_post_type( $object_id ), (array) $field['post_types'], true ) ) {
+			return false;
+		}
+
 		$object_cap = 'term' === $object_type ? 'edit_term' : 'edit_post';
 		if ( ! user_can( $user_id, $object_cap, $object_id ) || ! user_can( $user_id, Simple_SEO_Access::CAP_FIELDS ) ) {
 			return false;
@@ -225,8 +234,9 @@ final class Simple_SEO_Fields {
 			case 'url':
 				return esc_url_raw( trim( (string) $value ) );
 			case 'select':
+				// Options that depend on the object come with a sanitizer of their own.
 				$value = (string) $value;
-				return array_key_exists( $value, (array) $field['options'] ) ? $value : '';
+				return is_array( $field['options'] ) && array_key_exists( $value, $field['options'] ) ? $value : '';
 			case 'image':
 				$id = self::image_attachment( $value );
 				return $id ? $id : '';

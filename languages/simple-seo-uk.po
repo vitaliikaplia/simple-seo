@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.7.0\n"
+"Project-Id-Version: Simple SEO 0.8.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -103,6 +103,24 @@ msgstr "Вставити структуру"
 msgid "Settings"
 msgstr "Налаштування"
 
+#: includes/class-simple-seo-breadcrumbs.php:62
+#: includes/class-simple-seo-breadcrumbs.php:66
+#: includes/class-simple-seo-breadcrumbs.php:168
+msgid "Breadcrumbs"
+msgstr "Хлібні крихти"
+
+#. translators: %d: page number.
+#: includes/class-simple-seo-breadcrumbs.php:111
+#: includes/class-simple-seo-variables.php:133
+#, php-format
+msgid "Page %d"
+msgstr "Сторінка %d"
+
+#: includes/class-simple-seo-breadcrumbs.php:216
+#: includes/views/tab-breadcrumbs.php:55
+msgid "Home"
+msgstr "Головна"
+
 #. translators: %s: the title or description the page has with the saved values.
 #: includes/class-simple-seo-editor.php:201
 #, php-format
@@ -114,8 +132,8 @@ msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.7.0: XML sitemap at the addresses Yoast SEO used, only with what search engines may show, with images, styled for browsers and, under wp-loc, a sitemap for each language with its translations. Version 0.6.0: settings for the home page, the 404 page and password-protected content, per language with wp-loc. Version 0.5.0: Open Graph and X card for link previews. Version 0.4.0: canonical address, noindex and nofollow, attachment pages. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, лише з тим, що можуть показувати пошуковики, із зображеннями, оформлена для браузера, а з wp-loc — окрема карта для кожної мови з її перекладами. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем, — для кожної мови з wp-loc. Версія 0.5.0: Open Graph і картка X для прев'ю посилань. Версія 0.4.0: канонічна адреса, noindex і nofollow, сторінки вкладень. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-indexing.php:58
 #: includes/class-simple-seo-indexing.php:103
@@ -159,32 +177,46 @@ msgstr "Канонічна адреса"
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
 
-#: includes/class-simple-seo-sitemaps.php:851
+#. translators: %s: taxonomy name, singular, e.g. Category.
+#: includes/class-simple-seo-primary-term.php:55
+#, php-format
+msgid "%s in breadcrumbs"
+msgstr "%s у хлібних крихтах"
+
+#: includes/class-simple-seo-primary-term.php:56
+msgid "When the post has several: the one the breadcrumbs go through. Automatically — the deepest of them."
+msgstr "Коли в запису їх кілька: та, через яку йдуть хлібні крихти. Автоматично — найглибша з них."
+
+#: includes/class-simple-seo-primary-term.php:76
+msgid "Automatically"
+msgstr "Автоматично"
+
+#: includes/class-simple-seo-sitemaps.php:852
 #: includes/views/tab-indexing.php:32
 msgid "XML sitemap"
 msgstr "XML-карта сайту"
 
-#: includes/class-simple-seo-sitemaps.php:852
+#: includes/class-simple-seo-sitemaps.php:853
 msgid "The sitemaps of the site, language by language. Search engines read every one of them."
 msgstr "Карти сайту, мова за мовою. Пошуковики читають кожну з них."
 
-#: includes/class-simple-seo-sitemaps.php:853
+#: includes/class-simple-seo-sitemaps.php:854
 msgid "Pages search engines may show, with their translations and images."
 msgstr "Сторінки, які можуть показувати пошуковики, з їхніми перекладами й зображеннями."
 
-#: includes/class-simple-seo-sitemaps.php:854
+#: includes/class-simple-seo-sitemaps.php:855
 msgid "Last modified:"
 msgstr "Остання зміна:"
 
-#: includes/class-simple-seo-sitemaps.php:855
+#: includes/class-simple-seo-sitemaps.php:856
 msgid "Languages:"
 msgstr "Мови:"
 
-#: includes/class-simple-seo-sitemaps.php:856
+#: includes/class-simple-seo-sitemaps.php:857
 msgid "Image:"
 msgstr "Зображення:"
 
-#: includes/class-simple-seo-sitemaps.php:857
+#: includes/class-simple-seo-sitemaps.php:858
 msgid "Addresses:"
 msgstr "Адрес:"
 
@@ -210,7 +242,7 @@ msgid "Leave empty to use the meta description."
 msgstr "Залиште порожнім, щоб узяти мета-опис."
 
 #: includes/class-simple-seo-social.php:84
-#: includes/views/tab-special.php:72
+#: includes/views/tab-special.php:64
 msgid "Image for social networks"
 msgstr "Зображення для соцмереж"
 
@@ -224,6 +256,7 @@ msgid "Special pages"
 msgstr "Спецсторінки"
 
 #: includes/class-simple-seo-special.php:105
+#: includes/views/tab-breadcrumbs.php:53
 msgid "Home page"
 msgstr "Головна сторінка"
 
@@ -367,12 +400,6 @@ msgstr "Сторінку не знайдено"
 msgid "Page %1$d of %2$d"
 msgstr "Сторінка %1$d з %2$d"
 
-#. translators: %d: page number.
-#: includes/class-simple-seo-variables.php:133
-#, php-format
-msgid "Page %d"
-msgstr "Сторінка %d"
-
 #. translators: format of a month archive date, see https://www.php.net/manual/datetime.format.php
 #: includes/class-simple-seo-variables.php:214
 msgctxt "month archive date format"
@@ -382,6 +409,89 @@ msgstr "F Y"
 #: includes/views/tab-access.php:14
 msgid "Choose which roles can do what. Editing SEO fields of a post or term also needs the right to edit that post or term itself."
 msgstr "Оберіть, які ролі що можуть. Щоб редагувати SEO-поля запису чи терміна, потрібне ще й право редагувати сам запис чи термін."
+
+#: includes/views/tab-breadcrumbs.php:20
+msgid "The trail from the home page to the page shown: home, the blog page or the archive, the category with its parents, the page itself. The theme decides where it goes:"
+msgstr "Шлях від головної до показаної сторінки: головна, сторінка блогу чи архів, рубрика з батьківськими, сама сторінка. Де його показати, вирішує тема:"
+
+#: includes/views/tab-breadcrumbs.php:23
+msgid "PHP template"
+msgstr "PHP-шаблон"
+
+#: includes/views/tab-breadcrumbs.php:24
+msgid "Twig (Timber)"
+msgstr "Twig (Timber)"
+
+#: includes/views/tab-breadcrumbs.php:25
+msgid "Shortcode"
+msgstr "Шорткод"
+
+#. translators: %s: breadcrumbs of the newest post, e.g. Home › News › Post title.
+#: includes/views/tab-breadcrumbs.php:32
+#, php-format
+msgid "The newest post now: %s"
+msgstr "Найновіший запис зараз: %s"
+
+#: includes/views/tab-breadcrumbs.php:37
+msgid "Look"
+msgstr "Вигляд"
+
+#. translators: %s: language name, e.g. English.
+#: includes/views/tab-breadcrumbs.php:40
+#, php-format
+msgid "The labels are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages."
+msgstr "Підписи зберігаються для кожної мови окремо; ви редагуєте їх для: %s. Решта налаштувань цієї вкладки спільна для всіх мов."
+
+#: includes/views/tab-breadcrumbs.php:46
+#: includes/views/tab-titles.php:41
+#: includes/views/tab-titles.php:44
+msgid "Separator"
+msgstr "Роздільник"
+
+#: includes/views/tab-breadcrumbs.php:49
+msgid "Between the items, for example › » / or |."
+msgstr "Між пунктами, наприклад › » / або |."
+
+#: includes/views/tab-breadcrumbs.php:56
+msgid "The first item. Empty: \"Home\" in the language of the page."
+msgstr "Перший пункт. Порожнє — «Головна» мовою сторінки."
+
+#: includes/views/tab-breadcrumbs.php:60
+msgid "Text before"
+msgstr "Текст перед"
+
+#: includes/views/tab-breadcrumbs.php:63
+msgid "Optional, for example \"You are here:\"."
+msgstr "Необов'язково, наприклад «Ви тут:»."
+
+#: includes/views/tab-breadcrumbs.php:67
+#: includes/views/tab-breadcrumbs.php:70
+msgid "The trail"
+msgstr "Шлях"
+
+#: includes/views/tab-breadcrumbs.php:74
+msgid "End with the page itself, as text"
+msgstr "Закінчувати самою сторінкою, текстом"
+
+#: includes/views/tab-breadcrumbs.php:79
+msgid "Show the posts page (Settings → Reading) before posts and their categories"
+msgstr "Показувати сторінку записів («Налаштування → Читання») перед записами та їхніми рубриками"
+
+#: includes/views/tab-breadcrumbs.php:88
+msgid "Categories in the trail"
+msgstr "Рубрики в шляху"
+
+#: includes/views/tab-breadcrumbs.php:89
+msgid "Which taxonomy the trail of each post type goes through. A post with several terms there goes through its primary one, chosen in the SEO box of the editor; otherwise through the deepest of them."
+msgstr "Через яку таксономію йде шлях кожного типу записів. Запис із кількома термінами йде через основний, обраний у SEO-блоці редактора, а інакше — через найглибший з них."
+
+#: includes/views/tab-breadcrumbs.php:102
+msgid "None — parent pages instead"
+msgstr "Жодна — натомість батьківські сторінки"
+
+#: includes/views/tab-breadcrumbs.php:102
+msgid "None"
+msgstr "Жодна"
 
 #: includes/views/tab-indexing.php:16
 #: includes/views/tab-indexing.php:52
@@ -460,26 +570,26 @@ msgid "The home page, the page for addresses that lead nowhere and content behin
 msgstr "Головна сторінка, сторінка для адрес, що ведуть у нікуди, і вміст під паролем беруть заголовок і опис із шаблонів нижче. Змінні працюють так само, як на вкладці «Заголовки»; порожній шаблон лишає сторінці заголовок теми й залишає її без опису."
 
 #. translators: %s: language name, e.g. English.
-#: includes/views/tab-special.php:25
+#: includes/views/tab-special.php:21
 #, php-format
 msgid "These settings are kept for each language. You are editing them for: %s. Switch the language in the admin bar to edit another one; a language not saved here yet uses the settings of the default language."
 msgstr "Ці налаштування зберігаються для кожної мови окремо. Ви редагуєте їх для: %s. Щоб редагувати іншу мову, перемкніть її на панелі адміністратора; мова, для якої тут ще нічого не збережено, бере налаштування основної мови."
 
-#: includes/views/tab-special.php:41
+#: includes/views/tab-special.php:33
 msgid "Edit the page"
 msgstr "Редагувати сторінку"
 
-#: includes/views/tab-special.php:48
+#: includes/views/tab-special.php:40
 #: includes/views/tab-titles.php:75
 msgid "Title template"
 msgstr "Шаблон заголовка"
 
-#: includes/views/tab-special.php:49
+#: includes/views/tab-special.php:41
 #: includes/views/tab-titles.php:76
 msgid "Description template"
 msgstr "Шаблон опису"
 
-#: includes/views/tab-special.php:77
+#: includes/views/tab-special.php:69
 msgid "Without it: the default image from the Social networks tab."
 msgstr "Без нього — типове зображення з вкладки «Соцмережі»."
 
@@ -492,11 +602,6 @@ msgstr "Шаблони визначають заголовок і опис ко�
 #, php-format
 msgid "The home page, the 404 page and password-protected content have their own templates on the %s tab."
 msgstr "Головна сторінка, сторінка 404 і вміст, захищений паролем, мають власні шаблони на вкладці «%s»."
-
-#: includes/views/tab-titles.php:41
-#: includes/views/tab-titles.php:44
-msgid "Separator"
-msgstr "Роздільник"
 
 #: includes/views/tab-titles.php:53
 msgid "Goes where a template says {sep}."

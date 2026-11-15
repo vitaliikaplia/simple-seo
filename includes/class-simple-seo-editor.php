@@ -171,7 +171,7 @@ final class Simple_SEO_Editor {
 	 */
 	private static function input_with_mask( array $field, string $value, string $object_type, $object ): string {
 		$mask = is_callable( $field['mask'] ?? null ) ? (string) call_user_func( $field['mask'], $object_type, $object ) : '';
-		$html = self::input( $field, $value, $mask );
+		$html = self::input( $field, $value, $mask, $object );
 
 		if ( '' !== $mask ) {
 			$html .= '<span style="display:inline-block;margin-top:4px">' . Simple_SEO_Admin::mask_button( self::input_id( (string) $field['key'] ), $mask ) . '</span>';
@@ -204,8 +204,11 @@ final class Simple_SEO_Editor {
 		);
 	}
 
-	/** @param array<string, mixed> $field */
-	private static function input( array $field, string $value, string $placeholder = '' ): string {
+	/**
+	 * @param array<string, mixed> $field
+	 * @param WP_Post|WP_Term|null $object For options that depend on the object.
+	 */
+	private static function input( array $field, string $value, string $placeholder = '', $object = null ): string {
 		$key         = (string) $field['key'];
 		$id          = esc_attr( self::input_id( $key ) );
 		$name        = esc_attr( self::INPUT . '[' . $key . ']' );
@@ -219,7 +222,8 @@ final class Simple_SEO_Editor {
 				return sprintf( '<input type="hidden" name="%2$s" value=""><input type="checkbox" id="%1$s" name="%2$s" value="1"%3$s>', $id, $name, checked( '' !== $value && '0' !== $value, true, false ) );
 			case 'select':
 				$options = '';
-				foreach ( (array) $field['options'] as $option_value => $option_label ) {
+				$choices = is_callable( $field['options'] ) ? (array) call_user_func( $field['options'], $object instanceof WP_Term ? 'term' : 'post', $object ) : (array) $field['options'];
+				foreach ( $choices as $option_value => $option_label ) {
 					$options .= sprintf( '<option value="%s"%s>%s</option>', esc_attr( (string) $option_value ), selected( $value, (string) $option_value, false ), esc_html( (string) $option_label ) );
 				}
 				return sprintf( '<select id="%s" name="%s">%s</select>', $id, $name, $options );

@@ -16,19 +16,11 @@ $simple_seo_option = Simple_SEO_Special::OPTION;
 ?>
 <p><?php esc_html_e( 'The home page, the page for addresses that lead nowhere and content behind a password get their title and description from the templates below. Variables work as on the Titles tab; an empty template leaves the page with the theme\'s title and without a description.', 'simple-seo' ); ?></p>
 
-<?php if ( '' !== $language ) : ?>
-	<div class="notice notice-info inline">
-		<p>
-			<?php
-			printf(
-				/* translators: %s: language name, e.g. English. */
-				esc_html__( 'These settings are kept for each language. You are editing them for: %s. Switch the language in the admin bar to edit another one; a language not saved here yet uses the settings of the default language.', 'simple-seo' ),
-				'<strong>' . esc_html( $language ) . '</strong>'
-			);
-			?>
-		</p>
-	</div>
-<?php endif; ?>
+<?php
+/* translators: %s: language name, e.g. English. */
+$simple_seo_notice = __( 'These settings are kept for each language. You are editing them for: %s. Switch the language in the admin bar to edit another one; a language not saved here yet uses the settings of the default language.', 'simple-seo' );
+require __DIR__ . '/language-notice.php';
+?>
 
 <?php require __DIR__ . '/variables.php'; ?>
 
