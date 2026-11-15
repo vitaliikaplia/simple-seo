@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.14.0
+Stable tag: 0.15.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.15.0 =
+* Import from Yoast SEO, on the new Import tab (offered by a notice once Yoast's data is found): the separator, the title and description templates (Yoast's %%variables%% as Simple SEO's {variables}), what search engines leave out and where attachment pages go, the default image and the X account, the home and 404 pages, the breadcrumbs with their labels as Yoast had them, the sitemap switch and the clean-up switches; the SEO fields of posts (title, description, Open Graph, noindex, nofollow, canonical, primary terms) and of terms; with wp-loc, Yoast's settings of the other languages.
+* The import only fills what Simple SEO does not have: a tab saved here, a template or a field with a value stays. Yoast's data is not changed, so the import can be run again. It goes in batches, a few seconds per request, and goes on where it stopped. The report names what was taken, what was kept, the variables Simple SEO has no counterpart for and what it has nothing for yet (focus keyphrases, X fields, advanced robots, social templates).
 
 = 0.14.0 =
 * Yoast SEO post meta for themes: once Yoast is deactivated, get_post_meta(), update_post_meta(), add_post_meta() and delete_post_meta() with Yoast's keys read and write Simple SEO's own fields — _yoast_wpseo_title, _yoast_wpseo_metadesc, _yoast_wpseo_opengraph-title, _yoast_wpseo_opengraph-description, _yoast_wpseo_opengraph-image and _yoast_wpseo_opengraph-image-id, _yoast_wpseo_meta-robots-noindex, _yoast_wpseo_meta-robots-nofollow, _yoast_wpseo_canonical and _yoast_wpseo_primary_category (or the primary term of another taxonomy). Yoast's %%variables%% become Simple SEO's {variables} and back.

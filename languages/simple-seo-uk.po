@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.14.0\n"
+"Project-Id-Version: Simple SEO 0.15.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -242,8 +242,24 @@ msgid "The page has expired. Open it again and repeat."
 msgstr "Сторінка застаріла. Відкрийте її знову й повторіть."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+
+#: includes/class-simple-seo-import.php:33
+msgid "Import"
+msgstr "Імпорт"
+
+#: includes/class-simple-seo-import.php:76
+msgid "Simple SEO found the data of Yoast SEO on this site: its settings and the titles, descriptions and other SEO fields of posts and terms. Import them, so the pages keep what was set for them."
+msgstr "Simple SEO знайшов на сайті дані Yoast SEO: його налаштування, а також заголовки, описи та інші SEO-поля записів і термінів. Імпортуйте їх, щоб сторінки зберегли те, що для них задано."
+
+#: includes/class-simple-seo-import.php:79
+msgid "Go to the import"
+msgstr "Перейти до імпорту"
+
+#: includes/class-simple-seo-import.php:81
+msgid "Not now"
+msgstr "Не зараз"
 
 #: includes/class-simple-seo-indexing.php:58
 #: includes/class-simple-seo-indexing.php:103
@@ -861,6 +877,194 @@ msgstr "Показати"
 #: includes/views/tab-files.php:177
 msgid "Restore"
 msgstr "Відновити"
+
+#: includes/views/tab-import.php:20
+msgid "Yoast SEO"
+msgstr "Yoast SEO"
+
+#. translators: 1: number of posts, 2: number of terms.
+#: includes/views/tab-import.php:28
+#, php-format
+msgid "The import is running: %1$s posts and %2$s terms so far. The page goes on by itself; if it stops, press Continue."
+msgstr "Імпорт триває: поки що записів — %1$s, термінів — %2$s. Сторінка продовжує сама; якщо вона зупиниться, натисніть «Продовжити»."
+
+#: includes/views/tab-import.php:31
+msgid "Continue"
+msgstr "Продовжити"
+
+#: includes/views/tab-import.php:39
+msgid "Found on this site:"
+msgstr "Знайдено на сайті:"
+
+#: includes/views/tab-import.php:42
+msgid "the settings of Yoast SEO"
+msgstr "налаштування Yoast SEO"
+
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:45
+#, php-format
+msgid "posts with SEO fields: %s"
+msgstr "записів із SEO-полями: %s"
+
+#. translators: %s: number of terms.
+#: includes/views/tab-import.php:48
+#, php-format
+msgid "terms with SEO fields: %s"
+msgstr "термінів із SEO-полями: %s"
+
+#: includes/views/tab-import.php:51
+msgid "The import fills only what Simple SEO does not have yet: the settings of a tab saved here, and a template or a field that has a value, stay as they are. Yoast's own data is not changed, so the import can be run again and Yoast can be switched back on."
+msgstr "Імпорт заповнює лише те, чого в Simple SEO ще немає: налаштування вкладки, збереженої тут, а також шаблон чи поле, що мають значення, лишаються як є. Власні дані Yoast не змінюються, тож імпорт можна запустити знову, а Yoast — увімкнути назад."
+
+#: includes/views/tab-import.php:52
+msgid "Yoast's %%variables%% become Simple SEO's {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report."
+msgstr "%%змінні%% Yoast стають {змінними} Simple SEO. Змінну, якій у Simple SEO немає відповідника, прибрано з тексту й названо у звіті."
+
+#: includes/views/tab-import.php:55
+msgid "Import again"
+msgstr "Імпортувати знову"
+
+#: includes/views/tab-import.php:55
+msgid "Import from Yoast SEO"
+msgstr "Імпортувати з Yoast SEO"
+
+#: includes/views/tab-import.php:58
+msgid "There is no data of Yoast SEO on this site."
+msgstr "Даних Yoast SEO на сайті немає."
+
+#: includes/views/tab-import.php:62
+msgid "The last import"
+msgstr "Останній імпорт"
+
+#: includes/views/tab-import.php:66
+msgid "the separator"
+msgstr "роздільник"
+
+#. translators: %s: number.
+#: includes/views/tab-import.php:68
+#, php-format
+msgid "templates: %s"
+msgstr "шаблони: %s"
+
+#: includes/views/tab-import.php:69
+msgid "what search engines leave out"
+msgstr "що пошуковики пропускають"
+
+#: includes/views/tab-import.php:70
+msgid "where attachment pages go"
+msgstr "куди ведуть сторінки вкладень"
+
+#: includes/views/tab-import.php:71
+msgid "the default image"
+msgstr "типове зображення"
+
+#: includes/views/tab-import.php:72
+msgid "the X account"
+msgstr "акаунт X"
+
+#. translators: %s: number.
+#: includes/views/tab-import.php:74
+#, php-format
+msgid "the home and 404 pages: %s"
+msgstr "головна сторінка й сторінка 404: %s"
+
+#. translators: %s: number.
+#: includes/views/tab-import.php:76
+#, php-format
+msgid "breadcrumbs: %s"
+msgstr "хлібні крихти: %s"
+
+#. translators: %s: number.
+#: includes/views/tab-import.php:78
+#, php-format
+msgid "breadcrumb labels: %s"
+msgstr "підписи хлібних крихт: %s"
+
+#: includes/views/tab-import.php:79
+msgid "the XML sitemap switched off"
+msgstr "XML-карту сайту вимкнено"
+
+#. translators: %s: number.
+#: includes/views/tab-import.php:81
+#, php-format
+msgid "clean-up: %s"
+msgstr "чистка коду: %s"
+
+#. translators: %s: date and time.
+#: includes/views/tab-import.php:91
+#, php-format
+msgid "Finished: %s."
+msgstr "Завершено: %s."
+
+#. translators: %s: list of settings.
+#: includes/views/tab-import.php:98
+#, php-format
+msgid "Settings taken: %s."
+msgstr "Взято налаштування: %s."
+
+#: includes/views/tab-import.php:99
+msgid "Settings: nothing to take, Simple SEO has its own."
+msgstr "Налаштування: брати нічого, у Simple SEO є свої."
+
+#. translators: %s: language codes.
+#: includes/views/tab-import.php:104
+#, php-format
+msgid "Also the home and 404 pages and the breadcrumb labels of the languages: %s."
+msgstr "А також головну сторінку, сторінку 404 і підписи хлібних крихт мов: %s."
+
+#. translators: 1: posts with Yoast's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
+#: includes/views/tab-import.php:109
+#, php-format
+msgid "Posts: %1$s with Yoast's fields, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
+msgstr "Записи: з полями Yoast — %1$s, із них змінено — %2$s. Заповнено полів: %3$s; лишено, як були в Simple SEO: %4$s; не взято, бо Simple SEO не може зберегти значення: %5$s."
+
+#. translators: 1: terms with Yoast's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
+#: includes/views/tab-import.php:111
+#, php-format
+msgid "Terms: %1$s with Yoast's fields, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
+msgstr "Терміни: з полями Yoast — %1$s, із них змінено — %2$s. Заповнено полів: %3$s; лишено, як були в Simple SEO: %4$s; не взято, бо Simple SEO не може зберегти значення: %5$s."
+
+#. translators: %s: list of variables with how often each was found.
+#: includes/views/tab-import.php:124
+#, php-format
+msgid "Left out of the texts, as Simple SEO has no such variable: %s."
+msgstr "Прибрано з текстів, бо в Simple SEO немає такої змінної: %s."
+
+#: includes/views/tab-import.php:130
+msgid "Not taken, as Simple SEO has nothing for it yet:"
+msgstr "Не взято, бо в Simple SEO для цього поки нічого немає:"
+
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:135
+#, php-format
+msgid "focus keyphrases (posts: %s)"
+msgstr "ключові фрази (записів: %s)"
+
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:137
+#, php-format
+msgid "titles for breadcrumbs (posts: %s)"
+msgstr "заголовки для хлібних крихт (записів: %s)"
+
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:139
+#, php-format
+msgid "titles, descriptions and images for X (posts: %s)"
+msgstr "заголовки, описи й зображення для X (записів: %s)"
+
+#. translators: %s: number of posts.
+#: includes/views/tab-import.php:141
+#, php-format
+msgid "advanced robots settings (posts: %s)"
+msgstr "додаткові налаштування robots (записів: %s)"
+
+#: includes/views/tab-import.php:142
+msgid "templates of titles and descriptions for social networks"
+msgstr "шаблони заголовків і описів для соцмереж"
+
+#: includes/views/tab-import.php:143
+msgid "the texts Yoast's breadcrumbs put before archives and search results and on the 404 page"
+msgstr "тексти, які хлібні крихти Yoast додають перед архівами й результатами пошуку та на сторінці 404"
 
 #: includes/views/tab-indexing.php:16
 #: includes/views/tab-indexing.php:52

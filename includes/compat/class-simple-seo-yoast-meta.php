@@ -145,14 +145,23 @@ final class Simple_SEO_Yoast_Meta {
 		return delete_metadata( 'post', (int) $object_id, Simple_SEO_Fields::meta_key( $key ) );
 	}
 
+	/** Yoast's post meta keys that are aliases on every post (the primary terms come on top). */
+	public static function keys(): array {
+		return array_map( static fn( string $name ): string => self::PREFIX . $name, array_keys( self::FIELDS ) );
+	}
+
+	/** The Simple SEO field of a Yoast key without its prefix ('metadesc' → description); '' for none. */
+	public static function field_of( string $name ): string {
+		return self::FIELDS[ $name ] ?? ( str_starts_with( $name, 'primary_' ) ? $name : '' );
+	}
+
 	/** The Simple SEO field a Yoast key of a post stands for; '' where the key is no alias. */
-	private static function field( string $meta_key, int $post_id ): string {
+	public static function field( string $meta_key, int $post_id ): string {
 		if ( ! str_starts_with( $meta_key, self::PREFIX ) ) {
 			return '';
 		}
 
-		$name  = self::name( $meta_key );
-		$key   = self::FIELDS[ $name ] ?? ( str_starts_with( $name, 'primary_' ) ? $name : '' );
+		$key   = self::field_of( self::name( $meta_key ) );
 		$field = '' !== $key ? Simple_SEO_Fields::get( $key ) : null;
 		if ( null === $field || ! in_array( 'post', (array) $field['objects'], true ) ) {
 			return '';
@@ -203,20 +212,36 @@ final class Simple_SEO_Yoast_Meta {
 	 * @return bool|int What update_metadata() or delete_metadata() returned; false when not written.
 	 */
 	private static function write( string $name, string $key, int $post_id, $value ) {
-		$value    = self::value( $name, $value );
+		$clean    = self::clean( $name, $key, $value );
 		$meta_key = Simple_SEO_Fields::meta_key( $key );
-		if ( '' === $value || false === $value ) {
+		if ( '' === $clean ) {
 			return delete_metadata( 'post', $post_id, $meta_key );
 		}
-
-		// The sanitizer makes nothing of what value() could not take (null) either.
-		$clean = Simple_SEO_Fields::sanitize_value( $key, $value );
-		if ( '' === $clean || false === $clean ) {
+		if ( null === $clean ) {
 			return false;
 		}
 
 		// update_metadata() expects slashed data and unslashes it itself.
 		return update_metadata( 'post', $post_id, $meta_key, wp_slash( $clean ) );
+	}
+
+	/**
+	 * A value in Yoast's form (the key's name without the prefix) as Simple SEO's field keeps it:
+	 * '' for none (Yoast's default too), null for what the field cannot hold. The import uses it too.
+	 *
+	 * @param mixed $value
+	 * @return mixed
+	 */
+	public static function clean( string $name, string $key, $value ) {
+		$value = self::value( $name, $value );
+		if ( '' === $value || false === $value ) {
+			return '';
+		}
+
+		// The sanitizer makes nothing of what value() could not take (null) either.
+		$clean = Simple_SEO_Fields::sanitize_value( $key, $value );
+
+		return '' === $clean || false === $clean ? null : $clean;
 	}
 
 	/**

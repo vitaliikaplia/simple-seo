@@ -41,9 +41,12 @@ final class Simple_SEO_Plugin {
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-editor.php';
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
 
 			Simple_SEO_Admin::init();
 			Simple_SEO_Editor::init();
+			Simple_SEO_Import::init();
 		}
 
 		new Simple_SEO_GitHub_Updater();

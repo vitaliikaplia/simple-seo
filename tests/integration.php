@@ -110,6 +110,16 @@ $sseo_saved_options = array(
 	'blogname'       => get_option( 'blogname' ),
 	'blogdescription' => get_option( 'blogdescription' ),
 	'file_backups'   => get_option( Simple_SEO_Files::BACKUPS_OPTION ),
+	// Yoast's rows as the stand has them (from Yoast's own activation in an earlier check).
+	'yoast'          => array_filter(
+		array(
+			'wpseo'               => get_option( 'wpseo' ),
+			'wpseo_titles'        => get_option( 'wpseo_titles' ),
+			'wpseo_social'        => get_option( 'wpseo_social' ),
+			'wpseo_taxonomy_meta' => get_option( 'wpseo_taxonomy_meta' ),
+		),
+		static fn( $value ): bool => false !== $value
+	),
 );
 
 // robots.txt, .htaccess and the copy next to it as they were: the Files section changes them.
@@ -192,6 +202,13 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	unset( $_COOKIE['admin_lang'] );
 	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%' OR option_name LIKE 'simple\\_seo\\_llms\\_text\\_%'" ) as $sseo_name ) {
 		delete_option( (string) $sseo_name );
+	}
+	// Yoast's rows the import section makes up go; the ones the stand had come back.
+	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name IN ( 'wpseo', 'wpseo_social', 'wpseo_taxonomy_meta', 'simple_seo_import_yoast' ) OR option_name LIKE 'wpseo\\_titles%'" ) as $sseo_name ) {
+		delete_option( (string) $sseo_name );
+	}
+	foreach ( $sseo_saved_options['yoast'] as $sseo_name => $sseo_value ) {
+		add_option( $sseo_name, $sseo_value );
 	}
 };
 register_shutdown_function( $sseo_cleanup );
@@ -3315,6 +3332,417 @@ try {
 	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Yoast import' );
+
+	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
+	require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
+	$sseo_wpdb = $GLOBALS['wpdb'];
+	// A site fresh from Yoast: none of Yoast's rows of the earlier sections or of the stand's own Yoast,
+	// Simple SEO's rows as install() makes them.
+	$sseo_wpdb->query( "DELETE FROM {$sseo_wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%'" );
+	wp_cache_flush();
+	foreach ( array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Import::OPTION ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	$sseo_yi_rows = array( Simple_SEO_Titles::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Sitemaps::OPTION, Simple_SEO_Cleanup::OPTION );
+	foreach ( $sseo_yi_rows as $sseo_name ) {
+		// Earlier sections registered the tabs' sanitizers, which fill a row with its defaults even
+		// on add_option(); on a site install() runs before them and the rows start empty.
+		remove_all_filters( 'sanitize_option_' . $sseo_name );
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
+	sseo_check( 'no data of Yoast: nothing found, nothing to import', ! Simple_SEO_Yoast_Import::found() && array( 'settings' => false, 'posts' => 0, 'terms' => 0 ) === Simple_SEO_Yoast_Import::summary() );
+	Simple_SEO_Import::detect();
+	sseo_check( 'the first admin request finds nothing to offer', 'none' === Simple_SEO_Import::state()['status'] );
+	delete_option( Simple_SEO_Import::OPTION );
+	update_option( 'wpseo_taxonomy_meta', array( 'category' => array( $sseo_news => array( 'wpseo_title' => 'x' ) ) ) );
+	$sseo_yi_by     = array( Simple_SEO_Yoast_Import::found() );
+	$sseo_yi_report = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_report );
+	delete_option( 'wpseo_taxonomy_meta' );
+	$sseo_ym_insert( $sseo['posts']['bc'], array( '_yoast_wpseo_focuskw' => 'x' ) );
+	$sseo_yi_by[] = Simple_SEO_Yoast_Import::found();
+	$sseo_wpdb->query( "DELETE FROM {$sseo_wpdb->postmeta} WHERE meta_key = '_yoast_wpseo_focuskw'" );
+	wp_cache_delete( $sseo['posts']['bc'], 'post_meta' );
+	sseo_check( "found by Yoast's terms alone or by any of its post meta; without Yoast's settings none are taken", array( true, true ) === $sseo_yi_by && array() === $sseo_yi_report && array() === get_option( Simple_SEO_Indexing::OPTION ), $sseo_yi_report );
+
+	register_post_type(
+		'sseo_yi_book',
+		array(
+			'public'      => true,
+			'has_archive' => true,
+			'label'       => 'Books',
+		)
+	);
+	// Breadcrumbs follow a hierarchical taxonomy; the first one is a type's default.
+	foreach ( array( 'sseo_yi_shelf', 'sseo_yi_room' ) as $sseo_name ) {
+		register_taxonomy(
+			$sseo_name,
+			'sseo_yi_book',
+			array(
+				'public'       => true,
+				'hierarchical' => true,
+				'label'        => $sseo_name,
+			)
+		);
+	}
+	Simple_SEO_Fields::flush_types();
+	$sseo_yi_url  = static fn( int $id ): string => (string) wp_get_attachment_url( $id );
+	$sseo_yi_tag  = wp_insert_term( 'Yi Tag', 'post_tag' );
+	$sseo_yi_cat  = wp_insert_term( 'Yi Cat', 'category' );
+	$sseo_yi_cat2 = wp_insert_term( 'Yi Cat Two', 'category' );
+	// A taxonomy without SEO fields: post formats.
+	$sseo_yi_fmt = wp_insert_term( 'post-format-sseo-yi', 'post_format' );
+	foreach ( array( 'post_tag' => $sseo_yi_tag, 'category' => $sseo_yi_cat, 'post_format' => $sseo_yi_fmt ) as $sseo_name => $sseo_term ) {
+		$sseo['terms'][] = array( (int) $sseo_term['term_id'], $sseo_name );
+	}
+	$sseo['terms'][] = array( (int) $sseo_yi_cat2['term_id'], 'category' );
+	$sseo_yi_fmt     = (int) $sseo_yi_fmt['term_id'];
+	$sseo_yi_tag  = (int) $sseo_yi_tag['term_id'];
+	$sseo_yi_cat  = (int) $sseo_yi_cat['term_id'];
+	$sseo_yi_cat2 = (int) $sseo_yi_cat2['term_id'];
+
+	// Yoast's settings, as Yoast keeps them.
+	update_option(
+		'wpseo_titles',
+		array(
+			'separator'                     => 'sc-pipe',
+			'title-home-wpseo'              => '%%sitename%% %%page%% %%sep%% %%sitedesc%%',
+			'metadesc-home-wpseo'           => 'Home of %%sitename%%',
+			'title-404-wpseo'               => 'Nothing here %%sep%% %%sitename%%',
+			'title-search-wpseo'            => 'You searched for %%searchphrase%% %%page%% %%sep%% %%sitename%%',
+			'title-author-wpseo'            => '%%name%%, author at %%sitename%%',
+			'metadesc-author-wpseo'         => '',
+			'title-archive-wpseo'           => '%%date%% %%page%% %%sep%% %%sitename%%',
+			'title-post'                    => '%%title%% %%page%% %%sep%% %%sitename%%',
+			'metadesc-post'                 => '%%excerpt%% %%modified%%',
+			'title-page'                    => '%%title%% | %%sitename%%',
+			'metadesc-page'                 => 'Page about %%title%% %%cf_price%%',
+			'title-tax-category'            => '%%term_title%% Archives %%page%% %%sep%% %%sitename%%',
+			'metadesc-tax-category'         => '%%term_description%%',
+			'title-ptarchive-sseo_yi_book'  => '%%pt_plural%% Archive %%page%% %%sep%% %%sitename%%',
+			'title-ptarchive-post'          => 'Never used: posts have no archive',
+			'noindex-tax-post_tag'          => true,
+			'noindex-author-wpseo'          => false,
+			'noindex-archive-wpseo'         => true,
+			'noindex-sseo_yi_book'          => true,
+			'noindex-ptarchive-sseo_yi_book' => true,
+			'noindex-attachment'            => false,
+			'disable-attachment'            => true,
+			'breadcrumbs-sep'               => '&raquo;',
+			'breadcrumbs-home'              => 'Home',
+			'breadcrumbs-prefix'            => 'You are here:',
+			'breadcrumbs-display-blog-page' => false,
+			'breadcrumbs-archiveprefix'     => 'Archives for',
+			'post_types-post-maintax'       => 'post_tag',
+			'post_types-sseo_yi_book-maintax' => 'sseo_yi_room',
+			'post_types-page-maintax'       => 0,
+			'social-title-post'             => '%%title%%',
+			'open_graph_frontpage_image_id' => $sseo_og,
+		)
+	);
+	update_option(
+		'wpseo_social',
+		array(
+			'og_default_image_id' => $sseo_default,
+			'twitter_site'        => 'yoastsite',
+		)
+	);
+	update_option(
+		'wpseo',
+		array(
+			'enable_xml_sitemap'   => false,
+			'remove_generator'     => false,
+			'remove_shortlinks'    => true,
+			'remove_emoji_scripts' => true,
+			'remove_feed_authors'  => true,
+		)
+	);
+	update_option(
+		'wpseo_taxonomy_meta',
+		array(
+			'post_tag'    => array(
+				$sseo_yi_tag => array(
+					'wpseo_desc'    => 'Tag desc',
+					'wpseo_noindex' => 'default',
+				),
+			),
+			'category'    => array(
+				$sseo_yi_cat  => array(
+					'wpseo_title'           => '%%term_title%% best %%sep%% %%sitename%%',
+					'wpseo_desc'            => 'Cat desc',
+					'wpseo_noindex'         => 'noindex',
+					'wpseo_canonical'       => 'https://example.com/cat/',
+					'wpseo_opengraph-image' => $sseo_yi_url( $sseo_feat ),
+					'wpseo_focuskw'         => 'cat focus',
+				),
+				$sseo_yi_cat2 => array( 'wpseo_title' => 'Yoast cat two' ),
+				99999999      => array( 'wpseo_title' => 'A term that is gone' ),
+			),
+			'sseo_nope'   => array( 1 => array( 'wpseo_title' => 'A taxonomy that is gone' ) ),
+			'post_format' => array( $sseo_yi_fmt => array( 'wpseo_title' => 'A format' ) ),
+		)
+	);
+
+	// Posts with Yoast's fields, written as Yoast wrote them.
+	$sseo['posts']['yi_1']    = (int) wp_insert_post( array( 'post_title' => 'Yi One', 'post_status' => 'publish', 'post_category' => array( $sseo_news, $sseo_sport ) ) );
+	$sseo['posts']['yi_2']    = (int) wp_insert_post( array( 'post_title' => 'Yi Two', 'post_status' => 'publish' ) );
+	$sseo['posts']['yi_page'] = (int) wp_insert_post( array( 'post_title' => 'Yi Page', 'post_type' => 'page', 'post_status' => 'publish' ) );
+	$sseo['posts']['yi_menu'] = (int) wp_insert_post( array( 'post_title' => 'Yi Menu', 'post_type' => 'nav_menu_item', 'post_status' => 'publish' ) );
+	$sseo_yi_1                = $sseo['posts']['yi_1'];
+	$sseo_yi_2                = $sseo['posts']['yi_2'];
+	$sseo_yi_page             = $sseo['posts']['yi_page'];
+	$sseo_ym_insert(
+		$sseo_yi_1,
+		array(
+			'_yoast_wpseo_title'                 => '%%title%% %%sep%% %%sitename%%',
+			'_yoast_wpseo_metadesc'              => 'Desc %%modified%%',
+			'_yoast_wpseo_opengraph-title'       => 'OG %%title%% \\o/',
+			'_yoast_wpseo_opengraph-image-id'    => (string) $sseo_pdf,
+			'_yoast_wpseo_opengraph-image'       => $sseo_yi_url( $sseo_og ),
+			'_yoast_wpseo_meta-robots-noindex'   => '1',
+			'_yoast_wpseo_meta-robots-nofollow'  => '1',
+			'_yoast_wpseo_canonical'             => 'https://example.com/one/',
+			'_yoast_wpseo_primary_category'      => (string) $sseo_news,
+			'_yoast_wpseo_focuskw'               => 'one focus',
+			'_yoast_wpseo_twitter-title'         => 'X one',
+			'_yoast_wpseo_twitter-description'   => 'X one desc',
+		)
+	);
+	$sseo_ym_insert(
+		$sseo_yi_2,
+		array(
+			'_yoast_wpseo_title'               => 'Yoast two',
+			'_yoast_wpseo_metadesc'            => '',
+			'_yoast_wpseo_meta-robots-noindex' => '2',
+			'_yoast_wpseo_opengraph-image'     => 'https://elsewhere.example/picture.jpg',
+			'_yoast_wpseo_meta-robots-adv'     => 'noimageindex',
+			'_yoast_wpseo_canonical'           => 'https://example.com/first/',
+		)
+	);
+	// A second row of a key: as get_post_meta() reads it, the first one counts.
+	$sseo_ym_insert( $sseo_yi_2, array( '_yoast_wpseo_canonical' => 'https://example.com/second/' ) );
+	$sseo_ym_insert(
+		$sseo_yi_page,
+		array(
+			'_yoast_wpseo_title'            => 'Page T',
+			'_yoast_wpseo_primary_category' => '5',
+			'_yoast_wpseo_opengraph-image-id' => (string) $sseo_feat,
+			'_yoast_wpseo_opengraph-image'  => $sseo_yi_url( $sseo_og ),
+		)
+	);
+	$sseo_ym_insert( $sseo['posts']['yi_menu'], array( '_yoast_wpseo_title' => 'A menu item' ) );
+	update_post_meta( $sseo_yi_2, Simple_SEO_Fields::meta_key( 'title' ), 'Own two' );
+	update_term_meta( $sseo_yi_cat2, Simple_SEO_Fields::meta_key( 'title' ), 'Own cat two' );
+	$sseo_yi_raw = (int) $sseo_wpdb->get_var( "SELECT COUNT(*) FROM {$sseo_wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%'" );
+
+	sseo_check( "Yoast's data found: settings, posts and terms with SEO fields (an empty value is none)", Simple_SEO_Yoast_Import::found() && array( 'settings' => true, 'posts' => 4, 'terms' => 6 ) === Simple_SEO_Yoast_Import::summary(), Simple_SEO_Yoast_Import::summary() );
+	Simple_SEO_Import::detect();
+	sseo_check( 'the first admin request offers the import', 'pending' === Simple_SEO_Import::state()['status'] );
+
+	// Simple SEO's own choices, saved before the import.
+	update_option( Simple_SEO_Titles::OPTION, array( 'templates' => array( 'post:page' => array( 'title' => 'Own page {title}' ) ) ) );
+	update_option( Simple_SEO_Social::OPTION, array( 'x_account' => '@mine' ) );
+	update_option( Simple_SEO_Special::OPTION, array( '404' => array( 'title' => 'Own 404' ) ) );
+	update_option( Simple_SEO_Breadcrumbs::LABELS, array( 'home' => 'My home' ) );
+	update_option( Simple_SEO_Breadcrumbs::OPTION, array( 'separator' => '/' ) );
+	update_option( Simple_SEO_Cleanup::OPTION, array( 'emoji' => false ) );
+	Simple_SEO_Settings::flush();
+
+	// Settings.
+	$sseo_yi_report = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_report );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_titles = get_option( Simple_SEO_Titles::OPTION );
+	sseo_check( "the separator by Yoast's name of it", '|' === $sseo_yi_titles['separator'] && '|' === Simple_SEO_Titles::separator() );
+	sseo_check(
+		"templates in Simple SEO's syntax; Simple SEO's own one stays; ones equal to its defaults are not kept",
+		array(
+			'post:page'           => array(
+				'title'       => 'Own page {title}',
+				'description' => 'Page about {title}',
+			),
+			'author'              => array( 'title' => '{author}, author at {site}' ),
+			'date'                => array( 'title' => '{date} {page} {sep} {site}' ),
+			'search'              => array( 'title' => 'You searched for {search} {page} {sep} {site}' ),
+			'archive:sseo_yi_book' => array( 'title' => '{title} Archive {page} {sep} {site}' ),
+			'term:category'       => array( 'title' => '{title} Archives {page} {sep} {site}' ),
+		) == $sseo_yi_titles['templates'], // phpcs:ignore Universal.Operators.StrictComparisons -- the order of slots is the importer's.
+		$sseo_yi_titles['templates']
+	);
+	sseo_check( 'a variable Simple SEO has no counterpart for is left out and counted; %%pt_plural%% of an archive is its title', array( 'modified' => 1, 'cf_price' => 1 ) === $sseo_yi_report['dropped'] && ! str_contains( (string) wp_json_encode( $sseo_yi_titles ), '%%' ), $sseo_yi_report['dropped'] );
+	$sseo_yi_index = get_option( Simple_SEO_Indexing::OPTION );
+	sseo_check( 'indexing: what Yoast hid, attachment pages to the file', array( 'post:sseo_yi_book', 'archive:sseo_yi_book', 'post:attachment', 'term:post_tag', 'date' ) === $sseo_yi_index['noindex'] && Simple_SEO_Indexing::ATTACHMENTS_FILE === $sseo_yi_index['attachments'], $sseo_yi_index );
+	sseo_check( "social networks: the default image, Simple SEO's own X account stays", array( 'default_image' => $sseo_default, 'x_account' => '@mine' ) === get_option( Simple_SEO_Social::OPTION ) );
+	sseo_check( "home and 404: Yoast's description and image of the home page, Simple SEO's own 404 title stays", array( '404' => array( 'title' => 'Own 404' ), 'home' => array( 'description' => 'Home of {site}', 'image' => $sseo_og ) ) == get_option( Simple_SEO_Special::OPTION ), get_option( Simple_SEO_Special::OPTION ) ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_yi_bc = get_option( Simple_SEO_Breadcrumbs::OPTION );
+	sseo_check( "breadcrumbs: Simple SEO's own separator stays, the posts page left out, a type's taxonomy (not a flat one)", '/' === $sseo_yi_bc['separator'] && false === $sseo_yi_bc['show_blog'] && array( 'sseo_yi_book' => 'sseo_yi_room' ) === $sseo_yi_bc['taxonomies'], $sseo_yi_bc );
+	sseo_check( "breadcrumb labels as Yoast had them (not translated); Simple SEO's own one stays", array( 'home' => 'My home', 'prefix' => 'You are here:' ) === get_option( Simple_SEO_Breadcrumbs::LABELS ) );
+	sseo_check( 'the sitemap Yoast switched off', array( 'enabled' => false ) === get_option( Simple_SEO_Sitemaps::OPTION ) );
+	$sseo_yi_clean = get_option( Simple_SEO_Cleanup::OPTION );
+	sseo_check( "clean-up: what Yoast removed; Simple SEO's own choice and defaults stay", '1' === $sseo_yi_clean['feed_authors'] && '0' === $sseo_yi_clean['emoji'] && '1' === $sseo_yi_clean['generator'] && '1' === $sseo_yi_clean['shortlink'] && '0' === $sseo_yi_clean['feed_tags'], $sseo_yi_clean );
+	sseo_check(
+		'the report names what was taken and what Simple SEO has nothing for',
+		array(
+			'separator'     => 1,
+			'templates'     => 6,
+			'indexing'      => 1,
+			'attachments'   => 1,
+			'breadcrumbs'   => 2,
+			'special'       => 2,
+			'labels'        => 1,
+			'default_image' => 1,
+			'sitemaps'      => 1,
+			'cleanup'       => 1,
+		) === $sseo_yi_report['settings'] && array( 'breadcrumb_texts' => 1, 'social_templates' => 1 ) == $sseo_yi_report['left'], // phpcs:ignore Universal.Operators.StrictComparisons
+		$sseo_yi_report
+	);
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	sseo_check( 'run again: nothing more to take, what was taken is Simple SEO\'s now', ! isset( $sseo_yi_again['settings'] ) && '|' === get_option( Simple_SEO_Titles::OPTION )['separator'], $sseo_yi_again );
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	sseo_check( "without a breadcrumb separator of Simple SEO's own: Yoast's, its HTML entity decoded", '»' === get_option( Simple_SEO_Breadcrumbs::OPTION )['separator'] && array( 'breadcrumbs' => 3 ) === $sseo_yi_again['settings'], $sseo_yi_again );
+
+	// Posts.
+	$sseo_yi_report = array();
+	$sseo_yi_next   = Simple_SEO_Yoast_Import::posts( 0, 1, $sseo_yi_report );
+	sseo_check( 'posts in batches, by ID', $sseo_yi_1 === $sseo_yi_next && 1 === $sseo_yi_report['post']['seen'] );
+	$sseo_yi_next = Simple_SEO_Yoast_Import::posts( $sseo_yi_next, 100, $sseo_yi_report );
+	sseo_check( 'the last batch ends with the last post, then nothing is left', $sseo['posts']['yi_menu'] === $sseo_yi_next && 0 === Simple_SEO_Yoast_Import::posts( $sseo_yi_next, 100, $sseo_yi_report ) );
+	$sseo_yi_1_fields = array();
+	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category' ) as $sseo_key ) {
+		$sseo_yi_1_fields[ $sseo_key ] = Simple_SEO_Fields::post_value( $sseo_yi_1, $sseo_key );
+	}
+	sseo_check(
+		"a post's fields: texts in Simple SEO's syntax, the image by its address where its ID is no image, robots, canonical, primary category",
+		array(
+			'title'            => '{title} {sep} {site}',
+			'description'      => 'Desc',
+			'og_title'         => 'OG {title} \\o/',
+			'og_image'         => (string) $sseo_og,
+			'index'            => 'noindex',
+			'nofollow'         => '1',
+			'canonical'        => 'https://example.com/one/',
+			'primary_category' => (string) $sseo_news,
+		) === $sseo_yi_1_fields,
+		$sseo_yi_1_fields
+	);
+	sseo_check( "Simple SEO's own field stays; Yoast's index 2 is index; an image elsewhere is not taken; of two rows the first", 'Own two' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'title' ) && 'index' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'og_image' ) && 'https://example.com/first/' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'canonical' ) );
+	sseo_check( 'a page: its title, the image by its ID before its address; no primary category, pages have none; a post type without SEO fields is left alone', 'Page T' === Simple_SEO_Fields::post_value( $sseo_yi_page, 'title' ) && (string) $sseo_feat === Simple_SEO_Fields::post_value( $sseo_yi_page, 'og_image' ) && '' === Simple_SEO_Fields::post_value( $sseo_yi_page, 'primary_category' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['yi_menu'], 'title' ) );
+	sseo_check( 'the report of the posts', array( 'seen' => 3, 'fields' => 12, 'changed' => 3, 'kept' => 1, 'refused' => 1 ) == $sseo_yi_report['post'] && array( 'modified' => 1 ) === $sseo_yi_report['dropped'], $sseo_yi_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "Yoast's rows are left as they were", $sseo_yi_raw === (int) $sseo_wpdb->get_var( "SELECT COUNT(*) FROM {$sseo_wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%'" ) && array( '%%title%% %%sep%% %%sitename%%' ) === $sseo_ym_rows( '_yoast_wpseo_title', $sseo_yi_1 ) );
+
+	// Terms.
+	$sseo_yi_report = array();
+	$sseo_yi_next   = Simple_SEO_Yoast_Import::terms( 0, 2, $sseo_yi_report );
+	$sseo_yi_first  = array( Simple_SEO_Fields::term_value( $sseo_yi_cat, 'description' ), Simple_SEO_Fields::term_value( $sseo_yi_tag, 'description' ) );
+	sseo_check( 'terms in batches, in a fixed order: by taxonomy, then by ID', 2 === $sseo_yi_next && array( 'Cat desc', '' ) === $sseo_yi_first && 4 === Simple_SEO_Yoast_Import::terms( 2, 2, $sseo_yi_report ) && 6 === Simple_SEO_Yoast_Import::terms( 4, 2, $sseo_yi_report ) && 0 === Simple_SEO_Yoast_Import::terms( 6, 2, $sseo_yi_report ), $sseo_yi_first );
+	$sseo_yi_cat_fields = array();
+	foreach ( array( 'title', 'description', 'index', 'canonical', 'og_image' ) as $sseo_key ) {
+		$sseo_yi_cat_fields[ $sseo_key ] = Simple_SEO_Fields::term_value( $sseo_yi_cat, $sseo_key );
+	}
+	sseo_check(
+		"a term's fields: noindex, canonical, the image by its address",
+		array(
+			'title'       => '{title} best {sep} {site}',
+			'description' => 'Cat desc',
+			'index'       => 'noindex',
+			'canonical'   => 'https://example.com/cat/',
+			'og_image'    => (string) $sseo_feat,
+		) === $sseo_yi_cat_fields,
+		$sseo_yi_cat_fields
+	);
+	sseo_check( "Simple SEO's own field stays; Yoast's default noindex is none; terms that are gone, or of a taxonomy without SEO fields, are left alone", 'Own cat two' === Simple_SEO_Fields::term_value( $sseo_yi_cat2, 'title' ) && 'Tag desc' === Simple_SEO_Fields::term_value( $sseo_yi_tag, 'description' ) && '' === Simple_SEO_Fields::term_value( $sseo_yi_tag, 'index' ) && '' === Simple_SEO_Fields::term_value( $sseo_yi_fmt, 'title' ) );
+	sseo_check( 'the report of the terms', array( 'seen' => 3, 'fields' => 6, 'changed' => 2, 'kept' => 1 ) == $sseo_yi_report['term'], $sseo_yi_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "what Simple SEO has no field for, by posts", array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1 ) === Simple_SEO_Yoast_Import::left(), Simple_SEO_Yoast_Import::left() );
+
+	// The whole run, a few seconds at a time.
+	sseo_check( 'putting the offer off', 'dismissed' === ( static function (): string {
+		Simple_SEO_Import::act( 'dismiss' );
+		return (string) Simple_SEO_Import::state()['status'];
+	} )() );
+	Simple_SEO_Import::start();
+	$sseo_yi_steps = 0;
+	do {
+		$sseo_yi_state = Simple_SEO_Import::run( 0.0 );
+		++$sseo_yi_steps;
+	} while ( 'running' === $sseo_yi_state['status'] && $sseo_yi_steps < 20 );
+	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_yi_state['status'] && 5 === $sseo_yi_steps && isset( $sseo_yi_state['finished'] ), array( $sseo_yi_steps, $sseo_yi_state['status'] ) );
+	sseo_check( 'run again: everything is Simple SEO\'s already, kept', ! isset( $sseo_yi_state['report']['settings'] ) && 0 === ( $sseo_yi_state['report']['post']['fields'] ?? 0 ) && 13 === $sseo_yi_state['report']['post']['kept'] && 7 === $sseo_yi_state['report']['term']['kept'] && array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1, 'breadcrumb_texts' => 1, 'social_templates' => 1 ) == $sseo_yi_state['report']['left'], $sseo_yi_state['report'] ); // phpcs:ignore Universal.Operators.StrictComparisons
+	Simple_SEO_Import::act( 'dismiss' );
+	Simple_SEO_Import::detect();
+	sseo_check( 'a run done is not put off, nor offered again', 'done' === Simple_SEO_Import::state()['status'] );
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'running', 'phase' => 'terms', 'cursor' => 5, 'report' => array( 'post' => array( 'seen' => 99 ) ) ) );
+	Simple_SEO_Import::act( 'start' );
+	sseo_check( 'starting while a run goes on continues it', 'done' === Simple_SEO_Import::state()['status'] && 99 === Simple_SEO_Import::state()['report']['post']['seen'] );
+	update_option( Simple_SEO_Import::OPTION, $sseo_yi_state );
+
+	// The admin.
+	wp_set_current_user( $sseo_u['administrator'] );
+	Simple_SEO_Import::add_admin_tab();
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'pending' ) );
+	set_current_screen( 'dashboard' );
+	$sseo_html = sseo_capture( array( Simple_SEO_Import::class, 'notice' ) );
+	sseo_check( 'the notice offers the import, and putting it off', str_contains( $sseo_html, 'Go to the import' ) && str_contains( $sseo_html, 'value="dismiss"' ) && str_contains( $sseo_html, 'name="_wpnonce"' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Admin::url( 'import' ) ) ) );
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab'] = 'import';
+	$sseo_yi_notice_tab = sseo_capture( array( Simple_SEO_Import::class, 'notice' ) );
+	$sseo_html          = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check( 'not on the Import tab itself; the tab lists what was found and the button', '' === $sseo_yi_notice_tab && str_contains( $sseo_html, 'posts with SEO fields: 4' ) && str_contains( $sseo_html, 'terms with SEO fields: 6' ) && str_contains( $sseo_html, 'value="start"' ) && str_contains( $sseo_html, 'Import from Yoast SEO' ) );
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'dismissed' ) );
+	sseo_check( 'no notice once put off', '' === sseo_capture( array( Simple_SEO_Import::class, 'notice' ) ) );
+	wp_set_current_user( $sseo_ed );
+	update_option( Simple_SEO_Import::OPTION, array( 'status' => 'pending' ) );
+	sseo_check( 'no notice without the settings capability', '' === sseo_capture( array( Simple_SEO_Import::class, 'notice' ) ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( Simple_SEO_Import::OPTION, array_merge( $sseo_yi_state, array( 'status' => 'running', 'report' => array( 'post' => array( 'seen' => 1234 ) ) ) ) );
+	$_GET['tab'] = 'import';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'while running: the progress and a Continue button the page presses by itself', str_contains( $sseo_html, '1,234 posts and 0 terms so far' ) && str_contains( $sseo_html, 'data-simple-seo-continue="1"' ) && str_contains( $sseo_html, 'value="continue"' ) && ! str_contains( $sseo_html, 'value="start"' ) );
+	update_option( Simple_SEO_Import::OPTION, $sseo_yi_state );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	sseo_check( 'after a run: the report and Import again', str_contains( $sseo_html, 'The last import' ) && str_contains( $sseo_html, 'Import again' ) && str_contains( $sseo_html, 'Posts: 3 with Yoast&#039;s fields, 0 of them changed.' ) && str_contains( $sseo_html, 'focus keyphrases (posts: 1)' ) && str_contains( $sseo_html, 'Settings: nothing to take, Simple SEO has its own.' ), $sseo_html );
+	wp_set_current_user( 0 );
+
+	if ( Simple_SEO_WP_Loc::active() && count( Simple_SEO_WP_Loc::codes() ) > 1 ) {
+		// wp-loc keeps Yoast's settings of another language in a copy of the row named after it.
+		$sseo_yi_code = Simple_SEO_WP_Loc::codes()[1];
+		$sseo_yi_slug = (string) ( WP_LOC_DB::from_db_language_code( $sseo_yi_code ) ?: $sseo_yi_code );
+		update_option( 'wpseo_titles_' . $sseo_yi_code, array( 'title-home-wpseo' => 'Other %%sitename%%', 'breadcrumbs-home' => 'Startseite' ) );
+		foreach ( array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS ) as $sseo_name ) {
+			delete_option( $sseo_name );
+			delete_option( $sseo_name . '_' . $sseo_yi_code );
+		}
+		// An admin who edits the other language: wp-loc would send a save of the base row to its copy.
+		set_current_screen( 'dashboard' );
+		$_COOKIE['admin_lang'] = WP_LOC_Languages::get_language_locale( $sseo_yi_slug );
+		$sseo_yi_report        = array();
+		Simple_SEO_Yoast_Import::settings( $sseo_yi_report );
+		$sseo_yi_cookie = $_COOKIE['admin_lang'] ?? '';
+		unset( $_COOKIE['admin_lang'], $GLOBALS['current_screen'] );
+		sseo_check( "wp-loc: the other language's home page and breadcrumb label go to its rows", array( 'home' => array( 'title' => 'Other {site}' ) ) === get_option( Simple_SEO_Special::OPTION . '_' . $sseo_yi_code ) && 'Startseite' === ( get_option( Simple_SEO_Breadcrumbs::LABELS . '_' . $sseo_yi_code )['home'] ?? '' ) && array( $sseo_yi_code ) === $sseo_yi_report['languages'], $sseo_yi_report );
+		sseo_check( "wp-loc: the default language's rows are written as themselves, whatever language the admin edits", 'Home of {site}' === ( WP_LOC_Options::get_unfiltered_option( Simple_SEO_Special::OPTION )[1]['home']['description'] ?? '' ) && 'Home' === ( WP_LOC_Options::get_unfiltered_option( Simple_SEO_Breadcrumbs::LABELS )[1]['home'] ?? '' ) && WP_LOC_Languages::get_language_locale( $sseo_yi_slug ) === $sseo_yi_cookie );
+	} else {
+		echo "  skip  the import with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+
+	foreach ( array_merge( $sseo_yi_rows, array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Import::OPTION ) ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
+	unregister_taxonomy( 'sseo_yi_shelf' );
+	unregister_taxonomy( 'sseo_yi_room' );
+	unregister_post_type( 'sseo_yi_book' );
+	Simple_SEO_Fields::flush_types();
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -3332,6 +3760,7 @@ try {
 	sseo_check( 'the llms.txt tab is translated', 'Посилань у розділі' === __( 'Links in a section', 'simple-seo' ) && 'Інші мови:' === __( 'Other languages:', 'simple-seo' ) );
 	sseo_check( 'the Clean-up tab is translated', 'Чистка коду' === __( 'Clean-up', 'simple-seo' ) && 'Версія WordPress' === __( 'WordPress version', 'simple-seo' ) );
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
+	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з Yoast SEO' === __( 'Import from Yoast SEO', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 

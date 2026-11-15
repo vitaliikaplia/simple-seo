@@ -102,4 +102,12 @@
 		field.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 		field.focus();
 	} );
+
+	// The import goes on by itself, a request at a time; the button stays for a page that stops.
+	var next = document.querySelector( '[data-simple-seo-continue]' );
+	if ( next ) {
+		window.setTimeout( function () {
+			next.click();
+		}, 300 );
+	}
 }() );
