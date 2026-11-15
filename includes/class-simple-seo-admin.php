@@ -35,7 +35,8 @@ final class Simple_SEO_Admin {
 	/**
 	 * Add a settings tab. Call it on init (or later, before admin_init): the label is translated.
 	 *
-	 * @param string[] $options Option rows saved by the tab's form, registered with Simple_SEO_Settings.
+	 * @param string[] $options Option rows saved by the tab's form, registered with Simple_SEO_Settings;
+	 *                          none: the tab prints its own forms.
 	 * @param callable $render  Prints the tab's fields; the page prints the form around them.
 	 */
 	public static function add_tab( string $id, string $label, array $options, callable $render, int $order = 50 ): void {

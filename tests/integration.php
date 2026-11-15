@@ -103,7 +103,18 @@ $sseo_saved_options = array(
 	'breadcrumbs'    => get_option( Simple_SEO_Breadcrumbs::OPTION ),
 	'bc_labels'      => get_option( Simple_SEO_Breadcrumbs::LABELS ),
 	'blog_public'    => get_option( 'blog_public' ),
+	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
+	'file_backups'   => get_option( Simple_SEO_Files::BACKUPS_OPTION ),
 );
+
+// robots.txt, .htaccess and the copy next to it as they were: the Files section changes them.
+require_once ABSPATH . 'wp-admin/includes/file.php';
+$sseo_saved_files = array();
+foreach ( array( 'robots.txt', '.htaccess', Simple_SEO_Files::DISK_COPY ) as $sseo_name ) {
+	$sseo_path                      = get_home_path() . $sseo_name;
+	$sseo_saved_files[ $sseo_path ] = is_file( $sseo_path ) ? (string) file_get_contents( $sseo_path ) : null;
+}
+$sseo_saved_apache = $GLOBALS['is_apache'] ?? false;
 
 try {
 	// ------------------------------------------------------------------------------------------
@@ -1906,6 +1917,337 @@ try {
 	}
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Files: robots.txt and .htaccess' );
+
+	$sseo_robots_path = Simple_SEO_Files::path( Simple_SEO_Files::ROBOTS );
+	$sseo_ht_path     = Simple_SEO_Files::path( Simple_SEO_Files::HTACCESS );
+	$sseo_copy_path   = dirname( $sseo_ht_path ) . '/' . Simple_SEO_Files::DISK_COPY;
+	foreach ( array( $sseo_robots_path, $sseo_ht_path, $sseo_copy_path ) as $sseo_path ) {
+		if ( is_file( $sseo_path ) ) {
+			unlink( $sseo_path );
+		}
+	}
+	delete_option( Simple_SEO_Files::ROBOTS_OPTION );
+	delete_option( Simple_SEO_Files::BACKUPS_OPTION );
+	update_option( 'blog_public', '1' );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_fp = static fn( string $file ): string => Simple_SEO_Files::fingerprint( Simple_SEO_Files::current( $file ) );
+
+	sseo_check( 'the paths are the site root', ABSPATH . 'robots.txt' === $sseo_robots_path && ABSPATH . '.htaccess' === $sseo_ht_path, array( $sseo_robots_path, $sseo_ht_path ) );
+	sseo_check( 'the robots.txt text replaces the WordPress lines before other filters', -10 === has_filter( 'robots_txt', array( Simple_SEO_Files::class, 'robots_txt' ) ) );
+	remove_filter( 'robots_txt', array( Simple_SEO_Files::class, 'robots_txt' ), -10 );
+	remove_filter( 'robots_txt', array( Simple_SEO_Sitemaps::class, 'robots_txt' ), 20 );
+	$sseo_core_robots = sseo_capture( 'do_robots' );
+	add_filter( 'robots_txt', array( Simple_SEO_Files::class, 'robots_txt' ), -10, 2 );
+	add_filter( 'robots_txt', array( Simple_SEO_Sitemaps::class, 'robots_txt' ), 20, 2 );
+	sseo_check( 'the default text is what WordPress itself serves', $sseo_core_robots === Simple_SEO_Files::robots_default(), $sseo_core_robots );
+	sseo_check( 'without a robots.txt file the virtual one is edited, starting from the WordPress text', ! Simple_SEO_Files::robots_is_file() && Simple_SEO_Files::robots_default() === Simple_SEO_Files::current( 'robots' ) );
+	sseo_check( 'nothing saved: robots.txt passes through', "X\n" === Simple_SEO_Files::robots_txt( "X\n", true ) );
+	sseo_check( 'a missing .htaccess reads as empty', '' === Simple_SEO_Files::current( 'htaccess' ) );
+
+	$sseo_res = Simple_SEO_Files::save( 'robots', "User-agent: *\r\nDisallow: /private/\r\n\r\n\r\n", $sseo_fp( 'robots' ) );
+	sseo_check( 'the virtual robots.txt is saved', $sseo_res['ok'] && 'saved' === $sseo_res['code'] && str_contains( $sseo_res['message'], 'robots.txt' ), $sseo_res );
+	sseo_check( 'with one kind of line ending and one line break at the end', "User-agent: *\nDisallow: /private/\n" === get_option( Simple_SEO_Files::ROBOTS_OPTION ), get_option( Simple_SEO_Files::ROBOTS_OPTION ) );
+	$sseo_autoload = $GLOBALS['wpdb']->get_col( "SELECT autoload FROM {$GLOBALS['wpdb']->options} WHERE option_name IN ('" . Simple_SEO_Files::ROBOTS_OPTION . "', '" . Simple_SEO_Files::BACKUPS_OPTION . "')" );
+	sseo_check( 'the text and the history are not autoloaded', 2 === count( $sseo_autoload ) && ! array_intersect( $sseo_autoload, wp_autoload_values_to_autoload() ), $sseo_autoload );
+	$sseo_hist = Simple_SEO_Files::history( 'robots' );
+	sseo_check( 'the history keeps the WordPress text it replaced, by whom', 1 === count( $sseo_hist ) && Simple_SEO_Files::robots_default() === $sseo_hist[0]['content'] && 'virtual' === $sseo_hist[0]['source'] && $sseo_u['administrator'] === $sseo_hist[0]['user'] && abs( time() - $sseo_hist[0]['time'] ) < 60, $sseo_hist );
+	$sseo_served = Simple_SEO_Files::robots_served();
+	sseo_check( 'the site serves the saved text, then the sitemap line', str_starts_with( $sseo_served, "User-agent: *\nDisallow: /private/\n" ) && ! str_contains( $sseo_served, 'admin-ajax' ) && 1 === substr_count( $sseo_served, 'Sitemap: ' . home_url( '/sitemap_index.xml' ) ), $sseo_served );
+	$sseo_other = static fn( $output ): string => $output . "# added by another plugin\n";
+	add_filter( 'robots_txt', $sseo_other );
+	sseo_check( 'what other plugins add stays', str_contains( Simple_SEO_Files::robots_served(), '# added by another plugin' ) );
+	remove_filter( 'robots_txt', $sseo_other );
+	update_option( 'blog_public', '0' );
+	sseo_check( 'a site hidden from search engines gets the text without the sitemap line', "User-agent: *\nDisallow: /private/\n" === Simple_SEO_Files::robots_served(), Simple_SEO_Files::robots_served() );
+	update_option( 'blog_public', '1' );
+	$sseo_conflict = static fn(): string => 'Yoast SEO';
+	add_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	sseo_check( 'while another SEO plugin is active the text is not served', "X\n" === Simple_SEO_Files::robots_txt( "X\n", true ) );
+	remove_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+
+	Simple_SEO_Files::save( 'robots', "User-agent: *\nDisallow: /a/\n\n  sitemap:  " . home_url( '/sitemap_index.xml' ) . "  \n", $sseo_fp( 'robots' ) );
+	sseo_check( 'a text that names the sitemap does not get it twice', 1 === substr_count( strtolower( Simple_SEO_Files::robots_served() ), 'sitemap:' ), Simple_SEO_Files::robots_served() );
+	Simple_SEO_Files::save( 'robots', "User-agent: *\nDisallow: /a/\n# Sitemap: " . home_url( '/sitemap_index.xml' ) . "\n", $sseo_fp( 'robots' ) );
+	sseo_check( 'a sitemap named in a comment does not count', 1 === substr_count( Simple_SEO_Files::robots_served(), "\nSitemap: " ), Simple_SEO_Files::robots_served() );
+
+	$sseo_count = count( Simple_SEO_Files::history( 'robots' ) );
+	$sseo_res   = Simple_SEO_Files::save( 'robots', (string) Simple_SEO_Files::current( 'robots' ), $sseo_fp( 'robots' ) );
+	sseo_check( 'the same text again: nothing saved, nothing kept', $sseo_res['ok'] && 'unchanged' === $sseo_res['code'] && $sseo_count === count( Simple_SEO_Files::history( 'robots' ) ), $sseo_res );
+	$sseo_res = Simple_SEO_Files::save( 'robots', "User-agent: *\n", 'stale' );
+	sseo_check( 'a text that changed since the form opened is not overwritten', ! $sseo_res['ok'] && 'conflict' === $sseo_res['code'] && str_contains( (string) get_option( Simple_SEO_Files::ROBOTS_OPTION ), 'Disallow: /a/' ), $sseo_res );
+	$sseo_res = Simple_SEO_Files::save( 'robots', str_repeat( 'a', 600000 ), $sseo_fp( 'robots' ) );
+	sseo_check( 'a text that is too long is refused', ! $sseo_res['ok'] && 'too-long' === $sseo_res['code'], $sseo_res );
+	Simple_SEO_Files::save( 'robots', Simple_SEO_Files::robots_default(), $sseo_fp( 'robots' ) );
+	sseo_check( 'the WordPress text saved again is kept as nothing (it follows WordPress)', '' === get_option( Simple_SEO_Files::ROBOTS_OPTION ) );
+	Simple_SEO_Files::save( 'robots', "User-agent: *\nDisallow: /b/\n", $sseo_fp( 'robots' ) );
+	Simple_SEO_Files::save( 'robots', " \n ", $sseo_fp( 'robots' ) );
+	sseo_check( 'an empty text is the WordPress text again', '' === get_option( Simple_SEO_Files::ROBOTS_OPTION ) && Simple_SEO_Files::robots_default() === Simple_SEO_Files::current( 'robots' ) );
+
+	for ( $sseo_i = 1; $sseo_i <= 12; $sseo_i++ ) {
+		Simple_SEO_Files::save( 'robots', "User-agent: *\nDisallow: /v{$sseo_i}/\n", $sseo_fp( 'robots' ) );
+	}
+	$sseo_hist = Simple_SEO_Files::history( 'robots' );
+	sseo_check( 'the history keeps the last ten, newest first', 10 === count( $sseo_hist ) && "User-agent: *\nDisallow: /v11/\n" === $sseo_hist[0]['content'] && "User-agent: *\nDisallow: /v2/\n" === $sseo_hist[9]['content'], wp_list_pluck( $sseo_hist, 'content' ) );
+	sseo_check( 'every version has its own id', 10 === count( array_unique( wp_list_pluck( $sseo_hist, 'id' ) ) ) );
+	$sseo_res = Simple_SEO_Files::restore( 'robots', $sseo_hist[4]['id'], $sseo_fp( 'robots' ) );
+	sseo_check( 'a version is restored from the history', $sseo_res['ok'] && 'restored' === $sseo_res['code'] && "User-agent: *\nDisallow: /v7/\n" === Simple_SEO_Files::current( 'robots' ), $sseo_res );
+	sseo_check( 'restoring keeps the text it replaced', "User-agent: *\nDisallow: /v12/\n" === Simple_SEO_Files::history( 'robots' )[0]['content'] );
+	$sseo_res = Simple_SEO_Files::restore( 'robots', 'nosuchversion', $sseo_fp( 'robots' ) );
+	sseo_check( 'an unknown version is refused', ! $sseo_res['ok'] && 'missing' === $sseo_res['code'], $sseo_res );
+	$sseo_res = Simple_SEO_Files::restore( 'robots', Simple_SEO_Files::history( 'robots' )[1]['id'], 'stale' );
+	sseo_check( 'restoring over a text changed meanwhile is refused', ! $sseo_res['ok'] && 'conflict' === $sseo_res['code'] && "User-agent: *\nDisallow: /v7/\n" === Simple_SEO_Files::current( 'robots' ), $sseo_res );
+
+	// Rights: the virtual robots.txt needs the plugin settings, files the core permission to edit files.
+	wp_set_current_user( $sseo_u['editor'] );
+	sseo_check( 'without the settings capability nothing is changed', '' !== Simple_SEO_Files::refusal( 'robots' ) && 'refused' === Simple_SEO_Files::save( 'robots', "User-agent: *\n", $sseo_fp( 'robots' ) )['code'] );
+	update_option( Simple_SEO_Access::OPTION, array( 'settings' => array( 'administrator', 'editor' ) ) );
+	sseo_check( 'an editor with the settings capability edits the virtual robots.txt', '' === Simple_SEO_Files::refusal( 'robots' ) );
+	sseo_check( 'but not .htaccess: editing files is for administrators', str_contains( Simple_SEO_Files::refusal( 'htaccess' ), 'administrator' ), Simple_SEO_Files::refusal( 'htaccess' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	add_filter( 'file_mod_allowed', '__return_false' );
+	sseo_check( 'DISALLOW_FILE_MODS stops editing files', str_contains( Simple_SEO_Files::refusal( 'htaccess' ), 'DISALLOW_FILE_MODS' ) && '' === Simple_SEO_Files::refusal( 'robots' ), Simple_SEO_Files::refusal( 'htaccess' ) );
+	remove_filter( 'file_mod_allowed', '__return_false' );
+
+	// process(): the forms of the tab.
+	$GLOBALS['wp_settings_errors'] = array();
+	$_SERVER['REQUEST_METHOD']     = 'GET';
+	$_POST                         = wp_slash( array( 'simple_seo_file' => 'robots', 'simple_seo_content' => 'x' ) );
+	sseo_check( 'a GET request changes nothing', null === Simple_SEO_Files::process() );
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_POST                     = wp_slash(
+		array(
+			'_wpnonce'           => wp_create_nonce( 'simple_seo_file_robots' ),
+			'simple_seo_file'    => 'robots',
+			'simple_seo_do'      => 'default',
+			'simple_seo_loaded'  => $sseo_fp( 'robots' ),
+			'simple_seo_content' => 'ignored',
+		)
+	);
+	$sseo_url = Simple_SEO_Files::process();
+	sseo_check( 'the default button brings the WordPress text back, then redirects', '' === get_option( Simple_SEO_Files::ROBOTS_OPTION ) && is_string( $sseo_url ) && str_contains( $sseo_url, 'tab=files' ) && str_contains( $sseo_url, 'simple-seo-done=saved' ) && str_ends_with( $sseo_url, '#simple-seo-robots' ), $sseo_url );
+	$_POST = wp_slash(
+		array(
+			'_wpnonce'           => 'bad',
+			'simple_seo_file'    => 'robots',
+			'simple_seo_do'      => 'save',
+			'simple_seo_loaded'  => $sseo_fp( 'robots' ),
+			'simple_seo_content' => "User-agent: *\nDisallow: /draft/\n",
+		)
+	);
+	sseo_check( 'a bad nonce changes nothing and stays on the page', null === Simple_SEO_Files::process() && '' === get_option( Simple_SEO_Files::ROBOTS_OPTION ) );
+	$sseo_errors = get_settings_errors( 'simple-seo-files' );
+	sseo_check( 'and says the page has expired', 1 === count( $sseo_errors ) && 'error' === $sseo_errors[0]['type'] && str_contains( $sseo_errors[0]['message'], 'expired' ), $sseo_errors );
+	$_POST = wp_slash(
+		array(
+			'_wpnonce'           => wp_create_nonce( 'simple_seo_file_htaccess' ),
+			'simple_seo_file'    => 'htaccess',
+			'simple_seo_do'      => 'save',
+			'simple_seo_loaded'  => $sseo_fp( 'htaccess' ),
+			'simple_seo_content' => array( 'not', 'a', 'string' ),
+		)
+	);
+	$sseo_url = Simple_SEO_Files::process();
+	sseo_check( 'a field that is not text reads as empty, without warnings', is_string( $sseo_url ) && str_contains( $sseo_url, 'simple-seo-done=unchanged' ) && ! is_file( $sseo_ht_path ), $sseo_url );
+	$_POST = wp_slash(
+		array(
+			'_wpnonce'          => wp_create_nonce( 'simple_seo_file_ghost' ),
+			'simple_seo_file'   => 'ghost',
+			'simple_seo_loaded' => '',
+		)
+	);
+	sseo_check( 'an unknown file is ignored', null === Simple_SEO_Files::process() );
+
+	// A robots.txt file in the site root.
+	file_put_contents( $sseo_robots_path, "User-agent: *\nDisallow: /old/\n" );
+	sseo_check( 'a robots.txt file is what gets edited', Simple_SEO_Files::robots_is_file() && "User-agent: *\nDisallow: /old/\n" === Simple_SEO_Files::current( 'robots' ) );
+	$sseo_res = Simple_SEO_Files::save( 'robots', "User-agent: *\nDisallow: /new/\n", $sseo_fp( 'robots' ) );
+	sseo_check( 'the file is written, the virtual text left alone', $sseo_res['ok'] && "User-agent: *\nDisallow: /new/\n" === file_get_contents( $sseo_robots_path ) && '' === get_option( Simple_SEO_Files::ROBOTS_OPTION ), $sseo_res );
+	$sseo_hist = Simple_SEO_Files::history( 'robots' );
+	sseo_check( 'the history keeps the file text it replaced', "User-agent: *\nDisallow: /old/\n" === $sseo_hist[0]['content'] && 'file' === $sseo_hist[0]['source'] );
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_res = Simple_SEO_Files::save( 'robots', "User-agent: *\n", $sseo_fp( 'robots' ) );
+	sseo_check( 'an editor may not write the file', ! $sseo_res['ok'] && 'refused' === $sseo_res['code'] && "User-agent: *\nDisallow: /new/\n" === file_get_contents( $sseo_robots_path ), $sseo_res );
+	wp_set_current_user( $sseo_u['administrator'] );
+	chmod( $sseo_robots_path, 0444 );
+	clearstatcache();
+	$sseo_res = Simple_SEO_Files::save( 'robots', "User-agent: *\n", $sseo_fp( 'robots' ) );
+	sseo_check( 'a file the server may not write is left alone, with the reason', ! $sseo_res['ok'] && 'refused' === $sseo_res['code'] && str_contains( $sseo_res['message'], '0444' ) && "User-agent: *\nDisallow: /new/\n" === file_get_contents( $sseo_robots_path ), $sseo_res );
+	chmod( $sseo_robots_path, 0644 );
+	clearstatcache();
+	$sseo_res = Simple_SEO_Files::to_virtual( $sseo_fp( 'robots' ) );
+	sseo_check( 'the file can give way to the virtual robots.txt', $sseo_res['ok'] && 'virtual' === $sseo_res['code'] && ! is_file( $sseo_robots_path ) && "User-agent: *\nDisallow: /new/\n" === get_option( Simple_SEO_Files::ROBOTS_OPTION ), $sseo_res );
+	sseo_check( 'its text stays in the history', "User-agent: *\nDisallow: /new/\n" === Simple_SEO_Files::history( 'robots' )[0]['content'] && 'file' === Simple_SEO_Files::history( 'robots' )[0]['source'] );
+	sseo_check( 'without a file there is nothing to replace', 'unchanged' === Simple_SEO_Files::to_virtual( '' )['code'] );
+
+	// .htaccess, with the server checked over a faked loopback: the file decides the answers.
+	$GLOBALS['is_apache']     = true;
+	$GLOBALS['sseo_requests'] = array();
+	$GLOBALS['sseo_loopback'] = true;
+	$sseo_fake                = static function ( $pre, $args, $url ) use ( $sseo_ht_path ) {
+		$GLOBALS['sseo_requests'][] = array( $url, $args['redirection'] ?? null );
+		$text = is_file( $sseo_ht_path ) ? (string) file_get_contents( $sseo_ht_path ) : '';
+		if ( ! $GLOBALS['sseo_loopback'] || str_contains( $text, 'DOWN' ) ) {
+			return new WP_Error( 'http_request_failed', 'cURL error 7: Failed to connect' );
+		}
+		$code = str_contains( $text, 'BROKEN' ) ? 500 : ( str_starts_with( $url, rest_url() ) && str_contains( $text, 'NOREST' ) ? 404 : 200 );
+
+		return array(
+			'headers'  => array(),
+			'body'     => '',
+			'response' => array(
+				'code'    => $code,
+				'message' => '',
+			),
+			'cookies'  => array(),
+			'filename' => null,
+		);
+	};
+	add_filter( 'pre_http_request', $sseo_fake, 10, 3 );
+
+	$sseo_rules = "# BEGIN WordPress\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule ^index\\.php$ - [L]\nHeader set X-Note \"it's\"\n</IfModule>\n# END WordPress\n";
+	$sseo_res   = Simple_SEO_Files::save( 'htaccess', $sseo_rules, $sseo_fp( 'htaccess' ) );
+	sseo_check( 'a missing .htaccess is created', $sseo_res['ok'] && 'saved' === $sseo_res['code'] && str_contains( $sseo_res['message'], '.htaccess' ), $sseo_res );
+	sseo_check( 'with its text as typed, tags and all', $sseo_rules === file_get_contents( $sseo_ht_path ), file_get_contents( $sseo_ht_path ) );
+	$sseo_urls = wp_list_pluck( $GLOBALS['sseo_requests'], 0 );
+	sseo_check( 'the server opens the home page and the REST API before and after', 4 === count( $sseo_urls ) && str_starts_with( $sseo_urls[0], home_url( '/' ) . '?simple-seo-check=' ) && str_starts_with( $sseo_urls[1], rest_url() ) && str_starts_with( $sseo_urls[3], rest_url() ), $sseo_urls );
+	sseo_check( 'without following redirects', array( 0 ) === array_values( array_unique( wp_list_pluck( $GLOBALS['sseo_requests'], 1 ) ) ) );
+	sseo_check( 'no copy on disk of a file that was not there', ! is_file( $sseo_copy_path ) );
+
+	$sseo_more = "# Custom\nOptions -Indexes\n\n" . $sseo_rules;
+	$sseo_res  = Simple_SEO_Files::save( 'htaccess', $sseo_more, $sseo_fp( 'htaccess' ) );
+	sseo_check( 'the next change is saved', $sseo_res['ok'] && $sseo_more === file_get_contents( $sseo_ht_path ), $sseo_res );
+	sseo_check( 'with the previous file copied next to it', is_file( $sseo_copy_path ) && $sseo_rules === file_get_contents( $sseo_copy_path ) );
+	sseo_check( 'and in the history', $sseo_rules === Simple_SEO_Files::history( 'htaccess' )[0]['content'] && 'file' === Simple_SEO_Files::history( 'htaccess' )[0]['source'] );
+
+	$sseo_count = count( Simple_SEO_Files::history( 'htaccess' ) );
+	$sseo_res   = Simple_SEO_Files::save( 'htaccess', "BROKEN\n" . $sseo_more, $sseo_fp( 'htaccess' ) );
+	sseo_check( 'a file that takes the site down is put back at once', ! $sseo_res['ok'] && 'rolled-back' === $sseo_res['code'] && $sseo_more === file_get_contents( $sseo_ht_path ), $sseo_res );
+	sseo_check( 'saying which address stopped answering and how', str_contains( $sseo_res['message'], home_url( '/' ) . ' (500)' ), $sseo_res['message'] );
+	sseo_check( 'a change that did not happen leaves no version behind', $sseo_count === count( Simple_SEO_Files::history( 'htaccess' ) ) );
+	$sseo_res = Simple_SEO_Files::save( 'htaccess', "# NOREST\n" . $sseo_more, $sseo_fp( 'htaccess' ) );
+	sseo_check( 'a file that breaks the REST API is put back too', 'rolled-back' === $sseo_res['code'] && str_contains( $sseo_res['message'], '(404)' ) && $sseo_more === file_get_contents( $sseo_ht_path ), $sseo_res );
+	$sseo_res = Simple_SEO_Files::save( 'htaccess', "# DOWN\n" . $sseo_more, $sseo_fp( 'htaccess' ) );
+	sseo_check( 'a server that stops answering at all counts as broken', 'rolled-back' === $sseo_res['code'] && str_contains( $sseo_res['message'], '(no answer)' ) && $sseo_more === file_get_contents( $sseo_ht_path ), $sseo_res );
+
+	unlink( $sseo_ht_path );
+	unlink( $sseo_copy_path );
+	$sseo_root_mode = fileperms( ABSPATH ) & 0777;
+	chmod( ABSPATH, 0555 );
+	clearstatcache();
+	sseo_check( 'a folder the server may not write: no new .htaccess, with the reason', str_contains( Simple_SEO_Files::refusal( 'htaccess' ), 'may not create files in' ) && 'refused' === Simple_SEO_Files::save( 'htaccess', "# x\n", Simple_SEO_Files::fingerprint( '' ) )['code'] && ! is_file( $sseo_ht_path ) );
+	chmod( ABSPATH, $sseo_root_mode );
+	clearstatcache();
+	$sseo_res = Simple_SEO_Files::save( 'htaccess', "BROKEN\n", Simple_SEO_Files::fingerprint( '' ) );
+	sseo_check( 'a new file that takes the site down is removed again', 'rolled-back' === $sseo_res['code'] && ! is_file( $sseo_ht_path ), $sseo_res );
+
+	file_put_contents( $sseo_ht_path, "BROKEN already\n" );
+	$sseo_res = Simple_SEO_Files::save( 'htaccess', "BROKEN still\n", $sseo_fp( 'htaccess' ) );
+	sseo_check( 'an address that failed before the change is not held against it', $sseo_res['ok'] && "BROKEN still\n" === file_get_contents( $sseo_ht_path ), $sseo_res );
+	file_put_contents( $sseo_ht_path, $sseo_more );
+
+	$GLOBALS['sseo_loopback'] = false;
+	$sseo_res                 = Simple_SEO_Files::save( 'htaccess', "# unchecked\n" . $sseo_more, $sseo_fp( 'htaccess' ) );
+	sseo_check( 'when the server cannot reach itself the file is saved with a warning', $sseo_res['ok'] && 'unverified' === $sseo_res['code'] && 'warning' === $sseo_res['type'] && str_starts_with( (string) file_get_contents( $sseo_ht_path ), '# unchecked' ), $sseo_res );
+	$GLOBALS['sseo_loopback'] = true;
+
+	$GLOBALS['sseo_requests'] = array();
+	$sseo_res                 = Simple_SEO_Files::save( 'htaccess', (string) Simple_SEO_Files::current( 'htaccess' ), $sseo_fp( 'htaccess' ) );
+	sseo_check( 'the same .htaccess again: nothing written, nothing requested', 'unchanged' === $sseo_res['code'] && array() === $GLOBALS['sseo_requests'], $sseo_res );
+
+	$sseo_hist = Simple_SEO_Files::history( 'htaccess' );
+	$sseo_res  = Simple_SEO_Files::restore( 'htaccess', $sseo_hist[0]['id'], $sseo_fp( 'htaccess' ) );
+	sseo_check( 'a version of .htaccess is restored, checked like a change', $sseo_res['ok'] && $sseo_hist[0]['content'] === file_get_contents( $sseo_ht_path ) && 4 === count( $GLOBALS['sseo_requests'] ), $sseo_res );
+
+	$GLOBALS['is_apache']     = false;
+	$GLOBALS['sseo_requests'] = array();
+	$sseo_copy_before         = (string) file_get_contents( $sseo_copy_path );
+	$sseo_res                 = Simple_SEO_Files::save( 'htaccess', "# nginx\n", $sseo_fp( 'htaccess' ) );
+	sseo_check( 'where the server does not read .htaccess, nothing is checked or copied', $sseo_res['ok'] && 'saved' === $sseo_res['code'] && array() === $GLOBALS['sseo_requests'] && $sseo_copy_before === file_get_contents( $sseo_copy_path ), $sseo_res );
+	$GLOBALS['is_apache'] = true;
+
+	chmod( $sseo_ht_path, 0444 );
+	clearstatcache();
+	$sseo_res = Simple_SEO_Files::save( 'htaccess', "# x\n", $sseo_fp( 'htaccess' ) );
+	sseo_check( 'a .htaccess the server may not write is left alone', 'refused' === $sseo_res['code'] && "# nginx\n" === file_get_contents( $sseo_ht_path ), $sseo_res );
+	chmod( $sseo_ht_path, 0644 );
+	clearstatcache();
+
+	// The tab.
+	Simple_SEO_Files::add_admin_tab();
+	$sseo_tabs = Simple_SEO_Admin::tabs();
+	sseo_check( 'the Files tab has no option rows of its own', isset( $sseo_tabs['files'] ) && array() === $sseo_tabs['files']['options'] && 80 === $sseo_tabs['files']['order'] );
+	sseo_check( 'its forms are handled when the page loads', 10 === has_action( 'load-toplevel_page_simple-seo', array( Simple_SEO_Files::class, 'handle' ) ) );
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_POST                     = wp_slash(
+		array(
+			'_wpnonce'           => wp_create_nonce( 'simple_seo_file_htaccess' ),
+			'simple_seo_file'    => 'htaccess',
+			'simple_seo_do'      => 'save',
+			'simple_seo_loaded'  => $sseo_fp( 'htaccess' ),
+			'simple_seo_content' => str_replace( "\n", "\r\n", $sseo_rules ),
+		)
+	);
+	$sseo_url = Simple_SEO_Files::process();
+	sseo_check( 'the form saves .htaccess as typed, tags and quotes and all', is_string( $sseo_url ) && str_contains( $sseo_url, 'simple-seo-file=htaccess' ) && $sseo_rules === file_get_contents( $sseo_ht_path ), file_get_contents( $sseo_ht_path ) );
+	$_POST       = array();
+	$_GET['tab'] = 'files';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'the tab is not an options.php form', ! str_contains( $sseo_html, 'action="options.php"' ) && str_contains( $sseo_html, 'tab=files#simple-seo-htaccess' ) );
+	sseo_check( 'it shows both files, .htaccess with its tags escaped', str_contains( $sseo_html, 'id="simple-seo-robots-text"' ) && str_contains( $sseo_html, '&lt;IfModule mod_rewrite.c&gt;' ) && ! str_contains( $sseo_html, '<IfModule' ) );
+	sseo_check( 'the virtual robots.txt shows what the site serves', str_contains( $sseo_html, 'What the site serves' ) && str_contains( $sseo_html, 'Sitemap: ' . home_url( '/sitemap_index.xml' ) ) );
+	sseo_check( 'each form has its nonce and fingerprint', 2 <= substr_count( $sseo_html, 'name="simple_seo_loaded" value="' . $sseo_fp( 'htaccess' ) . '"' ) && str_contains( $sseo_html, 'name="_wpnonce"' ) );
+	sseo_check( 'the history offers each version back', substr_count( $sseo_html, 'name="simple_seo_backup"' ) === count( Simple_SEO_Files::history( 'robots' ) ) + count( Simple_SEO_Files::history( 'htaccess' ) ) );
+	sseo_check( 'the copy next to .htaccess is named', str_contains( $sseo_html, esc_html( $sseo_copy_path ) ) );
+	sseo_check( 'the server reads .htaccess: no warning', ! str_contains( $sseo_html, 'does not read .htaccess' ) && ! str_contains( $sseo_html, 'does not look like Apache' ) );
+	$GLOBALS['is_apache']        = false;
+	$_SERVER['SERVER_SOFTWARE'] = 'nginx/1.27.0';
+	$sseo_html                   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'nginx: .htaccess changes nothing, the page says so', str_contains( $sseo_html, 'This server (nginx/1.27.0) is not Apache or LiteSpeed' ) );
+	unset( $_SERVER['SERVER_SOFTWARE'] );
+	$GLOBALS['is_apache'] = true;
+	file_put_contents( $sseo_robots_path, "User-agent: *\nDisallow: /\n" );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'a robots.txt file: the page says so and offers to delete it', str_contains( $sseo_html, 'There is a robots.txt file in the site root' ) && str_contains( $sseo_html, 'value="virtual"' ) && ! str_contains( $sseo_html, 'What the site serves' ) );
+	sseo_check( 'and the sitemap line it lacks', str_contains( $sseo_html, 'The file does not name it' ) );
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'an editor sees the files read-only, with the reason', 2 === substr_count( $sseo_html, ' readonly>' ) && ! str_contains( $sseo_html, 'value="save"' ) && ! str_contains( $sseo_html, 'name="simple_seo_backup"' ) && str_contains( $sseo_html, 'an administrator can' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	unlink( $sseo_robots_path );
+
+	$_POST = wp_slash(
+		array(
+			'_wpnonce'           => wp_create_nonce( 'simple_seo_file_htaccess' ),
+			'simple_seo_file'    => 'htaccess',
+			'simple_seo_do'      => 'save',
+			'simple_seo_loaded'  => 'stale',
+			'simple_seo_content' => "# my draft\n",
+		)
+	);
+	$GLOBALS['wp_settings_errors'] = array();
+	sseo_check( 'a conflict keeps the page', null === Simple_SEO_Files::process() );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	$sseo_part = (string) strstr( $sseo_html, 'id="simple-seo-htaccess"' );
+	sseo_check( 'with the draft in the editor and the file as it is now under it', str_contains( $sseo_part, '># my draft' ) && str_contains( $sseo_part, 'The file as it is now' ) && str_contains( $sseo_html, 'changed after you opened it' ), substr( $sseo_part, 0, 300 ) );
+	$_POST                         = array();
+	$_SERVER['REQUEST_METHOD']     = 'GET';
+	$GLOBALS['wp_settings_errors'] = array();
+	$_GET['simple-seo-file']       = 'htaccess';
+	$_GET['simple-seo-done']       = 'unverified';
+	Simple_SEO_Files::handle();
+	$sseo_errors = get_settings_errors( 'simple-seo-files' );
+	sseo_check( 'after the redirect the page says what was done', 1 === count( $sseo_errors ) && 'warning' === $sseo_errors[0]['type'] && str_contains( $sseo_errors[0]['message'], 'could not open the site' ), $sseo_errors );
+	$GLOBALS['wp_settings_errors'] = array();
+	$_GET['simple-seo-done']       = 'nonsense';
+	Simple_SEO_Files::handle();
+	sseo_check( 'an unknown code says nothing', array() === get_settings_errors( 'simple-seo-files' ) );
+	unset( $_GET['simple-seo-file'], $_GET['simple-seo-done'], $_GET['tab'] );
+	remove_filter( 'pre_http_request', $sseo_fake, 10 );
+	$GLOBALS['is_apache'] = $sseo_saved_apache;
+	update_option( Simple_SEO_Access::OPTION, array() );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -1920,6 +2262,7 @@ try {
 	sseo_check( 'the Special pages tab is translated', 'Спецсторінки' === __( 'Special pages', 'simple-seo' ) );
 	sseo_check( 'the sitemap switch is translated', 'Створювати XML-карту сайту' === __( 'Create an XML sitemap', 'simple-seo' ) );
 	sseo_check( 'the breadcrumbs are translated', 'Хлібні крихти' === __( 'Breadcrumbs', 'simple-seo' ) && 'Головна' === __( 'Home', 'simple-seo' ) && '%s у хлібних крихтах' === __( '%s in breadcrumbs', 'simple-seo' ) );
+	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -1927,12 +2270,14 @@ try {
 	sseo_section( 'Uninstall' );
 
 	update_option( 'simple_seo_sseo_extra', array( 'x' => 1 ) );
+	file_put_contents( get_home_path() . Simple_SEO_Files::DISK_COPY, "# copy\n" );
 	if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 		define( 'WP_UNINSTALL_PLUGIN', 'simple-seo/simple-seo.php' );
 	}
 	include SIMPLE_SEO_DIR . 'uninstall.php';
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
+	sseo_check( 'uninstall removes the copy of .htaccess', ! is_file( get_home_path() . Simple_SEO_Files::DISK_COPY ) );
 	sseo_check( 'uninstall leaves the options cache consistent', null === get_option( Simple_SEO_Plugin::VERSION_OPTION, null ) && null === get_option( Simple_SEO_Access::OPTION, null ) );
 	sseo_check( 'uninstall keeps the SEO fields of posts', 'Welcome {sep} {site}' === Simple_SEO_Fields::post_value( $sseo_p['front'], 'title' ) );
 	sseo_check( 'uninstall keeps the SEO fields of terms', 'Saved from the term form' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
@@ -1969,6 +2314,27 @@ try {
 		}
 	}
 	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
+	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION => 'robots_txt', Simple_SEO_Files::BACKUPS_OPTION => 'file_backups' ) as $sseo_name => $sseo_key ) {
+		delete_option( $sseo_name );
+		if ( false !== $sseo_saved_options[ $sseo_key ] ) {
+			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ], '', false );
+		}
+	}
+	// A run broken in the middle can leave the site root read-only.
+	if ( ! is_writable( ABSPATH ) ) {
+		chmod( ABSPATH, 0755 );
+	}
+	foreach ( $sseo_saved_files as $sseo_path => $sseo_text ) {
+		if ( is_file( $sseo_path ) ) {
+			chmod( $sseo_path, 0644 );
+			unlink( $sseo_path );
+		}
+		if ( null !== $sseo_text ) {
+			file_put_contents( $sseo_path, $sseo_text );
+		}
+	}
+	$GLOBALS['is_apache'] = $sseo_saved_apache;
+	unset( $_SERVER['REQUEST_METHOD'] );
 	flush_rewrite_rules( false );
 	// Rows of other languages that a broken run may have left behind.
 	unset( $_COOKIE['admin_lang'] );

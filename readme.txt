@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.8.0
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; gives themes breadcrumbs and the primary category of a post; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,13 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.9.0 =
+* Files tab: robots.txt and .htaccess of the site root, edited in the admin.
+* robots.txt: without a file in the site root, the text WordPress serves (the virtual robots.txt), shown together with what Simple SEO and other plugins add to it; the sitemap line is not added twice. With a robots.txt file, the file itself, which can also be deleted to let WordPress serve its text.
+* .htaccess: after a change the server opens the home page and the REST API; if either stops answering, the previous file is put back at once. A copy of the previous file stays next to it (.htaccess.simple-seo-backup) for a restore over FTP. Where the server is not Apache or LiteSpeed, the tab says the file changes nothing.
+* Every change keeps the previous text: the last ten versions of each file, each one can be looked at and restored. A file changed meanwhile (WordPress rewrites its rules in .htaccess) is not overwritten.
+* Files on disk are edited only by those who may edit files in WordPress (administrators; not with DISALLOW_FILE_EDIT or DISALLOW_FILE_MODS); the virtual robots.txt by those who may change the Simple SEO settings.
 
 = 0.8.0 =
 * Breadcrumbs for themes: simple_seo_the_breadcrumbs() in PHP, {{ simple_seo_breadcrumbs() }} in Twig (Timber), [simple_seo_breadcrumbs] shortcode. Home, the posts page or the post type archive, the primary category with its parents, parent pages, the page itself and its page number; terms, archives, authors, dates, search results and 404 have their own trails.

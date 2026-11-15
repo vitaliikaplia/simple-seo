@@ -23,7 +23,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<?php settings_errors(); ?>
 
-	<?php if ( isset( $tabs[ $current ] ) ) : ?>
+	<?php if ( isset( $tabs[ $current ] ) && ! $tabs[ $current ]['options'] ) : ?>
+		<?php
+		// A tab without option rows prints its own forms.
+		call_user_func( $tabs[ $current ]['render'] );
+		?>
+	<?php elseif ( isset( $tabs[ $current ] ) ) : ?>
 		<form method="post" action="options.php">
 			<?php
 			settings_fields( Simple_SEO_Admin::group( $current ) );

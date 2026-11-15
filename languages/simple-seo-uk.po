@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.8.0\n"
+"Project-Id-Version: Simple SEO 0.9.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -14,7 +14,7 @@ msgstr ""
 
 #. Plugin Name of the plugin
 #: simple-seo.php
-#: includes/class-simple-seo-admin.php:60
+#: includes/class-simple-seo-admin.php:61
 #: includes/views/settings.php:14
 msgid "Simple SEO"
 msgstr "Simple SEO"
@@ -63,43 +63,43 @@ msgstr "Поля, що вирішують, чи індексують пошук�
 msgid "Access"
 msgstr "Доступ"
 
-#: includes/class-simple-seo-admin.php:61
+#: includes/class-simple-seo-admin.php:62
 #: includes/class-simple-seo-editor.php:28
 #: includes/class-simple-seo-editor.php:106
 msgid "SEO"
 msgstr "SEO"
 
-#: includes/class-simple-seo-admin.php:118
+#: includes/class-simple-seo-admin.php:119
 msgid "Sorry, you are not allowed to access this page."
 msgstr "На жаль, у вас немає доступу до цієї сторінки."
 
 #. translators: %s: name of another SEO plugin, e.g. Yoast SEO.
-#: includes/class-simple-seo-admin.php:144
+#: includes/class-simple-seo-admin.php:145
 #, php-format
 msgid "%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime."
 msgstr "%s активний, тому Simple SEO нічого не виводить на сайті — ні заголовків, ні описів, ні інших тегів, — і сторінки ніколи не отримують їх двічі. Вимкніть його, коли переходитимете на Simple SEO; налаштування й поля тут можна підготувати заздалегідь."
 
-#: includes/class-simple-seo-admin.php:194
+#: includes/class-simple-seo-admin.php:195
 msgid "Choose an image"
 msgstr "Оберіть зображення"
 
-#: includes/class-simple-seo-admin.php:195
+#: includes/class-simple-seo-admin.php:196
 msgid "Use this image"
 msgstr "Використати це зображення"
 
-#: includes/class-simple-seo-admin.php:197
+#: includes/class-simple-seo-admin.php:198
 msgid "Choose image"
 msgstr "Обрати зображення"
 
-#: includes/class-simple-seo-admin.php:198
+#: includes/class-simple-seo-admin.php:199
 msgid "Remove image"
 msgstr "Прибрати зображення"
 
-#: includes/class-simple-seo-admin.php:209
+#: includes/class-simple-seo-admin.php:210
 msgid "Insert structure"
 msgstr "Вставити структуру"
 
-#: includes/class-simple-seo-admin.php:219
+#: includes/class-simple-seo-admin.php:220
 msgid "Settings"
 msgstr "Налаштування"
 
@@ -131,9 +131,115 @@ msgstr "Зараз: %s"
 msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
+#: includes/class-simple-seo-files.php:60
+msgid "Files"
+msgstr "Файли"
+
+#: includes/class-simple-seo-files.php:153
+msgid "You may not change the Simple SEO settings."
+msgstr "Вам не можна змінювати налаштування Simple SEO."
+
+#: includes/class-simple-seo-files.php:162
+msgid "Changing files is switched off on this site (DISALLOW_FILE_MODS in wp-config.php)."
+msgstr "Зміну файлів на цьому сайті вимкнено (DISALLOW_FILE_MODS у wp-config.php)."
+
+#: includes/class-simple-seo-files.php:165
+msgid "Editing files is switched off on this site (DISALLOW_FILE_EDIT in wp-config.php)."
+msgstr "Редагування файлів на цьому сайті вимкнено (DISALLOW_FILE_EDIT у wp-config.php)."
+
+#: includes/class-simple-seo-files.php:169
+msgid "On a network of sites only a super admin may edit files."
+msgstr "У мережі сайтів редагувати файли може лише суперадміністратор."
+
+#: includes/class-simple-seo-files.php:170
+msgid "Your role may not edit files; an administrator can."
+msgstr "Ваша роль не може редагувати файли — це може адміністратор."
+
+#. translators: 1: file path, 2: its permissions, e.g. 0444.
+#: includes/class-simple-seo-files.php:177
+#, php-format
+msgid "The web server may not write %1$s (its permissions are %2$s)."
+msgstr "Вебсервер не може записати %1$s (права доступу %2$s)."
+
+#. translators: %s: folder path.
+#: includes/class-simple-seo-files.php:181
+#, php-format
+msgid "The web server may not create files in %s."
+msgstr "Вебсервер не може створювати файли в %s."
+
+#: includes/class-simple-seo-files.php:370
+msgid "no answer"
+msgstr "немає відповіді"
+
+#: includes/class-simple-seo-files.php:459
+msgid "The file cannot be read."
+msgstr "Файл неможливо прочитати."
+
+#. translators: %s: robots.txt or .htaccess.
+#: includes/class-simple-seo-files.php:594
+#, php-format
+msgid "%s is saved. The previous version is in the history."
+msgstr "%s збережено. Попередня версія — в історії."
+
+#. translators: %s: robots.txt or .htaccess.
+#: includes/class-simple-seo-files.php:599
+#, php-format
+msgid "%s is restored from the history."
+msgstr "%s відновлено з історії."
+
+#: includes/class-simple-seo-files.php:603
+msgid "The robots.txt file is deleted: WordPress now serves its text. The file is in the history."
+msgstr "Файл robots.txt видалено: тепер його текст віддає WordPress. Сам файл — в історії."
+
+#: includes/class-simple-seo-files.php:607
+msgid ".htaccess is saved, but the server could not open the site to check it. Open the site now; if it does not work, restore the previous version from the history."
+msgstr ".htaccess збережено, але сервер не зміг відкрити сайт, щоб його перевірити. Відкрийте сайт зараз; якщо він не працює, відновіть попередню версію з історії."
+
+#: includes/class-simple-seo-files.php:611
+msgid "Nothing to save: the text is the same."
+msgstr "Нічого зберігати: текст той самий."
+
+#. translators: %s: robots.txt or .htaccess.
+#: includes/class-simple-seo-files.php:616
+#, php-format
+msgid "%s changed after you opened it (WordPress, for one, rewrites its own rules in .htaccess). Nothing is saved. Your text is in the editor and the file as it is now below it; save again to replace the file."
+msgstr "%s змінився після того, як ви його відкрили (наприклад, WordPress сам переписує свої правила в .htaccess). Нічого не збережено. Ваш текст — у редакторі, а файл, яким він є зараз, — під ним; збережіть ще раз, щоб замінити файл."
+
+#. translators: %s: address that stopped answering, with its status, e.g. https://example.com/ (500).
+#: includes/class-simple-seo-files.php:621
+#, php-format
+msgid "With the new .htaccess the site stopped answering: %s. The previous file is back, nothing has changed; your text is in the editor."
+msgstr "З новим .htaccess сайт перестав відповідати: %s. Попередній файл повернуто, нічого не змінилося; ваш текст — у редакторі."
+
+#. translators: 1: robots.txt or .htaccess, 2: size, e.g. 500 KB.
+#: includes/class-simple-seo-files.php:626
+#, php-format
+msgid "The text of %1$s is too long: at most %2$s."
+msgstr "Текст %1$s задовгий: щонайбільше %2$s."
+
+#. translators: %s: robots.txt or .htaccess.
+#: includes/class-simple-seo-files.php:631
+#, php-format
+msgid "%s could not be written; nothing has changed."
+msgstr "%s не вдалося записати; нічого не змінилося."
+
+#. translators: %s: robots.txt or .htaccess.
+#: includes/class-simple-seo-files.php:636
+#, php-format
+msgid "%s cannot be read, so it is not changed."
+msgstr "%s неможливо прочитати, тому його не змінено."
+
+#: includes/class-simple-seo-files.php:640
+msgid "That version is no longer in the history."
+msgstr "Цієї версії вже немає в історії."
+
+#: includes/class-simple-seo-files.php:644
+msgid "The page has expired. Open it again and repeat."
+msgstr "Сторінка застаріла. Відкрийте її знову й повторіть."
+
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-indexing.php:58
 #: includes/class-simple-seo-indexing.php:103
@@ -191,32 +297,32 @@ msgstr "Коли в запису їх кілька: та, через яку йд
 msgid "Automatically"
 msgstr "Автоматично"
 
-#: includes/class-simple-seo-sitemaps.php:852
+#: includes/class-simple-seo-sitemaps.php:853
 #: includes/views/tab-indexing.php:32
 msgid "XML sitemap"
 msgstr "XML-карта сайту"
 
-#: includes/class-simple-seo-sitemaps.php:853
+#: includes/class-simple-seo-sitemaps.php:854
 msgid "The sitemaps of the site, language by language. Search engines read every one of them."
 msgstr "Карти сайту, мова за мовою. Пошуковики читають кожну з них."
 
-#: includes/class-simple-seo-sitemaps.php:854
+#: includes/class-simple-seo-sitemaps.php:855
 msgid "Pages search engines may show, with their translations and images."
 msgstr "Сторінки, які можуть показувати пошуковики, з їхніми перекладами й зображеннями."
 
-#: includes/class-simple-seo-sitemaps.php:855
+#: includes/class-simple-seo-sitemaps.php:856
 msgid "Last modified:"
 msgstr "Остання зміна:"
 
-#: includes/class-simple-seo-sitemaps.php:856
+#: includes/class-simple-seo-sitemaps.php:857
 msgid "Languages:"
 msgstr "Мови:"
 
-#: includes/class-simple-seo-sitemaps.php:857
+#: includes/class-simple-seo-sitemaps.php:858
 msgid "Image:"
 msgstr "Зображення:"
 
-#: includes/class-simple-seo-sitemaps.php:858
+#: includes/class-simple-seo-sitemaps.php:859
 msgid "Addresses:"
 msgstr "Адрес:"
 
@@ -492,6 +598,134 @@ msgstr "Жодна — натомість батьківські сторінк�
 #: includes/views/tab-breadcrumbs.php:102
 msgid "None"
 msgstr "Жодна"
+
+#: includes/views/tab-files.php:19
+msgid "Two files in the root of the site: robots.txt tells search engines what to crawl, .htaccess tells the web server how to answer. Every change keeps the previous version in the history under the file, to be put back with one click."
+msgstr "Два файли в корені сайту: robots.txt підказує пошуковикам, що обходити, а .htaccess — вебсерверу, як відповідати. Кожна зміна зберігає попередню версію в історії під файлом, щоб її можна було повернути одним натиском."
+
+#. translators: %s: folder of the site, e.g. /blog/.
+#: includes/views/tab-files.php:35
+#, php-format
+msgid "The site lives in the folder %s, not at the root of its domain. Search engines read robots.txt only from the root of the domain, so they do not see this one."
+msgstr "Сайт розташований у теці %s, а не в корені свого домену. Пошуковики читають robots.txt лише з кореня домену, тож цього вони не бачать."
+
+#. translators: %s: path of robots.txt.
+#: includes/views/tab-files.php:43
+#, php-format
+msgid "There is a robots.txt file in the site root (%s). The server sends it as it is, so it is the file you edit here; the robots.txt of WordPress, with the sitemap line Simple SEO adds to it, is not used."
+msgstr "У корені сайту лежить файл robots.txt (%s). Сервер віддає його як є, тож тут ви редагуєте саме цей файл; robots.txt від WordPress разом із рядком карти сайту, який додає Simple SEO, не використовується."
+
+#: includes/views/tab-files.php:47
+msgid "There is no robots.txt file in the site root, so WordPress serves this text. Saved empty, it is the text of WordPress again."
+msgstr "Файлу robots.txt у корені сайту немає, тож цей текст віддає WordPress. Якщо зберегти порожнім, знову буде текст WordPress."
+
+#. translators: %s: name of the web server, e.g. nginx/1.27.
+#: includes/views/tab-files.php:56
+#, php-format
+msgid "This server (%s) is not Apache or LiteSpeed and does not read .htaccess: the file changes nothing here."
+msgstr "Цей сервер (%s) — не Apache і не LiteSpeed, він не читає .htaccess: файл тут нічого не змінює."
+
+#: includes/views/tab-files.php:57
+msgid "This server does not look like Apache or LiteSpeed, so .htaccess probably changes nothing here."
+msgstr "Цей сервер не схожий на Apache чи LiteSpeed, тож .htaccess тут, найімовірніше, нічого не змінює."
+
+#. translators: %s: path of .htaccess.
+#: includes/views/tab-files.php:65
+#, php-format
+msgid "The .htaccess file in the site root (%s). A mistake in it can stop the whole site, so after saving Simple SEO opens the home page and the REST API from the server and puts the previous file back at once if either stops answering."
+msgstr "Файл .htaccess у корені сайту (%s). Помилка в ньому може зупинити весь сайт, тож після збереження Simple SEO відкриває із сервера головну сторінку й REST API і одразу повертає попередній файл, якщо щось із них перестало відповідати."
+
+#: includes/views/tab-files.php:68
+msgid "WordPress writes the lines between # BEGIN WordPress and # END WordPress itself whenever permalinks are saved: keep your own rules outside them."
+msgstr "Рядки між # BEGIN WordPress і # END WordPress пише сам WordPress щоразу, коли зберігаються постійні посилання: власні правила тримайте поза ними."
+
+#: includes/views/tab-files.php:70
+msgid "There is no .htaccess yet; saving creates it."
+msgstr "Файлу .htaccess ще немає; збереження його створить."
+
+#: includes/views/tab-files.php:87
+msgid "The file as it is now"
+msgstr "Файл, яким він є зараз"
+
+#. translators: %s: the sitemap line, e.g. Sitemap: https://example.com/sitemap_index.xml.
+#: includes/views/tab-files.php:97
+#, php-format
+msgid "Simple SEO adds %s at the end, unless the text has it already."
+msgstr "Simple SEO додає в кінці %s, якщо цього рядка в тексті ще немає."
+
+#. translators: %s: the sitemap line, e.g. Sitemap: https://example.com/sitemap_index.xml.
+#: includes/views/tab-files.php:104
+#, php-format
+msgid "Search engines find the XML sitemap through robots.txt. The file does not name it; add the line %s."
+msgstr "Пошуковики знаходять XML-карту сайту через robots.txt. У файлі її немає; додайте рядок %s."
+
+#. translators: %s: robots.txt or .htaccess.
+#: includes/views/tab-files.php:115
+#, php-format
+msgid "Save %s"
+msgstr "Зберегти %s"
+
+#: includes/views/tab-files.php:119
+msgid "Back to the text of WordPress"
+msgstr "Повернути текст WordPress"
+
+#: includes/views/tab-files.php:122
+msgid "Delete the file, let WordPress serve this text"
+msgstr "Видалити файл, нехай цей текст віддає WordPress"
+
+#: includes/views/tab-files.php:126
+msgid "Open robots.txt"
+msgstr "Відкрити robots.txt"
+
+#: includes/views/tab-files.php:132
+msgid "What the site serves"
+msgstr "Що віддає сайт"
+
+#: includes/views/tab-files.php:133
+msgid "The saved text with what Simple SEO and other plugins add to it."
+msgstr "Збережений текст разом із тим, що додають до нього Simple SEO та інші плагіни."
+
+#. translators: %s: path of the copy, e.g. /var/www/.htaccess.simple-seo-backup.
+#: includes/views/tab-files.php:141
+#, php-format
+msgid "A copy of the previous file is also kept next to it: %s. If the site ever stops opening after a change, rename it to .htaccess over FTP or SSH."
+msgstr "Копія попереднього файлу лежить також поруч: %s. Якщо після зміни сайт колись перестане відкриватися, перейменуйте її на .htaccess через FTP чи SSH."
+
+#: includes/views/tab-files.php:146
+msgid "History"
+msgstr "Історія"
+
+#: includes/views/tab-files.php:148
+msgid "No versions yet: the text is kept here before each change."
+msgstr "Версій поки немає: текст зберігається тут перед кожною зміною."
+
+#: includes/views/tab-files.php:158
+msgid "Replaced"
+msgstr "Замінено"
+
+#: includes/views/tab-files.php:159
+msgid "By"
+msgstr "Ким"
+
+#: includes/views/tab-files.php:160
+msgid "Size"
+msgstr "Розмір"
+
+#: includes/views/tab-files.php:161
+msgid "Text"
+msgstr "Текст"
+
+#: includes/views/tab-files.php:170
+msgid "empty"
+msgstr "порожньо"
+
+#: includes/views/tab-files.php:173
+msgid "Show"
+msgstr "Показати"
+
+#: includes/views/tab-files.php:177
+msgid "Restore"
+msgstr "Відновити"
 
 #: includes/views/tab-indexing.php:16
 #: includes/views/tab-indexing.php:52

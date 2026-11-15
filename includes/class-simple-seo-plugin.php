@@ -33,6 +33,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Sitemaps::init();
 		Simple_SEO_Primary_Term::init();
 		Simple_SEO_Breadcrumbs::init();
+		Simple_SEO_Files::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';

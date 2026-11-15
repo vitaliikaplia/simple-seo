@@ -171,11 +171,12 @@ final class Simple_SEO_Sitemaps {
 		self::send( $xml, 'application/xml' );
 	}
 
-	/** robots.txt names the index (1.8 will add the editor around it). */
+	/** robots.txt names the index, unless a text saved on the Files tab names it already. */
 	public static function robots_txt( $output, $is_public ): string {
 		$output = (string) $output;
-		if ( $is_public && self::enabled() ) {
-			$output .= "\nSitemap: " . esc_url_raw( self::index_url() ) . "\n";
+		$url    = esc_url_raw( self::index_url() );
+		if ( $is_public && self::enabled() && ! preg_match( '/^[ \t]*sitemap:[ \t]*' . preg_quote( $url, '/' ) . '[ \t]*$/mi', $output ) ) {
+			$output .= "\nSitemap: " . $url . "\n";
 		}
 
 		return $output;
