@@ -449,6 +449,33 @@ abstract class Simple_SEO_Import_Source {
 	}
 
 	/**
+	 * Another plugin's keyphrases as values to try for a post's fields: the focus keyphrase, and
+	 * the more keyphrases one on a line. Empty entries and what is no text are left out.
+	 *
+	 * @param array<string, array<int, array{0: string, 1: string}>> $fields The values to try by field, added to.
+	 * @param mixed                                                  $focus  The focus keyphrase.
+	 * @param array<int, mixed>                                      $more   The other keyphrases.
+	 */
+	protected static function keyphrases( array &$fields, string $name, $focus, array $more, string $object_type, string $post_type ): void {
+		$lists = array(
+			'keyphrase'  => array( $focus ),
+			'keyphrases' => $more,
+		);
+		foreach ( $lists as $key => $list ) {
+			$phrases = array();
+			foreach ( $list as $phrase ) {
+				$phrase = is_scalar( $phrase ) ? trim( (string) preg_replace( '/\s+/u', ' ', (string) $phrase ) ) : '';
+				if ( '' !== $phrase ) {
+					$phrases[] = $phrase;
+				}
+			}
+			if ( $phrases && '' !== self::field_for( $key, $object_type, $post_type ) ) {
+				$fields[ $key ][] = array( $name, implode( "\n", $phrases ) );
+			}
+		}
+	}
+
+	/**
 	 * An image from the media library by its address; 0 for none, null for an address that is not one.
 	 *
 	 * @return int|string|null

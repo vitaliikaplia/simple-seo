@@ -75,9 +75,11 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 	/** Texts that may hold variables, under the names of Yoast's post meta keys. */
 	private const TEXTS = array( 'title', 'metadesc', 'opengraph-title', 'opengraph-description' );
 
+	/** Yoast Premium's more keyphrases of a post: a JSON list. */
+	private const MORE_KEYPHRASES = '_yoast_wpseo_focuskeywords';
+
 	/** Yoast's post meta Simple SEO has no field for, by what the report calls it. */
 	private const LEFT = array(
-		'focuskw'    => array( '_yoast_wpseo_focuskw' ),
 		'bctitle'    => array( '_yoast_wpseo_bctitle' ),
 		'twitter'    => array( '_yoast_wpseo_twitter-title', '_yoast_wpseo_twitter-description', '_yoast_wpseo_twitter-image', '_yoast_wpseo_twitter-image-id' ),
 		'robots_adv' => array( '_yoast_wpseo_meta-robots-adv' ),
@@ -342,6 +344,11 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 					$fields[ $key ][] = array( substr( $meta_key, 13 ), $values[ $id ][ $meta_key ] );
 				}
 			}
+			// Entries are {keyword, score}, or plain words as Yoast's own import from SEOPressor writes them.
+			$more = json_decode( $values[ $id ][ self::MORE_KEYPHRASES ] ?? '', true );
+			if ( is_array( $more ) ) {
+				self::keyphrases( $fields, 'focuskeywords', '', array_map( static fn( $entry ) => is_array( $entry ) ? ( $entry['keyword'] ?? '' ) : $entry, $more ), 'post', $post->post_type );
+			}
 			self::take( 'post', $id, $fields, $report );
 		}
 
@@ -450,7 +457,7 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 
 	/** SQL condition on postmeta: the keys the import takes, with a value other than Yoast's default. */
 	private static function keys_sql(): string {
-		return '( meta_key IN (' . self::in( Simple_SEO_Yoast_Meta::keys() ) . ") OR meta_key LIKE '\\_yoast\\_wpseo\\_primary\\_%' ) AND meta_value NOT IN ( '', '0' )";
+		return '( meta_key IN (' . self::in( array_merge( Simple_SEO_Yoast_Meta::keys(), array( self::MORE_KEYPHRASES ) ) ) . ") OR meta_key LIKE '\\_yoast\\_wpseo\\_primary\\_%' ) AND meta_value NOT IN ( '', '0', '[]' )";
 	}
 
 	/**

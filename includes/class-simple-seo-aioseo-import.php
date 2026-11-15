@@ -368,6 +368,20 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 				$fields[ $key ][] = array( 'primary_term', (string) $id );
 			}
 		}
+		// AIOSEO 5.0 keeps the keyphrases in focus_keyword and additional_keywords ([{"word":…}]); rows
+		// written before have them only in keyphrases ({"focus":{"keyphrase":…},"additional":[{"keyphrase":…}]}).
+		// As AIOSEO itself does, each falls back on the old column on its own.
+		$legacy = json_decode( (string) ( $row['keyphrases'] ?? '' ), true );
+		$focus  = self::scalar( $row['focus_keyword'] ?? '' );
+		$more   = array_column( (array) json_decode( (string) ( $row['additional_keywords'] ?? '' ), true ), 'word' );
+		self::keyphrases(
+			$fields,
+			'keyphrases',
+			'' !== $focus ? $focus : ( $legacy['focus']['keyphrase'] ?? '' ),
+			$more ? $more : array_column( (array) ( $legacy['additional'] ?? array() ), 'keyphrase' ),
+			$object_type,
+			$post_type
+		);
 
 		return $fields;
 	}
@@ -409,7 +423,6 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		$left = array();
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table name is checked, the rest constants.
 		foreach ( array(
-			'focuskw' => "keyphrases LIKE '%\"focus\":{\"keyphrase\":\"%' AND keyphrases NOT LIKE '%\"focus\":{\"keyphrase\":\"\"%'",
 			'twitter' => "( COALESCE( twitter_title, '' ) <> '' OR COALESCE( twitter_description, '' ) <> '' )",
 			'schema'  => "( `schema` LIKE '%\"graphs\":[{%' OR `schema` LIKE '%\"customGraphs\":[{%' )",
 		) as $what => $sql ) {
@@ -525,6 +538,17 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		}
 		if ( in_array( 'primary_term', $columns, true ) ) {
 			$sql[] = "primary_term LIKE '%:%'";
+		}
+		// A keyphrase that is not empty, in AIOSEO's columns or in the JSON of older rows; terms have none.
+		if ( 'post' === $type ) {
+			if ( in_array( 'focus_keyword', $columns, true ) ) {
+				$sql[] = "COALESCE( focus_keyword, '' ) <> ''";
+			}
+			foreach ( array( 'keyphrases' => 'keyphrase', 'additional_keywords' => 'word' ) as $column => $key ) {
+				if ( in_array( $column, $columns, true ) ) {
+					$sql[] = "`{$column}` REGEXP '\"{$key}\":[[:space:]]*\"[^\"]'";
+				}
+			}
 		}
 
 		return $sql ? '( ' . implode( ' OR ', $sql ) . ' )' : '0 = 1';

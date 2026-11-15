@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.21.0
+Stable tag: 0.22.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.22.0 =
+* The import takes the keyphrases too, into the focus keyphrase and the more keyphrases of posts that have none: the focus keyphrase of Yoast SEO and the more keyphrases of Yoast SEO Premium, the keyphrases of Rank Math (the first is the focus one, the rest go one on a line) and the focus and additional keyphrases of All in One SEO, from its own columns or, for older posts, from the JSON it kept them in before. A post with nothing but keyphrases is found too. Terms have no keyphrases in Simple SEO, so theirs stay where they are.
+* Yoast's _yoast_wpseo_focuskw, as themes read and write it, is now Simple SEO's focus keyphrase, and %%focuskw%% in wpseo_replace_vars() gives it.
 
 = 0.21.0 =
 * Content analysis in the SEO block of posts: a focus keyphrase and up to four more, and checks of the page for them — in the SEO title, the meta description, the address, the first paragraph, the subheadings, the text (how often) and the alt text of images, and whether another page has the same focus keyphrase — with the length of the text, links to the site and elsewhere, images and their alt text, and the length of the title and the description. Each check says what to do; together they make a score out of 100.

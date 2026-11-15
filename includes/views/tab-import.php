@@ -149,8 +149,6 @@ endif;
 					<?php
 					$simple_seo_left = array(
 						/* translators: %s: number of posts. */
-						'focuskw'          => __( 'focus keyphrases (posts: %s)', 'simple-seo' ),
-						/* translators: %s: number of posts. */
 						'bctitle'          => __( 'titles for breadcrumbs (posts: %s)', 'simple-seo' ),
 						/* translators: %s: number of posts. */
 						'twitter'          => __( 'titles, descriptions and images for X (posts: %s)', 'simple-seo' ),

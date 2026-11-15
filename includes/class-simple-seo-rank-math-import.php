@@ -73,9 +73,11 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		'userid', 'wc_brand', 'wc_price', 'wc_shortdesc', 'wc_sku',
 	);
 
+	/** Rank Math's keyphrases of a post, without the prefix: "first,second,third", the first is the focus keyphrase. */
+	private const KEYPHRASES = 'focus_keyword';
+
 	/** Rank Math's post meta Simple SEO has no field for, by what the report calls it. */
 	private const LEFT = array(
-		'focuskw'    => array( 'rank_math_focus_keyword' ),
 		'bctitle'    => array( 'rank_math_breadcrumb_title' ),
 		'twitter'    => array( 'rank_math_twitter_title', 'rank_math_twitter_description', 'rank_math_twitter_image', 'rank_math_twitter_image_id' ),
 		'robots_adv' => array( 'rank_math_advanced_robots' ),
@@ -387,6 +389,10 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		if ( isset( $values['robots'] ) && '' !== self::field_for( 'nofollow', $object_type, $post_type ) ) {
 			$fields['nofollow'][] = array( 'robots', $values['robots'] );
 		}
+		if ( isset( $values[ self::KEYPHRASES ] ) ) {
+			$phrases = explode( ',', $values[ self::KEYPHRASES ] );
+			self::keyphrases( $fields, self::KEYPHRASES, array_shift( $phrases ), $phrases, $object_type, $post_type );
+		}
 		foreach ( $values as $name => $value ) {
 			if ( str_starts_with( $name, 'primary_' ) && '' !== self::field_for( $name, $object_type, $post_type ) ) {
 				$fields[ $name ][] = array( $name, $value );
@@ -525,14 +531,16 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		return $values;
 	}
 
-	/** SQL condition on post or term meta: the keys the import takes, with a value. */
+	/** SQL condition on post or term meta: the keys the import takes, with a value. Terms have no keyphrases. */
 	private static function keys_sql( string $type ): string {
-		$keys = array_map( static fn( string $name ): string => self::PREFIX . $name, array_keys( self::FIELDS ) );
-		$sql  = 'meta_key IN (' . self::in( $keys ) . ')';
+		$names   = array_keys( self::FIELDS );
+		$primary = '';
 		if ( 'post' === $type ) {
-			$sql = '( ' . $sql . " OR meta_key LIKE 'rank\\_math\\_primary\\_%' )";
+			$names[] = self::KEYPHRASES;
+			$primary = " OR meta_key LIKE 'rank\\_math\\_primary\\_%'";
 		}
+		$keys = array_map( static fn( string $name ): string => self::PREFIX . $name, $names );
 
-		return $sql . " AND meta_value NOT IN ( '', '0', 'a:0:{}' )";
+		return '( meta_key IN (' . self::in( $keys ) . ')' . $primary . " ) AND meta_value NOT IN ( '', '0', 'a:0:{}' )";
 	}
 }

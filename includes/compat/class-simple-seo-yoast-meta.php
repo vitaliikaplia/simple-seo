@@ -5,12 +5,12 @@
  * there, so themes that read and write Yoast's meta (their own Schema, AI translation of titles)
  * keep working once Yoast is gone.
  *
- * Only the keys Simple SEO has a field for are aliases; Yoast's other rows (focus keyphrase, X,
- * advanced robots, scores) stay what they are. The rows Yoast left under an alias are neither read
- * nor written nor deleted through it: what the page shows is Simple SEO's data, Yoast's rows wait
- * for the import, and Yoast finds them as they were if it comes back. Only a delete of a key from
- * every post (delete_post_meta_by_key()) reaches them. Terms have no aliases: Yoast keeps their SEO
- * in an option, not in term meta.
+ * Only the keys Simple SEO has a field for are aliases (the focus keyphrase too); Yoast's other rows
+ * (Premium's more keyphrases, X, advanced robots, scores) stay what they are. The rows Yoast left
+ * under an alias are neither read nor written nor deleted through it: what the page shows is Simple
+ * SEO's data, Yoast's rows wait for the import, and Yoast finds them as they were if it comes back.
+ * Only a delete of a key from every post (delete_post_meta_by_key()) reaches them. Terms have no
+ * aliases: Yoast keeps their SEO in an option, not in term meta.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -31,6 +31,7 @@ final class Simple_SEO_Yoast_Meta {
 		'meta-robots-noindex'   => 'index',
 		'meta-robots-nofollow'  => 'nofollow',
 		'canonical'             => 'canonical',
+		'focuskw'               => 'keyphrase',
 	);
 
 	/** Keys whose text may hold variables: %%title%% for Yoast, {title} for Simple SEO. */

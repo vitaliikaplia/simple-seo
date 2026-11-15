@@ -246,7 +246,7 @@ final class Simple_SEO_Yoast_Compat {
 			case 'currentday':
 				return (string) wp_date( 'j' );
 			case 'focuskw':
-				return '';
+				return $post ? Simple_SEO_Fields::post_value( $post->ID, 'keyphrase' ) : '';
 		}
 
 		// %%ct_genre%%: the terms of a taxonomy; %%cf_price%%: a custom field.

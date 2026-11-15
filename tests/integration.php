@@ -3092,6 +3092,9 @@ try {
 	sseo_check( 'an unknown variable goes away, an omitted one stays', 'x' === wpseo_replace_vars( '%%nope%% x', array() ) && '%%title%% x' === wpseo_replace_vars( '%%title%% x', get_post( $sseo_p['bc'] ), array( 'title' ) ) );
 	update_post_meta( $sseo_p['bc'], 'sseo_price', '100 <b>EUR</b>' );
 	sseo_check( 'custom fields and taxonomies by name', '100 EUR' === wpseo_replace_vars( '%%cf_sseo_price%%', get_post( $sseo_p['bc'] ) ) && str_contains( wpseo_replace_vars( '%%ct_category%%', get_post( $sseo_p['bc'] ) ), 'Bc Sport' ) );
+	update_post_meta( $sseo_p['bc'], Simple_SEO_Fields::meta_key( 'keyphrase' ), 'bc focus' );
+	sseo_check( "the focus keyphrase is the post's keyphrase field, none without a post", 'bc focus' === wpseo_replace_vars( '%%focuskw%%', get_post( $sseo_p['bc'] ) ) && '' === wpseo_replace_vars( '%%focuskw%%', get_term( $sseo_sport, 'category' ) ) );
+	delete_post_meta( $sseo_p['bc'], Simple_SEO_Fields::meta_key( 'keyphrase' ) );
 	wp_update_post( array( 'ID' => $sseo_p['bc'], 'post_author' => $sseo_u['author'] ) );
 	$sseo_vals = array( wp_date( 'Y' ), wpseo_replace_vars( '%%currentyear%%', array() ), get_userdata( $sseo_u['author'] )->display_name, wpseo_replace_vars( '%%name%%', get_post( $sseo_p['bc'] ) ) );
 	sseo_check( 'the year and the author', $sseo_vals[0] === $sseo_vals[1] && $sseo_vals[2] === $sseo_vals[3], $sseo_vals );
@@ -3573,7 +3576,7 @@ try {
 		wp_cache_delete( $id, 'post_meta' );
 	};
 	// The rows Yoast left, written past the meta API as Yoast itself had written them.
-	$sseo_ym_insert( $sseo_ym, array( '_yoast_wpseo_title' => 'Old %%title%%', '_yoast_wpseo_metadesc' => 'Old description', '_yoast_wpseo_focuskw' => 'old focus', '_yoast_wpseo_primary_category' => (string) $sseo_news ) );
+	$sseo_ym_insert( $sseo_ym, array( '_yoast_wpseo_title' => 'Old %%title%%', '_yoast_wpseo_metadesc' => 'Old description', '_yoast_wpseo_focuskw' => 'old focus', '_yoast_wpseo_bctitle' => 'old crumb', '_yoast_wpseo_primary_category' => (string) $sseo_news ) );
 
 	$sseo_ym_notices = array();
 	set_error_handler(
@@ -3582,10 +3585,10 @@ try {
 			return true;
 		}
 	);
-	$sseo_vals = array( get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_title' ), metadata_exists( 'post', $sseo_ym, '_yoast_wpseo_metadesc' ), get_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', true ) );
+	$sseo_vals = array( get_post_meta( $sseo_ym, '_yoast_wpseo_title', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_title' ), metadata_exists( 'post', $sseo_ym, '_yoast_wpseo_metadesc' ), get_post_meta( $sseo_ym, '_yoast_wpseo_primary_category', true ), get_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', true ) );
 	restore_error_handler();
-	sseo_check( "an alias reads Simple SEO's field, not the row Yoast left (and an empty one without a PHP notice)", array( '', array(), false, '' ) === $sseo_vals && array() === $sseo_ym_notices, array( $sseo_vals, $sseo_ym_notices ) );
-	sseo_check( 'a key Simple SEO has no field for stays the row Yoast left', 'old focus' === get_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', true ) );
+	sseo_check( "an alias reads Simple SEO's field, not the row Yoast left (and an empty one without a PHP notice)", array( '', array(), false, '', '' ) === $sseo_vals && array() === $sseo_ym_notices, array( $sseo_vals, $sseo_ym_notices ) );
+	sseo_check( 'a key Simple SEO has no field for stays the row Yoast left', 'old crumb' === get_post_meta( $sseo_ym, '_yoast_wpseo_bctitle', true ) );
 	update_post_meta( $sseo_ym, Simple_SEO_Fields::meta_key( 'title' ), '{title} {sep} {site} {nope}' );
 	update_post_meta( $sseo_ym, Simple_SEO_Fields::meta_key( 'description' ), 'By {author} on {site}: {tagline}, {post_type}, {category}' );
 	$sseo_text = get_post_meta( $sseo_ym, '_yoast_wpseo_title', true );
@@ -3669,15 +3672,18 @@ try {
 	update_post_meta( $sseo_ym_page, '_yoast_wpseo_title', 'Page %%title%%' );
 	$sseo_vals = array( $sseo_ym_rows( '_yoast_wpseo_primary_category', $sseo_ym_page ), get_post_meta( $sseo_ym_page, '_yoast_wpseo_primary_category', true ), Simple_SEO_Fields::post_value( $sseo_ym_page, 'title' ) );
 	sseo_check( "a post type without the taxonomy has no primary alias, the row is a row; the other fields are every type's", array( array( '5' ), '5', 'Page {title}' ) === $sseo_vals, $sseo_vals );
-	update_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', 'new focus' );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_bctitle', 'new crumb' );
 	update_post_meta( $sseo_ym, '_yoast_wpseo_twitter-title', 'X title' );
-	sseo_check( "the keys Simple SEO has no field for are Yoast's rows to write too", array( 'new focus' ) === $sseo_ym_rows( '_yoast_wpseo_focuskw' ) && array( 'X title' ) === $sseo_ym_rows( '_yoast_wpseo_twitter-title' ) );
+	sseo_check( "the keys Simple SEO has no field for are Yoast's rows to write too", array( 'new crumb' ) === $sseo_ym_rows( '_yoast_wpseo_bctitle' ) && array( 'X title' ) === $sseo_ym_rows( '_yoast_wpseo_twitter-title' ) );
+	update_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', '  new   focus ' );
+	$sseo_vals = array( Simple_SEO_Fields::post_value( $sseo_ym, 'keyphrase' ), get_post_meta( $sseo_ym, '_yoast_wpseo_focuskw', true ), $sseo_ym_rows( '_yoast_wpseo_focuskw' ) );
+	sseo_check( "the focus keyphrase is Simple SEO's keyphrase field, Yoast's row stays", array( 'new focus', 'new focus', array( 'old focus' ) ) === $sseo_vals, $sseo_vals );
 
 	// Every row of a post at once.
 	update_post_meta( $sseo_ym, '_yoast_wpseo_title', 'Fifth' );
 	wp_cache_delete( $sseo_ym, 'post_meta' );
 	$sseo_list = get_post_meta( $sseo_ym );
-	sseo_check( "the list of all of a post's meta has no aliases, the rest as it is", ! isset( $sseo_list['_yoast_wpseo_title'] ) && ! isset( $sseo_list['_yoast_wpseo_metadesc'] ) && ! isset( $sseo_list['_yoast_wpseo_primary_category'] ) && array( 'new focus' ) === ( $sseo_list['_yoast_wpseo_focuskw'] ?? null ) && array( 'Fifth' ) === ( $sseo_list[ Simple_SEO_Fields::meta_key( 'title' ) ] ?? null ), array_keys( $sseo_list ) );
+	sseo_check( "the list of all of a post's meta has no aliases, the rest as it is", ! isset( $sseo_list['_yoast_wpseo_title'] ) && ! isset( $sseo_list['_yoast_wpseo_metadesc'] ) && ! isset( $sseo_list['_yoast_wpseo_primary_category'] ) && ! isset( $sseo_list['_yoast_wpseo_focuskw'] ) && array( 'new crumb' ) === ( $sseo_list['_yoast_wpseo_bctitle'] ?? null ) && array( 'Fifth' ) === ( $sseo_list[ Simple_SEO_Fields::meta_key( 'title' ) ] ?? null ), array_keys( $sseo_list ) );
 	sseo_check( '... asked for a single value too', $sseo_list === get_post_meta( $sseo_ym, '', true ) );
 	sseo_check( 'a key that is no alias for that post stays in its list', array( '5' ) === ( get_post_meta( $sseo_ym_page )['_yoast_wpseo_primary_category'] ?? null ) );
 	foreach ( $sseo_list as $sseo_name => $sseo_values ) {
@@ -3876,6 +3882,7 @@ try {
 			'_yoast_wpseo_canonical'             => 'https://example.com/one/',
 			'_yoast_wpseo_primary_category'      => (string) $sseo_news,
 			'_yoast_wpseo_focuskw'               => 'one focus',
+			'_yoast_wpseo_focuskeywords'         => '[{"keyword":"two focus","score":"good"},{"keyword":" ","score":""},{"score":"bad"},{"keyword":["nested"]},{"keyword":"three   focus","score":"ok"}]',
 			'_yoast_wpseo_twitter-title'         => 'X one',
 			'_yoast_wpseo_twitter-description'   => 'X one desc',
 		)
@@ -3889,6 +3896,7 @@ try {
 			'_yoast_wpseo_opengraph-image'     => 'https://elsewhere.example/picture.jpg',
 			'_yoast_wpseo_meta-robots-adv'     => 'noimageindex',
 			'_yoast_wpseo_canonical'           => 'https://example.com/first/',
+			'_yoast_wpseo_focuskeywords'       => '["alpha","beta"]',
 		)
 	);
 	// A second row of a key: as get_post_meta() reads it, the first one counts.
@@ -3900,10 +3908,16 @@ try {
 			'_yoast_wpseo_primary_category' => '5',
 			'_yoast_wpseo_opengraph-image-id' => (string) $sseo_feat,
 			'_yoast_wpseo_opengraph-image'  => $sseo_yi_url( $sseo_og ),
+			'_yoast_wpseo_focuskw'          => 'page focus',
+			'_yoast_wpseo_focuskeywords'    => '"just text"',
 		)
 	);
 	$sseo_ym_insert( $sseo['posts']['yi_menu'], array( '_yoast_wpseo_title' => 'A menu item' ) );
+	// Yoast Premium's default: no more keyphrases. The post is not one with SEO fields.
+	$sseo['posts']['yi_none'] = (int) wp_insert_post( array( 'post_title' => 'Yi None', 'post_status' => 'publish' ) );
+	$sseo_ym_insert( $sseo['posts']['yi_none'], array( '_yoast_wpseo_focuskeywords' => '[]' ) );
 	update_post_meta( $sseo_yi_2, Simple_SEO_Fields::meta_key( 'title' ), 'Own two' );
+	update_post_meta( $sseo_yi_page, Simple_SEO_Fields::meta_key( 'keyphrase' ), 'Own focus' );
 	update_term_meta( $sseo_yi_cat2, Simple_SEO_Fields::meta_key( 'title' ), 'Own cat two' );
 	$sseo_yi_raw = (int) $sseo_wpdb->get_var( "SELECT COUNT(*) FROM {$sseo_wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%'" );
 
@@ -3983,11 +3997,11 @@ try {
 	$sseo_yi_next = Simple_SEO_Yoast_Import::posts( $sseo_yi_next, 100, $sseo_yi_report );
 	sseo_check( 'the last batch ends with the last post, then nothing is left', $sseo['posts']['yi_menu'] === $sseo_yi_next && 0 === Simple_SEO_Yoast_Import::posts( $sseo_yi_next, 100, $sseo_yi_report ) );
 	$sseo_yi_1_fields = array();
-	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category' ) as $sseo_key ) {
+	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category', 'keyphrase', 'keyphrases' ) as $sseo_key ) {
 		$sseo_yi_1_fields[ $sseo_key ] = Simple_SEO_Fields::post_value( $sseo_yi_1, $sseo_key );
 	}
 	sseo_check(
-		"a post's fields: texts in Simple SEO's syntax, the image by its address where its ID is no image, robots, canonical, primary category",
+		"a post's fields: texts in Simple SEO's syntax, the image by its address where its ID is no image, robots, canonical, primary category, the focus keyphrase and Premium's more keyphrases one on a line",
 		array(
 			'title'            => '{title} {sep} {site}',
 			'description'      => 'Desc',
@@ -3997,12 +4011,16 @@ try {
 			'nofollow'         => '1',
 			'canonical'        => 'https://example.com/one/',
 			'primary_category' => (string) $sseo_news,
+			'keyphrase'        => 'one focus',
+			'keyphrases'       => "two focus\nthree focus",
 		) === $sseo_yi_1_fields,
 		$sseo_yi_1_fields
 	);
 	sseo_check( "Simple SEO's own field stays; Yoast's index 2 is index; an image elsewhere is not taken; of two rows the first", 'Own two' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'title' ) && 'index' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'og_image' ) && 'https://example.com/first/' === Simple_SEO_Fields::post_value( $sseo_yi_2, 'canonical' ) );
 	sseo_check( 'a page: its title, the image by its ID before its address; no primary category, pages have none; a post type without SEO fields is left alone', 'Page T' === Simple_SEO_Fields::post_value( $sseo_yi_page, 'title' ) && (string) $sseo_feat === Simple_SEO_Fields::post_value( $sseo_yi_page, 'og_image' ) && '' === Simple_SEO_Fields::post_value( $sseo_yi_page, 'primary_category' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['yi_menu'], 'title' ) );
-	sseo_check( 'the report of the posts', array( 'seen' => 3, 'fields' => 12, 'changed' => 3, 'kept' => 1, 'refused' => 1 ) == $sseo_yi_report['post'] && array( 'modified' => 1 ) === $sseo_yi_report['dropped'], $sseo_yi_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_vals = array( Simple_SEO_Fields::post_value( $sseo_yi_2, 'keyphrases' ), Simple_SEO_Fields::post_value( $sseo_yi_page, 'keyphrase' ), Simple_SEO_Fields::post_value( $sseo_yi_page, 'keyphrases' ) );
+	sseo_check( "more keyphrases as plain words too (Yoast's own import from SEOPressor writes them so); Simple SEO's own keyphrase stays; what is no JSON list is nothing", array( "alpha\nbeta", 'Own focus', '' ) === $sseo_vals, $sseo_vals );
+	sseo_check( 'the report of the posts', array( 'seen' => 3, 'fields' => 15, 'changed' => 3, 'kept' => 2, 'refused' => 1 ) == $sseo_yi_report['post'] && array( 'modified' => 1 ) === $sseo_yi_report['dropped'], $sseo_yi_report ); // phpcs:ignore Universal.Operators.StrictComparisons
 	sseo_check( "Yoast's rows are left as they were", $sseo_yi_raw === (int) $sseo_wpdb->get_var( "SELECT COUNT(*) FROM {$sseo_wpdb->postmeta} WHERE meta_key LIKE '\\_yoast\\_wpseo\\_%'" ) && array( '%%title%% %%sep%% %%sitename%%' ) === $sseo_ym_rows( '_yoast_wpseo_title', $sseo_yi_1 ) );
 
 	// Terms.
@@ -4027,7 +4045,7 @@ try {
 	);
 	sseo_check( "Simple SEO's own field stays; Yoast's default noindex is none; terms that are gone, or of a taxonomy without SEO fields, are left alone", 'Own cat two' === Simple_SEO_Fields::term_value( $sseo_yi_cat2, 'title' ) && 'Tag desc' === Simple_SEO_Fields::term_value( $sseo_yi_tag, 'description' ) && '' === Simple_SEO_Fields::term_value( $sseo_yi_tag, 'index' ) && '' === Simple_SEO_Fields::term_value( $sseo_yi_fmt, 'title' ) );
 	sseo_check( 'the report of the terms', array( 'seen' => 3, 'fields' => 6, 'changed' => 2, 'kept' => 1 ) == $sseo_yi_report['term'], $sseo_yi_report ); // phpcs:ignore Universal.Operators.StrictComparisons
-	sseo_check( "what Simple SEO has no field for, by posts", array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1 ) === Simple_SEO_Yoast_Import::left(), Simple_SEO_Yoast_Import::left() );
+	sseo_check( "what Simple SEO has no field for, by posts", array( 'twitter' => 1, 'robots_adv' => 1 ) === Simple_SEO_Yoast_Import::left(), Simple_SEO_Yoast_Import::left() );
 
 	// The whole run, a few seconds at a time.
 	sseo_check( 'putting the offer off', 'dismissed' === ( static function (): string {
@@ -4041,7 +4059,7 @@ try {
 		++$sseo_yi_steps;
 	} while ( 'running' === $sseo_yi_state['status'] && $sseo_yi_steps < 20 );
 	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_yi_state['status'] && 5 === $sseo_yi_steps && isset( $sseo_yi_state['finished'] ), array( $sseo_yi_steps, $sseo_yi_state['status'] ) );
-	sseo_check( 'run again: everything is Simple SEO\'s already, kept', ! isset( $sseo_yi_state['report']['settings'] ) && 0 === ( $sseo_yi_state['report']['post']['fields'] ?? 0 ) && 13 === $sseo_yi_state['report']['post']['kept'] && 7 === $sseo_yi_state['report']['term']['kept'] && array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1, 'breadcrumb_texts' => 1, 'social_templates' => 1 ) == $sseo_yi_state['report']['left'], $sseo_yi_state['report'] ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'run again: everything is Simple SEO\'s already, kept', ! isset( $sseo_yi_state['report']['settings'] ) && 0 === ( $sseo_yi_state['report']['post']['fields'] ?? 0 ) && 17 === $sseo_yi_state['report']['post']['kept'] && 7 === $sseo_yi_state['report']['term']['kept'] && array( 'twitter' => 1, 'robots_adv' => 1, 'breadcrumb_texts' => 1, 'social_templates' => 1 ) == $sseo_yi_state['report']['left'], $sseo_yi_state['report'] ); // phpcs:ignore Universal.Operators.StrictComparisons
 	Simple_SEO_Import::act( 'dismiss' );
 	Simple_SEO_Import::detect();
 	sseo_check( 'a run done is not put off, nor offered again', 'done' === Simple_SEO_Import::state( 'yoast' )['status'] );
@@ -4076,7 +4094,7 @@ try {
 	update_option( Simple_SEO_Yoast_Import::STATE, $sseo_yi_state );
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'], $GLOBALS['current_screen'] );
-	sseo_check( 'after a run: the report and Import again', str_contains( $sseo_html, 'The last import' ) && str_contains( $sseo_html, 'Import again' ) && str_contains( $sseo_html, 'Posts with SEO fields: 3, 0 of them changed.' ) && str_contains( $sseo_html, 'focus keyphrases (posts: 1)' ) && str_contains( $sseo_html, 'Settings: nothing to take, Simple SEO has its own.' ), $sseo_html );
+	sseo_check( 'after a run: the report and Import again', str_contains( $sseo_html, 'The last import' ) && str_contains( $sseo_html, 'Import again' ) && str_contains( $sseo_html, 'Posts with SEO fields: 3, 0 of them changed.' ) && str_contains( $sseo_html, 'titles, descriptions and images for X (posts: 1)' ) && str_contains( $sseo_html, 'Settings: nothing to take, Simple SEO has its own.' ), $sseo_html );
 	wp_set_current_user( 0 );
 
 	if ( Simple_SEO_WP_Loc::active() && count( Simple_SEO_WP_Loc::codes() ) > 1 ) {
@@ -4154,7 +4172,7 @@ try {
 		$sseo_yc,
 		array(
 			'_yoast_wpseo_title'        => 'Yoast title',
-			'_yoast_wpseo_focuskw'      => 'kw',
+			'_yoast_wpseo_bctitle'      => 'kw',
 			'_yoast_indexnow_last_ping' => '1',
 		)
 	);
@@ -4241,7 +4259,7 @@ try {
 	remove_filter( 'stylesheet_directory', $sseo_yc_dir );
 
 	// A run: a part or a batch per step, the settings left as asked.
-	$sseo_vals = array( get_post_meta( $sseo_yc, '_yoast_wpseo_focuskw', true ), get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
+	$sseo_vals = array( get_post_meta( $sseo_yc, '_yoast_wpseo_bctitle', true ), get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
 	Simple_SEO_Yoast_Cleanup::start( $sseo_yc_all['simple_seo_groups'] );
 	$sseo_yc_steps = 0;
 	do {
@@ -4268,7 +4286,7 @@ try {
 		'x' === get_option( 'sseo_wpseo_keep' ) && (bool) wp_next_scheduled( 'sseo_keep_hook' ) && 'x' === get_user_meta( $sseo_yc_user, 'sseo_keep', true ) && 'x' === get_post_meta( $sseo_yc, 'sseo_keep', true )
 			&& 'Kept' === Simple_SEO_Fields::post_value( $sseo_yc, 'title' ) && 'done' === Simple_SEO_Import::state( 'yoast' )['status'] && array( $sseo_db->prefix . 'sseo_yoast_keep' ) === $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'sseo_yoast_keep' ) ) )
 	);
-	sseo_check( 'the cached meta of the posts and users goes too', array( 'kw', 'Author SEO title' ) === $sseo_vals && '' === get_post_meta( $sseo_yc, '_yoast_wpseo_focuskw', true ) && '' === get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
+	sseo_check( 'the cached meta of the posts and users goes too', array( 'kw', 'Author SEO title' ) === $sseo_vals && '' === get_post_meta( $sseo_yc, '_yoast_wpseo_bctitle', true ) && '' === get_user_meta( $sseo_yc_user, 'wpseo_title', true ) );
 	$sseo_yc_report = $sseo_yc_state['report'];
 	sseo_check( 'the report counts what went', count( $sseo_yc_tables ) === $sseo_yc_report['tables'] && 3 === $sseo_yc_report['usermeta'] && Simple_SEO_Yoast_Cleanup::BATCH + 1 === $sseo_yc_report['postmeta'] && $sseo_yc_internal === $sseo_yc_report['options'] + $sseo_yc_report['cron'] && $sseo_yc_report['cron'] === $sseo_yc_cron && ! isset( $sseo_yc_report['settings'] ), $sseo_yc_report );
 
@@ -4370,6 +4388,7 @@ try {
 		'cat'  => 'category',
 		'cat2' => 'category',
 		'fmt'  => 'post_format',
+		'cat3' => 'category',
 	) as $sseo_key => $sseo_name ) {
 		$sseo_term                  = wp_insert_term( 'post_format' === $sseo_name ? 'post-format-sseo-rm' : 'Rm ' . $sseo_key, $sseo_name );
 		$sseo_rm_terms[ $sseo_key ] = (int) $sseo_term['term_id'];
@@ -4475,7 +4494,7 @@ try {
 				'rank_math_robots'             => array( 'noindex', 'nofollow' ),
 				'rank_math_canonical_url'      => 'https://example.com/rm-one/',
 				'rank_math_primary_category'   => (string) $sseo_news,
-				'rank_math_focus_keyword'      => 'one,two',
+				'rank_math_focus_keyword'      => ' one ,two,, three  four ',
 				'rank_math_twitter_title'      => 'X one',
 				'rank_math_schema_BlogPosting' => array( '@type' => 'BlogPosting' ),
 				'rank_math_seo_score'          => '64',
@@ -4492,6 +4511,7 @@ try {
 				'rank_math_title'            => 'Page T',
 				'rank_math_primary_category' => '5',
 				'rank_math_robots'           => array(),
+				'rank_math_focus_keyword'    => 'page,more',
 			),
 			$sseo['posts']['rm_menu'] => array( 'rank_math_title' => 'A menu item' ),
 			$sseo['posts']['rm_none'] => array( 'rank_math_robots' => array() ),
@@ -4515,6 +4535,8 @@ try {
 				'rank_math_robots'      => array( 'nofollow' ),
 			),
 			$sseo_rm_terms['fmt']  => array( 'rank_math_title' => 'A format' ),
+			// Terms have no keyphrases: a term with nothing else is not one with SEO fields.
+			$sseo_rm_terms['cat3'] => array( 'rank_math_focus_keyword' => 'only a keyphrase' ),
 		)
 	);
 	// The rows of a term that is gone.
@@ -4528,6 +4550,7 @@ try {
 	);
 	update_user_meta( (int) $sseo_u['administrator'], 'rank_math_title', 'Author %name%' );
 	update_post_meta( $sseo_rm_2, Simple_SEO_Fields::meta_key( 'title' ), 'Own two' );
+	update_post_meta( $sseo_rm_page, Simple_SEO_Fields::meta_key( 'keyphrase' ), 'Own focus' );
 	update_term_meta( $sseo_rm_terms['cat2'], Simple_SEO_Fields::meta_key( 'title' ), 'Own cat two' );
 	$sseo_rm_raw = (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" );
 
@@ -4644,11 +4667,11 @@ try {
 	$sseo_rm_next = Simple_SEO_Rank_Math_Import::posts( $sseo_rm_next, 100, $sseo_rm_report );
 	sseo_check( 'the last batch ends with the last post, then nothing is left', $sseo['posts']['rm_menu'] === $sseo_rm_next && 0 === Simple_SEO_Rank_Math_Import::posts( $sseo_rm_next, 100, $sseo_rm_report ) );
 	$sseo_rm_fields = array();
-	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category' ) as $sseo_key ) {
+	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category', 'keyphrase', 'keyphrases' ) as $sseo_key ) {
 		$sseo_rm_fields[ $sseo_key ] = Simple_SEO_Fields::post_value( $sseo_rm_1, $sseo_key );
 	}
 	sseo_check(
-		"a post's fields: texts in Simple SEO's syntax, the image by its address where its ID is no image, both robots from the list, canonical, primary category",
+		"a post's fields: texts in Simple SEO's syntax, the image by its address where its ID is no image, both robots from the list, canonical, primary category; of the keyphrases the first is the focus one, the rest one on a line",
 		array(
 			'title'            => '{title} {sep} {site} {page}',
 			'description'      => 'Desc here',
@@ -4658,12 +4681,15 @@ try {
 			'nofollow'         => '1',
 			'canonical'        => 'https://example.com/rm-one/',
 			'primary_category' => (string) $sseo_news,
+			'keyphrase'        => 'one',
+			'keyphrases'       => "two\nthree four",
 		) === $sseo_rm_fields,
 		$sseo_rm_fields
 	);
 	sseo_check( "Simple SEO's own field stays; Rank Math's explicit index is index; an image elsewhere is not taken; of two rows the first", 'Own two' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'title' ) && 'index' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'nofollow' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'og_image' ) && 'https://example.com/first/' === Simple_SEO_Fields::post_value( $sseo_rm_2, 'canonical' ) );
 	sseo_check( 'a page: its title, no primary category (pages have none), no robots from an empty list; a post type without SEO fields is left alone', 'Page T' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'title' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'primary_category' ) && '' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['rm_menu'], 'title' ) );
-	sseo_check( 'the report of the posts', array( 'seen' => 3, 'fields' => 11, 'changed' => 3, 'kept' => 1, 'refused' => 1 ) == $sseo_rm_report['post'] && array( 'modified' => 1 ) === $sseo_rm_report['dropped'], $sseo_rm_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "Simple SEO's own focus keyphrase stays, the other keyphrases are taken", 'Own focus' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'keyphrase' ) && 'more' === Simple_SEO_Fields::post_value( $sseo_rm_page, 'keyphrases' ) );
+	sseo_check( 'the report of the posts', array( 'seen' => 3, 'fields' => 14, 'changed' => 3, 'kept' => 2, 'refused' => 1 ) == $sseo_rm_report['post'] && array( 'modified' => 1 ) === $sseo_rm_report['dropped'], $sseo_rm_report ); // phpcs:ignore Universal.Operators.StrictComparisons
 	sseo_check( "Rank Math's rows are left as they were", $sseo_rm_raw === (int) $sseo_rm_db->get_var( "SELECT COUNT(*) FROM {$sseo_rm_db->postmeta} WHERE meta_key LIKE 'rank\\_math\\_%'" ) && '%title% %sep% %sitename% %page%' === get_post_meta( $sseo_rm_1, 'rank_math_title', true ) );
 
 	// Terms.
@@ -4692,8 +4718,8 @@ try {
 		$sseo_rm_fields
 	);
 	sseo_check( "Simple SEO's own field stays; nofollow alone leaves indexing as set for the type; terms that are gone, or of a taxonomy without SEO fields, are left alone", 'Own cat two' === Simple_SEO_Fields::term_value( $sseo_rm_terms['cat2'], 'title' ) && 'Tag desc' === Simple_SEO_Fields::term_value( $sseo_rm_terms['tag'], 'description' ) && '' === Simple_SEO_Fields::term_value( $sseo_rm_terms['tag'], 'index' ) && '1' === Simple_SEO_Fields::term_value( $sseo_rm_terms['tag'], 'nofollow' ) && '' === Simple_SEO_Fields::term_value( $sseo_rm_terms['fmt'], 'title' ) );
-	sseo_check( 'the report of the terms', array( 'seen' => 3, 'fields' => 7, 'changed' => 2, 'kept' => 1 ) == $sseo_rm_report['term'], $sseo_rm_report ); // phpcs:ignore Universal.Operators.StrictComparisons
-	sseo_check( 'what Simple SEO has nothing for: by posts, authors, and the redirections that worked', array( 'focuskw' => 1, 'twitter' => 1, 'robots_adv' => 1, 'schema' => 1, 'authors' => 1, 'redirections' => 2 ) == Simple_SEO_Rank_Math_Import::left(), Simple_SEO_Rank_Math_Import::left() ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'the report of the terms; a keyphrase of a term is no field', array( 'seen' => 3, 'fields' => 7, 'changed' => 2, 'kept' => 1 ) == $sseo_rm_report['term'] && ! metadata_exists( 'term', $sseo_rm_terms['cat'], Simple_SEO_Fields::meta_key( 'keyphrase' ) ), $sseo_rm_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'what Simple SEO has nothing for: by posts, authors, and the redirections that worked', array( 'twitter' => 1, 'robots_adv' => 1, 'schema' => 1, 'authors' => 1, 'redirections' => 2 ) == Simple_SEO_Rank_Math_Import::left(), Simple_SEO_Rank_Math_Import::left() ); // phpcs:ignore Universal.Operators.StrictComparisons
 	update_option( 'rank_math_modules', array( 'link-counter' ) );
 	sseo_check( 'redirections with their module off did nothing: not named', ! isset( Simple_SEO_Rank_Math_Import::left()['redirections'] ) );
 	update_option( 'rank_math_modules', array( 'link-counter', 'redirections' ) );
@@ -4707,7 +4733,7 @@ try {
 		++$sseo_rm_count;
 	} while ( 'running' === $sseo_rm_state['status'] && $sseo_rm_count < 20 );
 	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_rm_state['status'] && 5 === $sseo_rm_count && 'none' === Simple_SEO_Import::state( 'yoast' )['status'], array( $sseo_rm_count, $sseo_rm_state['status'] ) );
-	sseo_check( "run again: everything is Simple SEO's already, kept", ! isset( $sseo_rm_state['report']['settings'] ) && 0 === ( $sseo_rm_state['report']['post']['fields'] ?? 0 ) && 12 === $sseo_rm_state['report']['post']['kept'] && 8 === $sseo_rm_state['report']['term']['kept'] && 2 === $sseo_rm_state['report']['left']['redirections'] && 1 === $sseo_rm_state['report']['left']['verification'], $sseo_rm_state['report'] );
+	sseo_check( "run again: everything is Simple SEO's already, kept", ! isset( $sseo_rm_state['report']['settings'] ) && 0 === ( $sseo_rm_state['report']['post']['fields'] ?? 0 ) && 16 === $sseo_rm_state['report']['post']['kept'] && 8 === $sseo_rm_state['report']['term']['kept'] && 2 === $sseo_rm_state['report']['left']['redirections'] && 1 === $sseo_rm_state['report']['left']['verification'], $sseo_rm_state['report'] );
 	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'running', 'phase' => 'terms', 'cursor' => 99999999, 'report' => array( 'post' => array( 'seen' => 99 ) ) ) );
 	Simple_SEO_Import::act( 'start', array( 'simple_seo_source' => 'rank_math' ) );
 	sseo_check( 'starting while a run goes on continues it', 'done' === Simple_SEO_Import::state( 'rank_math' )['status'] && 99 === Simple_SEO_Import::state( 'rank_math' )['report']['post']['seen'] );
@@ -4894,7 +4920,7 @@ try {
 			&& '{title} {sep} {site} {page}' === Simple_SEO_Fields::post_value( $sseo_rm_1, 'title' ) && 'Cat desc' === Simple_SEO_Fields::term_value( $sseo_rm_terms['cat'], 'description' ) && 'done' === Simple_SEO_Import::state( 'rank_math' )['status']
 			&& array( $sseo_rm_db->prefix . 'sseo_rank_math_keep' ) === $sseo_rm_db->get_col( $sseo_rm_db->prepare( 'SHOW TABLES LIKE %s', $sseo_rm_db->esc_like( $sseo_rm_db->prefix . 'sseo_rank_math_keep' ) ) )
 	);
-	sseo_check( 'the cached meta of the posts, terms and users goes too', array( 'one,two', 'cat', 'Author %name%' ) === $sseo_vals && '' === get_post_meta( $sseo_rm_1, 'rank_math_focus_keyword', true ) && '' === get_term_meta( $sseo_rm_terms['cat'], 'rank_math_focus_keyword', true ) && '' === get_user_meta( $sseo_rc_user, 'rank_math_title', true ) );
+	sseo_check( 'the cached meta of the posts, terms and users goes too', array( ' one ,two,, three  four ', 'cat', 'Author %name%' ) === $sseo_vals && '' === get_post_meta( $sseo_rm_1, 'rank_math_focus_keyword', true ) && '' === get_term_meta( $sseo_rm_terms['cat'], 'rank_math_focus_keyword', true ) && '' === get_user_meta( $sseo_rc_user, 'rank_math_title', true ) );
 	$sseo_rc_report = $sseo_rc_state['report'];
 	sseo_check( 'the report counts what went', array( 'tables' => count( $sseo_rc_tables ), 'options' => $sseo_rc_options, 'cron' => 3, 'caps' => 2, 'usermeta' => 2, 'termmeta' => $sseo_rc_terms, 'postmeta' => Simple_SEO_Rank_Math_Cleanup::BATCH + 1 ) == $sseo_rc_report, $sseo_rc_report ); // phpcs:ignore Universal.Operators.StrictComparisons
 
@@ -4943,7 +4969,7 @@ try {
 	// AIOSEO's tables as AIOSEO has them (the columns the import reads); its Pro edition's table of terms with fewer.
 	$sseo_ai_posts = $sseo_ai_db->prefix . 'aioseo_posts';
 	$sseo_ai_terms = $sseo_ai_db->prefix . 'aioseo_terms';
-	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_posts}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, post_id BIGINT NOT NULL, title TEXT NULL, description TEXT NULL, keyphrases LONGTEXT NULL, primary_term LONGTEXT NULL, canonical_url TEXT NULL, og_title TEXT NULL, og_description TEXT NULL, og_image_type VARCHAR(64) NULL, og_image_custom_url TEXT NULL, twitter_title TEXT NULL, twitter_description TEXT NULL, `schema` LONGTEXT NULL, robots_default TINYINT(1) NOT NULL DEFAULT 1, robots_noindex TINYINT(1) NOT NULL DEFAULT 0, robots_nofollow TINYINT(1) NOT NULL DEFAULT 0 )" );
+	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_posts}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, post_id BIGINT NOT NULL, title TEXT NULL, description TEXT NULL, keyphrases LONGTEXT NULL, focus_keyword VARCHAR(255) NULL, additional_keywords TEXT NULL, primary_term LONGTEXT NULL, canonical_url TEXT NULL, og_title TEXT NULL, og_description TEXT NULL, og_image_type VARCHAR(64) NULL, og_image_custom_url TEXT NULL, twitter_title TEXT NULL, twitter_description TEXT NULL, `schema` LONGTEXT NULL, robots_default TINYINT(1) NOT NULL DEFAULT 1, robots_noindex TINYINT(1) NOT NULL DEFAULT 0, robots_nofollow TINYINT(1) NOT NULL DEFAULT 0 )" );
 	$sseo_ai_row = static function ( string $table, string $column, int $id, array $row ) use ( $sseo_ai_db ): void {
 		$sseo_ai_db->insert( $table, array( $column => $id ) + $row );
 	};
@@ -4953,7 +4979,7 @@ try {
 	$sseo_ai_row( $sseo_ai_posts, 'post_id', 99999998, array( 'robots_default' => 1 ) );
 	$sseo_ai_by[] = Simple_SEO_Aioseo_Import::found();
 	$sseo_ai_db->query( "TRUNCATE TABLE `{$sseo_ai_posts}`" );
-	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_terms}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, term_id BIGINT NOT NULL, title TEXT NULL, description TEXT NULL, canonical_url TEXT NULL, robots_default TINYINT(1) NOT NULL DEFAULT 1, robots_noindex TINYINT(1) NOT NULL DEFAULT 0, robots_nofollow TINYINT(1) NOT NULL DEFAULT 0 )" );
+	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_terms}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, term_id BIGINT NOT NULL, title TEXT NULL, description TEXT NULL, keyphrases LONGTEXT NULL, canonical_url TEXT NULL, robots_default TINYINT(1) NOT NULL DEFAULT 1, robots_noindex TINYINT(1) NOT NULL DEFAULT 0, robots_nofollow TINYINT(1) NOT NULL DEFAULT 0 )" );
 	$sseo_ai_row( $sseo_ai_terms, 'term_id', 99999998, array( 'robots_default' => 0 ) );
 	$sseo_ai_by[] = Simple_SEO_Aioseo_Import::found();
 	$sseo_ai_db->query( "TRUNCATE TABLE `{$sseo_ai_terms}`" );
@@ -5035,24 +5061,36 @@ try {
 	$sseo['posts']['ai_page'] = $sseo_ai_post( array( 'post_title' => 'Ai Page', 'post_type' => 'page' ) );
 	$sseo['posts']['ai_menu'] = $sseo_ai_post( array( 'post_title' => 'Ai Menu', 'post_type' => 'nav_menu_item' ) );
 	$sseo['posts']['ai_none'] = $sseo_ai_post( array( 'post_title' => 'Ai None' ) );
+	$sseo['posts']['ai_kw']   = $sseo_ai_post( array( 'post_title' => 'Ai Keyphrases' ) );
+	$sseo['posts']['ai_fk']   = $sseo_ai_post( array( 'post_title' => 'Ai Focus' ) );
+	$sseo['posts']['ai_add']  = $sseo_ai_post( array( 'post_title' => 'Ai Additional' ) );
 	$sseo_ai_1                = $sseo['posts']['ai_1'];
 	$sseo_ai_2                = $sseo['posts']['ai_2'];
-	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo_ai_1, array( 'title' => '#post_title #separator_sa #site_title #page_number', 'description' => 'Desc #post_modified_date here', 'og_title' => 'OG #post_title', 'og_image_type' => 'custom_image', 'og_image_custom_url' => $sseo_yi_url( $sseo_og ), 'canonical_url' => 'https://example.com/ai-one/', 'robots_default' => 0, 'robots_noindex' => 1, 'robots_nofollow' => 1, 'primary_term' => '{"category":' . $sseo_news . '}', 'keyphrases' => '{"focus":{"keyphrase":"one"},"additional":[]}', 'twitter_title' => 'X one', 'schema' => '{"blockGraphs":[],"customGraphs":[],"graphs":[{"id":"x"}]}' ) );
-	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo_ai_2, array( 'title' => 'Ai two', 'robots_default' => 0, 'robots_noindex' => 0, 'robots_nofollow' => 0, 'og_image_type' => 'custom_image', 'og_image_custom_url' => 'https://elsewhere.example/picture.jpg', 'keyphrases' => '{"focus":{"keyphrase":""},"additional":[]}', 'schema' => '{"blockGraphs":[],"customGraphs":[],"graphs":[]}' ) );
-	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_3'], array( 'title' => 'Three', 'og_image_type' => 'default', 'og_image_custom_url' => $sseo_yi_url( $sseo_og ) ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo_ai_1, array( 'title' => '#post_title #separator_sa #site_title #page_number', 'description' => 'Desc #post_modified_date here', 'og_title' => 'OG #post_title', 'og_image_type' => 'custom_image', 'og_image_custom_url' => $sseo_yi_url( $sseo_og ), 'canonical_url' => 'https://example.com/ai-one/', 'robots_default' => 0, 'robots_noindex' => 1, 'robots_nofollow' => 1, 'primary_term' => '{"category":' . $sseo_news . '}', 'focus_keyword' => 'one', 'additional_keywords' => wp_json_encode( array( array( 'word' => 'two', 'score' => 50 ), array( 'word' => '' ), array( 'score' => 0 ), array( 'word' => 'три  слова' ) ) ), 'keyphrases' => '{"focus":{"keyphrase":"old one"},"additional":[{"keyphrase":"old two"}]}', 'twitter_title' => 'X one', 'schema' => '{"blockGraphs":[],"customGraphs":[],"graphs":[{"id":"x"}]}' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo_ai_2, array( 'title' => 'Ai two', 'robots_default' => 0, 'robots_noindex' => 0, 'robots_nofollow' => 0, 'og_image_type' => 'custom_image', 'og_image_custom_url' => 'https://elsewhere.example/picture.jpg', 'focus_keyword' => 'ai two focus', 'keyphrases' => '{"focus":{"keyphrase":"stale"},"additional":[{"keyphrase":"two more"}]}', 'schema' => '{"blockGraphs":[],"customGraphs":[],"graphs":[]}' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_3'], array( 'title' => 'Three', 'og_image_type' => 'default', 'og_image_custom_url' => $sseo_yi_url( $sseo_og ), 'keyphrases' => '{"focus":{"keyphrase":"three focus"},"additional":[]}' ) );
 	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_page'], array( 'title' => 'Page T', 'primary_term' => '{"category":5}' ) );
 	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_menu'], array( 'title' => 'A menu item' ) );
-	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_none'], array( 'primary_term' => '[]' ) );
-	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['cat'], array( 'title' => '#taxonomy_title best #separator_sa #site_title', 'description' => 'Cat desc', 'robots_default' => 0, 'robots_noindex' => 1, 'canonical_url' => 'https://example.com/ai-cat/' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_none'], array( 'primary_term' => '[]', 'keyphrases' => '{"focus":{"keyphrase":""},"additional":[{"keyphrase":""}]}', 'focus_keyword' => '', 'additional_keywords' => '[{"word":""}]' ) );
+	// Found by another keyphrase alone: Cyrillic as \u escapes, as AIOSEO writes it, and spaces a value written by hand may have.
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_kw'], array( 'keyphrases' => '{"focus": {"keyphrase": ""}, "additional": [{"keyphrase": "\u043a\u043b\u044e\u0447"}]}' ) );
+	// Found by AIOSEO 5.0's focus keyword alone, and by its additional keywords alone.
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_fk'], array( 'focus_keyword' => 'фокус' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_add'], array( 'additional_keywords' => '[{"word": "\u0441\u043b\u043e\u0432\u043e", "score": 0}]' ) );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['cat'], array( 'title' => '#taxonomy_title best #separator_sa #site_title', 'description' => 'Cat desc', 'robots_default' => 0, 'robots_noindex' => 1, 'canonical_url' => 'https://example.com/ai-cat/', 'keyphrases' => '{"focus":{"keyphrase":"cat"},"additional":[]}' ) );
+	// Terms have no keyphrases: a term with nothing else is not one with SEO fields.
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', 99999997, array( 'keyphrases' => '{"focus":{"keyphrase":"gone"},"additional":[]}' ) );
 	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['cat2'], array( 'title' => 'Ai cat two' ) );
 	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['tag'], array( 'description' => 'Tag desc' ) );
 	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['fmt'], array( 'title' => 'A format' ) );
 	$sseo_ai_row( $sseo_ai_terms, 'term_id', 99999999, array( 'title' => 'Gone' ) );
 	update_post_meta( $sseo_ai_2, Simple_SEO_Fields::meta_key( 'title' ), 'Own two' );
+	update_post_meta( $sseo_ai_2, Simple_SEO_Fields::meta_key( 'keyphrase' ), 'Own ai focus' );
+	update_post_meta( $sseo['posts']['ai_kw'], Simple_SEO_Fields::meta_key( 'keyphrase' ), 'Own kw focus' );
 	update_term_meta( $sseo_ai_t['cat2'], Simple_SEO_Fields::meta_key( 'title' ), 'Own cat two' );
 	$sseo_ai_rows = (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM `{$sseo_ai_posts}`" );
 
-	sseo_check( "AIOSEO's data found: settings, posts and terms with SEO fields", Simple_SEO_Aioseo_Import::found() && array( 'settings' => true, 'posts' => 5, 'terms' => 5 ) === Simple_SEO_Aioseo_Import::summary(), Simple_SEO_Aioseo_Import::summary() );
+	sseo_check( "AIOSEO's data found: settings, posts and terms with SEO fields", Simple_SEO_Aioseo_Import::found() && array( 'settings' => true, 'posts' => 8, 'terms' => 5 ) === Simple_SEO_Aioseo_Import::summary(), Simple_SEO_Aioseo_Import::summary() );
 	Simple_SEO_Import::detect();
 	sseo_check( 'the first admin request offers the import from AIOSEO', 'pending' === Simple_SEO_Import::state( 'aioseo' )['status'] );
 
@@ -5147,19 +5185,28 @@ try {
 	$sseo_ai_next   = Simple_SEO_Aioseo_Import::posts( 0, 1, $sseo_ai_report );
 	sseo_check( 'posts in batches, by ID', $sseo_ai_1 === $sseo_ai_next && 1 === $sseo_ai_report['post']['seen'] );
 	$sseo_ai_next = Simple_SEO_Aioseo_Import::posts( $sseo_ai_next, 100, $sseo_ai_report );
-	sseo_check( 'the last batch ends with the last post with something to take, then nothing is left', $sseo['posts']['ai_menu'] === $sseo_ai_next && 0 === Simple_SEO_Aioseo_Import::posts( $sseo_ai_next, 100, $sseo_ai_report ) );
+	sseo_check( 'the last batch ends with the last post with something to take, then nothing is left', $sseo['posts']['ai_add'] === $sseo_ai_next && 0 === Simple_SEO_Aioseo_Import::posts( $sseo_ai_next, 100, $sseo_ai_report ) );
 	$sseo_ai_fields = array();
-	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category' ) as $sseo_key ) {
+	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category', 'keyphrase', 'keyphrases' ) as $sseo_key ) {
 		$sseo_ai_fields[ $sseo_key ] = Simple_SEO_Fields::post_value( $sseo_ai_1, $sseo_key );
 	}
 	sseo_check(
-		"a post's fields: texts in Simple SEO's syntax, the custom image by its address, its own robots, canonical, primary category",
-		array( 'title' => '{title} {sep} {site}', 'description' => 'Desc here', 'og_title' => 'OG {title}', 'og_image' => (string) $sseo_og, 'index' => 'noindex', 'nofollow' => '1', 'canonical' => 'https://example.com/ai-one/', 'primary_category' => (string) $sseo_news ) === $sseo_ai_fields,
+		"a post's fields: texts in Simple SEO's syntax, the custom image by its address, its own robots, canonical, primary category, the focus keyword and the additional ones on lines from AIOSEO 5.0's columns, not the older JSON",
+		array( 'title' => '{title} {sep} {site}', 'description' => 'Desc here', 'og_title' => 'OG {title}', 'og_image' => (string) $sseo_og, 'index' => 'noindex', 'nofollow' => '1', 'canonical' => 'https://example.com/ai-one/', 'primary_category' => (string) $sseo_news, 'keyphrase' => 'one', 'keyphrases' => "two\nтри слова" ) === $sseo_ai_fields,
 		$sseo_ai_fields
 	);
 	sseo_check( "Simple SEO's own field stays; its own robots without noindex is index; an image elsewhere is not taken; an image AIOSEO did not pick itself is not taken", 'Own two' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'title' ) && 'index' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'nofollow' ) && '' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'og_image' ) && 'Three' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_3'], 'title' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_3'], 'og_image' ) );
 	sseo_check( 'a page: its title, no primary category; a post type without SEO fields is left alone', 'Page T' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_page'], 'title' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_page'], 'primary_category' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_menu'], 'title' ) );
-	sseo_check( 'the report of the posts', array( 'seen' => 4, 'fields' => 11, 'changed' => 4, 'kept' => 1, 'refused' => 1 ) == $sseo_ai_report['post'] && array( 'page_number' => 1, 'post_modified_date' => 1 ) == $sseo_ai_report['dropped'], $sseo_ai_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_vals = array();
+	foreach ( array( $sseo_ai_2, $sseo['posts']['ai_3'], $sseo['posts']['ai_kw'], $sseo['posts']['ai_fk'], $sseo['posts']['ai_add'] ) as $sseo_id ) {
+		$sseo_vals[] = array( Simple_SEO_Fields::post_value( $sseo_id, 'keyphrase' ), Simple_SEO_Fields::post_value( $sseo_id, 'keyphrases' ) );
+	}
+	sseo_check(
+		"Simple SEO's own focus keyphrase stays; each column falls back on the older JSON on its own; older rows' keyphrases; the focus keyword alone; the additional keywords alone",
+		array( array( 'Own ai focus', 'two more' ), array( 'three focus', '' ), array( 'Own kw focus', 'ключ' ), array( 'фокус', '' ), array( '', 'слово' ) ) === $sseo_vals,
+		$sseo_vals
+	);
+	sseo_check( 'the report of the posts', array( 'seen' => 7, 'fields' => 18, 'changed' => 7, 'kept' => 2, 'refused' => 1 ) == $sseo_ai_report['post'] && array( 'page_number' => 1, 'post_modified_date' => 1 ) == $sseo_ai_report['dropped'], $sseo_ai_report ); // phpcs:ignore Universal.Operators.StrictComparisons
 	sseo_check( "AIOSEO's rows are left as they were", $sseo_ai_rows === (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM `{$sseo_ai_posts}`" ) && 'Ai two' === $sseo_ai_db->get_var( $sseo_ai_db->prepare( "SELECT title FROM `{$sseo_ai_posts}` WHERE post_id = %d", $sseo_ai_2 ) ) );
 
 	// Terms, from the table of AIOSEO Pro.
@@ -5177,8 +5224,8 @@ try {
 	}
 	sseo_check( "a term's fields: #taxonomy_title is the term's own title, its robots, canonical; columns the table lacks are skipped", array( 'title' => '{title} best {sep} {site}', 'description' => 'Cat desc', 'index' => 'noindex', 'nofollow' => '', 'canonical' => 'https://example.com/ai-cat/' ) === $sseo_ai_fields, $sseo_ai_fields );
 	sseo_check( "Simple SEO's own field stays; terms that are gone, or of a taxonomy without SEO fields, are left alone", 'Own cat two' === Simple_SEO_Fields::term_value( $sseo_ai_t['cat2'], 'title' ) && 'Tag desc' === Simple_SEO_Fields::term_value( $sseo_ai_t['tag'], 'description' ) && '' === Simple_SEO_Fields::term_value( $sseo_ai_t['fmt'], 'title' ) );
-	sseo_check( 'the report of the terms', array( 'seen' => 3, 'fields' => 5, 'changed' => 2, 'kept' => 1 ) == $sseo_ai_report['term'], $sseo_ai_report ); // phpcs:ignore Universal.Operators.StrictComparisons
-	sseo_check( 'what Simple SEO has nothing for, by posts', array( 'focuskw' => 1, 'twitter' => 1, 'schema' => 1 ) == Simple_SEO_Aioseo_Import::left(), Simple_SEO_Aioseo_Import::left() ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'the report of the terms; a keyphrase of a term is no field', array( 'seen' => 3, 'fields' => 5, 'changed' => 2, 'kept' => 1 ) == $sseo_ai_report['term'] && ! metadata_exists( 'term', $sseo_ai_t['cat'], Simple_SEO_Fields::meta_key( 'keyphrase' ) ), $sseo_ai_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'what Simple SEO has nothing for, by posts', array( 'twitter' => 1, 'schema' => 1 ) == Simple_SEO_Aioseo_Import::left(), Simple_SEO_Aioseo_Import::left() ); // phpcs:ignore Universal.Operators.StrictComparisons
 
 	// The whole run.
 	Simple_SEO_Import::start( 'aioseo' );
@@ -5188,7 +5235,7 @@ try {
 		++$sseo_ai_count;
 	} while ( 'running' === $sseo_ai_state['status'] && $sseo_ai_count < 20 );
 	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_ai_state['status'] && 5 === $sseo_ai_count, array( $sseo_ai_count, $sseo_ai_state['status'] ) );
-	sseo_check( "run again: everything is Simple SEO's already, kept", ! isset( $sseo_ai_state['report']['settings'] ) && 0 === ( $sseo_ai_state['report']['post']['fields'] ?? 0 ) && 12 === $sseo_ai_state['report']['post']['kept'] && 6 === $sseo_ai_state['report']['term']['kept'] && 1 === $sseo_ai_state['report']['left']['robots_rules'] && 1 === $sseo_ai_state['report']['left']['schema'], $sseo_ai_state['report'] );
+	sseo_check( "run again: everything is Simple SEO's already, kept", ! isset( $sseo_ai_state['report']['settings'] ) && 0 === ( $sseo_ai_state['report']['post']['fields'] ?? 0 ) && 20 === $sseo_ai_state['report']['post']['kept'] && 6 === $sseo_ai_state['report']['term']['kept'] && 1 === $sseo_ai_state['report']['left']['robots_rules'] && 1 === $sseo_ai_state['report']['left']['schema'], $sseo_ai_state['report'] );
 
 	// The admin.
 	wp_set_current_user( $sseo_u['administrator'] );
@@ -5202,7 +5249,7 @@ try {
 	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
 	$_GET['tab'] = 'import';
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	sseo_check( 'the tab: All in One SEO with what was found and its button', str_contains( $sseo_html, '<h2>All in One SEO</h2>' ) && str_contains( $sseo_html, 'Import from All in One SEO' ) && str_contains( $sseo_html, 'AIOSEO&#039;s #tags become' ) && str_contains( $sseo_html, 'posts with SEO fields: 5' ) && str_contains( $sseo_html, 'name="simple_seo_source" value="aioseo"' ), $sseo_html );
+	sseo_check( 'the tab: All in One SEO with what was found and its button', str_contains( $sseo_html, '<h2>All in One SEO</h2>' ) && str_contains( $sseo_html, 'Import from All in One SEO' ) && str_contains( $sseo_html, 'AIOSEO&#039;s #tags become' ) && str_contains( $sseo_html, 'posts with SEO fields: 8' ) && str_contains( $sseo_html, 'name="simple_seo_source" value="aioseo"' ), $sseo_html );
 	update_option( Simple_SEO_Aioseo_Import::STATE, array( 'status' => 'done', 'finished' => time(), 'report' => array( 'dropped' => array( 'page_number' => 2 ), 'left' => array( 'robots_rules' => 1 ) ) ) );
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'], $GLOBALS['current_screen'] );
@@ -5212,6 +5259,10 @@ try {
 	foreach ( array( Simple_SEO_Yoast_Import::STATE, Simple_SEO_Rank_Math_Import::STATE ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
+
+	// The table of AIOSEO 4, before its keyword columns.
+	$sseo_ai_db->query( "ALTER TABLE `{$sseo_ai_posts}` DROP COLUMN focus_keyword, DROP COLUMN additional_keywords" );
+	sseo_check( 'a table of AIOSEO 4, without the keyword columns: posts found by the rest, keyphrases by the older JSON', 6 === Simple_SEO_Aioseo_Import::summary()['posts'], Simple_SEO_Aioseo_Import::summary() );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'AIOSEO clean-up' );
