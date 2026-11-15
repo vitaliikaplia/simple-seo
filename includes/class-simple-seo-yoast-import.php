@@ -276,21 +276,13 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 
 	/** @param array<string, mixed> $main */
 	private static function take_cleanup( array $main, array &$report ): void {
-		$row   = self::row( Simple_SEO_Cleanup::OPTION );
-		$clean = array_replace( Simple_SEO_Cleanup::defaults(), $row );
-		$count = 0;
-
+		$keys = array();
 		foreach ( self::CLEANUP_SWITCHES as $yoast => $key ) {
-			if ( ! empty( $main[ $yoast ] ) && ! array_key_exists( $key, $row ) && ! $clean[ $key ] ) {
-				$clean[ $key ] = true;
-				++$count;
+			if ( ! empty( $main[ $yoast ] ) ) {
+				$keys[] = $key;
 			}
 		}
-
-		if ( $count ) {
-			self::add( $report, 'settings', 'cleanup', $count );
-			self::save( Simple_SEO_Cleanup::OPTION, array_map( static fn( $on ): string => $on ? '1' : '0', $clean ) );
-		}
+		self::cleanup( $keys, $report );
 	}
 
 	/**

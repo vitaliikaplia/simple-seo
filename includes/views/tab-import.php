@@ -164,6 +164,7 @@ endif;
 						'breadcrumb_texts' => __( 'the texts the breadcrumbs put before archives and search results and on the 404 page', 'simple-seo' ),
 						'verification'     => __( 'the codes that confirm the site to Google, Bing and other webmaster tools: put them where the site keeps such codes, or they stop working', 'simple-seo' ),
 						'url_bases'        => __( 'addresses without the category base: with the plugin off, the addresses of categories get it back', 'simple-seo' ),
+						'robots_rules'     => __( 'the rules added to robots.txt: put them on the Files tab', 'simple-seo' ),
 						/* translators: %s: number of redirections. */
 						'redirections'     => __( 'redirections (%s): with the plugin off they stop working; move them to a redirection plugin first', 'simple-seo' ),
 					);

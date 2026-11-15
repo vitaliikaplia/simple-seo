@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.17.0
+Stable tag: 0.18.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.18.0 =
+* Import from All in One SEO on the Import tab, next to Yoast SEO and Rank Math: the separator, the title and description templates (AIOSEO's #tags as Simple SEO's {variables}), what search engines leave out (kinds not shown in search results, robots of their own, the global robots) and where attachment pages go, the default image and the X account, the home page, the breadcrumbs, the sitemap switch and the feeds its crawl clean-up removed; the SEO fields of posts from its table, and of terms where AIOSEO Pro kept them. The report names what needs a hand: webmaster verification codes, addresses without the category base, the rules it added to robots.txt.
+* Removing what AIOSEO left: its tables, other options, the capabilities it gave to roles, its settings, its user meta and its copies of the fields in post meta. A theme that reads AIOSEO's table, settings or post meta keeps that part unticked, and the files are named.
 
 = 0.17.0 =
 * Import from Rank Math on the Import tab, next to Yoast SEO: the separator, the title and description templates (Rank Math's %variables% as Simple SEO's {variables}), what search engines leave out (robots of each kind of page, or the global ones) and where attachment pages go, the default image and the X account, the home and 404 pages, the breadcrumbs, the sitemap switch and the text of robots.txt; the SEO fields of posts and terms. As with Yoast, only what Simple SEO does not have is filled. The report also names what needs a hand: redirections, webmaster verification codes, addresses without the category base.

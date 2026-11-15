@@ -231,26 +231,28 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	}
 	wp_cache_flush();
 	update_option( 'cron', $sseo_saved_yoast['cron'] );
-	foreach ( array( 'simple_seo_import_yoast', 'simple_seo_yoast_cleanup', 'simple_seo_import_rank_math', 'simple_seo_rank_math_cleanup' ) as $sseo_name ) {
+	foreach ( array( 'simple_seo_import_yoast', 'simple_seo_yoast_cleanup', 'simple_seo_import_rank_math', 'simple_seo_rank_math_cleanup', 'simple_seo_import_aioseo', 'simple_seo_aioseo_cleanup' ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
-	// The stand has no data of Rank Math's: whatever the Rank Math sections made up goes.
-	foreach ( (array) $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . 'rank_math_' ) . '%' ) ) as $sseo_name ) {
-		$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_name}`" );
+	// The stand has no data of Rank Math's or AIOSEO's: whatever their sections made up goes.
+	foreach ( array( 'rank_math_', 'aioseo_' ) as $sseo_prefix ) {
+		foreach ( (array) $sseo_db->get_col( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->esc_like( $sseo_db->prefix . $sseo_prefix ) . '%' ) ) as $sseo_name ) {
+			$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_name}`" );
+		}
 	}
-	$sseo_db->query( "DELETE FROM {$sseo_db->options} WHERE option_name LIKE 'rank\\_math\\_%' OR option_name LIKE 'rank-math-%' OR option_name LIKE '\\_transient\\_%rank\\_math%'" );
+	$sseo_db->query( "DELETE FROM {$sseo_db->options} WHERE option_name LIKE 'rank\\_math\\_%' OR option_name LIKE 'rank-math-%' OR option_name LIKE '\\_transient\\_%rank\\_math%' OR option_name LIKE 'aioseo\\_%' OR option_name LIKE '\\_transient\\_%aioseo%'" );
 	foreach ( array( $sseo_db->usermeta, $sseo_db->termmeta, $sseo_db->postmeta ) as $sseo_name ) {
-		$sseo_db->query( "DELETE FROM {$sseo_name} WHERE meta_key LIKE 'rank\\_math\\_%'" );
+		$sseo_db->query( "DELETE FROM {$sseo_name} WHERE meta_key LIKE 'rank\\_math\\_%' OR meta_key LIKE '\\_aioseo%' OR meta_key LIKE 'aioseo%'" );
 	}
 	wp_cache_flush();
 	foreach ( wp_roles()->role_objects as $sseo_role ) {
 		foreach ( array_keys( (array) $sseo_role->capabilities ) as $sseo_name ) {
-			if ( str_starts_with( (string) $sseo_name, 'rank_math_' ) ) {
+			if ( str_starts_with( (string) $sseo_name, 'rank_math_' ) || str_starts_with( (string) $sseo_name, 'aioseo_' ) ) {
 				$sseo_role->remove_cap( $sseo_name );
 			}
 		}
 	}
-	foreach ( array( 'rank_math/sseo_daily', 'rank_math_sseo_once' ) as $sseo_name ) {
+	foreach ( array( 'rank_math/sseo_daily', 'rank_math_sseo_once', 'aioseo_sseo_daily', 'aioseo_sseo_once' ) as $sseo_name ) {
 		wp_unschedule_hook( $sseo_name );
 	}
 };
@@ -3378,7 +3380,7 @@ try {
 	sseo_section( 'Yoast import' );
 
 	require_once ABSPATH . 'wp-admin/includes/plugin.php';
-	foreach ( array( 'import-source', 'yoast-import', 'rank-math-import', 'source-cleanup', 'yoast-cleanup', 'rank-math-cleanup', 'import' ) as $sseo_name ) {
+	foreach ( array( 'import-source', 'yoast-import', 'rank-math-import', 'aioseo-import', 'source-cleanup', 'yoast-cleanup', 'rank-math-cleanup', 'aioseo-cleanup', 'import' ) as $sseo_name ) {
 		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-' . $sseo_name . '.php';
 	}
 	$sseo_wpdb = $GLOBALS['wpdb'];
@@ -4005,7 +4007,7 @@ try {
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'], $GLOBALS['current_screen'] );
 	wp_set_current_user( 0 );
-	sseo_check( 'the tab without data of either plugin says so, naming both', str_contains( $sseo_html, 'There is no data of Yoast SEO and Rank Math on this site.' ) && ! str_contains( $sseo_html, 'value="start"' ), $sseo_html );
+	sseo_check( 'the tab without data of either plugin says so, naming both', str_contains( $sseo_html, 'There is no data of Yoast SEO, Rank Math, and All in One SEO on this site.' ) && ! str_contains( $sseo_html, 'value="start"' ), $sseo_html );
 	// Found by Rank Math's post meta alone, or by its term meta alone.
 	$sseo_rm_by = array();
 	foreach ( array( 'postmeta' => 'post_id', 'termmeta' => 'term_id' ) as $sseo_key => $sseo_name ) {
@@ -4599,6 +4601,430 @@ try {
 	unregister_taxonomy( 'sseo_rm_shelf' );
 	unregister_taxonomy( 'sseo_rm_room' );
 	unregister_post_type( 'sseo_rm_book' );
+	Simple_SEO_Fields::flush_types();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'AIOSEO import' );
+
+	$sseo_ai_db = $GLOBALS['wpdb'];
+	foreach ( $sseo_yi_rows as $sseo_name ) {
+		remove_all_filters( 'sanitize_option_' . $sseo_name );
+		delete_option( $sseo_name );
+	}
+	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION, Simple_SEO_Yoast_Import::STATE, Simple_SEO_Rank_Math_Import::STATE, Simple_SEO_Aioseo_Import::STATE ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
+	sseo_check( 'no data of AIOSEO: nothing found, nothing to import', ! Simple_SEO_Aioseo_Import::found() && array( 'settings' => false, 'posts' => 0, 'terms' => 0 ) === Simple_SEO_Aioseo_Import::summary() && array() === Simple_SEO_Aioseo_Import::left() );
+
+	// AIOSEO's tables as AIOSEO has them (the columns the import reads); its Pro edition's table of terms with fewer.
+	$sseo_ai_posts = $sseo_ai_db->prefix . 'aioseo_posts';
+	$sseo_ai_terms = $sseo_ai_db->prefix . 'aioseo_terms';
+	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_posts}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, post_id BIGINT NOT NULL, title TEXT NULL, description TEXT NULL, keyphrases LONGTEXT NULL, primary_term LONGTEXT NULL, canonical_url TEXT NULL, og_title TEXT NULL, og_description TEXT NULL, og_image_type VARCHAR(64) NULL, og_image_custom_url TEXT NULL, twitter_title TEXT NULL, twitter_description TEXT NULL, `schema` LONGTEXT NULL, robots_default TINYINT(1) NOT NULL DEFAULT 1, robots_noindex TINYINT(1) NOT NULL DEFAULT 0, robots_nofollow TINYINT(1) NOT NULL DEFAULT 0 )" );
+	$sseo_ai_row = static function ( string $table, string $column, int $id, array $row ) use ( $sseo_ai_db ): void {
+		$sseo_ai_db->insert( $table, array( $column => $id ) + $row );
+	};
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', 99999998, array( 'description' => 'x' ) );
+	$sseo_ai_by = array( Simple_SEO_Aioseo_Import::found() );
+	$sseo_ai_db->query( "TRUNCATE TABLE `{$sseo_ai_posts}`" );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', 99999998, array( 'robots_default' => 1 ) );
+	$sseo_ai_by[] = Simple_SEO_Aioseo_Import::found();
+	$sseo_ai_db->query( "TRUNCATE TABLE `{$sseo_ai_posts}`" );
+	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_terms}` ( id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, term_id BIGINT NOT NULL, title TEXT NULL, description TEXT NULL, canonical_url TEXT NULL, robots_default TINYINT(1) NOT NULL DEFAULT 1, robots_noindex TINYINT(1) NOT NULL DEFAULT 0, robots_nofollow TINYINT(1) NOT NULL DEFAULT 0 )" );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', 99999998, array( 'robots_default' => 0 ) );
+	$sseo_ai_by[] = Simple_SEO_Aioseo_Import::found();
+	$sseo_ai_db->query( "TRUNCATE TABLE `{$sseo_ai_terms}`" );
+	sseo_check( "found by AIOSEO's row of a post or of a term with something to take; a row that follows the defaults is nothing", array( true, false, true ) === $sseo_ai_by, $sseo_ai_by );
+
+	register_post_type( 'sseo_ai_book', array( 'public' => true, 'has_archive' => true, 'label' => 'Books' ) );
+	foreach ( array( 'sseo_ai_shelf', 'sseo_ai_room' ) as $sseo_name ) {
+		register_taxonomy( $sseo_name, 'sseo_ai_book', array( 'public' => true, 'hierarchical' => true, 'label' => $sseo_name ) );
+	}
+	Simple_SEO_Fields::flush_types();
+	$sseo_ai_t = array();
+	foreach ( array( 'tag' => 'post_tag', 'cat' => 'category', 'cat2' => 'category', 'fmt' => 'post_format' ) as $sseo_key => $sseo_name ) {
+		$sseo_term               = wp_insert_term( 'post_format' === $sseo_name ? 'post-format-sseo-ai' : 'Ai ' . $sseo_key, $sseo_name );
+		$sseo_ai_t[ $sseo_key ] = (int) $sseo_term['term_id'];
+		$sseo['terms'][]         = array( (int) $sseo_term['term_id'], $sseo_name );
+	}
+
+	// AIOSEO's settings, as AIOSEO keeps them: JSON, separators as HTML entities.
+	update_option(
+		'aioseo_options',
+		wp_json_encode(
+			array(
+				'webmasterTools'   => array( 'google' => 'abc123', 'bing' => null ),
+				'breadcrumbs'      => array( 'separator' => '&raquo;', 'homepageLabel' => 'Start', 'breadcrumbPrefix' => 'You are here:', 'archiveFormat' => 'Archives for #breadcrumb_archive_post_type_name', 'showCurrentItem' => false, 'showBlogHome' => true ),
+				'social'           => array(
+					'facebook' => array(
+						'general'  => array( 'defaultImageSourcePosts' => 'default', 'defaultImagePosts' => $sseo_yi_url( $sseo_default ) ),
+						'homePage' => array( 'image' => $sseo_yi_url( $sseo_og ), 'title' => 'Social home' ),
+					),
+					'profiles' => array( 'urls' => array( 'twitterUrl' => 'https://x.com/aisite' ) ),
+				),
+				'sitemap'          => array( 'general' => array( 'enable' => false ) ),
+				'tools'            => array( 'robots' => array( 'enable' => true, 'rules' => array( '{"userAgent":"*","rule":"disallow","directoryPath":"/x/"}' ) ) ),
+				'searchAppearance' => array(
+					'global'   => array( 'separator' => '&#124;', 'siteTitle' => 'Welcome #separator_sa #site_title', 'metaDescription' => 'All about #custom_field-price #site_title' ),
+					'advanced' => array(
+						'globalRobotsMeta'   => array( 'default' => true, 'noindex' => true ),
+						'removeCategoryBase' => true,
+						'crawlCleanup'       => array(
+							'enable' => true,
+							'feeds'  => array( 'global' => true, 'globalComments' => false, 'postComments' => true, 'authors' => false, 'search' => true, 'taxonomies' => array( 'all' => false, 'included' => array( 'category' ) ) ),
+						),
+					),
+					'archives' => array(
+						'author' => array( 'show' => true, 'title' => '#author_name at #site_title', 'metaDescription' => '', 'advanced' => array( 'robotsMeta' => array( 'default' => false, 'noindex' => true ) ) ),
+						'date'   => array( 'show' => false, 'title' => '#archive_date #separator_sa #site_title' ),
+						'search' => array( 'title' => 'Search: #search_term #separator_sa #site_title' ),
+					),
+				),
+			)
+		)
+	);
+	update_option(
+		'aioseo_options_dynamic',
+		wp_json_encode(
+			array(
+				'searchAppearance' => array(
+					'postTypes'  => array(
+						'post'         => array( 'show' => true, 'title' => '#post_title #separator_sa #site_title', 'metaDescription' => '#post_excerpt #post_modified_date', 'advanced' => array( 'robotsMeta' => array( 'default' => true, 'noindex' => true ) ) ),
+						'page'         => array( 'title' => 'Page #post_title #categories', 'metaDescription' => 'About #post_title, #1 choice #unknown_word' ),
+						'sseo_ai_book' => array( 'show' => false ),
+						'attachment'   => array( 'show' => true, 'advanced' => array( 'robotsMeta' => array( 'default' => false, 'noindex' => true ) ), 'redirectAttachmentUrls' => 'attachment_parent' ),
+					),
+					'archives'   => array( 'sseo_ai_book' => array( 'show' => true, 'title' => '#archive_title Archive #separator_sa #site_title', 'advanced' => array( 'robotsMeta' => array( 'default' => false, 'noindex' => true ) ) ) ),
+					'taxonomies' => array(
+						'category' => array( 'show' => true, 'title' => '#taxonomy_title Archives #separator_sa #site_title', 'metaDescription' => '#taxonomy_description', 'advanced' => array( 'robotsMeta' => array( 'default' => false, 'noindex' => false ) ) ),
+						'post_tag' => array( 'show' => false ),
+					),
+				),
+			)
+		)
+	);
+
+	// Posts and terms with AIOSEO's fields, in its tables.
+	$sseo_ai_post             = static fn( array $args ): int => (int) wp_insert_post( $args + array( 'post_status' => 'publish' ) );
+	$sseo['posts']['ai_1']    = $sseo_ai_post( array( 'post_title' => 'Ai One', 'post_category' => array( $sseo_news, $sseo_sport ) ) );
+	$sseo['posts']['ai_2']    = $sseo_ai_post( array( 'post_title' => 'Ai Two' ) );
+	$sseo['posts']['ai_3']    = $sseo_ai_post( array( 'post_title' => 'Ai Three' ) );
+	$sseo['posts']['ai_page'] = $sseo_ai_post( array( 'post_title' => 'Ai Page', 'post_type' => 'page' ) );
+	$sseo['posts']['ai_menu'] = $sseo_ai_post( array( 'post_title' => 'Ai Menu', 'post_type' => 'nav_menu_item' ) );
+	$sseo['posts']['ai_none'] = $sseo_ai_post( array( 'post_title' => 'Ai None' ) );
+	$sseo_ai_1                = $sseo['posts']['ai_1'];
+	$sseo_ai_2                = $sseo['posts']['ai_2'];
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo_ai_1, array( 'title' => '#post_title #separator_sa #site_title #page_number', 'description' => 'Desc #post_modified_date here', 'og_title' => 'OG #post_title', 'og_image_type' => 'custom_image', 'og_image_custom_url' => $sseo_yi_url( $sseo_og ), 'canonical_url' => 'https://example.com/ai-one/', 'robots_default' => 0, 'robots_noindex' => 1, 'robots_nofollow' => 1, 'primary_term' => '{"category":' . $sseo_news . '}', 'keyphrases' => '{"focus":{"keyphrase":"one"},"additional":[]}', 'twitter_title' => 'X one', 'schema' => '{"blockGraphs":[],"customGraphs":[],"graphs":[{"id":"x"}]}' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo_ai_2, array( 'title' => 'Ai two', 'robots_default' => 0, 'robots_noindex' => 0, 'robots_nofollow' => 0, 'og_image_type' => 'custom_image', 'og_image_custom_url' => 'https://elsewhere.example/picture.jpg', 'keyphrases' => '{"focus":{"keyphrase":""},"additional":[]}', 'schema' => '{"blockGraphs":[],"customGraphs":[],"graphs":[]}' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_3'], array( 'title' => 'Three', 'og_image_type' => 'default', 'og_image_custom_url' => $sseo_yi_url( $sseo_og ) ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_page'], array( 'title' => 'Page T', 'primary_term' => '{"category":5}' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_menu'], array( 'title' => 'A menu item' ) );
+	$sseo_ai_row( $sseo_ai_posts, 'post_id', $sseo['posts']['ai_none'], array( 'primary_term' => '[]' ) );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['cat'], array( 'title' => '#taxonomy_title best #separator_sa #site_title', 'description' => 'Cat desc', 'robots_default' => 0, 'robots_noindex' => 1, 'canonical_url' => 'https://example.com/ai-cat/' ) );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['cat2'], array( 'title' => 'Ai cat two' ) );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['tag'], array( 'description' => 'Tag desc' ) );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', $sseo_ai_t['fmt'], array( 'title' => 'A format' ) );
+	$sseo_ai_row( $sseo_ai_terms, 'term_id', 99999999, array( 'title' => 'Gone' ) );
+	update_post_meta( $sseo_ai_2, Simple_SEO_Fields::meta_key( 'title' ), 'Own two' );
+	update_term_meta( $sseo_ai_t['cat2'], Simple_SEO_Fields::meta_key( 'title' ), 'Own cat two' );
+	$sseo_ai_rows = (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM `{$sseo_ai_posts}`" );
+
+	sseo_check( "AIOSEO's data found: settings, posts and terms with SEO fields", Simple_SEO_Aioseo_Import::found() && array( 'settings' => true, 'posts' => 5, 'terms' => 5 ) === Simple_SEO_Aioseo_Import::summary(), Simple_SEO_Aioseo_Import::summary() );
+	Simple_SEO_Import::detect();
+	sseo_check( 'the first admin request offers the import from AIOSEO', 'pending' === Simple_SEO_Import::state( 'aioseo' )['status'] );
+
+	// Simple SEO's own choices, saved before the import.
+	update_option( Simple_SEO_Titles::OPTION, array( 'templates' => array( 'post:page' => array( 'title' => 'Own page {title}' ) ) ) );
+	update_option( Simple_SEO_Social::OPTION, array( 'x_account' => '@mine' ) );
+	update_option( Simple_SEO_Special::OPTION, array( '404' => array( 'title' => 'Own 404' ) ) );
+	update_option( Simple_SEO_Breadcrumbs::LABELS, array( 'home' => 'My home' ) );
+	update_option( Simple_SEO_Breadcrumbs::OPTION, array( 'separator' => '/' ) );
+	update_option( Simple_SEO_Cleanup::OPTION, array( 'feed_authors' => false ) );
+	Simple_SEO_Settings::flush();
+
+	// Settings.
+	$sseo_ai_report = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_report );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_titles = get_option( Simple_SEO_Titles::OPTION );
+	sseo_check( 'the separator from its HTML entity', '|' === $sseo_ai_titles['separator'] );
+	sseo_check(
+		"templates in Simple SEO's syntax; Simple SEO's own one stays; ones equal to its defaults are not kept; a #word that is none of AIOSEO's tags stays text",
+		array(
+			'post:page'            => array( 'title' => 'Own page {title}', 'description' => 'About {title}, #1 choice #unknown_word' ),
+			'post:post'            => array( 'title' => '{title} {sep} {site}' ),
+			'author'               => array( 'title' => '{author} at {site}' ),
+			'date'                 => array( 'title' => '{date} {sep} {site}' ),
+			'search'               => array( 'title' => 'Search: {search} {sep} {site}' ),
+			'archive:sseo_ai_book' => array( 'title' => '{title} Archive {sep} {site}' ),
+			'term:category'        => array( 'title' => '{title} Archives {sep} {site}' ),
+		) == $sseo_ai_titles['templates'], // phpcs:ignore Universal.Operators.StrictComparisons -- the order of slots is the importer's.
+		$sseo_ai_titles['templates']
+	);
+	sseo_check( "a tag of AIOSEO's Simple SEO has none for is left out and counted, a custom field too; one in a kept template is not", array( 'post_modified_date' => 1, 'custom_field' => 1 ) == $sseo_ai_report['dropped'], $sseo_ai_report['dropped'] ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_ai_index = get_option( Simple_SEO_Indexing::OPTION );
+	sseo_check( 'indexing: a kind not shown in search results, or with robots of its own, is hidden; the rest follow the global robots; attachment pages to their post', array( 'post:sseo_ai_book', 'archive:sseo_ai_book', 'post:attachment', 'term:post_tag', 'author', 'date' ) === $sseo_ai_index['noindex'] && Simple_SEO_Indexing::ATTACHMENTS_PARENT === $sseo_ai_index['attachments'], $sseo_ai_index ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "social networks: the default image by its address, Simple SEO's own X account stays", array( 'default_image' => $sseo_default, 'x_account' => '@mine' ) === get_option( Simple_SEO_Social::OPTION ) );
+	sseo_check( "the home page with its image, Simple SEO's own 404 title stays", array( '404' => array( 'title' => 'Own 404' ), 'home' => array( 'title' => 'Welcome {sep} {site}', 'description' => 'All about {site}', 'image' => $sseo_og ) ) == get_option( Simple_SEO_Special::OPTION ), get_option( Simple_SEO_Special::OPTION ) ); // phpcs:ignore Universal.Operators.StrictComparisons
+	$sseo_ai_bc = get_option( Simple_SEO_Breadcrumbs::OPTION );
+	sseo_check( "breadcrumbs: Simple SEO's own separator stays, the current page left out, the posts page in", '/' === $sseo_ai_bc['separator'] && false === $sseo_ai_bc['show_current'] && true === $sseo_ai_bc['show_blog'], $sseo_ai_bc );
+	sseo_check( "breadcrumb labels as AIOSEO had them; Simple SEO's own one stays", array( 'home' => 'My home', 'prefix' => 'You are here:' ) === get_option( Simple_SEO_Breadcrumbs::LABELS ) );
+	sseo_check( 'the sitemap AIOSEO switched off', array( 'enabled' => false ) === get_option( Simple_SEO_Sitemaps::OPTION ) );
+	$sseo_ai_clean = get_option( Simple_SEO_Cleanup::OPTION );
+	sseo_check( "clean-up: the feeds AIOSEO switched off; Simple SEO's own choice stays; nothing without AIOSEO's crawl clean-up", '1' === $sseo_ai_clean['feed_comments'] && '1' === $sseo_ai_clean['feed_tags'] && '0' === $sseo_ai_clean['feed_authors'] && '0' === $sseo_ai_clean['feed_posts'] && '0' === $sseo_ai_clean['feed_categories'] && '0' === $sseo_ai_clean['feed_post_comments'], $sseo_ai_clean );
+	sseo_check(
+		'the report names what was taken and what Simple SEO has nothing for',
+		array( 'separator' => 1, 'templates' => 7, 'indexing' => 1, 'attachments' => 1, 'special' => 3, 'default_image' => 1, 'breadcrumbs' => 1, 'labels' => 1, 'sitemaps' => 1, 'cleanup' => 2 ) == $sseo_ai_report['settings'] // phpcs:ignore Universal.Operators.StrictComparisons
+			&& array( 'social_templates' => 1, 'breadcrumb_texts' => 1, 'verification' => 1, 'url_bases' => 1, 'robots_rules' => 1 ) == $sseo_ai_report['left'], // phpcs:ignore Universal.Operators.StrictComparisons
+		$sseo_ai_report
+	);
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	sseo_check( 'run again: nothing more to take', ! isset( $sseo_ai_again['settings'] ), $sseo_ai_again );
+
+	// Another set of AIOSEO's settings: noindex as the global robots, crawl clean-up off, no separator Simple SEO has.
+	$sseo_ai_saved = array( get_option( 'aioseo_options' ), get_option( 'aioseo_options_dynamic' ) );
+	$sseo_ai_own   = array();
+	foreach ( array( Simple_SEO_Indexing::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Titles::OPTION, Simple_SEO_Cleanup::OPTION ) as $sseo_name ) {
+		$sseo_ai_own[ $sseo_name ] = get_option( $sseo_name );
+		delete_option( $sseo_name );
+	}
+	$sseo_ai_opts = json_decode( $sseo_ai_saved[0], true );
+	$sseo_ai_opts['searchAppearance']['global']['separator']                              = 'custom';
+	$sseo_ai_opts['searchAppearance']['advanced']['globalRobotsMeta']                     = array( 'default' => false, 'noindex' => true );
+	$sseo_ai_opts['searchAppearance']['advanced']['crawlCleanup']['enable']               = false;
+	$sseo_ai_opts['searchAppearance']['advanced']['removeCategoryBase']                   = false;
+	$sseo_ai_opts['searchAppearance']['archives']['author']['advanced']['robotsMeta']     = array( 'default' => false, 'noindex' => false );
+	$sseo_ai_opts['social']['facebook']['general']['defaultImageSourcePosts']             = 'featured';
+	$sseo_ai_opts['tools']['robots']['enable']                                            = false;
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	$sseo_ai_dyn = json_decode( $sseo_ai_saved[1], true );
+	$sseo_ai_dyn['searchAppearance']['postTypes']['attachment']['redirectAttachmentUrls'] = 'disabled';
+	update_option( 'aioseo_options_dynamic', wp_json_encode( $sseo_ai_dyn ) );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	$sseo_ai_index = get_option( Simple_SEO_Indexing::OPTION );
+	sseo_check(
+		"with noindex as the global robots: every kind without robots of its own, a taxonomy AIOSEO has nothing for included, no archive of a type without one; a type's own default follows the global; the author archive's own index; attachment pages kept; AIOSEO's X account; no default image but AIOSEO's own; no clean-up without crawl clean-up; no rules of robots.txt while its editor is off",
+		in_array( 'post:post', $sseo_ai_index['noindex'], true ) && in_array( 'post:page', $sseo_ai_index['noindex'], true ) && in_array( 'term:sseo_ai_room', $sseo_ai_index['noindex'], true ) && ! in_array( 'archive:post', $sseo_ai_index['noindex'], true ) && ! in_array( 'term:category', $sseo_ai_index['noindex'], true ) && ! in_array( 'author', $sseo_ai_index['noindex'], true )
+			&& Simple_SEO_Indexing::ATTACHMENTS_KEEP === $sseo_ai_index['attachments'] && '@aisite' === get_option( Simple_SEO_Social::OPTION )['x_account'] && empty( get_option( Simple_SEO_Social::OPTION )['default_image'] )
+			&& ! isset( $sseo_ai_again['settings']['separator'] ) && ! isset( $sseo_ai_again['settings']['cleanup'] ) && ! isset( $sseo_ai_again['left']['url_bases'] ) && ! isset( $sseo_ai_again['left']['robots_rules'] ),
+		array( $sseo_ai_index, $sseo_ai_again )
+	);
+	update_option( 'aioseo_options', $sseo_ai_saved[0] );
+	update_option( 'aioseo_options_dynamic', $sseo_ai_saved[1] );
+	foreach ( $sseo_ai_own as $sseo_name => $sseo_value ) {
+		update_option( $sseo_name, $sseo_value );
+	}
+	Simple_SEO_Settings::flush();
+
+	// Posts.
+	$sseo_ai_report = array();
+	$sseo_ai_next   = Simple_SEO_Aioseo_Import::posts( 0, 1, $sseo_ai_report );
+	sseo_check( 'posts in batches, by ID', $sseo_ai_1 === $sseo_ai_next && 1 === $sseo_ai_report['post']['seen'] );
+	$sseo_ai_next = Simple_SEO_Aioseo_Import::posts( $sseo_ai_next, 100, $sseo_ai_report );
+	sseo_check( 'the last batch ends with the last post with something to take, then nothing is left', $sseo['posts']['ai_menu'] === $sseo_ai_next && 0 === Simple_SEO_Aioseo_Import::posts( $sseo_ai_next, 100, $sseo_ai_report ) );
+	$sseo_ai_fields = array();
+	foreach ( array( 'title', 'description', 'og_title', 'og_image', 'index', 'nofollow', 'canonical', 'primary_category' ) as $sseo_key ) {
+		$sseo_ai_fields[ $sseo_key ] = Simple_SEO_Fields::post_value( $sseo_ai_1, $sseo_key );
+	}
+	sseo_check(
+		"a post's fields: texts in Simple SEO's syntax, the custom image by its address, its own robots, canonical, primary category",
+		array( 'title' => '{title} {sep} {site}', 'description' => 'Desc here', 'og_title' => 'OG {title}', 'og_image' => (string) $sseo_og, 'index' => 'noindex', 'nofollow' => '1', 'canonical' => 'https://example.com/ai-one/', 'primary_category' => (string) $sseo_news ) === $sseo_ai_fields,
+		$sseo_ai_fields
+	);
+	sseo_check( "Simple SEO's own field stays; its own robots without noindex is index; an image elsewhere is not taken; an image AIOSEO did not pick itself is not taken", 'Own two' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'title' ) && 'index' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'index' ) && '' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'nofollow' ) && '' === Simple_SEO_Fields::post_value( $sseo_ai_2, 'og_image' ) && 'Three' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_3'], 'title' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_3'], 'og_image' ) );
+	sseo_check( 'a page: its title, no primary category; a post type without SEO fields is left alone', 'Page T' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_page'], 'title' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_page'], 'primary_category' ) && '' === Simple_SEO_Fields::post_value( $sseo['posts']['ai_menu'], 'title' ) );
+	sseo_check( 'the report of the posts', array( 'seen' => 4, 'fields' => 11, 'changed' => 4, 'kept' => 1, 'refused' => 1 ) == $sseo_ai_report['post'] && array( 'page_number' => 1, 'post_modified_date' => 1 ) == $sseo_ai_report['dropped'], $sseo_ai_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "AIOSEO's rows are left as they were", $sseo_ai_rows === (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM `{$sseo_ai_posts}`" ) && 'Ai two' === $sseo_ai_db->get_var( $sseo_ai_db->prepare( "SELECT title FROM `{$sseo_ai_posts}` WHERE post_id = %d", $sseo_ai_2 ) ) );
+
+	// Terms, from the table of AIOSEO Pro.
+	$sseo_ai_report = array();
+	$sseo_ai_next   = Simple_SEO_Aioseo_Import::terms( 0, 2, $sseo_ai_report );
+	$sseo_ai_steps  = array( $sseo_ai_next );
+	while ( $sseo_ai_next && count( $sseo_ai_steps ) < 10 ) {
+		$sseo_ai_next    = Simple_SEO_Aioseo_Import::terms( $sseo_ai_next, 2, $sseo_ai_report );
+		$sseo_ai_steps[] = $sseo_ai_next;
+	}
+	sseo_check( 'terms in batches, by ID', array( $sseo_ai_t['cat'], $sseo_ai_t['fmt'], 99999999, 0 ) === $sseo_ai_steps, $sseo_ai_steps );
+	$sseo_ai_fields = array();
+	foreach ( array( 'title', 'description', 'index', 'nofollow', 'canonical' ) as $sseo_key ) {
+		$sseo_ai_fields[ $sseo_key ] = Simple_SEO_Fields::term_value( $sseo_ai_t['cat'], $sseo_key );
+	}
+	sseo_check( "a term's fields: #taxonomy_title is the term's own title, its robots, canonical; columns the table lacks are skipped", array( 'title' => '{title} best {sep} {site}', 'description' => 'Cat desc', 'index' => 'noindex', 'nofollow' => '', 'canonical' => 'https://example.com/ai-cat/' ) === $sseo_ai_fields, $sseo_ai_fields );
+	sseo_check( "Simple SEO's own field stays; terms that are gone, or of a taxonomy without SEO fields, are left alone", 'Own cat two' === Simple_SEO_Fields::term_value( $sseo_ai_t['cat2'], 'title' ) && 'Tag desc' === Simple_SEO_Fields::term_value( $sseo_ai_t['tag'], 'description' ) && '' === Simple_SEO_Fields::term_value( $sseo_ai_t['fmt'], 'title' ) );
+	sseo_check( 'the report of the terms', array( 'seen' => 3, 'fields' => 5, 'changed' => 2, 'kept' => 1 ) == $sseo_ai_report['term'], $sseo_ai_report ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'what Simple SEO has nothing for, by posts', array( 'focuskw' => 1, 'twitter' => 1, 'schema' => 1 ) == Simple_SEO_Aioseo_Import::left(), Simple_SEO_Aioseo_Import::left() ); // phpcs:ignore Universal.Operators.StrictComparisons
+
+	// The whole run.
+	Simple_SEO_Import::start( 'aioseo' );
+	$sseo_ai_count = 0;
+	do {
+		$sseo_ai_state = Simple_SEO_Import::run( 'aioseo', 0.0 );
+		++$sseo_ai_count;
+	} while ( 'running' === $sseo_ai_state['status'] && $sseo_ai_count < 20 );
+	sseo_check( 'a run of zero seconds still takes one batch, and goes on from where it stopped', 'done' === $sseo_ai_state['status'] && 5 === $sseo_ai_count, array( $sseo_ai_count, $sseo_ai_state['status'] ) );
+	sseo_check( "run again: everything is Simple SEO's already, kept", ! isset( $sseo_ai_state['report']['settings'] ) && 0 === ( $sseo_ai_state['report']['post']['fields'] ?? 0 ) && 12 === $sseo_ai_state['report']['post']['kept'] && 6 === $sseo_ai_state['report']['term']['kept'] && 1 === $sseo_ai_state['report']['left']['robots_rules'] && 1 === $sseo_ai_state['report']['left']['schema'], $sseo_ai_state['report'] );
+
+	// The admin.
+	wp_set_current_user( $sseo_u['administrator'] );
+	Simple_SEO_Import::add_admin_tab();
+	foreach ( Simple_SEO_Import::SOURCES as $sseo_class ) {
+		update_option( $sseo_class::STATE, array( 'status' => 'pending' ) );
+	}
+	set_current_screen( 'dashboard' );
+	$sseo_html = sseo_capture( array( Simple_SEO_Import::class, 'notice' ) );
+	sseo_check( 'the notice names every plugin with data to import', str_contains( $sseo_html, 'Simple SEO found the data of Yoast SEO, Rank Math, and All in One SEO on this site' ), $sseo_html );
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab'] = 'import';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check( 'the tab: All in One SEO with what was found and its button', str_contains( $sseo_html, '<h2>All in One SEO</h2>' ) && str_contains( $sseo_html, 'Import from All in One SEO' ) && str_contains( $sseo_html, 'AIOSEO&#039;s #tags become' ) && str_contains( $sseo_html, 'posts with SEO fields: 5' ) && str_contains( $sseo_html, 'name="simple_seo_source" value="aioseo"' ), $sseo_html );
+	update_option( Simple_SEO_Aioseo_Import::STATE, array( 'status' => 'done', 'finished' => time(), 'report' => array( 'dropped' => array( 'page_number' => 2 ), 'left' => array( 'robots_rules' => 1 ) ) ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	wp_set_current_user( 0 );
+	sseo_check( "after a run: AIOSEO's tags as AIOSEO writes them, and the rules of robots.txt", str_contains( $sseo_html, '#page_number (2)' ) && str_contains( $sseo_html, 'the rules added to robots.txt' ), $sseo_html );
+	update_option( Simple_SEO_Aioseo_Import::STATE, $sseo_ai_state );
+	foreach ( array( Simple_SEO_Yoast_Import::STATE, Simple_SEO_Rank_Math_Import::STATE ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'AIOSEO clean-up' );
+
+	// AIOSEO's leftovers: those of the import section and these.
+	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_db->prefix}aioseo_cache` ( id BIGINT NOT NULL PRIMARY KEY )" );
+	$sseo_ai_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_ai_db->prefix}sseo_aioseo_keep` ( id INT NOT NULL PRIMARY KEY )" );
+	update_option( 'aioseo_options_internal', wp_json_encode( array( 'internal' => array( 'lastActiveVersion' => '5.0.5.1' ) ) ) );
+	update_option( 'aioseo_migrations_log', 'x' );
+	update_option( 'sseo_aioseo_keep', 'x' );
+	set_transient( 'aioseo_sseo', 'x', HOUR_IN_SECONDS );
+	wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'aioseo_sseo_daily' );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'aioseo_sseo_once', array( 1 ) );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'aioseo_sseo_once', array( 2 ) );
+	wp_schedule_single_event( time() + 2 * HOUR_IN_SECONDS, 'sseo_keep_hook' );
+	get_role( 'administrator' )->add_cap( 'aioseo_manage_seo' );
+	get_role( 'editor' )->add_cap( 'aioseo_page_analysis' );
+	get_role( 'editor' )->add_cap( 'sseo_keep_cap' );
+	$sseo_ac_user = (int) $sseo_u['administrator'];
+	update_user_meta( $sseo_ac_user, '_aioseo_plugin_review_dismissed', '1' );
+	update_user_meta( $sseo_ac_user, 'aioseo_sseo', 'x' );
+	update_user_meta( $sseo_ac_user, 'sseo_keep', 'x' );
+	update_post_meta( $sseo_ai_1, 'sseo_keep', 'x' );
+	// AIOSEO's copies of the fields in post meta: one batch and one row more.
+	update_post_meta( $sseo_ai_1, '_aioseo_title', '#post_title #separator_sa #site_title' );
+	$sseo_ai_db->query( "INSERT INTO {$sseo_ai_db->postmeta} ( post_id, meta_key, meta_value ) VALUES " . implode( ',', array_map( static fn( int $i ): string => "( {$sseo_ai_1}, '_aioseo_filler_{$i}', 'x' )", range( 1, Simple_SEO_Aioseo_Cleanup::BATCH ) ) ) );
+	wp_cache_delete( $sseo_ai_1, 'post_meta' );
+	$sseo_ac_tables  = (array) $sseo_ai_db->get_col( $sseo_ai_db->prepare( 'SHOW TABLES LIKE %s', $sseo_ai_db->esc_like( $sseo_ai_db->prefix . 'aioseo_' ) . '%' ) );
+	$sseo_ac_options = (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM {$sseo_ai_db->options} WHERE option_name LIKE 'aioseo\\_%' OR option_name LIKE '\\_transient\\_%aioseo%'" ) - 2;
+
+	// When it may run.
+	$sseo_ac_active = static fn( $plugins ): array => array_merge( (array) $plugins, array( 'all-in-one-seo-pack/all_in_one_seo_pack.php' ) );
+	update_option( Simple_SEO_Aioseo_Import::STATE, array( 'status' => 'pending' ) );
+	$sseo_vals = array( Simple_SEO_Aioseo_Cleanup::blocked() );
+	update_option( Simple_SEO_Aioseo_Import::STATE, array( 'status' => 'done' ) );
+	$sseo_vals[] = Simple_SEO_Aioseo_Cleanup::blocked();
+	add_filter( 'option_active_plugins', $sseo_ac_active );
+	$sseo_vals[] = Simple_SEO_Aioseo_Cleanup::blocked();
+	remove_filter( 'option_active_plugins', $sseo_ac_active );
+	sseo_check( 'only after the import, and never while AIOSEO is active', array( 'import', '', 'active' ) === $sseo_vals, $sseo_vals );
+
+	// What is left.
+	$sseo_ac_parts = Simple_SEO_Aioseo_Cleanup::preview();
+	sseo_check(
+		"what is left of AIOSEO's, by part: tables, the rest of its options with its tasks and the capabilities of roles, settings, user and post meta",
+		array( 'tables', 'internals', 'settings', 'usermeta', 'postmeta' ) === array_keys( $sseo_ac_parts ) && count( $sseo_ac_tables ) === $sseo_ac_parts['tables']['rows'] && 2 === $sseo_ac_parts['settings']['rows'] && 2 === $sseo_ac_parts['usermeta']['rows'] && Simple_SEO_Aioseo_Cleanup::BATCH + 1 === $sseo_ac_parts['postmeta']['rows'] && $sseo_ac_options + 3 + 2 === $sseo_ac_parts['internals']['rows'],
+		array( $sseo_ac_parts, $sseo_ac_options )
+	);
+	$sseo_ac_theme = get_theme_root() . '/sseo-ac-theme';
+	wp_mkdir_p( $sseo_ac_theme . '/inc' );
+	file_put_contents( $sseo_ac_theme . '/inc/seo.php', "<?php \$row = \$wpdb->get_row( \"SELECT title FROM {\$wpdb->prefix}aioseo_posts\" ); \$t = get_post_meta( 1, '_aioseo_title', true );" );
+	file_put_contents( $sseo_ac_theme . '/inc/schema.php', "<?php \$o = json_decode( get_option( 'aioseo_options' ), true );" );
+	$sseo_ac_dir = static fn(): string => $sseo_ac_theme;
+	add_filter( 'stylesheet_directory', $sseo_ac_dir );
+	$sseo_vals = Simple_SEO_Aioseo_Cleanup::theme_reads( array( 'tables', 'internals', 'settings', 'usermeta', 'postmeta' ) );
+	sseo_check( "the active theme's files that read AIOSEO's tables, settings or post meta", array( 'tables' => array( 'sseo-ac-theme/inc/seo.php' ), 'settings' => array( 'sseo-ac-theme/inc/schema.php' ), 'postmeta' => array( 'sseo-ac-theme/inc/seo.php' ) ) == $sseo_vals, $sseo_vals ); // phpcs:ignore Universal.Operators.StrictComparisons
+
+	// The page and the form.
+	wp_set_current_user( $sseo_ac_user );
+	set_current_screen( 'toplevel_page_' . Simple_SEO_Admin::PAGE );
+	$_GET['tab'] = 'import';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	sseo_check(
+		"the tab offers AIOSEO's parts; what the theme reads is unticked",
+		str_contains( $sseo_html, 'Remove the data of All in One SEO' ) && str_contains( $sseo_html, 'AIOSEO&#039;s copies of the fields of posts' ) && (bool) preg_match( '/value="tables"\s*\/>/', $sseo_html ) && (bool) preg_match( '/value="usermeta"\s+checked=\'checked\'/', $sseo_html ) && str_contains( $sseo_html, 'id="simple-seo-cleanup-aioseo"' ),
+		$sseo_html
+	);
+	remove_filter( 'stylesheet_directory', $sseo_ac_dir );
+	$sseo_vals = array(
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'aioseo', 'simple_seo_groups' => array( 'tables' ) ) ),
+		Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'aioseo', 'simple_seo_groups' => array( 'termmeta' ), 'simple_seo_backup' => '1' ) ),
+	);
+	sseo_check( 'refused without a backup, and without a part AIOSEO has', array( 'backup', 'groups' ) === $sseo_vals && array() === Simple_SEO_Aioseo_Cleanup::state(), $sseo_vals );
+
+	// A run.
+	$sseo_vals = array( get_post_meta( $sseo_ai_1, '_aioseo_title', true ), get_user_meta( $sseo_ac_user, 'aioseo_sseo', true ) );
+	Simple_SEO_Aioseo_Cleanup::start( array( 'tables', 'internals', 'usermeta', 'postmeta' ) );
+	$sseo_ac_steps = 0;
+	do {
+		$sseo_ac_state = Simple_SEO_Aioseo_Cleanup::run( 0.0 );
+		++$sseo_ac_steps;
+		if ( 4 === $sseo_ac_steps ) {
+			$sseo_ac_batch = (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM {$sseo_ai_db->postmeta} WHERE meta_key LIKE '\\_aioseo\\_%'" );
+		}
+	} while ( 'running' === $sseo_ac_state['status'] && $sseo_ac_steps < 20 );
+	sseo_check( 'one step per part, the post meta in batches', 'done' === $sseo_ac_state['status'] && 5 === $sseo_ac_steps && 1 === $sseo_ac_batch, array( $sseo_ac_steps, $sseo_ac_batch ) );
+	$sseo_ac_caps = array();
+	foreach ( wp_roles()->role_objects as $sseo_role ) {
+		foreach ( array_keys( (array) $sseo_role->capabilities ) as $sseo_name ) {
+			if ( str_starts_with( (string) $sseo_name, 'aioseo_' ) ) {
+				$sseo_ac_caps[] = $sseo_name;
+			}
+		}
+	}
+	$sseo_ac_left = array(
+		'tables'   => (array) $sseo_ai_db->get_col( $sseo_ai_db->prepare( 'SHOW TABLES LIKE %s', $sseo_ai_db->esc_like( $sseo_ai_db->prefix . 'aioseo_' ) . '%' ) ),
+		'options'  => (array) $sseo_ai_db->get_col( "SELECT option_name FROM {$sseo_ai_db->options} WHERE option_name LIKE 'aioseo\\_%' OR option_name LIKE '\\_transient\\_%aioseo%'" ),
+		'caps'     => $sseo_ac_caps,
+		'usermeta' => (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM {$sseo_ai_db->usermeta} WHERE meta_key LIKE '\\_aioseo%' OR meta_key LIKE 'aioseo%'" ),
+		'postmeta' => (int) $sseo_ai_db->get_var( "SELECT COUNT(*) FROM {$sseo_ai_db->postmeta} WHERE meta_key LIKE '\\_aioseo\\_%'" ),
+	);
+	sort( $sseo_ac_left['options'] );
+	sseo_check( "AIOSEO's tables, other options, tasks, capabilities and meta are gone; its settings stay, as they were not ticked", array( 'tables' => array(), 'options' => array( 'aioseo_options', 'aioseo_options_dynamic' ), 'caps' => array(), 'usermeta' => 0, 'postmeta' => 0 ) === $sseo_ac_left && false === get_transient( 'aioseo_sseo' ) && false === wp_next_scheduled( 'aioseo_sseo_daily' ) && false === wp_next_scheduled( 'aioseo_sseo_once', array( 2 ) ), $sseo_ac_left );
+	sseo_check(
+		'what is not AIOSEO\'s stays, Simple SEO\'s imported fields included',
+		'x' === get_option( 'sseo_aioseo_keep' ) && (bool) wp_next_scheduled( 'sseo_keep_hook' ) && get_role( 'editor' )->has_cap( 'sseo_keep_cap' ) && 'x' === get_user_meta( $sseo_ac_user, 'sseo_keep', true ) && 'x' === get_post_meta( $sseo_ai_1, 'sseo_keep', true )
+			&& '{title} {sep} {site}' === Simple_SEO_Fields::post_value( $sseo_ai_1, 'title' ) && 'Cat desc' === Simple_SEO_Fields::term_value( $sseo_ai_t['cat'], 'description' )
+			&& array( $sseo_ai_db->prefix . 'sseo_aioseo_keep' ) === $sseo_ai_db->get_col( $sseo_ai_db->prepare( 'SHOW TABLES LIKE %s', $sseo_ai_db->esc_like( $sseo_ai_db->prefix . 'sseo_aioseo_keep' ) ) )
+	);
+	sseo_check( 'the cached meta of the posts and users goes too', array( '#post_title #separator_sa #site_title', 'x' ) === $sseo_vals && '' === get_post_meta( $sseo_ai_1, '_aioseo_title', true ) && '' === get_user_meta( $sseo_ac_user, 'aioseo_sseo', true ) );
+	sseo_check( 'the report counts what went', array( 'tables' => count( $sseo_ac_tables ), 'options' => $sseo_ac_options, 'cron' => 3, 'caps' => 2, 'usermeta' => 2, 'postmeta' => Simple_SEO_Aioseo_Cleanup::BATCH + 1 ) == $sseo_ac_state['report'], $sseo_ac_state['report'] ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'without its table, nothing of AIOSEO is found of posts and terms', array( 'settings' => true, 'posts' => 0, 'terms' => 0 ) === Simple_SEO_Aioseo_Import::summary() && array() === Simple_SEO_Aioseo_Import::left() );
+	$sseo_vals = Simple_SEO_Import::act( 'clean', array( 'simple_seo_source' => 'aioseo', 'simple_seo_groups' => array( 'settings' ), 'simple_seo_backup' => '1' ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $GLOBALS['current_screen'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the settings, on their own; then nothing is left, and the report', '' === $sseo_vals && 2 === Simple_SEO_Aioseo_Cleanup::state()['report']['settings'] && array() === Simple_SEO_Aioseo_Cleanup::preview() && str_contains( $sseo_html, 'No data of All in One SEO is left on this site.' ) && str_contains( $sseo_html, 'Removed: rows of settings: 2.' ), $sseo_html );
+
+	$sseo_ai_db->query( "DROP TABLE IF EXISTS `{$sseo_ai_db->prefix}sseo_aioseo_keep`" );
+	delete_option( 'sseo_aioseo_keep' );
+	wp_clear_scheduled_hook( 'sseo_keep_hook' );
+	get_role( 'editor' )->remove_cap( 'sseo_keep_cap' );
+	delete_user_meta( $sseo_ac_user, 'sseo_keep' );
+	foreach ( array( '/inc/seo.php', '/inc/schema.php', '/inc', '' ) as $sseo_name ) {
+		$sseo_name = $sseo_ac_theme . $sseo_name;
+		is_dir( $sseo_name ) ? rmdir( $sseo_name ) : unlink( $sseo_name );
+	}
+	foreach ( array_merge( $sseo_yi_rows, array( Simple_SEO_Aioseo_Import::STATE, Simple_SEO_Aioseo_Cleanup::OPTION ) ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
+	unregister_taxonomy( 'sseo_ai_shelf' );
+	unregister_taxonomy( 'sseo_ai_room' );
+	unregister_post_type( 'sseo_ai_book' );
 	Simple_SEO_Fields::flush_types();
 
 	// ------------------------------------------------------------------------------------------

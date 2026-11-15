@@ -332,6 +332,31 @@ abstract class Simple_SEO_Import_Source {
 	}
 
 	/**
+	 * What the plugin removed from pages: Simple SEO's switches of the Clean-up tab go on, unless
+	 * its tab has a choice of its own. What the plugin kept does not switch Simple SEO's off.
+	 *
+	 * @param string[]             $keys Simple SEO's switches.
+	 * @param array<string, mixed> $report
+	 */
+	protected static function cleanup( array $keys, array &$report ): void {
+		$row   = self::row( Simple_SEO_Cleanup::OPTION );
+		$clean = array_replace( Simple_SEO_Cleanup::defaults(), $row );
+		$count = 0;
+
+		foreach ( array_unique( $keys ) as $key ) {
+			if ( array_key_exists( $key, $clean ) && ! array_key_exists( $key, $row ) && ! $clean[ $key ] ) {
+				$clean[ $key ] = true;
+				++$count;
+			}
+		}
+
+		if ( $count ) {
+			self::add( $report, 'settings', 'cleanup', $count );
+			self::save( Simple_SEO_Cleanup::OPTION, array_map( static fn( $on ): string => $on ? '1' : '0', $clean ) );
+		}
+	}
+
+	/**
 	 * The plugin had no XML sitemap: Simple SEO's is switched off too, unless its tab was saved.
 	 *
 	 * @param array<string, mixed> $report

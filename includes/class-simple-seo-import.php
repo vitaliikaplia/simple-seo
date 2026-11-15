@@ -16,6 +16,7 @@ final class Simple_SEO_Import {
 	public const SOURCES = array(
 		'yoast'     => 'Simple_SEO_Yoast_Import',
 		'rank_math' => 'Simple_SEO_Rank_Math_Import',
+		'aioseo'    => 'Simple_SEO_Aioseo_Import',
 	);
 
 	/** Posts per batch; terms come from one row, so more of them. */

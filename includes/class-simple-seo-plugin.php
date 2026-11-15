@@ -44,9 +44,11 @@ final class Simple_SEO_Plugin {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import-source.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-import.php';
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-aioseo-import.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-source-cleanup.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-cleanup.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-cleanup.php';
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-aioseo-cleanup.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
 
 			Simple_SEO_Admin::init();
