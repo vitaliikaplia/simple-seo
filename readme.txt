@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.9.0
+Stable tag: 0.10.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; removes what WordPress adds to the code of pages (the version, the shortlink, discovery links, the emoji script, links to feeds), each by its own switch; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,11 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.10.0 =
+* Clean-up tab: switches that remove from the code of every page the WordPress version (also from feeds), the shortlink (also the Link header), the XML-RPC discovery (the RSD link and the X-Pingback header), the REST API links (also the Link headers), the oEmbed discovery links and the emoji script and styles. The features behind them keep working.
+* Links to feeds, each kind by its own switch: posts, comments of the whole site, comments of each post, categories, tags, other taxonomies, authors, search results, post type archives. The feeds keep working at their addresses.
+* Out of the box only the WordPress version, the shortlink and the XML-RPC discovery are removed. While another SEO plugin is active, nothing is removed.
 
 = 0.9.0 =
 * Files tab: robots.txt and .htaccess of the site root, edited in the admin.

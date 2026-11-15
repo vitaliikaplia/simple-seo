@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.9.0\n"
+"Project-Id-Version: Simple SEO 0.10.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-15T00:38:46+00:00\n"
+"POT-Creation-Date: 2026-11-15T01:10:20+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -121,6 +121,10 @@ msgstr ""
 #: includes/class-simple-seo-breadcrumbs.php:216
 #: includes/views/tab-breadcrumbs.php:55
 msgid "Home"
+msgstr ""
+
+#: includes/class-simple-seo-cleanup.php:106
+msgid "Clean-up"
 msgstr ""
 
 #. translators: %s: the title or description the page has with the saved values.
@@ -240,7 +244,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-indexing.php:58
@@ -429,6 +433,7 @@ msgid "Date archives"
 msgstr ""
 
 #: includes/class-simple-seo-titles.php:274
+#: includes/views/tab-cleanup.php:55
 msgid "Search results"
 msgstr ""
 
@@ -599,6 +604,119 @@ msgstr ""
 
 #: includes/views/tab-breadcrumbs.php:102
 msgid "None"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:16
+msgid "WordPress version"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:18
+msgid "Tells everyone which version runs the site; feeds lose it too."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:21
+msgid "Shortlink"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:23
+msgid "The ?p= address of a post, also as a Link header. Search engines use the canonical address."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:26
+msgid "XML-RPC discovery"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:28
+msgid "Point old blogging apps and pingbacks to xmlrpc.php. XML-RPC itself keeps working."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:31
+msgid "REST API links"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:33
+msgid "The address of the REST API and of the page in JSON, also as Link headers. The REST API itself keeps working: the block editor needs it."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:36
+msgid "oEmbed discovery"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:38
+msgid "Let other sites show a link to your post as a card with its title and image. Without them the link stays a plain link."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:41
+msgid "Emoji script and styles"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:43
+msgid "Replace emoji with images where the browser cannot draw them; today's browsers draw emoji themselves."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:48
+msgid "Posts"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:48
+msgid "The main feed of the site; feed readers find the site by it."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:49
+msgid "Comments of the whole site"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:49
+msgid "WordPress then leaves out the comments feeds of posts too."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:50
+msgid "Comments of each post"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:51
+msgid "Categories"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:52
+msgid "Tags"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:53
+msgid "Other taxonomies"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:54
+msgid "Authors"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:56
+msgid "Post type archives"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:59
+msgid "What WordPress adds to the code of every page. Ticked items are removed; only the links, tags and scripts go, the features behind them keep working. Out of the box only what nobody uses is removed."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:61
+msgid "Links and tags"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:72
+msgid "Remove"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:81
+msgid "Links to feeds"
+msgstr ""
+
+#: includes/views/tab-cleanup.php:82
+msgid "Feed readers find feeds through these links. The feeds keep working at their addresses; only the links go."
+msgstr ""
+
+#: includes/views/tab-cleanup.php:86
+#: includes/views/tab-cleanup.php:89
+msgid "Remove the links to"
 msgstr ""
 
 #: includes/views/tab-files.php:19

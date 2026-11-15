@@ -104,6 +104,7 @@ $sseo_saved_options = array(
 	'bc_labels'      => get_option( Simple_SEO_Breadcrumbs::LABELS ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
+	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
 	'file_backups'   => get_option( Simple_SEO_Files::BACKUPS_OPTION ),
 );
 
@@ -2248,6 +2249,98 @@ try {
 	update_option( Simple_SEO_Access::OPTION, array() );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Clean-up of the page head' );
+
+	// apply() unhooks core callbacks for the rest of the request: keep the hooks to put them back.
+	$sseo_hooks = array();
+	foreach ( array( 'wp_head', 'template_redirect', 'wp_enqueue_scripts', 'wp_print_styles', 'embed_head', 'enqueue_embed_scripts' ) as $sseo_name ) {
+		$sseo_hooks[ $sseo_name ] = $GLOBALS['wp_filter'][ $sseo_name ] instanceof WP_Hook ? clone $GLOBALS['wp_filter'][ $sseo_name ] : null;
+	}
+	$sseo_restore_hooks = static function () use ( $sseo_hooks ): void {
+		foreach ( $sseo_hooks as $sseo_name => $sseo_hook ) {
+			if ( $sseo_hook ) {
+				$GLOBALS['wp_filter'][ $sseo_name ] = clone $sseo_hook;
+			}
+		}
+	};
+	$sseo_hooked = static fn(): array => array(
+		'generator' => false !== has_action( 'wp_head', 'wp_generator' ),
+		'shortlink' => false !== has_action( 'wp_head', 'wp_shortlink_wp_head' ) || false !== has_action( 'template_redirect', 'wp_shortlink_header' ),
+		'rsd'       => false !== has_action( 'wp_head', 'rsd_link' ),
+		'rest'      => false !== has_action( 'wp_head', 'rest_output_link_wp_head' ) || false !== has_action( 'template_redirect', 'rest_output_link_header' ),
+		'oembed'    => false !== has_action( 'wp_head', 'wp_oembed_add_discovery_links' ),
+		'emoji'     => false !== has_action( 'wp_head', 'print_emoji_detection_script' ) || false !== has_action( 'wp_enqueue_scripts', 'wp_enqueue_emoji_styles' ) || false !== has_action( 'embed_head', 'print_emoji_detection_script' ) || false !== has_action( 'enqueue_embed_scripts', 'wp_enqueue_emoji_styles' ),
+	);
+	$sseo_all_off = array_fill_keys( array_keys( Simple_SEO_Cleanup::defaults() ), true );
+
+	delete_option( Simple_SEO_Cleanup::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'clean-up runs after the main query, before the Link headers', 1 === has_action( 'wp', array( Simple_SEO_Cleanup::class, 'apply' ) ) );
+	$sseo_defaults = Simple_SEO_Cleanup::defaults();
+	sseo_check( 'out of the box only the version, the shortlink and XML-RPC discovery go', array( 'generator', 'shortlink', 'rsd' ) === array_keys( array_filter( $sseo_defaults ) ) && 15 === count( $sseo_defaults ), $sseo_defaults );
+	sseo_check( 'every feed link has its switch', array_keys( Simple_SEO_Cleanup::FEEDS ) === array_values( array_filter( array_keys( $sseo_defaults ), static fn( string $key ): bool => str_starts_with( $key, 'feed_' ) ) ) );
+
+	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['author_post'] ) );
+	Simple_SEO_Cleanup::apply();
+	sseo_check( 'with the defaults the version, shortlink and RSD are unhooked, the rest stays', array( 'generator' => false, 'shortlink' => false, 'rsd' => false, 'rest' => true, 'oembed' => true, 'emoji' => true ) === $sseo_hooked(), $sseo_hooked() );
+	$sseo_restore_hooks();
+	update_option( Simple_SEO_Cleanup::OPTION, $sseo_all_off );
+	Simple_SEO_Cleanup::apply();
+	sseo_check( 'everything switched off is unhooked, both oEmbed priorities and the embed page included', array( 'generator' => false, 'shortlink' => false, 'rsd' => false, 'rest' => false, 'oembed' => false, 'emoji' => false ) === $sseo_hooked() && false === has_action( 'wp_print_styles', 'print_emoji_styles' ), $sseo_hooked() );
+	$sseo_restore_hooks();
+	sseo_check( 'the hooks are back for the rest of the test', array_fill_keys( array( 'generator', 'shortlink', 'rsd', 'rest', 'oembed', 'emoji' ), true ) === $sseo_hooked() );
+
+	add_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	Simple_SEO_Cleanup::apply();
+	sseo_check( 'next to another SEO plugin nothing is removed', array_fill_keys( array( 'generator', 'shortlink', 'rsd', 'rest', 'oembed', 'emoji' ), true ) === $sseo_hooked() && 'X' === Simple_SEO_Cleanup::generator( 'X' ) && true === apply_filters( 'feed_links_show_posts_feed', true ) );
+	remove_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	$sseo_restore_hooks();
+	set_current_screen( 'dashboard' );
+	sseo_check( 'nothing is removed in the admin', ! Simple_SEO_Cleanup::removes( 'generator' ) && 'X' === Simple_SEO_Cleanup::generator( 'X' ) );
+	unset( $GLOBALS['current_screen'] );
+
+	sseo_check( 'the X-Pingback header goes with RSD, other headers stay', array( 'Other' => 'y' ) === Simple_SEO_Cleanup::headers( array( 'X-Pingback' => 'x', 'Other' => 'y' ) ) && array( 'Other' => 'y' ) === apply_filters( 'wp_headers', array( 'X-Pingback' => 'x', 'Other' => 'y' ), $GLOBALS['wp'] ) );
+	sseo_check( 'the version is taken out of feeds too', '' === apply_filters( 'the_generator', '<generator>https://wordpress.org/?v=7</generator>', 'rss2' ) );
+	sseo_check( 'every feed link filter says no', array( false ) === array_values( array_unique( array_map( static fn( string $filter ) => apply_filters( $filter, true ), Simple_SEO_Cleanup::FEEDS ) ) ) );
+
+	update_option( Simple_SEO_Cleanup::OPTION, array( 'rsd' => false, 'generator' => false, 'feed_categories' => true ) );
+	sseo_check( 'a switch left on keeps X-Pingback and the version', array( 'X-Pingback' => 'x' ) === Simple_SEO_Cleanup::headers( array( 'X-Pingback' => 'x' ) ) && 'X' === Simple_SEO_Cleanup::generator( 'X' ) );
+	$sseo_no = static fn(): bool => false;
+	add_filter( 'feed_links_show_posts_feed', $sseo_no );
+	sseo_check( "another plugin's no stays a no, a kept link stays", false === apply_filters( 'feed_links_show_posts_feed', true ) && true === apply_filters( 'feed_links_show_comments_feed', true ) );
+	remove_filter( 'feed_links_show_posts_feed', $sseo_no );
+	$GLOBALS['wp_query'] = sseo_query( array( 'cat' => $sseo_cat_id ) );
+	$sseo_feeds          = sseo_capture( 'feed_links' ) . sseo_capture( 'feed_links_extra' );
+	sseo_check( 'a category archive loses only its category feed link', ! str_contains( $sseo_feeds, get_category_feed_link( $sseo_cat_id ) ) && str_contains( $sseo_feeds, get_feed_link() ) && str_contains( $sseo_feeds, get_feed_link( 'comments_rss2' ) ), $sseo_feeds );
+	update_option( Simple_SEO_Cleanup::OPTION, array( 'feed_posts' => true ) );
+	$sseo_feeds = sseo_capture( 'feed_links' ) . sseo_capture( 'feed_links_extra' );
+	sseo_check( 'without the posts feed the category feed link is back', str_contains( $sseo_feeds, get_category_feed_link( $sseo_cat_id ) ) && ! str_contains( $sseo_feeds, '"' . get_feed_link() . '"' ), $sseo_feeds );
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+
+	// The settings: saved through options.php with a hidden 0 before every checkbox.
+	Simple_SEO_Cleanup::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	$sseo_tabs = Simple_SEO_Admin::tabs();
+	sseo_check( 'the Clean-up tab saves its row', isset( $sseo_tabs['cleanup'] ) && array( Simple_SEO_Cleanup::OPTION ) === $sseo_tabs['cleanup']['options'] && 30 === $sseo_tabs['cleanup']['order'] );
+	delete_option( Simple_SEO_Cleanup::OPTION );
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Settings::install();
+	update_option( Simple_SEO_Cleanup::OPTION, array( 'generator' => '0', 'rest' => '1', 'feed_tags' => '1', 'junk' => '1' ) );
+	$sseo_row = get_option( Simple_SEO_Cleanup::OPTION );
+	sseo_check( 'the sanitizer keeps booleans of known switches; one not sent keeps its value', is_array( $sseo_row ) && 15 === count( $sseo_row ) && false === $sseo_row['generator'] && true === $sseo_row['rest'] && true === $sseo_row['feed_tags'] && true === $sseo_row['shortlink'] && false === $sseo_row['emoji'] && ! isset( $sseo_row['junk'] ), $sseo_row );
+	$sseo_autoload = $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( "SELECT autoload FROM {$GLOBALS['wpdb']->options} WHERE option_name = %s", Simple_SEO_Cleanup::OPTION ) );
+	sseo_check( 'the row is autoloaded: every page reads it', in_array( $sseo_autoload, wp_autoload_values_to_autoload(), true ), $sseo_autoload );
+	$_GET['tab'] = 'cleanup';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check( 'the tab is an options.php form of its group', str_contains( $sseo_html, 'action="options.php"' ) && str_contains( $sseo_html, "value='simple-seo-cleanup'" ) );
+	sseo_check( 'every switch has a hidden 0 and a checkbox', 15 === substr_count( $sseo_html, 'type="hidden" name="simple_seo_cleanup[' ) && 15 === substr_count( $sseo_html, 'type="checkbox"' ) );
+	sseo_check( 'the boxes show the saved row', (bool) preg_match( '/name="simple_seo_cleanup\[rest\]" value="1"\s+checked/', $sseo_html ) && ! preg_match( '/name="simple_seo_cleanup\[generator\]" value="1"\s+checked/', $sseo_html ) && (bool) preg_match( '/name="simple_seo_cleanup\[shortlink\]" value="1"\s+checked/', $sseo_html ) );
+	sseo_check( 'the code each switch removes is shown escaped', str_contains( $sseo_html, '&lt;meta name=&quot;generator&quot;' ) && ! str_contains( $sseo_html, '<meta name="generator"' ) );
+	delete_option( Simple_SEO_Cleanup::OPTION );
+	Simple_SEO_Settings::flush();
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -2262,6 +2355,7 @@ try {
 	sseo_check( 'the Special pages tab is translated', 'Спецсторінки' === __( 'Special pages', 'simple-seo' ) );
 	sseo_check( 'the sitemap switch is translated', 'Створювати XML-карту сайту' === __( 'Create an XML sitemap', 'simple-seo' ) );
 	sseo_check( 'the breadcrumbs are translated', 'Хлібні крихти' === __( 'Breadcrumbs', 'simple-seo' ) && 'Головна' === __( 'Home', 'simple-seo' ) && '%s у хлібних крихтах' === __( '%s in breadcrumbs', 'simple-seo' ) );
+	sseo_check( 'the Clean-up tab is translated', 'Чистка коду' === __( 'Clean-up', 'simple-seo' ) && 'Версія WordPress' === __( 'WordPress version', 'simple-seo' ) );
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
@@ -2314,7 +2408,7 @@ try {
 		}
 	}
 	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
-	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION => 'robots_txt', Simple_SEO_Files::BACKUPS_OPTION => 'file_backups' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION => 'robots_txt', Simple_SEO_Files::BACKUPS_OPTION => 'file_backups', Simple_SEO_Cleanup::OPTION => 'cleanup' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( false !== $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ], '', false );
