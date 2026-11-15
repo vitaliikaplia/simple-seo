@@ -103,6 +103,8 @@ $sseo_saved_options = array(
 	'sitemaps'       => get_option( Simple_SEO_Sitemaps::OPTION ),
 	'breadcrumbs'    => get_option( Simple_SEO_Breadcrumbs::OPTION ),
 	'bc_labels'      => get_option( Simple_SEO_Breadcrumbs::LABELS ),
+	'schema'         => get_option( Simple_SEO_Schema::OPTION ),
+	'schema_names'   => get_option( Simple_SEO_Schema::NAMES ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -175,7 +177,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -208,7 +210,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	flush_rewrite_rules( false );
 	// Rows of other languages that a broken run may have left behind.
 	unset( $_COOKIE['admin_lang'] );
-	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%' OR option_name LIKE 'simple\\_seo\\_llms\\_text\\_%'" ) as $sseo_name ) {
+	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%' OR option_name LIKE 'simple\\_seo\\_schema\\_names\\_%' OR option_name LIKE 'simple\\_seo\\_llms\\_text\\_%'" ) as $sseo_name ) {
 		delete_option( (string) $sseo_name );
 	}
 	// Yoast's data as the stand had it: what the import and clean-up sections made up or removed.
@@ -1425,7 +1427,7 @@ try {
 	Simple_SEO_Context::reset();
 	$sseo_404 = static fn(): Simple_SEO_Context => Simple_SEO_Context::from_query( $sseo_q404 );
 
-	sseo_check( 'only the special pages row, the breadcrumb labels and the llms.txt text are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Llms::TEXT ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
+	sseo_check( 'only the special pages row, the breadcrumb labels, the Schema names and the llms.txt text are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Schema::NAMES, Simple_SEO_Llms::TEXT ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
 	Simple_SEO_Settings::install();
 	sseo_check( 'install() creates the special pages row', array() === get_option( Simple_SEO_Special::OPTION, null ) );
 
@@ -2791,6 +2793,321 @@ try {
 	}
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Schema' );
+
+	unset( $GLOBALS['current_screen'] );
+	foreach ( array( Simple_SEO_Schema::OPTION, Simple_SEO_Schema::NAMES, Simple_SEO_Social::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	update_option( 'show_on_front', 'posts' );
+	$sseo_sc_icon = get_option( 'site_icon' );
+	$sseo_sc_logo = get_theme_mod( 'custom_logo' );
+	delete_option( 'site_icon' );
+	remove_theme_mod( 'custom_logo' );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_home  = home_url( '/' );
+	$sseo_sc_graph = static fn( array $vars ): array => Simple_SEO_Schema::graph( $sseo_ctx_of( $vars ) );
+	$sseo_sc_node  = static function ( array $graph, string $type ): array {
+		foreach ( $graph as $node ) {
+			if ( in_array( $type, (array) ( $node['@type'] ?? array() ), true ) ) {
+				return $node;
+			}
+		}
+		return array();
+	};
+	$sseo_sc_types = static fn( array $graph ): array => array_map( static fn( array $node ) => $node['@type'] ?? '', $graph );
+	// Every reference ({"@id"} alone or with a name) points at a node of the graph or a node inside one.
+	$sseo_sc_linked = static function ( array $graph ): bool {
+		$ids  = array();
+		$refs = array();
+		$walk = static function ( $value ) use ( &$walk, &$ids, &$refs ): void {
+			if ( ! is_array( $value ) ) {
+				return;
+			}
+			if ( isset( $value['@id'] ) ) {
+				if ( isset( $value['@type'] ) ) {
+					$ids[] = $value['@id'];
+				} else {
+					$refs[] = $value['@id'];
+				}
+			}
+			foreach ( $value as $item ) {
+				$walk( $item );
+			}
+		};
+		$walk( $graph );
+		return array() === array_diff( $refs, $ids );
+	};
+
+	sseo_check( 'the defaults: Auto, an organization, breadcrumbs in the graph', array( 'mode' => 'auto', 'represents' => 'organization', 'person' => 0, 'logo' => 0, 'profiles' => array(), 'breadcrumbs' => true ) === Simple_SEO_Settings::get( Simple_SEO_Schema::OPTION ) );
+	sseo_check( 'the names are kept per language, the rest is common', in_array( Simple_SEO_Schema::NAMES, Simple_SEO_Settings::localized(), true ) && ! in_array( Simple_SEO_Schema::OPTION, Simple_SEO_Settings::localized(), true ) );
+	sseo_check( 'the graph is printed after the head tags, both at priority 1', 1 === has_action( 'wp_head', array( Simple_SEO_Schema::class, 'output' ) ) && array_search( 'Simple_SEO_Head::output', array_keys( $GLOBALS['wp_filter']['wp_head']->callbacks[1] ), true ) < array_search( 'Simple_SEO_Schema::output', array_keys( $GLOBALS['wp_filter']['wp_head']->callbacks[1] ), true ) );
+	$sseo_clean = Simple_SEO_Schema::sanitize( array( 'mode' => 'never', 'represents' => 'robot', 'person' => 99999999, 'logo' => $sseo_pdf, 'profiles' => "https://a.test/x\n javascript:alert(1)\r\nftp://b.test/\nnot a link\nhttp://not%20a%20link\nhttps://localhost/x\nsee https://f.test/me\nhttps://user@g.test/\nwww.d.test\nhttps://\nhttps://e.test/a b\nhttps://приклад.укр/сторінка\nhttps://a.test/x\n\n  https://c.test/y?z=1 ", 'breadcrumbs' => '0' ) );
+	sseo_check( 'sanitize: an unknown mode or kind falls back, no such user, a PDF is no logo, profiles whole http(s) addresses once each, breadcrumbs off', array( 'mode' => 'auto', 'represents' => 'organization', 'person' => 0, 'logo' => 0, 'profiles' => array( 'https://a.test/x', 'https://приклад.укр/сторінка', 'https://c.test/y?z=1' ), 'breadcrumbs' => false ) === $sseo_clean, $sseo_clean );
+	$sseo_clean = Simple_SEO_Schema::sanitize( array( 'mode' => 'always', 'represents' => 'person', 'person' => (string) $sseo_au, 'logo' => (string) $sseo_og, 'profiles' => array_map( static fn( int $n ): string => 'https://p.test/' . $n, range( 1, 25 ) ) ) );
+	sseo_check( 'sanitize: a user and an image as IDs, twenty profiles at most, breadcrumbs on unless switched off', 'always' === $sseo_clean['mode'] && 'person' === $sseo_clean['represents'] && $sseo_au === $sseo_clean['person'] && $sseo_og === $sseo_clean['logo'] && 20 === count( $sseo_clean['profiles'] ) && 'https://p.test/20' === end( $sseo_clean['profiles'] ) && true === $sseo_clean['breadcrumbs'], $sseo_clean );
+	$sseo_clean = Simple_SEO_Schema::sanitize_names( array( 'name' => ' <b>Acme</b> Ltd ', 'alternate' => str_repeat( 'я', 250 ), 'site_name' => array( 'no' ), 'bogus' => 'x' ) );
+	sseo_check( 'sanitize names: plain text, 200 characters at most, nothing unknown', array( 'site_name' => '', 'site_alternate' => '', 'name' => 'Acme Ltd', 'alternate' => str_repeat( 'я', 200 ) ) === $sseo_clean, $sseo_clean );
+
+	// A post of the author, with a featured image, categories and a tag.
+	$sseo_sc_tag = wp_insert_term( 'Sc Tag', 'post_tag' );
+	$sseo['terms'][] = array( (int) $sseo_sc_tag['term_id'], 'post_tag' );
+	$sseo['posts']['sc'] = (int) wp_insert_post( array( 'post_title' => 'Sc Post', 'post_content' => 'Words here.', 'post_status' => 'publish', 'post_author' => $sseo_au, 'post_category' => array( $sseo_news, $sseo_sport ), 'tags_input' => array( 'Sc Tag' ) ) );
+	update_post_meta( $sseo['posts']['sc'], '_thumbnail_id', $sseo_feat );
+	$sseo_sc_url   = get_permalink( $sseo['posts']['sc'] );
+	$sseo_g        = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_sc_user  = get_userdata( $sseo_au );
+	sseo_check( 'a post: the site, the organization, the page, its image, the article, the author, the trail', array( 'WebSite', 'Organization', 'ImageObject', 'WebPage', 'Article', 'Person', 'BreadcrumbList' ) === $sseo_sc_types( $sseo_g ), $sseo_sc_types( $sseo_g ) );
+	sseo_check( 'every reference points at a node', $sseo_sc_linked( $sseo_g ) );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'WebSite' );
+	sseo_check( 'the site: its address, title, search and language, published by the organization', $sseo_sc_home . '#website' === $sseo_n['@id'] && $sseo_sc_home === $sseo_n['url'] && $sseo_site === $sseo_n['name'] && array( '@id' => $sseo_sc_home . '#organization' ) === $sseo_n['publisher'] && $sseo_sc_home . '?s={search_term_string}' === ( $sseo_n['potentialAction'][0]['target']['urlTemplate'] ?? '' ) && get_bloginfo( 'language' ) === $sseo_n['inLanguage'] && ! isset( $sseo_n['alternateName'] ), $sseo_n );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'Organization' );
+	sseo_check( 'the organization: the title of the site, its address, no logo nor profiles yet', array( '@type' => 'Organization', '@id' => $sseo_sc_home . '#organization', 'name' => $sseo_site, 'url' => $sseo_sc_home ) === $sseo_n, $sseo_n );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'WebPage' );
+	sseo_check( 'the page: its address as @id, the SEO title and description, the site, dates, image, trail', $sseo_sc_url === $sseo_n['@id'] && $sseo_sc_url === $sseo_n['url'] && Simple_SEO_Titles::title( $sseo_ctx_of( array( 'p' => $sseo['posts']['sc'] ) ) ) === $sseo_n['name'] && 'Words here.' === ( $sseo_n['description'] ?? '' ) && array( '@id' => $sseo_sc_home . '#website' ) === $sseo_n['isPartOf'] && (bool) preg_match( '/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00$/', $sseo_n['datePublished'] ?? '' ) && isset( $sseo_n['dateModified'] ) && array( '@id' => $sseo_sc_url . '#primaryimage' ) === $sseo_n['primaryImageOfPage'] && str_ends_with( $sseo_n['thumbnailUrl'] ?? '', 'sseo-featured.png' ) && array( '@id' => $sseo_sc_url . '#breadcrumb' ) === $sseo_n['breadcrumb'] && ! isset( $sseo_n['about'] ) && ! isset( $sseo_n['mainEntity'] ), $sseo_n );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'ImageObject' );
+	sseo_check( 'the main image: the featured image with its size', $sseo_sc_url . '#primaryimage' === $sseo_n['@id'] && str_ends_with( $sseo_n['url'], 'sseo-featured.png' ) && $sseo_n['url'] === $sseo_n['contentUrl'] && 800 === $sseo_n['width'] && 600 === $sseo_n['height'], $sseo_n );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'Article' );
+	sseo_check( 'the article: headline, dates, the author by name, the organization, the image, categories and tags', $sseo_sc_url . '#article' === $sseo_n['@id'] && array( '@id' => $sseo_sc_url ) === $sseo_n['mainEntityOfPage'] && 'Sc Post' === $sseo_n['headline'] && array( '@id' => Simple_SEO_Schema::person_id( $sseo_sc_user ), 'name' => $sseo_sc_user->display_name ) === $sseo_n['author'] && array( '@id' => $sseo_sc_home . '#organization' ) === $sseo_n['publisher'] && array( '@id' => $sseo_sc_url . '#primaryimage' ) === $sseo_n['image'] && array( 'Bc News', 'Bc Sport' ) === $sseo_n['articleSection'] && array( 'Sc Tag' ) === $sseo_n['keywords'], $sseo_n );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'Person' );
+	sseo_check( 'the author: a hash of the user in the @id, not the login; the name; the avatar; no address while author archives are hidden', Simple_SEO_Schema::person_id( $sseo_sc_user ) === $sseo_n['@id'] && ! str_contains( $sseo_n['@id'], 'sseo-author' ) && (bool) preg_match( '~#/schema/person/[0-9a-f]{16}$~', $sseo_n['@id'] ) && $sseo_sc_user->display_name === $sseo_n['name'] && str_contains( $sseo_n['image']['url'] ?? '', 'gravatar' ) && ! isset( $sseo_n['url'] ), $sseo_n );
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'post:attachment', 'date' ) ) );
+	update_option( 'show_avatars', '' );
+	Simple_SEO_Settings::flush();
+	$sseo_n = $sseo_sc_node( $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) ), 'Person' );
+	update_option( 'show_avatars', '1' );
+	delete_option( Simple_SEO_Indexing::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'author archives shown: the author archive as the address; avatars off: no image', get_author_posts_url( $sseo_au ) === ( $sseo_n['url'] ?? '' ) && ! isset( $sseo_n['image'] ), $sseo_n );
+	$sseo_n     = $sseo_sc_node( $sseo_g, 'BreadcrumbList' );
+	$sseo_items = Simple_SEO_Breadcrumbs::items( $sseo_ctx_of( array( 'p' => $sseo['posts']['sc'] ) ) );
+	sseo_check( 'the trail: the items of the breadcrumbs, numbered from 1, the post last', $sseo_sc_url . '#breadcrumb' === $sseo_n['@id'] && array_column( $sseo_items, 'label' ) === array_column( $sseo_n['itemListElement'], 'name' ) && range( 1, count( $sseo_items ) ) === array_column( $sseo_n['itemListElement'], 'position' ) && $sseo_sc_home === $sseo_n['itemListElement'][0]['item'] && $sseo_sc_url === end( $sseo_n['itemListElement'] )['item'], $sseo_n );
+
+	add_filter( 'simple_seo_title', '__return_empty_string' );
+	update_post_meta( $sseo['posts']['sc'], '_thumbnail_id', $sseo_og );
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	remove_all_filters( 'simple_seo_title' );
+	update_post_meta( $sseo['posts']['sc'], '_thumbnail_id', $sseo_feat );
+	sseo_check( 'without an SEO title the page is named by its title; the main image has its alt text as the caption', 'Sc Post' === $sseo_sc_node( $sseo_g, 'WebPage' )['name'] && 'Alt "text"' === ( $sseo_sc_node( $sseo_g, 'ImageObject' )['caption'] ?? '' ), $sseo_g );
+	$sseo['posts']['sc_page'] = (int) wp_insert_post( array( 'post_title' => 'Sc Page', 'post_type' => 'page', 'post_status' => 'publish', 'post_author' => $sseo_au, 'post_parent' => $sseo_p['bc_parent'] ) );
+	$sseo_g = $sseo_sc_graph( array( 'page_id' => $sseo['posts']['sc_page'] ) );
+	sseo_check( 'a page (with an author): a web page with its trail, no article and no author', array( 'WebSite', 'Organization', 'WebPage', 'BreadcrumbList' ) === $sseo_sc_types( $sseo_g ) && 3 === count( $sseo_sc_node( $sseo_g, 'BreadcrumbList' )['itemListElement'] ), $sseo_g );
+	add_filter( 'simple_seo_breadcrumbs', static fn( array $items ): array => array_slice( $items, 0, 1 ) );
+	$sseo_g = $sseo_sc_graph( array( 'page_id' => $sseo['posts']['sc_page'] ) );
+	remove_all_filters( 'simple_seo_breadcrumbs', 10 );
+	sseo_check( 'a trail of one item is no trail', array() === $sseo_sc_node( $sseo_g, 'BreadcrumbList' ) && ! isset( $sseo_sc_node( $sseo_g, 'WebPage' )['breadcrumb'] ), $sseo_sc_types( $sseo_g ) );
+	add_filter( 'simple_seo_schema_article_types', static fn( array $types ): array => array_merge( $types, array( 'page' ) ) );
+	$sseo_g = $sseo_sc_graph( array( 'page_id' => $sseo_p['bc_child'] ) );
+	remove_all_filters( 'simple_seo_schema_article_types' );
+	sseo_check( 'simple_seo_schema_article_types makes pages articles (without an author: the page has none)', array() !== $sseo_sc_node( $sseo_g, 'Article' ) && ! isset( $sseo_sc_node( $sseo_g, 'Article' )['author'] ) && $sseo_sc_linked( $sseo_g ), $sseo_sc_types( $sseo_g ) );
+
+	$sseo_g = $sseo_sc_graph( array() );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'CollectionPage' );
+	sseo_check( 'the home page of the latest posts: a collection about the organization, no trail', array( 'WebSite', 'Organization', 'CollectionPage' ) === $sseo_sc_types( $sseo_g ) && $sseo_sc_home === $sseo_n['@id'] && array( '@id' => $sseo_sc_home . '#organization' ) === $sseo_n['about'] && ! isset( $sseo_n['breadcrumb'] ), $sseo_g );
+	$sseo_g = $sseo_sc_graph( array( 'cat' => $sseo_news ) );
+	sseo_check( 'a category: a collection with its trail', 'CollectionPage' === ( $sseo_sc_node( $sseo_g, 'CollectionPage' )['@type'] ?? '' ) && get_category_link( $sseo_news ) === $sseo_sc_node( $sseo_g, 'CollectionPage' )['url'] && array() !== $sseo_sc_node( $sseo_g, 'BreadcrumbList' ) && array() === $sseo_sc_node( $sseo_g, 'Article' ), $sseo_g );
+	$sseo_g = $sseo_sc_graph( array( 'author' => $sseo_au ) );
+	sseo_check( 'an author archive: a profile page whose main entity is the person', array( '@id' => Simple_SEO_Schema::person_id( $sseo_sc_user ) ) === ( $sseo_sc_node( $sseo_g, 'ProfilePage' )['mainEntity'] ?? null ) && array() !== $sseo_sc_node( $sseo_g, 'Person' ) && $sseo_sc_linked( $sseo_g ), $sseo_g );
+	$sseo_g = $sseo_sc_graph( array( 's' => 'apples' ) );
+	sseo_check( 'search results: a collection and search results page at the address of the search', array( 'CollectionPage', 'SearchResultsPage' ) === ( $sseo_sc_node( $sseo_g, 'SearchResultsPage' )['@type'] ?? null ) && get_search_link( 'apples' ) === $sseo_sc_node( $sseo_g, 'SearchResultsPage' )['url'], $sseo_g );
+	$sseo_g = Simple_SEO_Schema::graph( Simple_SEO_Context::from_query( sseo_query( array( 'p' => 99999999 ) ) ) );
+	sseo_check( '404: the site and the organization only', array( 'WebSite', 'Organization' ) === $sseo_sc_types( $sseo_g ), $sseo_sc_types( $sseo_g ) );
+	$sseo['posts']['sc_draft'] = (int) wp_insert_post( array( 'post_title' => 'Sc Draft', 'post_status' => 'draft' ) );
+	sseo_check( 'an unpublished post has no address: no page in the graph', array( 'WebSite', 'Organization' ) === $sseo_sc_types( Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['sc_draft'] ) ) ) ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['sc'], 'post_password' => 'secret' ) );
+	$sseo_g = Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['sc'] ) ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['sc'], 'post_password' => '' ) );
+	sseo_check( 'a post asking for a password shows no image', array() === $sseo_sc_node( $sseo_g, 'ImageObject' ) && ! isset( $sseo_sc_node( $sseo_g, 'WebPage' )['primaryImageOfPage'] ) && ! isset( $sseo_sc_node( $sseo_g, 'Article' )['image'] ) && $sseo_sc_linked( $sseo_g ), $sseo_g );
+
+	// The settings: names, logo, profiles, a person, breadcrumbs.
+	update_option( Simple_SEO_Schema::NAMES, array( 'name' => 'Acme Ltd', 'alternate' => 'Acme', 'site_name' => 'Acme Site', 'site_alternate' => 'AS' ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'logo' => $sseo_og, 'profiles' => array( 'https://facebook.test/acme', 'https://x.com/kaplia' ) ) );
+	update_option( Simple_SEO_Social::OPTION, array( 'x_account' => '@kaplia' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_n = $sseo_sc_node( $sseo_g, 'Organization' );
+	sseo_check( 'the names of the settings; the logo with the name as its caption; the profiles with the X account once', 'Acme Ltd' === $sseo_n['name'] && 'Acme' === $sseo_n['alternateName'] && $sseo_sc_home . '#logo' === $sseo_n['logo']['@id'] && str_ends_with( $sseo_n['logo']['url'], 'sseo-og.jpg' ) && 'Acme Ltd' === $sseo_n['logo']['caption'] && array( '@id' => $sseo_sc_home . '#logo' ) === $sseo_n['image'] && array( 'https://facebook.test/acme', 'https://x.com/kaplia' ) === $sseo_n['sameAs'], $sseo_n );
+	sseo_check( "the site's own name and other name", 'Acme Site' === $sseo_sc_node( $sseo_g, 'WebSite' )['name'] && 'AS' === $sseo_sc_node( $sseo_g, 'WebSite' )['alternateName'] );
+	update_option( Simple_SEO_Schema::OPTION, array() );
+	set_theme_mod( 'custom_logo', $sseo_default );
+	update_option( 'site_icon', $sseo_feat );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_logos = array( Simple_SEO_Schema::logo_id() );
+	remove_theme_mod( 'custom_logo' );
+	$sseo_sc_logos[] = Simple_SEO_Schema::logo_id();
+	delete_option( 'site_icon' );
+	$sseo_sc_logos[] = Simple_SEO_Schema::logo_id();
+	sseo_check( "without a logo of its own: the theme's logo, then the site icon, then none", array( $sseo_default, $sseo_feat, 0 ) === $sseo_sc_logos, $sseo_sc_logos );
+
+	update_option( Simple_SEO_Schema::OPTION, array( 'represents' => 'person', 'person' => $sseo_au, 'logo' => $sseo_og, 'profiles' => array( 'https://facebook.test/me' ) ) );
+	wp_update_user( array( 'ID' => $sseo_au, 'user_url' => 'https://me.test/', 'description' => 'A <b>writer</b>.' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_user = get_userdata( $sseo_au );
+	$sseo_g       = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_n       = $sseo_sc_node( $sseo_g, 'Person' );
+	sseo_check( 'a person: the user as a person and organization, with the logo, the biography, the website and the profiles', array( 'Person', 'Organization' ) === $sseo_n['@type'] && Simple_SEO_Schema::person_id( $sseo_sc_user ) === $sseo_n['@id'] && $sseo_sc_home . '#logo' === $sseo_n['logo']['@id'] && array( '@id' => $sseo_sc_home . '#logo' ) === $sseo_n['image'] && 'A writer.' === $sseo_n['description'] && array( 'https://me.test/', 'https://facebook.test/me', 'https://x.com/kaplia' ) === $sseo_n['sameAs'], $sseo_n );
+	sseo_check( "the person's own post: one node of them; the site and the article published by them", 1 === count( array_filter( $sseo_g, static fn( array $node ): bool => in_array( 'Person', (array) $node['@type'], true ) ) ) && array( '@id' => $sseo_n['@id'] ) === $sseo_sc_node( $sseo_g, 'WebSite' )['publisher'] && $sseo_n['@id'] === $sseo_sc_node( $sseo_g, 'Article' )['author']['@id'] && array( '@id' => $sseo_n['@id'] ) === $sseo_sc_node( $sseo_g, 'Article' )['publisher'] && $sseo_sc_linked( $sseo_g ), $sseo_sc_types( $sseo_g ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'represents' => 'person' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	sseo_check( 'a person without a user: nobody publishes, the author stays', ! isset( $sseo_sc_node( $sseo_g, 'WebSite' )['publisher'] ) && ! isset( $sseo_sc_node( $sseo_g, 'Article' )['publisher'] ) && array( 'Person' ) === (array) $sseo_sc_node( $sseo_g, 'Person' )['@type'] && $sseo_sc_linked( $sseo_g ), $sseo_g );
+	wp_update_user( array( 'ID' => $sseo_au, 'user_url' => '', 'description' => '' ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'breadcrumbs' => false ) );
+	delete_option( Simple_SEO_Schema::NAMES );
+	update_option( 'blogname', '' );
+	Simple_SEO_Settings::flush();
+	$sseo_g = $sseo_sc_graph( array( 'p' => $sseo['posts']['sc'] ) );
+	update_option( 'blogname', $sseo_site );
+	sseo_check( 'breadcrumbs switched off: no trail; a site without a title: no organization', array() === $sseo_sc_node( $sseo_g, 'BreadcrumbList' ) && ! isset( $sseo_sc_node( $sseo_g, 'WebPage' )['breadcrumb'] ) && array() === $sseo_sc_node( $sseo_g, 'Organization' ) && $sseo_sc_linked( $sseo_g ), $sseo_sc_types( $sseo_g ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	delete_option( Simple_SEO_Social::OPTION );
+	Simple_SEO_Settings::flush();
+
+	// The filters of Simple SEO's own API.
+	$sseo_sc_runs = 0;
+	add_filter(
+		'simple_seo_schema_pieces',
+		static function ( array $pieces ) use ( &$sseo_sc_runs ): array {
+			++$sseo_sc_runs;
+			unset( $pieces['website'] );
+			$pieces['webpage']['sseo'] = 1;
+			$pieces['bogus']           = 'not a node';
+			return $pieces;
+		}
+	);
+	add_filter( 'simple_seo_schema_graph', static fn( array $graph ): array => array_merge( $graph, array( array( '@type' => 'Thing', 'name' => 'Extra' ), array(), 'junk' ) ) );
+	$sseo_ctx = $sseo_ctx_of( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_g   = Simple_SEO_Schema::graph( $sseo_ctx );
+	Simple_SEO_Schema::graph( $sseo_ctx );
+	// Only the test's own (10): the compatibility layer hooks in at 5.
+	remove_all_filters( 'simple_seo_schema_pieces', 10 );
+	remove_all_filters( 'simple_seo_schema_graph', 10 );
+	sseo_check( 'simple_seo_schema_pieces and simple_seo_schema_graph: a piece taken out, one changed, a node added, what is no node dropped', array() === $sseo_sc_node( $sseo_g, 'WebSite' ) && 1 === ( $sseo_sc_node( $sseo_g, 'WebPage' )['sseo'] ?? 0 ) && array( '@type' => 'Thing', 'name' => 'Extra' ) === end( $sseo_g ) && array_keys( $sseo_g ) === range( 0, count( $sseo_g ) - 1 ) && ! in_array( 'not a node', $sseo_g, true ) && ! in_array( 'junk', $sseo_g, true ), $sseo_sc_types( $sseo_g ) );
+	sseo_check( 'the graph of a page is worked out once', 1 === $sseo_sc_runs, $sseo_sc_runs );
+
+	// Whether it is printed, and how.
+	$sseo_sc_query               = $GLOBALS['wp_query'];
+	$sseo_sc_actions             = $GLOBALS['wp_actions']['wp'] ?? null;
+	$GLOBALS['wp_actions']['wp'] = 1;
+	$sseo_sc_show                = static function ( array $vars ): Simple_SEO_Context {
+		$GLOBALS['wp_query'] = sseo_query( $vars );
+		Simple_SEO_Context::reset();
+		return Simple_SEO_Context::current();
+	};
+	$sseo_ctx  = $sseo_sc_show( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Schema::class, 'output' ) );
+	$sseo_json = preg_match( '~^<script type="application/ld\+json" class="simple-seo-schema">(.*)</script>\n$~s', $sseo_html, $sseo_match ) ? json_decode( $sseo_match[1], true ) : null;
+	sseo_check( 'Auto with a theme that says nothing: one script with the graph of the page', is_array( $sseo_json ) && 'https://schema.org' === $sseo_json['@context'] && Simple_SEO_Schema::graph( $sseo_ctx ) === $sseo_json['@graph'] && true === Simple_SEO_Schema::prints( $sseo_ctx ), $sseo_html );
+	sseo_check( 'the JSON keeps letters and slashes as they are', str_contains( $sseo_html, '"url":"' . $sseo_sc_url . '"' ) );
+	add_filter( 'simple_seo_title', static fn(): string => 'Sc </script><script>alert(1)</script> Post' );
+	$sseo_ctx  = $sseo_sc_show( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Schema::class, 'output' ) );
+	remove_all_filters( 'simple_seo_title' );
+	sseo_check( 'no text of a page closes the script: < and > are escaped in the JSON', 1 === substr_count( $sseo_html, '</script>' ) && 1 === substr_count( $sseo_html, '<script' ) && str_contains( $sseo_html, '\u003C/script\u003E' ), $sseo_html );
+	add_filter( 'wpseo_json_ld_output', '__return_false' );
+	$sseo_sc_modes = array( 'auto' => Simple_SEO_Schema::prints( $sseo_ctx ) );
+	sseo_check( 'Auto with a theme that switches off the graph of SEO plugins: nothing printed', '' === sseo_capture( array( Simple_SEO_Schema::class, 'output' ) ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'mode' => 'always' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_modes['always'] = Simple_SEO_Schema::prints( $sseo_ctx );
+	remove_all_filters( 'wpseo_json_ld_output' );
+	update_option( Simple_SEO_Schema::OPTION, array( 'mode' => 'off' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_sc_modes['off'] = Simple_SEO_Schema::prints( $sseo_ctx );
+	sseo_check( 'Always prints whatever the theme says; Off never', array( 'auto' => false, 'always' => true, 'off' => false ) === $sseo_sc_modes && '' === sseo_capture( array( Simple_SEO_Schema::class, 'output' ) ), $sseo_sc_modes );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	add_filter( 'simple_seo_schema_output', '__return_false' );
+	$sseo_sc_modes = array( Simple_SEO_Schema::prints( $sseo_ctx ) );
+	remove_all_filters( 'simple_seo_schema_output' );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	$sseo_sc_modes[] = Simple_SEO_Schema::prints( $sseo_ctx );
+	$sseo_sc_modes[] = sseo_capture( array( Simple_SEO_Schema::class, 'output' ) );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	sseo_check( 'simple_seo_schema_output switches it off; nothing next to another SEO plugin', array( false, false, '' ) === $sseo_sc_modes, $sseo_sc_modes );
+	sseo_check( 'an empty graph prints nothing', '' === Simple_SEO_Schema::script( array() ) );
+
+	// The theme Builder's breadcrumbs block.
+	$sseo_ctx = $sseo_sc_show( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_sc_builder = array( 5 === has_filter( 'builder_breadcrumbs_schema', array( Simple_SEO_Schema::class, 'builder_breadcrumbs' ) ), apply_filters( 'builder_breadcrumbs_schema', true ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'mode' => 'off' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_ctx          = $sseo_sc_show( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_sc_builder[] = apply_filters( 'builder_breadcrumbs_schema', false );
+	update_option( Simple_SEO_Schema::OPTION, array( 'breadcrumbs' => false ) );
+	Simple_SEO_Settings::flush();
+	$sseo_ctx          = $sseo_sc_show( array( 'p' => $sseo['posts']['sc'] ) );
+	$sseo_sc_builder[] = apply_filters( 'builder_breadcrumbs_schema', false );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_ctx = $sseo_sc_show( array() );
+	$sseo_sc_builder[] = apply_filters( 'builder_breadcrumbs_schema', true );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	$sseo_sc_builder[] = apply_filters( 'builder_breadcrumbs_schema', 'theirs' );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	unset( $GLOBALS['wp_actions']['wp'] );
+	$sseo_sc_builder[] = apply_filters( 'builder_breadcrumbs_schema', 'before' );
+	$GLOBALS['wp_actions']['wp'] = 1;
+	sseo_check( "Builder: its own BreadcrumbList only where Simple SEO's graph has none; untouched next to another SEO plugin or before the page is known", array( true, false, true, true, true, 'theirs', 'before' ) === $sseo_sc_builder, $sseo_sc_builder );
+	$GLOBALS['wp_query'] = $sseo_sc_query;
+	if ( null === $sseo_sc_actions ) {
+		unset( $GLOBALS['wp_actions']['wp'] );
+	} else {
+		$GLOBALS['wp_actions']['wp'] = $sseo_sc_actions;
+	}
+	Simple_SEO_Context::reset();
+
+	// The tab.
+	Simple_SEO_Schema::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( Simple_SEO_Schema::OPTION, array( 'represents' => 'person', 'person' => $sseo_au, 'profiles' => array( 'https://facebook.test/acme' ) ) );
+	update_option( Simple_SEO_Schema::NAMES, array( 'name' => 'Acme "Ltd"' ) );
+	Simple_SEO_Settings::flush();
+	$_GET['tab'] = 'schema';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	add_filter( 'wpseo_json_ld_output', '__return_false' );
+	$sseo_html_off = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	remove_all_filters( 'wpseo_json_ld_output' );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the Schema tab sits between Social networks and Indexing', strpos( $sseo_html, '>Social networks<' ) < strpos( $sseo_html, '>Schema<' ) && strpos( $sseo_html, '>Schema<' ) < strpos( $sseo_html, '>Indexing<' ) );
+	sseo_check( 'the tab: the modes with Auto chosen, whom the site represents with its user, the names, the logo, the profiles, breadcrumbs', str_contains( $sseo_html, 'name="simple_seo_schema[mode]" value="auto"  checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_schema[represents]" value="person"  checked=\'checked\'' ) && (bool) preg_match( '~<select name=\'simple_seo_schema\[person\]\'[^>]*>.*<option value=\'' . $sseo_au . '\' selected=\'selected\'>~s', $sseo_html ) && str_contains( $sseo_html, 'name="simple_seo_schema_names[name]" value="Acme &quot;Ltd&quot;"' ) && str_contains( $sseo_html, 'name="simple_seo_schema[logo]"' ) && str_contains( $sseo_html, ">https://facebook.test/acme</textarea>" ) && str_contains( $sseo_html, 'name="simple_seo_schema[breadcrumbs]" value="1"  checked=\'checked\'' ) );
+	sseo_check( 'the tab shows the graph of the home page', str_contains( $sseo_html, 'class="simple-seo-schema-example"' ) && str_contains( $sseo_html, '&quot;@type&quot;: &quot;WebSite&quot;' ) );
+	sseo_check( 'a theme that switches off the graph of SEO plugins is named on the tab', ! str_contains( $sseo_html, 'wpseo_json_ld_output' ) && str_contains( $sseo_html_off, 'The active theme switches off the graph of SEO plugins' ) );
+	sseo_check( 'the tab saves both rows', 'simple-seo-schema' === ( get_registered_settings()[ Simple_SEO_Schema::OPTION ]['group'] ?? '' ) && 'simple-seo-schema' === ( get_registered_settings()[ Simple_SEO_Schema::NAMES ]['group'] ?? '' ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_d = Simple_SEO_WP_Loc::default_language();
+		$sseo_o = (string) current( array_diff( Simple_SEO_WP_Loc::codes(), array( $sseo_d ) ) );
+		update_option( Simple_SEO_Schema::NAMES, array( 'name' => 'Acme default' ) );
+		update_option( Simple_SEO_Schema::NAMES . '_' . $sseo_o, array( 'name' => 'Acme other' ) );
+		Simple_SEO_Settings::flush();
+		$sseo_g      = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['bc_ml_o'] ) ) ) );
+		$sseo_prefix = '/' . WP_LOC_DB::from_db_language_code( $sseo_o ) . '/';
+		$sseo_lang   = Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => get_bloginfo( 'language' ) );
+		delete_option( Simple_SEO_Schema::NAMES . '_' . $sseo_o );
+		Simple_SEO_Settings::flush();
+		// home_url() takes the language prefix on the site only (after template_redirect), not here.
+		sseo_check( "wp-loc: a translation's graph in its language: the names of its row, its address and the language of the page", 'Acme other' === ( $sseo_sc_node( $sseo_g, 'Organization' )['name'] ?? '' ) && str_contains( $sseo_sc_node( $sseo_g, 'WebPage' )['url'], $sseo_prefix ) && $sseo_lang === $sseo_sc_node( $sseo_g, 'WebPage' )['inLanguage'] && str_replace( '_', '-', Simple_SEO_WP_Loc::locale_of( $sseo_o ) ) === $sseo_lang, $sseo_g );
+		sseo_check( "wp-loc: the default language keeps its own names", 'Acme default' === ( $sseo_sc_node( Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['bc_ml_d'] ) ) ), 'Organization' )['name'] ?? '' ) );
+		delete_option( Simple_SEO_Schema::NAMES );
+		Simple_SEO_Settings::flush();
+	} else {
+		echo "  skip  Schema with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+	if ( false !== $sseo_sc_icon ) {
+		update_option( 'site_icon', $sseo_sc_icon );
+	}
+	if ( false !== $sseo_sc_logo ) {
+		set_theme_mod( 'custom_logo', $sseo_sc_logo );
+	}
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );
 
 	$sseo_robots_path = Simple_SEO_Files::path( Simple_SEO_Files::ROBOTS );
@@ -3576,6 +3893,8 @@ try {
 		array( 'simple_seo_document_title', 'title', 5 ),
 		array( 'simple_seo_head_tags', 'head_tags', 5 ),
 		array( 'simple_seo_breadcrumbs', 'breadcrumbs', 5 ),
+		array( 'simple_seo_schema_pieces', 'schema_pieces', 5 ),
+		array( 'simple_seo_schema_graph', 'schema_graph', 5 ),
 		array( 'simple_seo_sitemap_exclude', 'sitemap_exclude', 5 ),
 		array( 'simple_seo_sitemap_entry', 'sitemap_entry', 5 ),
 		array( 'simple_seo_sitemap_url', 'sitemap_url', 5 ),
@@ -3937,6 +4256,53 @@ try {
 	$sseo_text = wpseo_replace_vars( '%%sitename%% %%custom%% %%title%% %%sep%% 10 %%junk%%', get_post( $sseo_yf ) );
 	remove_all_filters( 'wpseo_replacements' );
 	sseo_check( 'wpseo_replacements: the values by %%name%%, with the arguments, replaced in one pass', 'Site* Mine %%sep%% Yf Post ' . Simple_SEO_Titles::separator() . ' 10' === $sseo_text && $sseo_yf_args instanceof WP_Post, $sseo_text );
+
+	// The Schema graph: Yoast's filters of its pieces and of the whole, on the page shown.
+	$sseo_yf_keys = array( 'website', 'organization', 'webpage', 'mainimage', 'article', 'author', 'breadcrumb' );
+	$sseo_yf_seen = array();
+	foreach ( $sseo_yf_keys as $sseo_key ) {
+		add_filter(
+			'wpseo_schema_' . $sseo_key,
+			static function ( $data, $context ) use ( $sseo_key, &$sseo_yf_seen ) {
+				$sseo_yf_seen[ $sseo_key ] = null === $context && is_array( $data ) && isset( $data['@type'] );
+				return $data;
+			},
+			10,
+			2
+		);
+	}
+	add_filter( 'wpseo_schema_webpage', static fn( $data ) => array_merge( $data, array( 'sseoTheme' => 1 ) ), 20 );
+	add_filter( 'wpseo_schema_article', '__return_false', 20 );
+	add_filter( 'wpseo_schema_person_data', static fn( $data, $user ) => array_merge( $data, array( 'sseoUser' => $user ) ), 10, 2 );
+	$sseo_g     = Simple_SEO_Schema::graph( $sseo_yf_show( array( 'p' => $sseo['posts']['sc'] ) ) );
+	$sseo_other = Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['sc'] ) ) );
+	foreach ( array_merge( $sseo_yf_keys, array( 'person_data' ) ) as $sseo_key ) {
+		remove_all_filters( 'wpseo_schema_' . $sseo_key );
+	}
+	$sseo_types = array_map( static fn( array $node ) => $node['@type'], $sseo_g );
+	sseo_check( 'wpseo_schema_<piece>: each piece by its Yoast name, with no context object', array_fill_keys( $sseo_yf_keys, true ) == $sseo_yf_seen, $sseo_yf_seen ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( 'a theme changes a piece, takes one out (false), and wpseo_schema_person_data gets the user', 1 === ( $sseo_g[ (int) array_search( 'WebPage', $sseo_types, true ) ]['sseoTheme'] ?? 0 ) && ! in_array( 'Article', $sseo_types, true ) && $sseo_au === ( $sseo_g[ (int) array_search( 'Person', $sseo_types, true ) ]['sseoUser'] ?? 0 ), $sseo_types );
+	sseo_check( 'not on the graph of another page than the one shown', ! str_contains( (string) wp_json_encode( $sseo_other ), 'sseoTheme' ) && in_array( 'Article', array_map( static fn( array $node ) => $node['@type'], $sseo_other ), true ) );
+	update_option( Simple_SEO_Schema::OPTION, array( 'represents' => 'person', 'person' => $sseo_au ) );
+	Simple_SEO_Settings::flush();
+	add_filter( 'wpseo_schema_person', static fn( $data ) => array_merge( $data, array( 'sseoSite' => 1 ) ) );
+	add_filter( 'wpseo_schema_person_data', static fn( $data, $user ) => array_merge( $data, array( 'sseoUser' => $user ) ), 10, 2 );
+	$sseo_g = Simple_SEO_Schema::graph( $sseo_yf_show( array( 'p' => $sseo['posts']['sc'] ) ) );
+	remove_all_filters( 'wpseo_schema_person' );
+	remove_all_filters( 'wpseo_schema_person_data' );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'the person the site represents: wpseo_schema_person, then wpseo_schema_person_data with the chosen user', 1 === ( $sseo_g[1]['sseoSite'] ?? 0 ) && $sseo_au === ( $sseo_g[1]['sseoUser'] ?? 0 ), $sseo_g[1] ?? null );
+	// As osadchyclinic does: only Yoast's BreadcrumbList, the rest of the graph is the theme's.
+	add_filter( 'wpseo_schema_graph', static fn( $data ) => array_filter( $data, static fn( $piece ) => isset( $piece['@type'] ) && 'BreadcrumbList' === $piece['@type'] ) );
+	$sseo_g     = Simple_SEO_Schema::graph( $sseo_yf_show( array( 'p' => $sseo['posts']['sc'] ) ) );
+	$sseo_other = Simple_SEO_Schema::graph( Simple_SEO_Context::for_post( get_post( $sseo['posts']['sc'] ) ) );
+	remove_all_filters( 'wpseo_schema_graph' );
+	sseo_check( 'wpseo_schema_graph not on the graph of another page than the one shown', count( $sseo_other ) > 3, count( $sseo_other ) );
+	add_filter( 'wpseo_schema_graph', '__return_null' );
+	$sseo_other = Simple_SEO_Schema::graph( $sseo_yf_show( array( 'p' => $sseo['posts']['sc'] ) ) );
+	remove_all_filters( 'wpseo_schema_graph' );
+	sseo_check( 'wpseo_schema_graph: a theme keeps only the BreadcrumbList, renumbered; what is no list leaves the graph as it was', 1 === count( $sseo_g ) && 'BreadcrumbList' === ( $sseo_g[0]['@type'] ?? '' ) && 'WebSite' === ( $sseo_other[0]['@type'] ?? '' ) && count( $sseo_other ) > 3, $sseo_g );
 
 	$GLOBALS['wp_query'] = $sseo_yf_query;
 	if ( null === $sseo_yf_actions ) {
@@ -4396,6 +4762,41 @@ try {
 	$sseo_yi_again = array();
 	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
 	sseo_check( "without a breadcrumb separator of Simple SEO's own: Yoast's, its HTML entity decoded", '»' === get_option( Simple_SEO_Breadcrumbs::OPTION )['separator'] && array( 'breadcrumbs' => 3 ) === $sseo_yi_again['settings'], $sseo_yi_again );
+
+	// Schema: whom the site represents, its names, logo and profiles.
+	$sseo_yi_saved = array( get_option( 'wpseo_titles' ), get_option( 'wpseo_social' ) );
+	update_option( 'wpseo_titles', array_merge( $sseo_yi_saved[0], array( 'company_or_person' => 'company', 'company_name' => 'Yoast Acme', 'company_alternate_name' => 'YA', 'company_logo_id' => $sseo_og, 'company_logo' => 'https://elsewhere.test/logo.png', 'website_name' => get_option( 'blogname' ), 'alternate_website_name' => 'Acme Site', 'person_logo_id' => $sseo_default ) ) );
+	update_option( 'wpseo_social', array_merge( $sseo_yi_saved[1], array( 'facebook_site' => 'https://facebook.test/acme', 'instagram_url' => '', 'youtube_url' => 'https://youtube.test/acme', 'other_social_urls' => array( 'https://instagram.test/acme', 'javascript:alert(1)', 'https://facebook.test/acme' ) ) ) );
+	update_option( Simple_SEO_Schema::NAMES, array( 'alternate' => 'Own alternate' ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	$sseo_yi_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema: the company's logo by its ID, the profiles once each and safe; the organization stays Simple SEO's default", $sseo_og === $sseo_yi_schema['logo'] && array( 'https://facebook.test/acme', 'https://youtube.test/acme', 'https://instagram.test/acme' ) === $sseo_yi_schema['profiles'] && 'organization' === $sseo_yi_schema['represents'] && 'auto' === $sseo_yi_schema['mode'], $sseo_yi_schema );
+	sseo_check( "Schema names: the company's and the other name of the site; a site name equal to its title is not copied; Simple SEO's own other name stays", array( 'site_name' => '', 'site_alternate' => 'Acme Site', 'name' => 'Yoast Acme', 'alternate' => 'Own alternate' ) === get_option( Simple_SEO_Schema::NAMES ) && 4 === ( $sseo_yi_again['settings']['schema'] ?? 0 ), array( get_option( Simple_SEO_Schema::NAMES ), $sseo_yi_again ) ); // The organization, being the default, is not counted.
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	sseo_check( 'Schema, run again: nothing more to take', ! isset( $sseo_yi_again['settings']['schema'] ), $sseo_yi_again );
+	update_option( 'wpseo_titles', array_merge( get_option( 'wpseo_titles' ), array( 'company_or_person' => 'person', 'company_or_person_user_id' => $sseo_au ) ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	$sseo_yi_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema: a person with Yoast's user and the person's logo; no organization name for a person's site", 'person' === $sseo_yi_schema['represents'] && $sseo_au === $sseo_yi_schema['person'] && $sseo_default === $sseo_yi_schema['logo'] && '' === get_option( Simple_SEO_Schema::NAMES )['name'] && ! isset( $sseo_yi_again['left']['schema_person'] ), array( $sseo_yi_schema, get_option( Simple_SEO_Schema::NAMES ) ) );
+	update_option( 'wpseo_titles', array_merge( get_option( 'wpseo_titles' ), array( 'company_or_person_user_id' => 0 ) ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	sseo_check( 'Schema: a person without a user is not taken, the report asks to choose one', 'organization' === Simple_SEO_Schema::represents() && 1 === ( $sseo_yi_again['left']['schema_person'] ?? 0 ), $sseo_yi_again );
+	update_option( 'wpseo_titles', $sseo_yi_saved[0] );
+	update_option( 'wpseo_social', $sseo_yi_saved[1] );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
 
 	// Posts.
 	$sseo_yi_report = array();
@@ -5030,6 +5431,27 @@ try {
 	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
 	sseo_check( "Rank Math's breadcrumb separator, its HTML entity decoded; a separator Simple SEO does not have is not taken", '»' === get_option( Simple_SEO_Breadcrumbs::OPTION )['separator'] && 4 === $sseo_rm_again['settings']['breadcrumbs'] && ! isset( $sseo_rm_again['settings']['separator'] ) && Simple_SEO_Titles::DEFAULT_SEPARATOR === get_option( Simple_SEO_Titles::OPTION )['separator'], $sseo_rm_again );
 
+	// Schema: Rank Math's knowledge graph.
+	$sseo_rm_saved = get_option( 'rank-math-options-titles' );
+	update_option( 'rank-math-options-titles', array_merge( $sseo_rm_saved, array( 'knowledgegraph_type' => 'company', 'knowledgegraph_name' => 'RM Acme', 'knowledgegraph_logo' => wp_get_attachment_url( $sseo_og ), 'website_name' => 'RM Site', 'website_alternate_name' => 'RMS', 'social_url_facebook' => 'https://facebook.test/rm', 'social_additional_profiles' => "https://youtube.test/rm\r\nhttps://linkedin.test/rm" ) ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	$sseo_rm_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema: Rank Math's logo by its address, its profiles, the names of the site and the company", $sseo_og === $sseo_rm_schema['logo'] && array( 'https://facebook.test/rm', 'https://youtube.test/rm', 'https://linkedin.test/rm' ) === $sseo_rm_schema['profiles'] && array( 'site_name' => 'RM Site', 'site_alternate' => 'RMS', 'name' => 'RM Acme', 'alternate' => '' ) === get_option( Simple_SEO_Schema::NAMES ) && 5 === ( $sseo_rm_again['settings']['schema'] ?? 0 ), array( $sseo_rm_schema, get_option( Simple_SEO_Schema::NAMES ), $sseo_rm_again ) );
+	update_option( 'rank-math-options-titles', array_merge( get_option( 'rank-math-options-titles' ), array( 'knowledgegraph_type' => 'person', 'knowledgegraph_name' => 'Some Person' ) ) );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_rm_again = array();
+	Simple_SEO_Rank_Math_Import::settings( $sseo_rm_again );
+	sseo_check( "Schema: Rank Math's person is a name, not a user: no organization name, the report asks to choose the user", '' === get_option( Simple_SEO_Schema::NAMES )['name'] && 1 === ( $sseo_rm_again['left']['schema_person'] ?? 0 ) && 'organization' === Simple_SEO_Schema::represents(), $sseo_rm_again );
+	update_option( 'rank-math-options-titles', $sseo_rm_saved );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+
 	$sseo_rm_saved = array( get_option( 'rank-math-options-titles' ), get_option( 'rank-math-options-general' ) );
 	update_option(
 		'rank-math-options-titles',
@@ -5549,6 +5971,42 @@ try {
 	$sseo_ai_again = array();
 	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
 	sseo_check( 'run again: nothing more to take', ! isset( $sseo_ai_again['settings'] ), $sseo_ai_again );
+
+	// Schema: whom the site represents, AIOSEO's names (its tags are no names), logo and profiles.
+	$sseo_ai_saved = get_option( 'aioseo_options' );
+	$sseo_ai_opts  = json_decode( $sseo_ai_saved, true );
+	$sseo_ai_opts['searchAppearance']['global']['schema'] = array( 'siteRepresents' => 'organization', 'organizationName' => 'AI Acme', 'organizationLogo' => wp_get_attachment_url( $sseo_og ), 'websiteName' => '#site_title', 'websiteAlternateName' => 'AIS', 'person' => '', 'personLogo' => '' );
+	$sseo_ai_opts['social']['profiles']['urls']['facebookPageUrl'] = 'https://facebook.test/ai';
+	$sseo_ai_opts['social']['profiles']['urls']['twitterUrl']      = 'https://x.com/aisite';
+	$sseo_ai_opts['social']['profiles']['additionalUrls']          = "https://youtube.test/ai\nhttps://facebook.test/ai";
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	$sseo_ai_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema: AIOSEO's logo by its address, its profiles once each without the X account (that goes to Social networks), the names but its tags", $sseo_og === $sseo_ai_schema['logo'] && in_array( 'https://facebook.test/ai', $sseo_ai_schema['profiles'], true ) && in_array( 'https://youtube.test/ai', $sseo_ai_schema['profiles'], true ) && ! in_array( 'https://x.com/aisite', $sseo_ai_schema['profiles'], true ) && count( $sseo_ai_schema['profiles'] ) === count( array_unique( $sseo_ai_schema['profiles'] ) ) && array( 'site_name' => '', 'site_alternate' => 'AIS', 'name' => 'AI Acme', 'alternate' => '' ) === get_option( Simple_SEO_Schema::NAMES ), array( $sseo_ai_schema, get_option( Simple_SEO_Schema::NAMES ) ) );
+	$sseo_ai_opts['searchAppearance']['global']['schema'] = array( 'siteRepresents' => 'person', 'person' => (string) $sseo_au, 'personLogo' => wp_get_attachment_url( $sseo_default ), 'organizationName' => 'Not taken' );
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	$sseo_ai_schema = get_option( Simple_SEO_Schema::OPTION );
+	sseo_check( "Schema: AIOSEO's person with the user and the person's logo, no organization name", 'person' === $sseo_ai_schema['represents'] && $sseo_au === $sseo_ai_schema['person'] && $sseo_default === $sseo_ai_schema['logo'] && '' === ( get_option( Simple_SEO_Schema::NAMES )['name'] ?? '' ), array( $sseo_ai_schema, get_option( Simple_SEO_Schema::NAMES ) ) );
+	$sseo_ai_opts['searchAppearance']['global']['schema']['person'] = 'manual';
+	update_option( 'aioseo_options', wp_json_encode( $sseo_ai_opts ) );
+	delete_option( Simple_SEO_Schema::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_ai_again = array();
+	Simple_SEO_Aioseo_Import::settings( $sseo_ai_again );
+	sseo_check( "Schema: AIOSEO's person typed in by hand is not taken, the report asks to choose the user", 'organization' === Simple_SEO_Schema::represents() && 1 === ( $sseo_ai_again['left']['schema_person'] ?? 0 ), $sseo_ai_again );
+	update_option( 'aioseo_options', $sseo_ai_saved );
+	delete_option( Simple_SEO_Schema::OPTION );
+	delete_option( Simple_SEO_Schema::NAMES );
+	Simple_SEO_Settings::flush();
 
 	// Another set of AIOSEO's settings: noindex as the global robots, crawl clean-up off, no separator Simple SEO has.
 	$sseo_ai_saved = array( get_option( 'aioseo_options' ), get_option( 'aioseo_options_dynamic' ) );

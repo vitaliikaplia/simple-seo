@@ -1,12 +1,14 @@
 <?php
 /**
  * The filters of Yoast SEO that themes hook into, applied to Simple SEO's output: the title, the
- * meta description, canonical, robots, Open Graph and X, the breadcrumb trail and the sitemaps.
+ * meta description, canonical, robots, Open Graph and X, the breadcrumb trail, the Schema graph and
+ * the sitemaps.
  *
  * Each Yoast filter gets the value Simple SEO is about to print, with the arguments themes expect;
- * a presentation object Yoast would pass second is null here. Filters about one page (title, head
- * tags, breadcrumbs) apply only to the page being shown: themes decide with is_singular() and the
- * like. Loaded by Simple_SEO_Yoast_Compat::load(), so never next to Yoast or another SEO plugin.
+ * a presentation or context object Yoast would pass second is null here. Filters about one page
+ * (title, head tags, breadcrumbs, Schema) apply only to the page being shown: themes decide with
+ * is_singular() and the like. wpseo_json_ld_output is Simple_SEO_Schema's own: it decides the mode
+ * Auto. Loaded by Simple_SEO_Yoast_Compat::load(), so never next to Yoast or another SEO plugin.
  * The breadcrumb markup filters live in Simple_SEO_Yoast_Compat::breadcrumb(), wpseo_replacements
  * in Simple_SEO_Yoast_Compat::replace_vars().
  */
@@ -38,6 +40,8 @@ final class Simple_SEO_Yoast_Filters {
 		add_filter( 'simple_seo_document_title', array( self::class, 'title' ), 5, 2 );
 		add_filter( 'simple_seo_head_tags', array( self::class, 'head_tags' ), 5, 2 );
 		add_filter( 'simple_seo_breadcrumbs', array( self::class, 'breadcrumbs' ), 5, 2 );
+		add_filter( 'simple_seo_schema_pieces', array( self::class, 'schema_pieces' ), 5, 2 );
+		add_filter( 'simple_seo_schema_graph', array( self::class, 'schema_graph' ), 5, 2 );
 		add_filter( 'simple_seo_sitemap_exclude', array( self::class, 'sitemap_exclude' ), 5, 2 );
 		add_filter( 'simple_seo_sitemap_entry', array( self::class, 'sitemap_entry' ), 5, 3 );
 		add_filter( 'simple_seo_sitemap_url', array( self::class, 'sitemap_url' ), 5, 2 );
@@ -166,6 +170,51 @@ final class Simple_SEO_Yoast_Filters {
 		}
 
 		return $trail;
+	}
+
+	/**
+	 * wpseo_schema_<piece> on each piece of the graph of the page shown (website, organization,
+	 * person, webpage, mainimage, article, author, breadcrumb), and wpseo_schema_person_data on the
+	 * people with their user's ID. A piece a theme turns into anything but an array goes.
+	 *
+	 * @param array<string, mixed> $pieces
+	 * @return array<string, mixed>
+	 */
+	public static function schema_pieces( $pieces, Simple_SEO_Context $context ) {
+		if ( ! is_array( $pieces ) || $context !== Simple_SEO_Context::current() ) {
+			return $pieces;
+		}
+
+		foreach ( $pieces as $key => $piece ) {
+			$key = (string) $key;
+			if ( ! is_array( $piece ) ) {
+				continue;
+			}
+			$piece = apply_filters( 'wpseo_schema_' . $key, $piece, null );
+			$user  = Simple_SEO_Schema::piece_user( $key, $context );
+			if ( $user && is_array( $piece ) ) {
+				$piece = apply_filters( 'wpseo_schema_person_data', $piece, $user );
+			}
+			$pieces[ $key ] = is_array( $piece ) ? $piece : array();
+		}
+
+		return $pieces;
+	}
+
+	/**
+	 * wpseo_schema_graph on the whole graph of the page shown: themes take nodes out or add theirs.
+	 *
+	 * @param array<int, mixed> $graph
+	 * @return array<int, mixed>
+	 */
+	public static function schema_graph( $graph, Simple_SEO_Context $context ) {
+		if ( ! is_array( $graph ) || $context !== Simple_SEO_Context::current() ) {
+			return $graph;
+		}
+
+		$filtered = apply_filters( 'wpseo_schema_graph', $graph, null );
+
+		return is_array( $filtered ) ? $filtered : $graph;
 	}
 
 	/**

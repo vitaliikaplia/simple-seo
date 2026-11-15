@@ -132,6 +132,7 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		);
 		$image = 'default' === $get( 'social.facebook.general.defaultImageSourcePosts' ) ? self::image( self::scalar( $get( 'social.facebook.general.defaultImagePosts' ) ) ) : 0;
 		self::social( $image, self::scalar( $get( 'social.profiles.urls.twitterUrl' ) ), $report );
+		self::take_schema( $get, $report );
 
 		$switch = static fn( string $path ): ?bool => is_bool( $get( $path ) ) ? $get( $path ) : null;
 		self::breadcrumbs( self::scalar( $get( 'breadcrumbs.separator' ) ), $switch( 'breadcrumbs.showCurrentItem' ), $switch( 'breadcrumbs.showBlogHome' ), array(), $report );
@@ -470,6 +471,55 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		);
 
 		return trim( (string) preg_replace( '/[ \t]{2,}/', ' ', $value ) );
+	}
+
+	/**
+	 * Whom the site represents, the names, the logo and the profiles elsewhere. A name made of
+	 * AIOSEO's tags (#site_title, the default) is not taken: an empty name is the site's title.
+	 *
+	 * @param callable             $get Reads a path of AIOSEO's options.
+	 * @param array<string, mixed> $report
+	 */
+	private static function take_schema( callable $get, array &$report ): void {
+		$person = 'person' === self::scalar( $get( 'searchAppearance.global.schema.siteRepresents' ) );
+		$user   = absint( self::scalar( $get( 'searchAppearance.global.schema.person' ) ) );
+		$common = array();
+		if ( ! $person ) {
+			$common['represents'] = 'organization';
+		} elseif ( $user && get_userdata( $user ) ) {
+			$common['represents'] = 'person';
+			$common['person']     = $user;
+		} else {
+			$report['left']['schema_person'] = 1;
+		}
+
+		$logo = self::image( self::scalar( $get( $person ? 'searchAppearance.global.schema.personLogo' : 'searchAppearance.global.schema.organizationLogo' ) ) );
+		if ( $logo ) {
+			$common['logo'] = $logo;
+		}
+		$profiles = array_values( array_map( static fn( $url ): string => self::scalar( $url ), array_filter( (array) $get( 'social.profiles.urls' ), 'is_scalar' ) ) );
+		$profiles = array_merge( $profiles, (array) preg_split( '/\s+/', self::scalar( $get( 'social.profiles.additionalUrls' ) ) ) );
+		// The X account goes to the Social networks tab.
+		$profiles = array_values( array_filter( array_map( 'strval', $profiles ), static fn( string $url ): bool => '' !== $url && $url !== self::scalar( $get( 'social.profiles.urls.twitterUrl' ) ) ) );
+		if ( $profiles ) {
+			$common['profiles'] = $profiles;
+		}
+
+		$name = static function ( string $path ) use ( $get ): string {
+			$value = self::scalar( $get( $path ) );
+
+			return preg_match( '/#[a-z_]+/i', $value ) ? '' : $value;
+		};
+		self::schema(
+			'',
+			$common,
+			array(
+				'site_name'      => $name( 'searchAppearance.global.schema.websiteName' ),
+				'site_alternate' => $name( 'searchAppearance.global.schema.websiteAlternateName' ),
+				'name'           => $person ? '' : $name( 'searchAppearance.global.schema.organizationName' ),
+			),
+			$report
+		);
 	}
 
 	/** An image from the media library by its address; 0 for none. */

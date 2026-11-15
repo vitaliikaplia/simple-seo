@@ -145,6 +145,7 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 				$report
 			);
 			self::social( self::image( $titles, 'open_graph_image' ), self::scalar( $titles['twitter_author_names'] ?? '' ), $report );
+			self::take_schema( $titles, $report );
 		}
 		if ( $general || is_array( $titles ) ) {
 			self::take_breadcrumbs( $general, is_array( $titles ) ? $titles : array(), $report );
@@ -310,6 +311,45 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 	 */
 	private static function on( $value ): bool {
 		return in_array( $value, array( 'on', true, 1, '1' ), true );
+	}
+
+	/**
+	 * Whom the site represents (an organization: Rank Math's person is a name, not a user, so the
+	 * report asks to choose one), the names, the logo and the profiles elsewhere.
+	 *
+	 * @param array<string, mixed> $titles
+	 * @param array<string, mixed> $report
+	 */
+	private static function take_schema( array $titles, array &$report ): void {
+		$company = 'person' !== self::scalar( $titles['knowledgegraph_type'] ?? '' );
+		if ( ! $company ) {
+			$report['left']['schema_person'] = 1;
+		}
+
+		$common = $company ? array( 'represents' => 'organization' ) : array();
+		$logo   = self::image( $titles, 'knowledgegraph_logo' );
+		if ( $logo ) {
+			$common['logo'] = $logo;
+		}
+		$profiles = array_merge(
+			array( self::scalar( $titles['social_url_facebook'] ?? '' ) ),
+			(array) preg_split( '/\s+/', self::scalar( $titles['social_additional_profiles'] ?? '' ) )
+		);
+		$profiles = array_values( array_filter( array_map( 'strval', $profiles ) ) );
+		if ( $profiles ) {
+			$common['profiles'] = $profiles;
+		}
+
+		self::schema(
+			'',
+			$common,
+			array(
+				'site_name'      => self::scalar( $titles['website_name'] ?? '' ),
+				'site_alternate' => self::scalar( $titles['website_alternate_name'] ?? '' ),
+				'name'           => $company ? self::scalar( $titles['knowledgegraph_name'] ?? '' ) : '',
+			),
+			$report
+		);
 	}
 
 	/**

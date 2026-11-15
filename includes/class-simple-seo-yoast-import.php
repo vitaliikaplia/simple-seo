@@ -139,6 +139,10 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 		if ( $social ) {
 			self::social( $social['og_default_image_id'] ?? 0, self::scalar( $social['twitter_site'] ?? '' ), $report );
 		}
+		if ( is_array( $titles ) || $social ) {
+			$titles = is_array( $titles ) ? $titles : array();
+			self::schema( '', self::schema_common( $titles, $social, $report ), self::schema_names( $titles ), $report );
+		}
 		if ( is_array( $main ) ) {
 			if ( array_key_exists( 'enable_xml_sitemap', $main ) && empty( $main['enable_xml_sitemap'] ) ) {
 				self::sitemaps_off( $report );
@@ -152,6 +156,7 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 			if ( null !== $row ) {
 				self::special( $code, self::special_templates( $row ), $row['open_graph_frontpage_image_id'] ?? 0, $report );
 				self::labels( $code, self::label_texts( $row ), $report );
+				self::schema( $code, array(), self::schema_names( $row ), $report );
 				$report['languages'][] = $code;
 			}
 		}
@@ -285,6 +290,69 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 			}
 		}
 		self::cleanup( $keys, $report );
+	}
+
+	/**
+	 * Whom the site represents, its logo and its profiles elsewhere. A person needs the user Yoast
+	 * names; without one Simple SEO's choice stays and the report says so.
+	 *
+	 * @param array<string, mixed> $titles
+	 * @param array<string, mixed> $social
+	 * @param array<string, mixed> $report
+	 * @return array<string, mixed>
+	 */
+	private static function schema_common( array $titles, array $social, array &$report ): array {
+		$common = array();
+		$person = 'person' === self::scalar( $titles['company_or_person'] ?? '' );
+		$user   = absint( $titles['company_or_person_user_id'] ?? 0 );
+		if ( ! $person ) {
+			$common['represents'] = 'organization';
+		} elseif ( $user && get_userdata( $user ) ) {
+			$common['represents'] = 'person';
+			$common['person']     = $user;
+		} else {
+			$report['left']['schema_person'] = 1;
+		}
+
+		$which = $person ? 'person_logo' : 'company_logo';
+		$logo  = Simple_SEO_Fields::image_attachment( $titles[ $which . '_id' ] ?? 0 );
+		if ( ! $logo && '' !== self::scalar( $titles[ $which ] ?? '' ) ) {
+			$logo = Simple_SEO_Fields::image_attachment( attachment_url_to_postid( self::scalar( $titles[ $which ] ) ) );
+		}
+		if ( $logo ) {
+			$common['logo'] = $logo;
+		}
+
+		$profiles = array();
+		foreach ( array( 'facebook_site', 'instagram_url', 'linkedin_url', 'myspace_url', 'pinterest_url', 'youtube_url', 'wikipedia_url', 'mastodon_url' ) as $key ) {
+			$profiles[] = self::scalar( $social[ $key ] ?? '' );
+		}
+		foreach ( (array) ( $social['other_social_urls'] ?? array() ) as $url ) {
+			$profiles[] = self::scalar( $url );
+		}
+		$profiles = array_values( array_filter( $profiles ) );
+		if ( $profiles ) {
+			$common['profiles'] = $profiles;
+		}
+
+		return $common;
+	}
+
+	/**
+	 * The names of the site and of the organization; a person's site has no organization name.
+	 *
+	 * @param array<string, mixed> $titles
+	 * @return array<string, string>
+	 */
+	private static function schema_names( array $titles ): array {
+		$company = 'person' !== self::scalar( $titles['company_or_person'] ?? '' );
+
+		return array(
+			'site_name'      => self::scalar( $titles['website_name'] ?? '' ),
+			'site_alternate' => self::scalar( $titles['alternate_website_name'] ?? '' ),
+			'name'           => $company ? self::scalar( $titles['company_name'] ?? '' ) : '',
+			'alternate'      => $company ? self::scalar( $titles['company_alternate_name'] ?? '' ) : '',
+		);
 	}
 
 	/**

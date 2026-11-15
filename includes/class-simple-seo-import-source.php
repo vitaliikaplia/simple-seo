@@ -332,6 +332,64 @@ abstract class Simple_SEO_Import_Source {
 	}
 
 	/**
+	 * The Schema settings: whom the site represents, the logo and the profiles elsewhere (common
+	 * to all languages, taken with $code '' only), and the names of the site and of the organization
+	 * of one language. Only what Simple SEO has no choice of its own for is taken; a name equal to
+	 * the title of the site is not copied, an empty name falls back to it anyway.
+	 *
+	 * @param array<string, mixed>  $common represents (organization|person), person (user ID), logo
+	 *                                      (attachment ID), profiles (addresses); what the plugin does
+	 *                                      not say is left out.
+	 * @param array<string, string> $names  site_name, site_alternate, name, alternate.
+	 * @param array<string, mixed>  $report
+	 */
+	protected static function schema( string $code, array $common, array $names, array &$report ): void {
+		$count = 0;
+
+		if ( '' === $code && $common ) {
+			$row      = self::row( Simple_SEO_Schema::OPTION );
+			$clean    = Simple_SEO_Schema::sanitize( $row );
+			$defaults = Simple_SEO_Settings::defaults( Simple_SEO_Schema::OPTION );
+			$taken    = 0;
+			foreach ( array( 'represents', 'person', 'logo', 'profiles' ) as $key ) {
+				if ( ! array_key_exists( $key, $common ) || array_key_exists( $key, $row ) ) {
+					continue;
+				}
+				$value = Simple_SEO_Schema::sanitize( array( $key => $common[ $key ] ) + $clean )[ $key ];
+				if ( $value !== $defaults[ $key ] ) {
+					$clean[ $key ] = $value;
+					++$taken;
+				}
+			}
+			if ( $taken ) {
+				self::save( Simple_SEO_Schema::OPTION, $clean );
+				$count += $taken;
+			}
+		}
+
+		$name  = self::language_row_name( Simple_SEO_Schema::NAMES, $code );
+		$clean = Simple_SEO_Schema::sanitize_names( self::row( $name ) );
+		$site  = Simple_SEO_Variables::plain( (string) get_option( 'blogname' ) );
+		$taken = 0;
+		foreach ( $names as $key => $value ) {
+			$value = Simple_SEO_Schema::sanitize_names( array( $key => self::scalar( $value ) ) )[ $key ] ?? '';
+			if ( '' === $value || '' !== $clean[ $key ] || ( $value === $site && in_array( $key, array( 'site_name', 'name' ), true ) ) ) {
+				continue;
+			}
+			$clean[ $key ] = $value;
+			++$taken;
+		}
+		if ( $taken ) {
+			self::save( $name, $clean );
+			$count += $taken;
+		}
+
+		if ( $count ) {
+			self::add( $report, 'settings', 'schema', $count );
+		}
+	}
+
+	/**
 	 * What the plugin removed from pages: Simple SEO's switches of the Clean-up tab go on, unless
 	 * its tab has a choice of its own. What the plugin kept does not switch Simple SEO's off.
 	 *
