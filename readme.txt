@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.12.0
+Stable tag: 0.13.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,11 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.13.0 =
+* Yoast SEO filters for themes: once Yoast is deactivated, the filters themes hook into change Simple SEO's output as they changed Yoast's — wpseo_title (the <title> alone), wpseo_metadesc (also where a page has no description), wpseo_canonical, the Open Graph filters (wpseo_opengraph_type, _title, _desc, _url, _image with its width, height and type, wpseo_og_locale and wpseo_locale), wpseo_twitter_title and wpseo_twitter_image, wpseo_robots and wpseo_robots_array, wpseo_breadcrumb_links (Simple SEO's own breadcrumbs included), the markup filters of yoast_breadcrumb() (wpseo_breadcrumb_single_link, wpseo_breadcrumb_single_link_info, wpseo_breadcrumb_separator, wpseo_breadcrumb_output_class), the sitemap filters (wpseo_sitemap_entry, wpseo_sitemap_url, wpseo_sitemap_post_type_first_links, wpseo_exclude_from_sitemap_by_post_ids and wpseo_exclude_from_sitemap_by_term_ids) and wpseo_replacements.
+* Filters about one page apply only to the page being shown. Where no theme hooks them, every page prints exactly what it printed before.
+* New filters of Simple SEO's own: simple_seo_document_title (the text of <title> alone), simple_seo_sitemap_entry, simple_seo_sitemap_url and simple_seo_sitemap_exclude (posts or terms left out of the sitemaps and llms.txt).
 
 = 0.12.0 =
 * Yoast SEO compatibility for themes: once Yoast is deactivated, wpseo_replace_vars() (with %%sitename%%, %%sep%%, %%title%%, %%category%% and the other common variables), yoast_breadcrumb() (in the markup themes styled for Yoast, PHP and Twig alike), WPSEO_Primary_Term, yoast_get_primary_term_id() and yoast_get_primary_term() are answered with Simple SEO's own data, so a theme that calls them keeps working.

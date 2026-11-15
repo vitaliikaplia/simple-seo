@@ -727,7 +727,9 @@ try {
 	sseo_check( 'simple_seo_head_tags adds a tag with the context', str_contains( $sseo_html, '<meta name="sseo-added" content="singular" />' ) );
 	add_filter( 'simple_seo_head_tags', '__return_null', 20 );
 	sseo_check( 'a broken filter result prints nothing instead of failing', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
-	remove_all_filters( 'simple_seo_head_tags' );
+	// Only what this section added: the Yoast layer hooks this filter too (priority 5).
+	remove_all_filters( 'simple_seo_head_tags', 10 );
+	remove_all_filters( 'simple_seo_head_tags', 20 );
 	Simple_SEO_Head::remove_provider( 'sseo_test' );
 	Simple_SEO_Head::remove_provider( 'sseo_test_late' );
 	sseo_check( 'removed providers print nothing', '' === sseo_capture( array( Simple_SEO_Head::class, 'output' ) ) );
@@ -1923,7 +1925,7 @@ try {
 
 	add_filter( 'simple_seo_breadcrumbs', static fn( array $items ): array => array_merge( $items, array( array( 'label' => 'Extra', 'url' => '' ), array( 'label' => '', 'url' => 'x' ) ) ) );
 	sseo_check( 'simple_seo_breadcrumbs changes the items; empty labels are dropped', array( 'Home', 'Bc News', 'Bc Sport', 'Bc Post', 'Extra' ) === $sseo_trail( array( 'p' => $sseo_p['bc'] ) ) );
-	remove_all_filters( 'simple_seo_breadcrumbs' );
+	remove_all_filters( 'simple_seo_breadcrumbs', 10 );
 
 	$sseo_saved_query    = $GLOBALS['wp_query'];
 	$GLOBALS['wp_query'] = sseo_query( array( 'p' => $sseo_p['bc'] ) );
@@ -2765,6 +2767,391 @@ try {
 	sseo_check( 'yoast_get_primary_term_id() and yoast_get_primary_term()', $sseo_bc_other === yoast_get_primary_term_id( 'category', $sseo_p['bc'] ) && 'Bc Other' === yoast_get_primary_term( 'category', get_post( $sseo_p['bc'] ) ) );
 	sseo_check( 'false without terms in the taxonomy or for an unknown one', false === ( new WPSEO_Primary_Term( 'post_tag', $sseo_p['bc'] ) )->get_primary_term() && false === yoast_get_primary_term_id( 'nope', $sseo_p['bc'] ) && '' === yoast_get_primary_term( 'nope', $sseo_p['bc'] ) );
 	update_post_meta( $sseo_p['bc'], Simple_SEO_Fields::meta_key( Simple_SEO_Primary_Term::field( 'category' ) ), '' );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Yoast filters' );
+
+	foreach ( array( Simple_SEO_Titles::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	// Author archives shown, so the sitemaps have authors too.
+	update_option( Simple_SEO_Indexing::OPTION, array( 'noindex' => array( 'date' ), 'attachments' => Simple_SEO_Indexing::ATTACHMENTS_FILE ) );
+	Simple_SEO_Settings::flush();
+	$sseo_yf_hooks = array(
+		array( 'simple_seo_document_title', 'title', 5 ),
+		array( 'simple_seo_head_tags', 'head_tags', 5 ),
+		array( 'simple_seo_breadcrumbs', 'breadcrumbs', 5 ),
+		array( 'simple_seo_sitemap_exclude', 'sitemap_exclude', 5 ),
+		array( 'simple_seo_sitemap_entry', 'sitemap_entry', 5 ),
+		array( 'simple_seo_sitemap_url', 'sitemap_url', 5 ),
+		array( 'wp_robots', 'robots', 21 ),
+	);
+	$sseo_yf_ok = true;
+	foreach ( $sseo_yf_hooks as $sseo_hook ) {
+		$sseo_yf_ok = $sseo_yf_ok && $sseo_hook[2] === has_filter( $sseo_hook[0], array( Simple_SEO_Yoast_Filters::class, $sseo_hook[1] ) );
+	}
+	sseo_check( "hooked when the layer loads: before Simple SEO's own API, robots right after Simple SEO's", $sseo_yf_ok );
+	$sseo_yf_without = static function ( callable $callback ) use ( $sseo_yf_hooks ) {
+		foreach ( $sseo_yf_hooks as $sseo_hook ) {
+			remove_filter( $sseo_hook[0], array( Simple_SEO_Yoast_Filters::class, $sseo_hook[1] ), $sseo_hook[2] );
+		}
+		try {
+			return $callback();
+		} finally {
+			Simple_SEO_Yoast_Filters::init();
+		}
+	};
+
+	// The page being shown: what themes' filters are about.
+	$sseo_yf_query               = $GLOBALS['wp_query'];
+	$sseo_yf_actions             = $GLOBALS['wp_actions']['wp'] ?? null;
+	$GLOBALS['wp_actions']['wp'] = 1;
+	$sseo_yf_show                = static function ( array $vars ): Simple_SEO_Context {
+		$GLOBALS['wp_query'] = sseo_query( $vars );
+		Simple_SEO_Context::reset();
+		return Simple_SEO_Context::current();
+	};
+	$sseo_yf_tags   = static fn( ?Simple_SEO_Context $context = null ): array => array_map( static fn( array $tag ): string => (string) ( $tag['attributes'][ 'link' === $tag['tag'] ? 'href' : 'content' ] ?? '' ), Simple_SEO_Head::tags( $context ?? Simple_SEO_Context::current() ) );
+	$sseo_yf_robots = static function (): string {
+		return preg_match( "/content='([^']*)'/", sseo_capture( 'wp_robots' ), $sseo_match ) ? $sseo_match[1] : '';
+	};
+	$sseo['posts']['yf'] = (int) wp_insert_post( array( 'post_title' => 'Yf Post', 'post_excerpt' => 'Short text', 'post_status' => 'publish', 'post_category' => array( $sseo_news ) ) );
+	update_post_meta( $sseo['posts']['yf'], Simple_SEO_Fields::meta_key( 'og_image' ), (string) $sseo_og );
+	$sseo['posts']['yf_bare'] = (int) wp_insert_post( array( 'post_title' => 'Yf Bare', 'post_status' => 'publish' ) );
+	$sseo_yf                  = $sseo['posts']['yf'];
+
+	$sseo_yf_show( array( 'p' => $sseo_yf ) );
+	$sseo_yf_snapshot = static fn(): array => array(
+		wp_get_document_title(),
+		Simple_SEO_Head::render( Simple_SEO_Head::tags( Simple_SEO_Context::current() ) ),
+		sseo_capture( 'wp_robots' ),
+		Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::current() ),
+		Simple_SEO_Sitemaps::render_sitemap( 'sseo_map', 1 ),
+		Simple_SEO_Sitemaps::render_sitemap( 'category', 1 ),
+	);
+	sseo_check( 'with no theme hooking a Yoast filter, every output is what Simple SEO makes', $sseo_yf_without( $sseo_yf_snapshot ) === $sseo_yf_snapshot() );
+
+	// wpseo_title: the text of <title> only.
+	$sseo_title = wp_get_document_title();
+	add_filter( 'wpseo_title', static fn( $title, $presentation ) => null === $presentation ? $title . ' | Yoast & <b>co</b>' : 'a presentation?', 10, 2 );
+	$sseo_t = $sseo_yf_tags();
+	sseo_check( 'wpseo_title changes <title>, plain text escaped', $sseo_title . ' | Yoast &amp; co' === wp_get_document_title(), wp_get_document_title() );
+	sseo_check( 'og:title keeps the SEO title', Simple_SEO_Titles::title( Simple_SEO_Context::current() ) === $sseo_t['og:title'], $sseo_t );
+	add_filter( 'simple_seo_title', '__return_empty_string' );
+	$sseo_yf_show( array( 'p' => $sseo_yf ) );
+	sseo_check( 'a page Simple SEO leaves to the theme is not given to wpseo_title', ! str_contains( wp_get_document_title(), 'Yoast' ), wp_get_document_title() );
+	remove_all_filters( 'simple_seo_title' );
+	remove_all_filters( 'wpseo_title' );
+	$sseo_yf_show( array( 'p' => $sseo_yf ) );
+	add_filter( 'simple_seo_document_title', static fn(): string => 'Doc & co' );
+	sseo_check( 'simple_seo_document_title: the <title> text of Simple SEO itself', 'Doc &amp; co' === wp_get_document_title() );
+	remove_all_filters( 'simple_seo_document_title', 10 );
+
+	// wpseo_metadesc.
+	$sseo_yf_show( array( 'p' => $sseo['posts']['yf_bare'] ) );
+	$sseo_t0 = $sseo_yf_tags();
+	add_filter( 'wpseo_metadesc', static fn( $description, $presentation ) => '' === $description ? 'Filled <i>in</i> &amp; more' : $description . ' +', 10, 2 );
+	$sseo_t = $sseo_yf_tags();
+	sseo_check( 'wpseo_metadesc fills in a page without a description, first of the tags', ! isset( $sseo_t0['description'] ) && 'Filled in & more' === ( $sseo_t['description'] ?? '' ) && 'description' === array_key_first( $sseo_t ), $sseo_t );
+	$sseo_yf_show( array( 'p' => $sseo_yf ) );
+	sseo_check( 'and changes one that has it', 'Short text +' === ( $sseo_yf_tags()['description'] ?? '' ) );
+	sseo_check( 'only on the page being shown', 'Short text' === ( $sseo_yf_tags( Simple_SEO_Context::for_post( get_post( $sseo_yf ) ) )['description'] ?? '' ) );
+	remove_all_filters( 'wpseo_metadesc' );
+	add_filter( 'wpseo_metadesc', '__return_empty_string' );
+	sseo_check( "'' takes the description away", ! isset( $sseo_yf_tags()['description'] ) );
+	remove_all_filters( 'wpseo_metadesc' );
+
+	// Canonical, Open Graph, X.
+	add_filter( 'wpseo_locale', static fn(): string => 'de_DE' );
+	add_filter( 'wpseo_og_locale', static fn( $locale ): string => 'de_DE' === $locale ? 'de_AT' : 'before wpseo_locale' );
+	add_filter( 'wpseo_opengraph_type', static fn( $type, $presentation ): string => 'product', 10, 2 );
+	add_filter( 'wpseo_opengraph_title', static fn( $title ): string => $title . ' <b>OG</b>' );
+	add_filter( 'wpseo_opengraph_desc', '__return_empty_string' );
+	add_filter( 'wpseo_opengraph_url', '__return_false' );
+	add_filter( 'wpseo_canonical', static fn( $canonical ): string => $canonical . '#c' );
+	add_filter( 'wpseo_opengraph_image_width', static fn(): int => 999 );
+	add_filter( 'wpseo_opengraph_image_height', static fn(): string => '333' );
+	add_filter( 'wpseo_opengraph_image_type', static fn(): string => 'image/webp' );
+	$sseo_t = $sseo_yf_tags();
+	sseo_check( 'og:locale through wpseo_locale, then wpseo_og_locale; og:type', 'de_AT' === ( $sseo_t['og:locale'] ?? '' ) && 'product' === ( $sseo_t['og:type'] ?? '' ), $sseo_t );
+	sseo_check( 'og:title through wpseo_opengraph_title, plain text', Simple_SEO_Social::title( Simple_SEO_Context::current() ) . ' OG' === ( $sseo_t['og:title'] ?? '' ), $sseo_t );
+	sseo_check( "og:description and og:url taken away with '' and false", ! isset( $sseo_t['og:description'] ) && ! isset( $sseo_t['og:url'] ), $sseo_t );
+	sseo_check( 'canonical through wpseo_canonical', get_permalink( $sseo_yf ) . '#c' === ( $sseo_t['canonical'] ?? '' ), $sseo_t );
+	sseo_check( 'the image size and type through their filters, the image itself as it was', str_ends_with( $sseo_t['og:image'] ?? '', 'sseo-og.jpg' ) && '999' === ( $sseo_t['og:image:width'] ?? '' ) && '333' === ( $sseo_t['og:image:height'] ?? '' ) && 'image/webp' === ( $sseo_t['og:image:type'] ?? '' ), $sseo_t );
+	$sseo_t = $sseo_yf_tags( Simple_SEO_Context::for_post( get_post( $sseo_yf ) ) );
+	sseo_check( 'only on the page being shown', 'article' === ( $sseo_t['og:type'] ?? '' ) && ! str_ends_with( $sseo_t['og:title'] ?? '', 'OG' ), $sseo_t );
+	$sseo_yf_show( array( 's' => 'zz' ) );
+	add_filter( 'wpseo_twitter_title', static fn(): string => 'X' );
+	$sseo_t = $sseo_yf_tags();
+	sseo_check( 'a page without the tags gets none of them', ! isset( $sseo_t['og:title'] ) && ! isset( $sseo_t['og:type'] ) && ! isset( $sseo_t['canonical'] ) && ! isset( $sseo_t['twitter:title'] ), $sseo_t );
+	foreach ( array( 'wpseo_locale', 'wpseo_og_locale', 'wpseo_opengraph_type', 'wpseo_opengraph_title', 'wpseo_opengraph_desc', 'wpseo_opengraph_url', 'wpseo_canonical', 'wpseo_opengraph_image_width', 'wpseo_opengraph_image_height', 'wpseo_opengraph_image_type', 'wpseo_twitter_title' ) as $sseo_name ) {
+		remove_all_filters( $sseo_name );
+	}
+	$sseo_yf_show( array( 'p' => $sseo_yf ) );
+	add_filter( 'wpseo_opengraph_image', '__return_false' );
+	add_filter( 'wpseo_canonical', '__return_false' );
+	$sseo_t = $sseo_yf_tags();
+	sseo_check( 'without og:image none of the tags about it; canonical taken away with false', ! array_intersect_key( $sseo_t, array_flip( array( 'og:image', 'og:image:width', 'og:image:height', 'og:image:type', 'og:image:alt', 'canonical' ) ) ), $sseo_t );
+	remove_all_filters( 'wpseo_opengraph_image' );
+	remove_all_filters( 'wpseo_canonical' );
+	add_filter( 'wpseo_opengraph_image', static fn(): string => 'https://cdn.example.com/og.jpg' );
+	sseo_check( 'og:image through wpseo_opengraph_image', 'https://cdn.example.com/og.jpg' === ( $sseo_yf_tags()['og:image'] ?? '' ) );
+	remove_all_filters( 'wpseo_opengraph_image' );
+	$sseo_t0 = $sseo_yf_tags();
+	add_filter( 'wpseo_twitter_title', static fn( $title ): string => 'X: <b>' . $title . '</b>' );
+	add_filter( 'wpseo_twitter_image', static fn(): string => 'https://cdn.example.com/x.jpg' );
+	$sseo_t = $sseo_yf_tags();
+	sseo_check( 'X tags only where a theme gives X something else', ! isset( $sseo_t0['twitter:title'] ) && ! isset( $sseo_t0['twitter:image'] ) && 'X: ' . $sseo_t['og:title'] === ( $sseo_t['twitter:title'] ?? '' ) && 'https://cdn.example.com/x.jpg' === ( $sseo_t['twitter:image'] ?? '' ), $sseo_t );
+	remove_all_filters( 'wpseo_twitter_title' );
+	remove_all_filters( 'wpseo_twitter_image' );
+	add_filter( 'wpseo_twitter_title', static fn( $title ) => $title );
+	sseo_check( 'the same as og:title: no X tag', ! isset( $sseo_yf_tags()['twitter:title'] ) );
+	remove_all_filters( 'wpseo_twitter_title' );
+
+	// Robots.
+	$sseo_r0 = $sseo_yf_robots();
+	add_filter( 'wpseo_robots', static fn( $robots, $presentation ): string => 'noindex, nofollow', 10, 2 );
+	sseo_check( 'wpseo_robots as a string', 'max-image-preview:large' === $sseo_r0 && 'noindex, nofollow' === $sseo_yf_robots(), array( $sseo_r0, $sseo_yf_robots() ) );
+	remove_all_filters( 'wpseo_robots' );
+	add_filter( 'wpseo_robots', static fn(): string => 'NONE, follow' );
+	sseo_check( '"none" is noindex, nofollow', 'noindex, nofollow' === $sseo_yf_robots(), $sseo_yf_robots() );
+	remove_all_filters( 'wpseo_robots' );
+	add_filter(
+		'wpseo_robots_array',
+		static function ( $robots ) {
+			$robots['index']  = 'noindex';
+			$robots['follow'] = 'nofollow';
+			unset( $robots['max-image-preview'] );
+			return $robots;
+		}
+	);
+	sseo_check( 'wpseo_robots_array: index, follow and the rest as Yoast keeps them', 'noindex, nofollow' === $sseo_yf_robots(), $sseo_yf_robots() );
+	remove_all_filters( 'wpseo_robots_array' );
+	add_filter( 'wpseo_robots_array', static fn( $robots ): array => array( 'index' => 'noindex' ) + $robots );
+	sseo_check( 'follow stays next to noindex', 'noindex, follow, max-image-preview:large' === $sseo_yf_robots(), $sseo_yf_robots() );
+	remove_all_filters( 'wpseo_robots_array' );
+	add_filter( 'wpseo_robots_array', static fn( $robots ): array => $robots + array( 'noarchive' => 'noarchive' ) );
+	sseo_check( 'index and a lone follow are not printed', 'max-image-preview:large, noarchive' === $sseo_yf_robots(), $sseo_yf_robots() );
+	update_post_meta( $sseo['posts']['yf_bare'], '_simple_seo_index', 'noindex' );
+	update_post_meta( $sseo['posts']['yf_bare'], '_simple_seo_nofollow', '1' );
+	$sseo_yf_show( array( 'p' => $sseo['posts']['yf_bare'] ) );
+	sseo_check( "a page's own noindex and nofollow reach the theme as Yoast has them", 'noindex, nofollow, max-image-preview:large, noarchive' === $sseo_yf_robots(), $sseo_yf_robots() );
+	delete_post_meta( $sseo['posts']['yf_bare'], '_simple_seo_index' );
+	delete_post_meta( $sseo['posts']['yf_bare'], '_simple_seo_nofollow' );
+	$sseo_yf_show( array( 'p' => $sseo_yf ) );
+	remove_all_filters( 'wpseo_robots_array' );
+	// Another plugin's directive survives a theme filter that changes nothing.
+	$sseo_follow = static fn( array $robots ): array => $robots + array( 'follow' => true );
+	add_filter( 'wp_robots', $sseo_follow, 15 );
+	add_filter( 'wpseo_robots', static fn( $robots ) => $robots );
+	sseo_check( 'a filter that changes nothing leaves the robots as they were', str_contains( $sseo_yf_robots(), 'follow' ), $sseo_yf_robots() );
+	remove_filter( 'wp_robots', $sseo_follow, 15 );
+	remove_all_filters( 'wpseo_robots' );
+	add_filter( 'wpseo_robots', static fn(): string => 'index, follow' );
+	update_option( 'blog_public', '0' );
+	sseo_check( 'a site closed in Settings → Reading stays closed', str_contains( $sseo_yf_robots(), 'noindex' ), $sseo_yf_robots() );
+	update_option( 'blog_public', '1' );
+	set_current_screen( 'dashboard' );
+	$sseo_r = Simple_SEO_Yoast_Filters::robots( array( 'noindex' => true ) );
+	unset( $GLOBALS['current_screen'] );
+	sseo_check( 'not in the admin', array( 'noindex' => true ) === $sseo_r, $sseo_r );
+	remove_all_filters( 'wpseo_robots' );
+
+	// Breadcrumbs: the trail (both functions), then the markup of yoast_breadcrumb().
+	register_post_type(
+		'sseo_yf_slug',
+		array(
+			'public'      => true,
+			'has_archive' => 'yf-archive',
+			'label'       => 'Yf Items',
+		)
+	);
+	$sseo['posts']['yf_item'] = (int) wp_insert_post( array( 'post_title' => 'Yf Item', 'post_type' => 'sseo_yf_slug', 'post_status' => 'publish' ) );
+	$sseo_yf_links            = array();
+	add_filter(
+		'wpseo_breadcrumb_links',
+		static function ( $links ) use ( &$sseo_yf_links ) {
+			$sseo_yf_links[] = $links;
+			foreach ( $links as &$link ) {
+				if ( 'sseo_map' === ( $link['ptarchive'] ?? '' ) ) {
+					$link['text'] = 'Atlas <b>A</b>';
+				}
+			}
+			unset( $link );
+			array_splice( $links, 1, 0, array( array( 'url' => 'https://example.com/hub/', 'text' => 'Hub' ) ) );
+			return $links;
+		}
+	);
+	$sseo_yf_show( array( 'p' => $sseo_p['bc_map'], 'post_type' => 'sseo_map' ) );
+	$sseo_items = Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::current() );
+	sseo_check( 'wpseo_breadcrumb_links: links of url and text, a post type archive marked', array( 'url' => home_url( '/' ), 'text' => 'Home' ) === ( $sseo_yf_links[0][0] ?? null ) && array( 'url' => (string) get_post_type_archive_link( 'sseo_map' ), 'text' => 'Maps', 'ptarchive' => 'sseo_map' ) === ( $sseo_yf_links[0][1] ?? null ), $sseo_yf_links );
+	sseo_check( 'the trail as the theme left it, labels plain', array( 'Home', 'Hub', 'Atlas A', 'Bc Map' ) === array_column( $sseo_items, 'label' ) && 'https://example.com/hub/' === $sseo_items[1]['url'], $sseo_items );
+	sseo_check( "Simple SEO's own breadcrumbs get the trail too", str_contains( simple_seo_breadcrumbs(), '>Atlas A</a>' ) );
+	sseo_check( 'only on the page being shown', array( 'Home', 'Maps', 'Bc Map' ) === array_column( Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::for_post( get_post( $sseo_p['bc_map'] ) ) ), 'label' ) );
+	$sseo_yf_links = array();
+	$sseo_yf_show( array( 'p' => $sseo['posts']['yf_item'], 'post_type' => 'sseo_yf_slug' ) );
+	Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::current() );
+	sseo_check( 'an archive with its own slug is marked too', 'sseo_yf_slug' === ( $sseo_yf_links[0][1]['ptarchive'] ?? '' ), $sseo_yf_links );
+	remove_all_filters( 'wpseo_breadcrumb_links' );
+
+	$sseo_yf_show( array( 'p' => $sseo_p['bc_map'], 'post_type' => 'sseo_map' ) );
+	add_filter(
+		'wpseo_breadcrumb_single_link_info',
+		static function ( $info, $index, $crumbs ) {
+			if ( 0 === $index ) {
+				$info['text'] = 'Start & (' . count( $crumbs ) . ')';
+				$info['url']  = home_url( '/?a=1&b=2' );
+			}
+			return 'Maps' === $info['text'] ? false : $info;
+		},
+		10,
+		3
+	);
+	add_filter( 'wpseo_breadcrumb_single_link', static fn( $html, $info ): string => str_replace( 'Start', '<svg class="home"></svg>', $html ), 10, 2 );
+	add_filter( 'wpseo_breadcrumb_separator', static fn(): string => '<svg class="sep"></svg>' );
+	add_filter( 'wpseo_breadcrumb_output_class', static fn( $class ): string => trim( $class . ' hw-breadcrumbs x"y' ) );
+	$sseo_html = yoast_breadcrumb( '', '', false );
+	sseo_check( 'the markup filters: item info, item HTML, separator and class, the theme\'s HTML as it is, the rest escaped', '<span class="hw-breadcrumbs x&quot;y"><span><a href="' . esc_url( home_url( '/?a=1&b=2' ) ) . '"><svg class="home"></svg> &amp; (3)</a></span> <svg class="sep"></svg> <span class="breadcrumb_last" aria-current="page">Bc Map</span></span>' === $sseo_html, $sseo_html );
+	sseo_check( "Simple SEO's own markup stays its own", str_contains( simple_seo_breadcrumbs(), '>Maps</a>' ) && ! str_contains( simple_seo_breadcrumbs(), '<svg' ) );
+	add_filter( 'wpseo_breadcrumb_single_link', static fn( $html, $info ) => 'Bc Map' === $info['text'] ? '' : $html, 20, 2 );
+	$sseo_html = yoast_breadcrumb( '', '', false );
+	sseo_check( "an item made '' is left out with its separator", str_ends_with( $sseo_html, '(3)</a></span></span>' ), $sseo_html );
+	remove_all_filters( 'wpseo_breadcrumb_single_link', 20 );
+	add_filter( 'wpseo_breadcrumb_single_link_info', static fn( $info ) => 'Bc Map' === $info['text'] ? array( 'text' => '' ) + $info : $info, 20 );
+	$sseo_html = yoast_breadcrumb( '', '', false );
+	sseo_check( 'and so is an item info left without text', str_ends_with( $sseo_html, '(3)</a></span></span>' ), $sseo_html );
+	foreach ( array( 'wpseo_breadcrumb_single_link_info', 'wpseo_breadcrumb_single_link', 'wpseo_breadcrumb_separator', 'wpseo_breadcrumb_output_class' ) as $sseo_name ) {
+		remove_all_filters( $sseo_name );
+	}
+	unregister_post_type( 'sseo_yf_slug' );
+
+	// Sitemaps.
+	$sseo_yf_locs = static fn( string $name ): array => array_column( (array) Simple_SEO_Sitemaps::entries( $name, 1 ), 'loc' );
+	$sseo_yf_ids  = static fn() => array( '7', 7, 'abc', -3, 0, array( 9 ), 12.0 );
+	add_filter( 'simple_seo_sitemap_exclude', $sseo_yf_ids );
+	$sseo_ids = ( new ReflectionMethod( Simple_SEO_Sitemaps::class, 'excluded' ) )->invoke( null, 'post', 'sseo_map' );
+	remove_filter( 'simple_seo_sitemap_exclude', $sseo_yf_ids );
+	sseo_check( 'simple_seo_sitemap_exclude: positive IDs only, once', array( 7, 12 ) === $sseo_ids, $sseo_ids );
+	add_filter( 'wpseo_exclude_from_sitemap_by_post_ids', static fn( $ids ): array => array_merge( (array) $ids, array( $sseo_shown ) ) );
+	add_filter( 'wpseo_exclude_from_sitemap_by_term_ids', static fn( $ids ): array => array_merge( (array) $ids, array( $sseo_news ) ) );
+	$sseo_l = $sseo_yf_locs( 'sseo_map' );
+	$sseo_c = $sseo_yf_locs( 'category' );
+	remove_all_filters( 'wpseo_exclude_from_sitemap_by_post_ids' );
+	remove_all_filters( 'wpseo_exclude_from_sitemap_by_term_ids' );
+	sseo_check( 'posts left out by ID', ! in_array( get_permalink( $sseo_shown ), $sseo_l, true ) && in_array( get_permalink( $sseo_p['bc_map'] ), $sseo_l, true ) && in_array( get_permalink( $sseo_shown ), $sseo_yf_locs( 'sseo_map' ), true ), $sseo_l );
+	sseo_check( 'terms left out by ID', ! in_array( get_category_link( $sseo_news ), $sseo_c, true ) && in_array( get_category_link( $sseo_news ), $sseo_yf_locs( 'category' ), true ), $sseo_c );
+
+	$sseo_yf_seen = array();
+	add_filter(
+		'wpseo_sitemap_entry',
+		static function ( $url, $type, $object ) use ( &$sseo_yf_seen, $sseo_shown, $sseo_p, $sseo_sport ) {
+			$sseo_yf_seen[ $type ] = is_object( $object ) ? get_class( $object ) : gettype( $object );
+			if ( 'post' === $type && $sseo_shown === $object->ID ) {
+				$url['loc']      = 'https://example.com/shown/';
+				$url['mod']      = '2020-01-02T03:04:05+00:00';
+				$url['images'][] = array( 'src' => 'https://cdn.example.com/extra.png' );
+			}
+			if ( 'user' === $type ) {
+				$url['loc'] = 'https://example.com/team/';
+			}
+			if ( 'term' === $type && $sseo_sport === $object->term_id ) {
+				return false;
+			}
+			return 'post' === $type && $sseo_p['bc_map'] === $object->ID ? array() : $url;
+		},
+		10,
+		3
+	);
+	$sseo_list = (array) Simple_SEO_Sitemaps::entries( 'sseo_map', 1 );
+	$sseo_e    = array_column( $sseo_list, null, 'loc' );
+	$sseo_cl   = (array) Simple_SEO_Sitemaps::entries( 'category', 1 );
+	$sseo_c    = array_column( $sseo_cl, 'loc' );
+	$sseo_a = $sseo_yf_locs( 'author' );
+	remove_all_filters( 'wpseo_sitemap_entry' );
+	$sseo_x = $sseo_e['https://example.com/shown/'] ?? array();
+	sseo_check( 'wpseo_sitemap_entry: address, date and images as the theme gives them', '2020-01-02T03:04:05+00:00' === ( $sseo_x['lastmod'] ?? '' ) && str_ends_with( $sseo_x['images'][0] ?? '', 'sseo-og.jpg' ) && array( 'https://cdn.example.com/extra.png' ) === array_slice( $sseo_x['images'] ?? array(), -1 ) && ! isset( $sseo_e[ get_permalink( $sseo_shown ) ] ), $sseo_e );
+	sseo_check( 'an empty answer leaves the address out, without a hole in the list', ! isset( $sseo_e[ get_permalink( $sseo_p['bc_map'] ) ] ) && isset( $sseo_e[ (string) get_post_type_archive_link( 'sseo_map' ) ] ) && ! in_array( get_category_link( $sseo_sport ), $sseo_c, true ) && in_array( get_category_link( $sseo_news ), $sseo_c, true ) && array_is_list( $sseo_list ) && $sseo_list === array_filter( $sseo_list, 'is_array' ) && $sseo_cl === array_filter( $sseo_cl, 'is_array' ) );
+	sseo_check( 'posts, terms and users with their objects', array( 'post' => 'WP_Post', 'term' => 'WP_Term', 'user' => 'WP_User' ) === array_intersect_key( $sseo_yf_seen, array_flip( array( 'post', 'term', 'user' ) ) ) && in_array( 'https://example.com/team/', $sseo_a, true ), $sseo_yf_seen );
+	add_filter( 'wpseo_sitemap_post_type_first_links', static fn( $links, $type ) => 'sseo_map' === $type ? array() : $links, 10, 2 );
+	$sseo_l = $sseo_yf_locs( 'sseo_map' );
+	$sseo_h = $sseo_yf_locs( 'page' );
+	remove_all_filters( 'wpseo_sitemap_post_type_first_links' );
+	sseo_check( 'wpseo_sitemap_post_type_first_links on the archive or home page opening a sitemap', ! in_array( get_post_type_archive_link( 'sseo_map' ), $sseo_l, true ) && in_array( get_permalink( $sseo_shown ), $sseo_l, true ) && in_array( home_url( '/' ), $sseo_h, true ), array( $sseo_l, $sseo_h ) );
+	// The other languages' addresses stay only with the address they belong to.
+	$sseo_alt = static function ( $entry ) {
+		$entry['alternates'] = array(
+			'xx' => 'https://example.com/xx/',
+			'yy' => array( 'not an address' ),
+		);
+		return $entry;
+	};
+	add_filter( 'simple_seo_sitemap_entry', $sseo_alt, 1 );
+	add_filter(
+		'wpseo_sitemap_entry',
+		static function ( $url, $type, $object ) use ( $sseo_shown, $sseo_p ) {
+			if ( 'post' === $type && $sseo_shown === $object->ID ) {
+				$url['loc'] = 'https://example.com/shown/';
+			}
+			if ( 'post' === $type && $sseo_p['bc_map'] === $object->ID ) {
+				$url['mod'] = '2021-01-01T00:00:00+00:00';
+			}
+			return $url;
+		},
+		10,
+		3
+	);
+	$sseo_e = array_column( (array) Simple_SEO_Sitemaps::entries( 'sseo_map', 1 ), null, 'loc' );
+	remove_all_filters( 'wpseo_sitemap_entry' );
+	remove_filter( 'simple_seo_sitemap_entry', $sseo_alt, 1 );
+	sseo_check( 'a moved address loses the alternates of the old one; one changed otherwise keeps them (strings only)', array() === ( $sseo_e['https://example.com/shown/']['alternates'] ?? null ) && array( 'xx' => 'https://example.com/xx/' ) === ( $sseo_e[ get_permalink( $sseo_p['bc_map'] ) ]['alternates'] ?? null ) && '2021-01-01T00:00:00+00:00' === ( $sseo_e[ get_permalink( $sseo_p['bc_map'] ) ]['lastmod'] ?? '' ), $sseo_e );
+	$sseo_own = static function ( $entry, $kind, $object ) use ( $sseo_shown, $sseo_p ) {
+		if ( 'post' === $kind && $sseo_shown === $object->ID ) {
+			$entry['images']  = array( 'javascript:alert(1)', array( 'x' ), 'https://cdn.example.com/ok.png' );
+			$entry['lastmod'] = 5;
+		}
+		if ( 'post' === $kind && $sseo_p['bc_map'] === $object->ID ) {
+			$entry['loc'] = array( 'x' );
+		}
+		return $entry;
+	};
+	add_filter( 'simple_seo_sitemap_entry', $sseo_own, 10, 3 );
+	$sseo_e = array_column( (array) Simple_SEO_Sitemaps::entries( 'sseo_map', 1 ), null, 'loc' );
+	remove_filter( 'simple_seo_sitemap_entry', $sseo_own, 10 );
+	sseo_check( 'simple_seo_sitemap_entry: web images only, a date or nothing, no address no entry', array( 'https://cdn.example.com/ok.png' ) === ( $sseo_e[ get_permalink( $sseo_shown ) ]['images'] ?? null ) && '' === ( $sseo_e[ get_permalink( $sseo_shown ) ]['lastmod'] ?? null ) && ! isset( $sseo_e[ get_permalink( $sseo_p['bc_map'] ) ] ), $sseo_e );
+	add_filter( 'wpseo_sitemap_url', static fn( $xml, $url ): string => str_replace( '</url>', '<!-- ' . $url['loc'] . ' --></url>', $xml ), 10, 2 );
+	$sseo_xml = (string) Simple_SEO_Sitemaps::render_sitemap( 'sseo_map', 1 );
+	remove_all_filters( 'wpseo_sitemap_url' );
+	sseo_check( 'wpseo_sitemap_url on the XML of each address', str_contains( $sseo_xml, '<!-- ' . get_permalink( $sseo_shown ) . " --></url>\n" ), $sseo_xml );
+
+	// wpseo_replacements in wpseo_replace_vars().
+	$sseo_yf_args = null;
+	add_filter(
+		'wpseo_replacements',
+		static function ( $replacements, $args ) use ( &$sseo_yf_args ) {
+			$sseo_yf_args                  = $args;
+			$replacements['%%sitename%%'] = 'Site*';
+			$replacements['%%custom%%']   = 'Mine %%sep%%';
+			$replacements[0]              = 'zero';
+			$replacements['%%title%%']    = is_string( $replacements['%%title%%'] ?? null ) ? $replacements['%%title%%'] : 'no title';
+			$replacements['%%junk%%']     = array( 'not text' );
+			return $replacements;
+		},
+		10,
+		2
+	);
+	$sseo_text = wpseo_replace_vars( '%%sitename%% %%custom%% %%title%% %%sep%% 10 %%junk%%', get_post( $sseo_yf ) );
+	remove_all_filters( 'wpseo_replacements' );
+	sseo_check( 'wpseo_replacements: the values by %%name%%, with the arguments, replaced in one pass', 'Site* Mine %%sep%% Yf Post ' . Simple_SEO_Titles::separator() . ' 10' === $sseo_text && $sseo_yf_args instanceof WP_Post, $sseo_text );
+
+	$GLOBALS['wp_query'] = $sseo_yf_query;
+	if ( null === $sseo_yf_actions ) {
+		unset( $GLOBALS['wp_actions']['wp'] );
+	} else {
+		$GLOBALS['wp_actions']['wp'] = $sseo_yf_actions;
+	}
+	delete_option( Simple_SEO_Indexing::OPTION );
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Context::reset();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );

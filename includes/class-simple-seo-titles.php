@@ -214,7 +214,17 @@ final class Simple_SEO_Titles {
 			return $title;
 		}
 
-		$ours = self::title( Simple_SEO_Context::current() );
+		$context = Simple_SEO_Context::current();
+		$ours    = self::title( $context );
+		if ( '' !== $ours ) {
+			/**
+			 * The text of <title> alone (plain, not escaped); og:title and the rest keep the SEO title.
+			 *
+			 * @param string             $title   The SEO title; '' leaves <title> to the theme.
+			 * @param Simple_SEO_Context $context What the page shows.
+			 */
+			$ours = (string) apply_filters( 'simple_seo_document_title', $ours, $context );
+		}
 
 		// Core returns this value as it is, without escaping it.
 		return '' !== $ours ? esc_html( $ours ) : $title;

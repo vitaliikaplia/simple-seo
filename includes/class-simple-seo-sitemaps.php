@@ -297,17 +297,25 @@ final class Simple_SEO_Sitemaps {
 			. ">\n";
 
 		foreach ( $entries as $entry ) {
-			$xml .= "\t<url>\n\t\t<loc>" . esc_xml( $entry['loc'] ) . "</loc>\n";
+			$url = "\t<url>\n\t\t<loc>" . esc_xml( $entry['loc'] ) . "</loc>\n";
 			if ( '' !== $entry['lastmod'] ) {
-				$xml .= "\t\t<lastmod>" . esc_xml( $entry['lastmod'] ) . "</lastmod>\n";
+				$url .= "\t\t<lastmod>" . esc_xml( $entry['lastmod'] ) . "</lastmod>\n";
 			}
 			foreach ( $entry['alternates'] as $hreflang => $href ) {
-				$xml .= "\t\t" . '<xhtml:link rel="alternate" hreflang="' . esc_xml( (string) $hreflang ) . '" href="' . esc_xml( $href ) . '"/>' . "\n";
+				$url .= "\t\t" . '<xhtml:link rel="alternate" hreflang="' . esc_xml( (string) $hreflang ) . '" href="' . esc_xml( $href ) . '"/>' . "\n";
 			}
 			foreach ( $entry['images'] as $image ) {
-				$xml .= "\t\t<image:image>\n\t\t\t<image:loc>" . esc_xml( $image ) . "</image:loc>\n\t\t</image:image>\n";
+				$url .= "\t\t<image:image>\n\t\t\t<image:loc>" . esc_xml( $image ) . "</image:loc>\n\t\t</image:image>\n";
 			}
-			$xml .= "\t</url>\n";
+			$url .= "\t</url>\n";
+
+			/**
+			 * The XML of one address in a sitemap, <url> … </url>, as it is printed.
+			 *
+			 * @param string                                                                                $url
+			 * @param array{loc: string, lastmod: string, images: string[], alternates: array<string, string>} $entry
+			 */
+			$xml .= (string) apply_filters( 'simple_seo_sitemap_url', $url, $entry );
 		}
 
 		return $xml . "</urlset>\n";
@@ -365,7 +373,7 @@ final class Simple_SEO_Sitemaps {
 		// A hidden type lists only the posts shown on their own; a shown type leaves out those hidden on their own.
 		$sql .= Simple_SEO_Indexing::slot_is_noindex( 'post:' . $type ) ? " AND m.meta_value = 'index'" : " AND ( m.meta_value IS NULL OR m.meta_value <> 'noindex' )";
 
-		$exclude = 'page' === $type ? self::front_page_ids() : array();
+		$exclude = array_merge( 'page' === $type ? self::front_page_ids() : array(), self::excluded( 'post', $type ) );
 		if ( $exclude ) {
 			$sql .= ' AND p.ID NOT IN (' . implode( ',', array_map( 'intval', $exclude ) ) . ')';
 		}
@@ -452,12 +460,19 @@ final class Simple_SEO_Sitemaps {
 				continue;
 			}
 
-			$entries[] = array(
-				'loc'        => $urls[ $id ],
-				'lastmod'    => (string) get_post_modified_time( 'c', true, $post ),
-				'images'     => self::images( $post ),
-				'alternates' => self::alternates( $groups[ $id ] ?? array(), $urls ),
+			$entry = self::filter_entry(
+				array(
+					'loc'        => $urls[ $id ],
+					'lastmod'    => (string) get_post_modified_time( 'c', true, $post ),
+					'images'     => self::images( $post ),
+					'alternates' => self::alternates( $groups[ $id ] ?? array(), $urls ),
+				),
+				'post',
+				$post
 			);
+			if ( null !== $entry ) {
+				$entries[] = $entry;
+			}
 		}
 
 		return $entries;
@@ -516,14 +531,18 @@ final class Simple_SEO_Sitemaps {
 			return array();
 		}
 
-		return array(
+		$entry = self::filter_entry(
 			array(
 				'loc'        => $urls[ $code ],
 				'lastmod'    => '' !== $modified[ $code ] ? $modified[ $code ] : self::latest_modified( $latest ),
 				'images'     => array(),
 				'alternates' => self::alternates( array_combine( array_keys( $urls ), array_keys( $urls ) ), $urls ),
 			),
+			'archive',
+			get_post_type_object( $type )
 		);
+
+		return null !== $entry ? array( $entry ) : array();
 	}
 
 	/**
@@ -620,6 +639,11 @@ final class Simple_SEO_Sitemaps {
 		);
 		$sql .= Simple_SEO_Indexing::slot_is_noindex( 'term:' . $taxonomy ) ? " AND m.meta_value = 'index'" : " AND ( m.meta_value IS NULL OR m.meta_value <> 'noindex' )";
 
+		$exclude = self::excluded( 'term', $taxonomy );
+		if ( $exclude ) {
+			$sql .= ' AND tt.term_id NOT IN (' . implode( ',', $exclude ) . ')';
+		}
+
 		return $sql . $language . $tail;
 	}
 
@@ -649,15 +673,23 @@ final class Simple_SEO_Sitemaps {
 		$modified = self::terms_modified( array_values( array_intersect_key( $term_ids, array_flip( $ids ) ) ), $taxonomy );
 		$entries  = array();
 		foreach ( $ids as $tt_id ) {
-			if ( '' === ( $urls[ $tt_id ] ?? '' ) ) {
+			$term = '' !== ( $urls[ $tt_id ] ?? '' ) ? get_term( $term_ids[ $tt_id ], $taxonomy ) : null;
+			if ( ! $term instanceof WP_Term ) {
 				continue;
 			}
-			$entries[] = array(
-				'loc'        => $urls[ $tt_id ],
-				'lastmod'    => $modified[ $term_ids[ $tt_id ] ] ?? '',
-				'images'     => array(),
-				'alternates' => self::alternates( $groups[ $tt_id ] ?? array(), $urls ),
+			$entry = self::filter_entry(
+				array(
+					'loc'        => $urls[ $tt_id ],
+					'lastmod'    => $modified[ $term_ids[ $tt_id ] ] ?? '',
+					'images'     => array(),
+					'alternates' => self::alternates( $groups[ $tt_id ] ?? array(), $urls ),
+				),
+				'term',
+				$term
 			);
+			if ( null !== $entry ) {
+				$entries[] = $entry;
+			}
 		}
 
 		return $entries;
@@ -753,13 +785,18 @@ final class Simple_SEO_Sitemaps {
 						continue;
 					}
 					$url = Simple_SEO_WP_Loc::language_url( self::indexable_address( Simple_SEO_Context::for_author( $user ), get_author_posts_url( (int) $user->ID ) ), $code );
-					if ( '' !== $url ) {
-						$entries[] = array(
+					$entry = '' !== $url ? self::filter_entry(
+						array(
 							'loc'        => $url,
 							'lastmod'    => self::w3c( (string) $row->modified ),
 							'images'     => array(),
 							'alternates' => array(),
-						);
+						),
+						'author',
+						$user
+					) : null;
+					if ( null !== $entry ) {
+						$entries[] = $entry;
 					}
 				}
 				return $entries;
@@ -769,6 +806,54 @@ final class Simple_SEO_Sitemaps {
 
 	// ----------------------------------------------------------------------------------------
 	// Shared.
+
+	/**
+	 * Posts or terms the sitemaps leave out on request (and llms.txt with them).
+	 *
+	 * @param string $kind post or term.
+	 * @return int[]
+	 */
+	private static function excluded( string $kind, string $name ): array {
+		/**
+		 * IDs of posts or terms the sitemaps (and llms.txt) leave out.
+		 *
+		 * @param int[]  $ids
+		 * @param string $kind 'post' (post IDs) or 'term' (term IDs).
+		 * @param string $name The post type or taxonomy being listed.
+		 */
+		$ids = (array) apply_filters( 'simple_seo_sitemap_exclude', array(), $kind, $name );
+
+		return array_values( array_unique( array_filter( array_map( 'intval', array_filter( $ids, 'is_numeric' ) ), static fn( int $id ): bool => $id > 0 ) ) );
+	}
+
+	/**
+	 * An address after the simple_seo_sitemap_entry filter; null when it is left out.
+	 *
+	 * @param array{loc: string, lastmod: string, images: string[], alternates: array<string, string>} $entry
+	 * @param WP_Post|WP_Term|WP_User|WP_Post_Type|null                                                 $object
+	 * @return array{loc: string, lastmod: string, images: string[], alternates: array<string, string>}|null
+	 */
+	private static function filter_entry( array $entry, string $kind, $object ): ?array {
+		/**
+		 * One address of a sitemap: change it, or return null to leave it out.
+		 *
+		 * @param array{loc: string, lastmod: string, images: string[], alternates: array<string, string>} $entry
+		 * @param string                                   $kind   post, term, author, or archive (the home page
+		 *                                                         or post type archive opening a post type's sitemap).
+		 * @param WP_Post|WP_Term|WP_User|WP_Post_Type|null $object What the address shows (the post type for archive).
+		 */
+		$entry = apply_filters( 'simple_seo_sitemap_entry', $entry, $kind, $object );
+		if ( ! is_array( $entry ) || ! is_string( $entry['loc'] ?? null ) || '' === $entry['loc'] ) {
+			return null;
+		}
+
+		return array(
+			'loc'        => $entry['loc'],
+			'lastmod'    => is_string( $entry['lastmod'] ?? null ) ? $entry['lastmod'] : '',
+			'images'     => array_values( array_filter( (array) ( $entry['images'] ?? array() ), static fn( $url ): bool => is_string( $url ) && (bool) preg_match( '#^https?://#i', $url ) ) ),
+			'alternates' => array_filter( (array) ( $entry['alternates'] ?? array() ), 'is_string' ),
+		);
+	}
 
 	/** A non-default language lists a kind only when wp-loc translates it. */
 	private static function has_language( string $code, bool $translatable ): bool {

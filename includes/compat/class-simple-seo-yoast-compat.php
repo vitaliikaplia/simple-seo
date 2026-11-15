@@ -62,6 +62,8 @@ final class Simple_SEO_Yoast_Compat {
 		if ( ! class_exists( 'WPSEO_Primary_Term', false ) ) {
 			require_once SIMPLE_SEO_DIR . 'includes/compat/class-wpseo-primary-term.php';
 		}
+		require_once SIMPLE_SEO_DIR . 'includes/compat/class-simple-seo-yoast-filters.php';
+		Simple_SEO_Yoast_Filters::init();
 	}
 
 	public static function loaded(): bool {
@@ -71,6 +73,7 @@ final class Simple_SEO_Yoast_Compat {
 	/**
 	 * wpseo_replace_vars(): %%name%% replaced for the post or term in $args (the current page when
 	 * it names none). A name in $omit stays as written; a name Simple SEO does not know goes away.
+	 * The values pass through wpseo_replacements ( array( '%%name%%' => value ), $args ) first.
 	 *
 	 * @param mixed    $args A post or term, as an object or an array of its fields.
 	 * @param string[] $omit
@@ -80,18 +83,24 @@ final class Simple_SEO_Yoast_Compat {
 			return $text;
 		}
 
-		$context = self::context_of( $args );
-		$text    = (string) preg_replace_callback(
-			'/%%([A-Za-z0-9_-]+)%%/',
-			static function ( array $match ) use ( $context, $omit ): string {
-				if ( in_array( $match[1], $omit, true ) ) {
-					return $match[0];
-				}
+		$context      = self::context_of( $args );
+		$replacements = array();
+		preg_match_all( '/%%([A-Za-z0-9_-]+)%%/', $text, $matches, PREG_SET_ORDER );
+		foreach ( $matches as $match ) {
+			if ( ! isset( $replacements[ $match[0] ] ) && ! in_array( $match[1], $omit, true ) ) {
+				$replacements[ $match[0] ] = (string) self::variable( strtolower( $match[1] ), $context );
+			}
+		}
 
-				return (string) self::variable( strtolower( $match[1] ), $context );
-			},
-			$text
-		);
+		// What a theme gives that is not text keeps Simple SEO's value.
+		foreach ( (array) apply_filters( 'wpseo_replacements', $replacements, $args ) as $name => $value ) {
+			if ( is_string( $name ) && '' !== $name && is_scalar( $value ) ) {
+				$replacements[ $name ] = (string) $value;
+			}
+		}
+
+		// One pass: a value that contains %%name%% is not replaced again.
+		$text = strtr( $text, $replacements );
 
 		return trim( (string) preg_replace( '/[ \t]{2,}/', ' ', $text ) );
 	}
@@ -203,7 +212,9 @@ final class Simple_SEO_Yoast_Compat {
 	/**
 	 * yoast_breadcrumb(): Simple SEO's trail in the markup themes made for Yoast style —
 	 * <span><span><a>Home</a></span> › … <span class="breadcrumb_last" aria-current="page">Page</span></span>.
-	 * '' where there is no trail (the home page).
+	 * '' where there is no trail (the home page). The markup goes through Yoast's filters:
+	 * wpseo_breadcrumb_single_link_info and wpseo_breadcrumb_single_link for each item,
+	 * wpseo_breadcrumb_separator and wpseo_breadcrumb_output_class (what they return is the theme's HTML).
 	 */
 	public static function breadcrumb( string $before = '', string $after = '' ): string {
 		$items = Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::current() );
@@ -216,23 +227,40 @@ final class Simple_SEO_Yoast_Compat {
 			array_pop( $items );
 		}
 
-		$last  = count( $items ) - 1;
-		$parts = array();
-		foreach ( $items as $index => $item ) {
+		$crumbs = Simple_SEO_Yoast_Filters::links( $items );
+		$last   = count( $crumbs ) - 1;
+		$parts  = array();
+		foreach ( $crumbs as $index => $crumb ) {
+			$info = apply_filters( 'wpseo_breadcrumb_single_link_info', $crumb, $index, $crumbs );
+			if ( ! is_scalar( $info['text'] ?? null ) || '' === (string) $info['text'] ) {
+				continue;
+			}
+			$text = (string) $info['text'];
+			$url  = is_string( $info['url'] ?? null ) ? $info['url'] : '';
+
 			if ( $index === $last && $show_current ) {
-				$parts[] = '<span class="breadcrumb_last" aria-current="page">' . esc_html( $item['label'] ) . '</span>';
-			} elseif ( '' !== $item['url'] ) {
-				$parts[] = '<span><a href="' . esc_url( $item['url'] ) . '">' . esc_html( $item['label'] ) . '</a></span>';
+				$html = '<span class="breadcrumb_last" aria-current="page">' . esc_html( $text ) . '</span>';
+			} elseif ( '' !== $url ) {
+				$html = '<span><a href="' . esc_url( $url ) . '">' . esc_html( $text ) . '</a></span>';
 			} else {
-				$parts[] = '<span>' . esc_html( $item['label'] ) . '</span>';
+				$html = '<span>' . esc_html( $text ) . '</span>';
+			}
+
+			$html = apply_filters( 'wpseo_breadcrumb_single_link', $html, $info );
+			if ( is_string( $html ) && '' !== $html ) {
+				$parts[] = $html;
 			}
 		}
 
-		$prefix = (string) Simple_SEO_Settings::value( Simple_SEO_Breadcrumbs::LABELS, 'prefix' );
+		$separator = apply_filters( 'wpseo_breadcrumb_separator', esc_html( Simple_SEO_Breadcrumbs::separator() ) );
+		$class     = apply_filters( 'wpseo_breadcrumb_output_class', '' );
+		$class     = is_string( $class ) ? trim( $class ) : '';
+		$prefix    = (string) Simple_SEO_Settings::value( Simple_SEO_Breadcrumbs::LABELS, 'prefix' );
 
 		return $before
-			. '<span>' . ( '' !== $prefix ? esc_html( $prefix ) . ' ' : '' )
-			. implode( ' ' . esc_html( Simple_SEO_Breadcrumbs::separator() ) . ' ', $parts )
+			. ( '' !== $class ? '<span class="' . esc_attr( $class ) . '">' : '<span>' )
+			. ( '' !== $prefix ? esc_html( $prefix ) . ' ' : '' )
+			. implode( ' ' . ( is_scalar( $separator ) ? (string) $separator : '' ) . ' ', $parts )
 			. '</span>'
 			. $after;
 	}
