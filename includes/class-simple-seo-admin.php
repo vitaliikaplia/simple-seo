@@ -156,6 +156,11 @@ final class Simple_SEO_Admin {
 			|| ( in_array( $hook, array( 'post.php', 'post-new.php' ), true ) && $screen && in_array( $screen->post_type, Simple_SEO_Fields::post_types(), true ) )
 			|| ( in_array( $hook, array( 'term.php', 'edit-tags.php' ), true ) && $screen && in_array( $screen->taxonomy, Simple_SEO_Fields::taxonomies(), true ) );
 
+		// The list of posts has the column of scores, and nothing else of Simple SEO's.
+		if ( 'edit.php' === $hook && $screen && in_array( $screen->post_type, Simple_SEO_Fields::post_types(), true ) ) {
+			wp_enqueue_style( 'simple-seo-admin', SIMPLE_SEO_URL . 'assets/css/admin.css', array(), SIMPLE_SEO_VERSION );
+		}
+
 		if ( $ours ) {
 			// The search result preview of the editors.
 			wp_enqueue_style( 'simple-seo-admin', SIMPLE_SEO_URL . 'assets/css/admin.css', array(), SIMPLE_SEO_VERSION );

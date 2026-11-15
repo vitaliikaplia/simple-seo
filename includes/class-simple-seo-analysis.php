@@ -3,7 +3,8 @@
  * SEO analysis of a post: the focus keyphrase and the other keyphrases in the title, the
  * description, the address, the first paragraph, the subheadings, the text and the alt text of
  * images; the length of the text, its links and images; the length of the title and the
- * description. Each check says what to do, and together they give a score out of 100.
+ * description. Each check says what to do, and together they give a score out of 100. The
+ * readability of the text (Simple_SEO_Readability) comes with them, with a score of its own.
  *
  * The text comes from Simple_SEO_Content, so the analysis reads any editor's content, the one
  * still being edited included: the editor sends it through the REST route of this class.
@@ -107,7 +108,7 @@ final class Simple_SEO_Analysis {
 	 *
 	 * @param array<string, string> $input content, title and description (as the page shows them,
 	 *                                     variables filled), url, keyphrase, keyphrases.
-	 * @return array{score: int, rating: string, words: int, checks: array<int, array{id: string, status: string, text: string}>}
+	 * @return array{score: int, rating: string, words: int, checks: array<int, array{id: string, status: string, text: string}>, readability: array{score: int, rating: string, checks: array<int, array{id: string, status: string, text: string}>}}
 	 */
 	public static function run( WP_Post $post, array $input = array() ): array {
 		$context = Simple_SEO_Context::for_post( $post );
@@ -127,18 +128,41 @@ final class Simple_SEO_Analysis {
 		foreach ( $more as $phrase ) {
 			$checks[] = self::more_check( $phrase, $content );
 		}
-		$checks = array_merge( $checks, self::page_checks( $title, $summary, $content ) );
+		$checks = array_values( array_merge( $checks, self::page_checks( $title, $summary, $content ) ) );
 
+		return self::score( $checks ) + array(
+			'words'       => (int) $content['words'],
+			'checks'      => $checks,
+			'readability' => Simple_SEO_Readability::run( $content ),
+		);
+	}
+
+	/**
+	 * The score of checks out of 100 and its rating; rating none where no check counts.
+	 *
+	 * @param array<int, array{status: string}> $checks
+	 * @return array{score: int, rating: string}
+	 */
+	public static function score( array $checks ): array {
 		$scored = array_filter( $checks, static fn( array $check ): bool => isset( self::POINTS[ $check['status'] ] ) );
+		if ( ! $scored ) {
+			return array(
+				'score'  => 0,
+				'rating' => 'none',
+			);
+		}
+
 		$points = array_sum( array_map( static fn( array $check ): int => self::POINTS[ $check['status'] ], $scored ) );
-		$score  = $scored ? (int) round( 100 * $points / ( 2 * count( $scored ) ) ) : 0;
+		$score  = (int) round( 100 * $points / ( 2 * count( $scored ) ) );
 
 		return array(
 			'score'  => $score,
-			'rating' => $score >= 75 ? 'good' : ( $score >= 45 ? 'ok' : 'bad' ),
-			'words'  => (int) $content['words'],
-			'checks' => array_values( $checks ),
+			'rating' => self::rating( $score ),
 		);
+	}
+
+	public static function rating( int $score ): string {
+		return $score >= 75 ? 'good' : ( $score >= 45 ? 'ok' : 'bad' );
 	}
 
 	/**
@@ -147,26 +171,46 @@ final class Simple_SEO_Analysis {
 	 */
 	public static function render( WP_Post $post ): string {
 		$result = self::run( $post );
-		$data   = array(
-			'url'    => rest_url( self::NAMESPACE . '/analysis/' . (int) $post->ID ),
-			'nonce'  => wp_create_nonce( 'wp_rest' ),
+		// The list of posts shows the scores of the post as saved: these are they.
+		Simple_SEO_Scores::remember( $post, $result );
+
+		$data = array(
+			'url'         => rest_url( self::NAMESPACE . '/analysis/' . (int) $post->ID ),
+			'nonce'       => wp_create_nonce( 'wp_rest' ),
 			/* translators: %s: score out of 100. */
-			'score'  => __( 'SEO score: %s of 100', 'simple-seo' ),
-			'failed' => __( 'The analysis could not be updated; it shows the page as it was.', 'simple-seo' ),
+			'score'       => __( 'SEO score: %s of 100', 'simple-seo' ),
+			/* translators: %s: score out of 100. */
+			'readability' => __( 'Readability: %s of 100', 'simple-seo' ),
+			'unscored'    => __( 'Readability', 'simple-seo' ),
+			'failed'      => __( 'The analysis could not be updated; it shows the page as it was.', 'simple-seo' ),
 		);
 
+		return sprintf(
+			'<div class="simple-seo-analysis" data-simple-seo-analysis="%1$s">%2$s%3$s<p class="simple-seo-analysis-error description" hidden>%4$s</p></div>',
+			esc_attr( (string) wp_json_encode( $data ) ),
+			self::part( 'seo', $result, sprintf( $data['score'], number_format_i18n( $result['score'] ) ) ),
+			self::part( 'readability', $result['readability'], 'none' === $result['readability']['rating'] ? $data['unscored'] : sprintf( $data['readability'], number_format_i18n( $result['readability']['score'] ) ) ),
+			esc_html( $data['failed'] )
+		);
+	}
+
+	/**
+	 * One part of the panel: its score and its checks.
+	 *
+	 * @param array{rating: string, checks: array<int, array{status: string, text: string}>} $result
+	 */
+	private static function part( string $name, array $result, string $heading ): string {
 		$items = '';
 		foreach ( $result['checks'] as $check ) {
 			$items .= sprintf( '<li class="is-%s">%s</li>', esc_attr( $check['status'] ), esc_html( $check['text'] ) );
 		}
 
 		return sprintf(
-			'<div class="simple-seo-analysis" data-simple-seo-analysis="%1$s"><p class="simple-seo-analysis-score is-%2$s"><strong>%3$s</strong></p><ul class="simple-seo-analysis-checks">%4$s</ul><p class="simple-seo-analysis-error description" hidden>%5$s</p></div>',
-			esc_attr( (string) wp_json_encode( $data ) ),
+			'<div class="simple-seo-analysis-part" data-part="%1$s"><p class="simple-seo-analysis-score is-%2$s"><strong>%3$s</strong></p><ul class="simple-seo-analysis-checks">%4$s</ul></div>',
+			esc_attr( $name ),
 			esc_attr( $result['rating'] ),
-			esc_html( sprintf( $data['score'], number_format_i18n( $result['score'] ) ) ),
-			$items,
-			esc_html( $data['failed'] )
+			esc_html( $heading ),
+			$items
 		);
 	}
 
@@ -327,7 +371,7 @@ final class Simple_SEO_Analysis {
 	}
 
 	/** @return array{id: string, status: string, text: string} */
-	private static function check( string $id, string $status, string $text ): array {
+	public static function check( string $id, string $status, string $text ): array {
 		return array(
 			'id'     => $id,
 			'status' => $status,

@@ -414,9 +414,9 @@
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-snippet]' ), initSnippet );
 
 	/*
-	 * The content analysis (Simple_SEO_Analysis): redone through its REST route a moment after the
-	 * text, the keyphrases, the title or the description change; the server's checks are drawn as
-	 * they come.
+	 * The content analysis (Simple_SEO_Analysis), SEO and readability: redone through its REST route
+	 * a moment after the text, the keyphrases, the title or the description change; the server's
+	 * checks are drawn as they come.
 	 */
 	function editorContent() {
 		var block = blockEditor();
@@ -440,8 +440,8 @@
 			return;
 		}
 
-		var score   = root.querySelector( '.simple-seo-analysis-score' );
-		var list    = root.querySelector( '.simple-seo-analysis-checks' );
+		var seo     = root.querySelector( '[data-part="seo"]' );
+		var reading = root.querySelector( '[data-part="readability"]' );
 		var failed  = root.querySelector( '.simple-seo-analysis-error' );
 		var sent    = null;
 		var timer   = null;
@@ -468,9 +468,12 @@
 			return JSON.stringify( body );
 		}
 
-		function draw( result ) {
+		// One part of the panel: its score and its checks.
+		function drawPart( part, result, heading ) {
+			var score = part.querySelector( '.simple-seo-analysis-score' );
+			var list  = part.querySelector( '.simple-seo-analysis-checks' );
 			score.className = 'simple-seo-analysis-score is-' + result.rating;
-			score.firstChild.textContent = data.score.replace( '%s', String( result.score ) );
+			score.firstChild.textContent = heading;
 			list.textContent = '';
 			result.checks.forEach( function ( check ) {
 				var item = document.createElement( 'li' );
@@ -478,6 +481,11 @@
 				item.textContent = check.text;
 				list.appendChild( item );
 			} );
+		}
+
+		function draw( result ) {
+			drawPart( seo, result, data.score.replace( '%s', String( result.score ) ) );
+			drawPart( reading, result.readability, 'none' === result.readability.rating ? data.unscored : data.readability.replace( '%s', String( result.readability.score ) ) );
 		}
 
 		function send() {

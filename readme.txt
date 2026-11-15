@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.22.0
+Stable tag: 0.23.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; builds llms.txt for AI assistants from the same pages; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; removes what WordPress adds to the code of pages (the version, the shortlink, discovery links, the emoji script, links to feeds), each by its own switch; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. The SEO block of the post editor and of the term form shows how the page will look in search results, on a computer and on a phone, while you type. It also analyses the content of a post for a focus keyphrase and a few more, with a score and what to do. Themes made for Yoast SEO keep working once Yoast is gone: Simple SEO answers the Yoast functions they call. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; builds llms.txt for AI assistants from the same pages; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; removes what WordPress adds to the code of pages (the version, the shortlink, discovery links, the emoji script, links to feeds), each by its own switch; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. The SEO block of the post editor and of the term form shows how the page will look in search results, on a computer and on a phone, while you type. It also analyses the content of a post for a focus keyphrase and a few more, and how easy its text is to read, each with a score and what to do; the lists of posts show both scores. Themes made for Yoast SEO keep working once Yoast is gone: Simple SEO answers the Yoast functions they call. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.23.0 =
+* Readability in the SEO block of posts, under the SEO checks and with a score of its own: how long the sentences are (a quarter of them over 20 words at most), how long the paragraphs are (150 words), how much text goes without a subheading (300 words), and whether three or more sentences in a row start with the same word. The checks hold for any language; those that need one (passive voice, transition words) are left out.
+* A column SEO in the lists of posts and pages with the SEO and readability scores of each post as saved. They are taken when the post is saved in the editor, by quick edit or through the REST API, or opened in the editor; a post changed otherwise since (an import, WP-CLI) shows a dash until then.
 
 = 0.22.0 =
 * The import takes the keyphrases too, into the focus keyphrase and the more keyphrases of posts that have none: the focus keyphrase of Yoast SEO and the more keyphrases of Yoast SEO Premium, the keyphrases of Rank Math (the first is the focus one, the rest go one on a line) and the focus and additional keyphrases of All in One SEO, from its own columns or, for older posts, from the JSON it kept them in before. A post with nothing but keyphrases is found too. Terms have no keyphrases in Simple SEO, so theirs stay where they are.

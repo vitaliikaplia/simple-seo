@@ -1034,15 +1034,15 @@ try {
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
 	sseo_check( 'term screen: structure button and the preview of what the term shows now', str_contains( $sseo_html, 'data-mask="{excerpt}"' ) && str_contains( $sseo_html, '<div class="simple-seo-snippet-title">Saved from the term form</div>' ) && str_contains( $sseo_html, '<tr class="form-field simple-seo-snippet-row">' ) );
 
-	foreach ( array( 'toplevel_page_simple-seo' => '', 'post.php' => 'post', 'edit.php' => 'edit-post', 'term.php' => 'edit-category' ) as $sseo_hook => $sseo_screen ) {
+	// Hook, screen, whether admin.js loads, whether admin.css loads (the list of posts has the column of scores).
+	foreach ( array( array( 'toplevel_page_simple-seo', '', true, true ), array( 'post.php', 'post', true, true ), array( 'edit.php', 'edit-post', false, true ), array( 'edit.php', 'edit-attachment', false, false ), array( 'term.php', 'edit-category', true, true ) ) as [ $sseo_hook, $sseo_screen, $sseo_script, $sseo_style ] ) {
 		wp_dequeue_script( 'simple-seo-admin' );
 		wp_dequeue_style( 'simple-seo-admin' );
 		if ( '' !== $sseo_screen ) {
 			set_current_screen( $sseo_screen );
 		}
 		Simple_SEO_Admin::enqueue( $sseo_hook );
-		$sseo_expected = 'edit.php' !== $sseo_hook;
-		sseo_check( "admin.js and admin.css " . ( $sseo_expected ? 'load' : 'do not load' ) . " on {$sseo_hook}", $sseo_expected === wp_script_is( 'simple-seo-admin', 'enqueued' ) && $sseo_expected === wp_style_is( 'simple-seo-admin', 'enqueued' ) );
+		sseo_check( "on {$sseo_hook} ({$sseo_screen}) admin.js " . ( $sseo_script ? 'loads' : 'does not load' ) . ', admin.css ' . ( $sseo_style ? 'loads' : 'does not load' ), $sseo_script === wp_script_is( 'simple-seo-admin', 'enqueued' ) && $sseo_style === wp_style_is( 'simple-seo-admin', 'enqueued' ) );
 	}
 	wp_dequeue_script( 'simple-seo-admin' );
 	wp_dequeue_style( 'simple-seo-admin' );
@@ -1819,12 +1819,193 @@ try {
 	preg_match( '/data-simple-seo-analysis="([^"]*)"/', $sseo_html, $sseo_m );
 	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
 	sseo_check( 'the panel: the route, a nonce and the labels for the script', is_array( $sseo_json ) && rest_url( 'simple-seo/v1/analysis/' . $sseo_an_post ) === $sseo_json['url'] && false !== wp_verify_nonce( $sseo_json['nonce'], 'wp_rest' ) && str_contains( $sseo_json['score'], '%s' ), $sseo_json );
-	sseo_check( 'the panel: the score of the saved post and a line for each check', str_contains( $sseo_html, '<p class="simple-seo-analysis-score is-' . $sseo_an['rating'] . '"><strong>SEO score: ' . $sseo_an['score'] . ' of 100</strong>' ) && count( $sseo_an['checks'] ) === substr_count( $sseo_html, '<li class="is-' ), $sseo_html );
+	sseo_check(
+		'the panel: SEO and then readability, each with the score of the saved post and a line for each check',
+		str_contains( $sseo_html, '<div class="simple-seo-analysis-part" data-part="seo"><p class="simple-seo-analysis-score is-' . $sseo_an['rating'] . '"><strong>SEO score: ' . $sseo_an['score'] . ' of 100</strong>' )
+			&& str_contains( $sseo_html, '<div class="simple-seo-analysis-part" data-part="readability"><p class="simple-seo-analysis-score is-' . $sseo_an['readability']['rating'] . '"><strong>Readability: ' . $sseo_an['readability']['score'] . ' of 100</strong>' )
+			&& count( $sseo_an['checks'] ) + count( $sseo_an['readability']['checks'] ) === substr_count( $sseo_html, '<li class="is-' )
+			&& strpos( $sseo_html, 'data-part="seo"' ) < strpos( $sseo_html, 'data-part="readability"' )
+			&& 'Readability: %s of 100' === $sseo_json['readability'] && 'Readability' === $sseo_json['unscored'],
+		$sseo_html
+	);
 	sseo_check( 'the panel escapes what it prints', str_contains( $sseo_html, '&quot;quoted&quot;' ) && ! str_contains( $sseo_html, '<i>' ) );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_an_post ) ) );
 	sseo_check( 'meta box: the panel after the keyphrases', strpos( $sseo_html, 'simple-seo-analysis"' ) > strpos( $sseo_html, 'id="simple-seo-field-keyphrases"' ) && str_contains( $sseo_html, 'name="simple_seo[keyphrase]"' ) );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
 	sseo_check( 'term screen: no keyphrases and no analysis', ! str_contains( $sseo_html, 'simple_seo[keyphrase]' ) && ! str_contains( $sseo_html, 'simple-seo-analysis' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Readability and scores' );
+
+	$sseo_rd       = static fn( string $html ): array => Simple_SEO_Readability::run( Simple_SEO_Content::parse( $html ) );
+	// A sentence of so many words: it starts with a capital, as the next sentence must.
+	$sseo_rd_words = static fn( int $count ): string => 'Слово' . str_repeat( ' слово', $count - 1 );
+	// Sentences of four words, each starting with a word of its own.
+	$sseo_rd_short = static fn( int $from, int $count ): string => implode( ' ', array_map( static fn( int $i ): string => "Думка{$i} коротка і ясна.", range( $from, $from + $count - 1 ) ) );
+	$sseo_rd_long  = $sseo_rd_words( 21 ) . '.';
+
+	$sseo_vals = Simple_SEO_Readability::sentences( 'Перше речення. Друге! А третє? «Цитата.» Ну… Далі т. зв. скорочення… і e.g. this. ... Кінець' );
+	sseo_check( 'sentences: after a stop, a question or an exclamation mark, an ellipsis (a closing quote too), before anything but a small letter; a piece without a word is none', array( 'Перше речення.', 'Друге!', 'А третє?', '«Цитата.»', 'Ну…', 'Далі т. зв. скорочення… і e.g. this.', 'Кінець' ) === $sseo_vals, $sseo_vals );
+
+	$sseo_rd_good = '';
+	foreach ( array( 1, 31, 61 ) as $sseo_from ) {
+		$sseo_rd_good .= '<h2>Частина ' . $sseo_from . '</h2><p>' . $sseo_rd_short( $sseo_from, 10 ) . '</p><p>' . $sseo_rd_short( $sseo_from + 10, 10 ) . '</p><p>' . $sseo_rd_short( $sseo_from + 20, 10 ) . '</p>';
+	}
+	$sseo_rd_result = $sseo_rd( $sseo_rd_good );
+	sseo_check( 'a text that reads well: every check good, in their order, score 100', array( 'sentence_length', 'paragraph_length', 'subheadings', 'sentence_starts' ) === array_column( $sseo_rd_result['checks'], 'id' ) && array( 'good' ) === array_values( array_unique( array_column( $sseo_rd_result['checks'], 'status' ) ) ) && 100 === $sseo_rd_result['score'] && 'good' === $sseo_rd_result['rating'], $sseo_rd_result );
+	sseo_check( 'the counts are told', str_contains( $sseo_an_text( $sseo_rd_result, 'sentence_length' ), '20 words: 0 of 90' ) && str_contains( $sseo_an_text( $sseo_rd_result, 'paragraph_length' ), 'has 40 words' ) && str_contains( $sseo_an_text( $sseo_rd_result, 'subheadings' ), 'than 120 words' ), $sseo_rd_result );
+
+	// Long sentences: more than 20 words; a quarter of them reads well, more than a third does not.
+	$sseo_vals = array(
+		$sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_words( 20 ) . '. ' . $sseo_rd_words( 20 ) . '.</p>' ), 'sentence_length' ),
+		$sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_long . ' ' . $sseo_rd_short( 1, 3 ) . '</p>' ), 'sentence_length' ),
+		$sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_long . ' ' . $sseo_rd_short( 1, 2 ) . '</p>' ), 'sentence_length' ),
+		$sseo_an_status( $sseo_rd( '<p>' . str_repeat( $sseo_rd_long . ' ', 7 ) . $sseo_rd_short( 1, 13 ) . '</p>' ), 'sentence_length' ),
+		$sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_long . ' ' . $sseo_rd_long . ' ' . $sseo_rd_short( 1, 2 ) . '</p>' ), 'sentence_length' ),
+	);
+	sseo_check( 'long sentences: 20 words is not long; 1 of 4 good, 1 of 3 and 7 of 20 ok, 2 of 4 bad', array( 'good', 'good', 'ok', 'ok', 'bad' ) === $sseo_vals, $sseo_vals );
+	sseo_check( 'long sentences counted', str_contains( $sseo_an_text( $sseo_rd( '<p>' . $sseo_rd_long . ' ' . $sseo_rd_long . ' ' . $sseo_rd_short( 1, 2 ) . '</p>' ), 'sentence_length' ), ': 2 of 4. Split' ) );
+
+	// Long paragraphs: more than 150 words; up to 200 ok.
+	$sseo_vals = array();
+	foreach ( array( 150, 151, 200, 201 ) as $sseo_count ) {
+		$sseo_vals[] = $sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_short( 1, 2 ) . '</p><p>' . $sseo_rd_words( $sseo_count ) . '</p>' ), 'paragraph_length' );
+	}
+	sseo_check( 'long paragraphs: 150 words good, 151 and 200 ok, 201 bad', array( 'good', 'ok', 'ok', 'bad' ) === $sseo_vals, $sseo_vals );
+	sseo_check( 'long paragraphs counted, with the longest', str_contains( $sseo_an_text( $sseo_rd( '<p>' . $sseo_rd_words( 160 ) . '</p><p>' . $sseo_rd_short( 1, 2 ) . '</p><p>' . $sseo_rd_words( 170 ) . '</p>' ), 'paragraph_length' ), ': 2, the longest has 170' ) );
+	$sseo_rd_result = $sseo_rd( '<ul><li>' . $sseo_rd_words( 300 ) . '</li></ul>' );
+	sseo_check( 'list items are no paragraphs: no check of paragraphs without any', 'none' === $sseo_an_status( $sseo_rd_result, 'paragraph_length' ) && 'bad' === $sseo_an_status( $sseo_rd_result, 'sentence_length' ), $sseo_rd_result );
+
+	// Subheadings: more than 300 words want one; a part of up to 400 ok.
+	$sseo_rd_parts = static fn( int $before, int $after ): string => '<p>' . $sseo_rd_words( $before ) . '</p><h2>Підзаголовок</h2><p>' . $sseo_rd_words( $after ) . '</p>';
+	$sseo_vals     = array(
+		$sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_words( 300 ) . '</p>' ), 'subheadings' ),
+		$sseo_an_status( $sseo_rd( '<p>' . $sseo_rd_words( 301 ) . '</p>' ), 'subheadings' ),
+		$sseo_an_status( $sseo_rd( $sseo_rd_parts( 200, 300 ) ), 'subheadings' ),
+		$sseo_an_status( $sseo_rd( $sseo_rd_parts( 100, 301 ) ), 'subheadings' ),
+		$sseo_an_status( $sseo_rd( $sseo_rd_parts( 100, 400 ) ), 'subheadings' ),
+		$sseo_an_status( $sseo_rd( $sseo_rd_parts( 401, 100 ) ), 'subheadings' ),
+		$sseo_an_status( $sseo_rd( '<h2>На початку</h2><p>' . $sseo_rd_words( 301 ) . '</p>' ), 'subheadings' ),
+	);
+	sseo_check( 'subheadings: none needed up to 300 words; 301 without any bad; parts of 300 good, of 301 and 400 ok, of 401 bad, before the first one too; one at the start is one', array( 'none', 'bad', 'good', 'ok', 'ok', 'bad', 'ok' ) === $sseo_vals, $sseo_vals );
+	sseo_check( 'no subheadings: the words told', str_contains( $sseo_an_text( $sseo_rd( '<p>' . $sseo_rd_words( 301 ) . '</p>' ), 'subheadings' ), '301 words and no subheadings' ) );
+	$sseo_rd_result = $sseo_rd( '<table><tr><td>' . $sseo_rd_words( 500 ) . '</td></tr></table><p>' . $sseo_rd_short( 1, 5 ) . '</p>' );
+	sseo_check( 'a table is no prose: its words are not counted', 'none' === $sseo_an_status( $sseo_rd_result, 'subheadings' ) && 'good' === $sseo_an_status( $sseo_rd_result, 'sentence_length' ) && str_contains( $sseo_an_text( $sseo_rd_result, 'sentence_length' ), '0 of 5' ), $sseo_rd_result );
+	$sseo_rd_result = $sseo_rd( '<table><caption>' . $sseo_rd_words( 400 ) . '</caption><tr><th>' . $sseo_rd_words( 400 ) . '</th></tr></table><pre>' . $sseo_rd_words( 400 ) . '</pre><p>' . $sseo_rd_short( 1, 5 ) . '</p>' );
+	sseo_check( 'nor a table caption, a header cell or preformatted text', 'none' === $sseo_an_status( $sseo_rd_result, 'subheadings' ) && str_contains( $sseo_an_text( $sseo_rd_result, 'sentence_length' ), '0 of 5' ), $sseo_rd_result );
+
+	// Sentences in a row that start with the same word.
+	$sseo_vals = array();
+	foreach ( array(
+		'<p>Ми робимо. Ми думаємо. Ми пишемо.</p>',
+		'<p>Ми а. Ми б. Ми в. Ми г.</p>',
+		'<p>Ми а. МИ б. Ми в.</p>',
+		'<p>Ми а.</p><p>Ми б.</p><p>Ми в.</p>',
+		'<p>Ми а. Ми б. Ми в. Ви а. Ви б. Ви в.</p>',
+		'<p>Ми а. Ми б.</p><h2>Ми</h2><p>Ми в.</p>',
+		'<ul><li>Ми а.</li><li>Ми б.</li><li>Ми в.</li></ul>',
+		'<ul><li>Ми а. Ми б. Ми в.</li></ul>',
+		'<p>Ми а. Ми б.</p><ul><li>Ми в.</li></ul><p>Ми г.</p>',
+		'<p>Ми а. Ми б.</p><table><tr><td>Ми в.</td></tr></table><p>Ми г.</p>',
+	) as $sseo_html ) {
+		$sseo_vals[] = $sseo_an_status( $sseo_rd( $sseo_html ), 'sentence_starts' );
+	}
+	sseo_check( 'sentence starts: three in a row ok, a longer run once, any case, across paragraphs; two runs bad; a subheading, a list or a table breaks a run, list items do not count', array( 'ok', 'ok', 'ok', 'ok', 'bad', 'good', 'good', 'good', 'good', 'good' ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( $sseo_an_text( $sseo_rd( '<p>Ми а. Ми б. Ми в. Ви а. Ви б. Ви в.</p>' ), 'sentence_starts' ), $sseo_an_text( $sseo_rd( '<p>Ми а. Ми б. Ми в. Він г. Ми д. Ми е. Ми є.</p>' ), 'sentence_starts' ) );
+	sseo_check( 'sentence starts: the words named, each once', str_contains( $sseo_vals[0], ': ми, ви.' ) && 1 === substr_count( $sseo_vals[1], 'ми' ), $sseo_vals );
+
+	$sseo_vals = array( $sseo_rd( '' ), $sseo_rd( '<table><tr><td>' . $sseo_rd_words( 50 ) . '</td></tr></table>' ) );
+	sseo_check( 'no text to read: a note and no score', array( 'readability' ) === array_column( $sseo_vals[0]['checks'], 'id' ) && 'info' === $sseo_vals[0]['checks'][0]['status'] && 'none' === $sseo_vals[0]['rating'] && 0 === $sseo_vals[0]['score'] && 'none' === $sseo_vals[1]['rating'], $sseo_vals );
+
+	$sseo_vals = array(
+		Simple_SEO_Analysis::score( array( array( 'status' => 'good' ), array( 'status' => 'ok' ), array( 'status' => 'bad' ), array( 'status' => 'info' ) ) ),
+		Simple_SEO_Analysis::score( array( array( 'status' => 'info' ) ) ),
+		Simple_SEO_Analysis::score( array() ),
+	);
+	sseo_check( 'the score: points of the checks that count, rating none without any', array( array( 'score' => 50, 'rating' => 'ok' ), array( 'score' => 0, 'rating' => 'none' ), array( 'score' => 0, 'rating' => 'none' ) ) === $sseo_vals, $sseo_vals );
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => $sseo_rd_good ) );
+	sseo_check( 'the analysis has the readability of the same text', 100 === $sseo_an['readability']['score'] && 4 === count( $sseo_an['readability']['checks'] ) && 366 === $sseo_an['words'], $sseo_an );
+
+	// Scores kept for the list of posts.
+	unset( $GLOBALS['current_screen'] );
+	$sseo_sc_post            = (int) wp_insert_post( array( 'post_title' => 'Scored', 'post_content' => '<p>' . $sseo_rd_short( 1, 5 ) . '</p>', 'post_status' => 'publish' ) );
+	$sseo['posts']['scored'] = $sseo_sc_post;
+	$sseo_sc_meta            = static fn( int $id ) => get_post_meta( $id, Simple_SEO_Scores::META, true );
+	sseo_check( 'scores: not taken for a post saved outside the admin and the REST API (an import, WP-CLI)', '' === $sseo_sc_meta( $sseo_sc_post ) );
+	set_current_screen( 'edit-post' );
+	wp_update_post( array( 'ID' => $sseo_sc_post, 'post_title' => 'Scored in the admin' ) );
+	$sseo_an  = Simple_SEO_Analysis::run( get_post( $sseo_sc_post ) );
+	$sseo_val = $sseo_sc_meta( $sseo_sc_post );
+	sseo_check( 'scores: a post saved in the admin, as saved, with the time it changed', array( 'seo' => $sseo_an['score'], 'readability' => $sseo_an['readability']['score'], 'modified' => get_post( $sseo_sc_post )->post_modified ) === $sseo_val && $sseo_val === Simple_SEO_Scores::get( get_post( $sseo_sc_post ) ), $sseo_val );
+	update_post_meta( $sseo_sc_post, Simple_SEO_Scores::META, array( 'modified' => '2001-01-01 00:00:00' ) + $sseo_val );
+	sseo_check( 'scores: none for a post that changed since', null === Simple_SEO_Scores::get( get_post( $sseo_sc_post ) ) );
+	update_post_meta( $sseo_sc_post, Simple_SEO_Scores::META, (object) $sseo_val );
+	sseo_check( 'scores: none from a row that is not theirs', null === Simple_SEO_Scores::get( get_post( $sseo_sc_post ) ) );
+
+	delete_post_meta( $sseo_sc_post, Simple_SEO_Scores::META );
+	$_REQUEST['bulk_edit'] = 'Update';
+	wp_update_post( array( 'ID' => $sseo_sc_post, 'post_title' => 'Scored by bulk edit' ) );
+	unset( $_REQUEST['bulk_edit'] );
+	sseo_check( 'scores: not taken by bulk edit', '' === $sseo_sc_meta( $sseo_sc_post ) );
+	wp_trash_post( $sseo_sc_post );
+	sseo_check( 'scores: not taken for a post put in the trash', '' === $sseo_sc_meta( $sseo_sc_post ) );
+	wp_untrash_post( $sseo_sc_post );
+	wp_update_post( array( 'ID' => $sseo_sc_post, 'post_status' => 'publish' ) );
+	$sseo_sc_private = (int) wp_insert_post( array( 'post_type' => 'sseo_private', 'post_title' => 'No scores here', 'post_status' => 'publish' ) );
+	$sseo['posts']['scored_private'] = $sseo_sc_private;
+	$sseo_sc_empty   = (int) wp_insert_post( array( 'post_title' => 'Nothing to read', 'post_status' => 'draft' ) );
+	$sseo['posts']['scored_empty'] = $sseo_sc_empty;
+	$sseo_sc_new = (int) wp_insert_post( array( 'post_title' => 'Auto Draft', 'post_status' => 'auto-draft' ) );
+	$sseo['posts']['scored_new'] = $sseo_sc_new;
+	Simple_SEO_Analysis::render( get_post( $sseo_sc_new ) );
+	sseo_check( 'scores: none for a new post the editor has just made, saved or shown', '' === $sseo_sc_meta( $sseo_sc_new ) );
+	sseo_check( 'scores: a type without SEO fields has none; a draft without text has no readability', '' === $sseo_sc_meta( $sseo_sc_private ) && is_array( $sseo_sc_meta( $sseo_sc_empty ) ) && array_key_exists( 'readability', $sseo_sc_meta( $sseo_sc_empty ) ) && null === $sseo_sc_meta( $sseo_sc_empty )['readability'] && is_int( $sseo_sc_meta( $sseo_sc_empty )['seo'] ), $sseo_sc_meta( $sseo_sc_empty ) );
+
+	unset( $GLOBALS['current_screen'] );
+	add_filter( 'simple_seo_store_scores', '__return_true' );
+	delete_post_meta( $sseo_sc_post, Simple_SEO_Scores::META );
+	wp_update_post( array( 'ID' => $sseo_sc_post, 'post_title' => 'Scored by a filter' ) );
+	remove_filter( 'simple_seo_store_scores', '__return_true' );
+	sseo_check( 'scores: a filter takes them anywhere (an import that wants them)', is_array( $sseo_sc_meta( $sseo_sc_post ) ) );
+	delete_post_meta( $sseo_sc_post, Simple_SEO_Scores::META );
+	Simple_SEO_Analysis::render( get_post( $sseo_sc_post ) );
+	sseo_check( 'scores: the editor that opens a post keeps its scores', null !== Simple_SEO_Scores::get( get_post( $sseo_sc_post ) ) );
+
+	// The column of the lists of posts: hooked on admin_init, so that quick edit's row has it too.
+	sseo_check( 'column: set up on admin_init', 10 === has_action( 'admin_init', array( Simple_SEO_Scores::class, 'hook_lists' ) ) );
+	wp_set_current_user( $sseo_ed );
+	Simple_SEO_Scores::hook_lists();
+	$sseo_vals = array(
+		array_keys( apply_filters( 'manage_post_posts_columns', array( 'cb' => '', 'title' => 'Title', 'author' => 'Author', 'date' => 'Date' ) ) ),
+		apply_filters( 'manage_post_posts_columns', array( 'title' => 'Title' ) ),
+	);
+	sseo_check( 'column: SEO before the date, or last', array( 'cb', 'title', 'author', 'simple_seo', 'date' ) === $sseo_vals[0] && array( 'title' => 'Title', 'simple_seo' => 'SEO' ) === $sseo_vals[1], $sseo_vals );
+	$sseo_cell = static fn( int $id, string $column = 'simple_seo' ): string => sseo_capture( static fn() => do_action( 'manage_post_posts_custom_column', $column, $id ) );
+	$sseo_val  = Simple_SEO_Scores::get( get_post( $sseo_sc_post ) );
+	$sseo_html = $sseo_cell( $sseo_sc_post );
+	sseo_check( 'column: both scores of the post, coloured by their rating', '<span class="simple-seo-score is-' . Simple_SEO_Analysis::rating( $sseo_val['seo'] ) . '">SEO: ' . $sseo_val['seo'] . '</span><span class="simple-seo-score is-' . Simple_SEO_Analysis::rating( $sseo_val['readability'] ) . '">Readability: ' . $sseo_val['readability'] . '</span>' === $sseo_html, $sseo_html );
+	$sseo_html = $sseo_cell( $sseo_sc_empty );
+	sseo_check( 'column: a post without text has no readability', str_contains( $sseo_html, '<span class="simple-seo-score is-none">Readability: —</span>' ), $sseo_html );
+	$sseo_html = Simple_SEO_Analysis::render( get_post( $sseo_sc_empty ) );
+	sseo_check( 'panel: a post without text has readability without a score', str_contains( $sseo_html, '<div class="simple-seo-analysis-part" data-part="readability"><p class="simple-seo-analysis-score is-none"><strong>Readability</strong></p>' ), $sseo_html );
+	update_post_meta( $sseo_sc_post, Simple_SEO_Scores::META, array( 'modified' => '2001-01-01 00:00:00' ) + $sseo_val );
+	$sseo_html = $sseo_cell( $sseo_sc_post );
+	sseo_check( 'column: a dash and why for a post not analysed since it changed; other columns untouched', str_contains( $sseo_html, '>—</span>' ) && str_contains( $sseo_html, 'Not analysed since the last change' ) && ! str_contains( $sseo_html, 'SEO:' ) && '' === $sseo_cell( $sseo_sc_post, 'title' ), $sseo_html );
+	$sseo_vals = array( has_filter( 'manage_page_posts_columns', array( Simple_SEO_Scores::class, 'columns' ) ), has_action( 'manage_page_posts_custom_column', array( Simple_SEO_Scores::class, 'cell' ) ), has_filter( 'manage_sseo_private_posts_columns' ) );
+	$sseo_sc_unhook = static function (): void {
+		foreach ( array( 'post', 'page', 'sseo_private' ) as $sseo_type ) {
+			remove_all_filters( "manage_{$sseo_type}_posts_columns" );
+			remove_all_actions( "manage_{$sseo_type}_posts_custom_column" );
+		}
+	};
+	$sseo_sc_unhook();
+	wp_set_current_user( $sseo_u['subscriber'] );
+	Simple_SEO_Scores::hook_lists();
+	$sseo_vals[] = has_filter( 'manage_post_posts_columns' );
+	sseo_check( 'column: on pages too; not on a type without SEO fields, nor for whoever cannot edit the fields', false !== $sseo_vals[0] && false !== $sseo_vals[1] && false === $sseo_vals[2] && false === $sseo_vals[3], $sseo_vals );
+	$sseo_sc_unhook();
+	unset( $GLOBALS['current_screen'] );
 	wp_set_current_user( $sseo_u['administrator'] );
 
 	// ------------------------------------------------------------------------------------------
@@ -5421,6 +5602,7 @@ try {
 	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з %s' === __( 'Import from %s', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) && 'Прибрати дані %s' === __( 'Remove the data of %s', 'simple-seo' ) );
 	sseo_check( 'the search result preview is translated', 'Вигляд у пошуковій видачі' === __( 'Search result preview', 'simple-seo' ) && 'SEO-заголовок: символів — %s, пошуковик його обріже.' === __( 'SEO title: %s characters, search engines will cut it.', 'simple-seo' ) );
 	sseo_check( 'the content analysis is translated', 'Аналіз контенту' === __( 'Content analysis', 'simple-seo' ) && 'SEO-оцінка: %s зі 100' === __( 'SEO score: %s of 100', 'simple-seo' ) );
+	sseo_check( 'readability and the column of scores are translated', 'Читабельність: %s зі 100' === __( 'Readability: %s of 100', 'simple-seo' ) && 'Читабельність: %s' === __( 'Readability: %s', 'simple-seo' ) && 'Речення поспіль починаються з різних слів.' === __( 'Sentences in a row start with different words.', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -5448,6 +5630,13 @@ try {
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Plugin::maybe_upgrade();
 	sseo_check( 'the next request installs the rows again', null !== get_option( Simple_SEO_Access::OPTION, null ) && SIMPLE_SEO_VERSION === get_option( Simple_SEO_Plugin::VERSION_OPTION ) );
+
+	// Last: REST_REQUEST stays defined for the rest of the run.
+	unset( $GLOBALS['current_screen'] );
+	delete_post_meta( $sseo['posts']['scored'], Simple_SEO_Scores::META );
+	define( 'REST_REQUEST', true );
+	wp_update_post( array( 'ID' => $sseo['posts']['scored'], 'post_title' => 'Scored through the REST API' ) );
+	sseo_check( 'scores: a post saved through the REST API (the block editor, an agent) is analysed', null !== Simple_SEO_Scores::get( get_post( $sseo['posts']['scored'] ) ) );
 } catch ( Throwable $sseo_error ) {
 	sseo_check( 'no exception', false, get_class( $sseo_error ) . ': ' . $sseo_error->getMessage() . ' at ' . $sseo_error->getFile() . ':' . $sseo_error->getLine() );
 } finally {
