@@ -89,6 +89,21 @@ final class Simple_SEO_Variables {
 		return trim( str_replace( self::SEPARATOR_MARK, $separator, (string) $text ) );
 	}
 
+	/**
+	 * The value of one variable for a page, plain text; null for a name that is not registered.
+	 * {sep} has no value of its own here: it is Simple_SEO_Titles::separator().
+	 */
+	public static function value( string $name, Simple_SEO_Context $context ): ?string {
+		if ( ! isset( self::$variables[ $name ] ) ) {
+			return null;
+		}
+		if ( 'sep' === $name ) {
+			return Simple_SEO_Titles::separator();
+		}
+
+		return str_replace( self::SEPARATOR_MARK, '', self::plain( (string) call_user_func( self::$variables[ $name ]['callback'], $context ) ) );
+	}
+
 	/** Text without tags and entities, on one line. */
 	public static function plain( string $value ): string {
 		$value = html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES | ENT_HTML5, 'UTF-8' );

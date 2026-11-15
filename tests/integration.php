@@ -2657,6 +2657,116 @@ try {
 	}
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Yoast compatibility' );
+
+	sseo_check( 'the layer loads after every plugin, before the theme', 20 === has_action( 'plugins_loaded', array( Simple_SEO_Yoast_Compat::class, 'load' ) ) && Simple_SEO_Yoast_Compat::loaded() );
+	sseo_check( "Yoast's functions and WPSEO_Primary_Term are served", function_exists( 'wpseo_replace_vars' ) && function_exists( 'yoast_breadcrumb' ) && function_exists( 'yoast_get_primary_term_id' ) && function_exists( 'yoast_get_primary_term' ) && class_exists( 'WPSEO_Primary_Term', false ) );
+	sseo_check( 'nothing that marks a real Yoast is defined', ! defined( 'WPSEO_VERSION' ) && ! class_exists( 'WPSEO_Meta', false ) && ! class_exists( 'WPSEO_Options', false ) && ! class_exists( 'WPSEO_Frontend', false ) && ! function_exists( 'YoastSEO' ) );
+	add_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	$sseo_off = Simple_SEO_Yoast_Compat::enabled();
+	remove_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	add_filter( 'simple_seo_yoast_compat', '__return_false' );
+	$sseo_off2 = Simple_SEO_Yoast_Compat::enabled();
+	remove_filter( 'simple_seo_yoast_compat', '__return_false' );
+	sseo_check( 'not next to Yoast or another SEO plugin, and it can be switched off', ! $sseo_off && ! $sseo_off2 && Simple_SEO_Yoast_Compat::enabled() );
+
+	// Activating Yoast includes its files in that request: its functions would collide with ours.
+	$sseo_saved_pagenow = $GLOBALS['pagenow'] ?? '';
+	$sseo_saved_argv    = $GLOBALS['argv'] ?? array();
+	set_current_screen( 'dashboard' );
+	$sseo_screens = array();
+	foreach ( array( 'plugins.php', 'update.php', 'index.php', 'post.php' ) as $sseo_name ) {
+		$GLOBALS['pagenow']          = $sseo_name;
+		$sseo_screens[ $sseo_name ] = Simple_SEO_Yoast_Compat::activation_request();
+	}
+	unset( $GLOBALS['current_screen'] );
+	$GLOBALS['pagenow'] = $sseo_saved_pagenow;
+	sseo_check( 'not on the Plugins and Update screens, where plugins get activated', array( 'plugins.php' => true, 'update.php' => true, 'index.php' => false, 'post.php' => false ) === $sseo_screens, $sseo_screens );
+	$sseo_cli = array();
+	foreach ( array( 'wp plugin activate wordpress-seo', 'wp plugin install wordpress-seo --activate', 'wp plugin toggle wordpress-seo', 'wp plugin list', 'wp eval-file x.php', 'wp theme activate twentytwentyfive' ) as $sseo_name ) {
+		$GLOBALS['argv']          = explode( ' ', $sseo_name );
+		$sseo_cli[ $sseo_name ] = Simple_SEO_Yoast_Compat::activation_request();
+	}
+	$GLOBALS['argv'] = $sseo_saved_argv;
+	sseo_check( 'nor in WP-CLI plugin activate, install or toggle', array( true, true, true, false, false, false ) === array_values( $sseo_cli ), $sseo_cli );
+
+	// wpseo_replace_vars().
+	$sseo_sep  = Simple_SEO_Titles::separator();
+	$sseo_name = (string) get_option( 'blogname' );
+	sseo_check( 'the site name and the separator, as most themes ask', $sseo_name === wpseo_replace_vars( '%%sitename%%', array() ) && $sseo_sep === wpseo_replace_vars( '%%sep%%', array() ) && "{$sseo_sep} {$sseo_name}" === wpseo_replace_vars( '%%sep%% %%sitename%%', array() ), array( wpseo_replace_vars( '%%sep%%', array() ), wpseo_replace_vars( '%%sep%% %%sitename%%', array() ) ) );
+	update_post_meta( $sseo_p['bc'], Simple_SEO_Fields::meta_key( Simple_SEO_Primary_Term::field( 'category' ) ), '' );
+	$sseo_text = wpseo_replace_vars( '%%title%% %%sep%% %%category%% %%sep%% %%sitename%%', get_post( $sseo_p['bc'] ) );
+	sseo_check( 'a post: its title and primary category', "Bc Post {$sseo_sep} Bc Sport {$sseo_sep} {$sseo_name}" === $sseo_text, $sseo_text );
+	sseo_check( 'a post given as an array of its fields', $sseo_text === wpseo_replace_vars( '%%title%% %%sep%% %%category%% %%sep%% %%sitename%%', array( 'ID' => $sseo_p['bc'] ) ) );
+	$sseo_term = get_term( $sseo_sport, 'category' );
+	wp_update_term( $sseo_sport, 'category', array( 'description' => 'All about sport.' ) );
+	sseo_check( 'a term, as a term or as an object of its fields', 'Bc Sport: All about sport.' === wpseo_replace_vars( '%%term_title%%: %%term_description%%', get_term( $sseo_sport, 'category' ) ) && 'Bc Sport' === wpseo_replace_vars( '%%term_title%%', (object) array( 'term_id' => $sseo_sport, 'taxonomy' => 'category' ) ) );
+	sseo_check( 'post type names', 'Post / Posts' === wpseo_replace_vars( '%%pt_single%% / %%pt_plural%%', get_post( $sseo_p['bc'] ) ) );
+	sseo_check( 'an unknown variable goes away, an omitted one stays', 'x' === wpseo_replace_vars( '%%nope%% x', array() ) && '%%title%% x' === wpseo_replace_vars( '%%title%% x', get_post( $sseo_p['bc'] ), array( 'title' ) ) );
+	update_post_meta( $sseo_p['bc'], 'sseo_price', '100 <b>EUR</b>' );
+	sseo_check( 'custom fields and taxonomies by name', '100 EUR' === wpseo_replace_vars( '%%cf_sseo_price%%', get_post( $sseo_p['bc'] ) ) && str_contains( wpseo_replace_vars( '%%ct_category%%', get_post( $sseo_p['bc'] ) ), 'Bc Sport' ) );
+	wp_update_post( array( 'ID' => $sseo_p['bc'], 'post_author' => $sseo_u['author'] ) );
+	$sseo_vals = array( wp_date( 'Y' ), wpseo_replace_vars( '%%currentyear%%', array() ), get_userdata( $sseo_u['author'] )->display_name, wpseo_replace_vars( '%%name%%', get_post( $sseo_p['bc'] ) ) );
+	sseo_check( 'the year and the author', $sseo_vals[0] === $sseo_vals[1] && $sseo_vals[2] === $sseo_vals[3], $sseo_vals );
+	sseo_check( "text without Yoast variables stays as it is, Simple SEO's {braces} too", 'Plain {title}  text ' === wpseo_replace_vars( 'Plain {title}  text ', array() ) );
+
+	// The current page: what wpseo_replace_vars( …, array() ) and yoast_breadcrumb() are about.
+	$sseo_saved_query                = $GLOBALS['wp_query'];
+	$sseo_saved_wp_actions           = $GLOBALS['wp_actions']['wp'] ?? null;
+	$GLOBALS['wp_query']             = sseo_query( array( 'p' => $sseo_p['bc'] ) );
+	$GLOBALS['wp_actions']['wp']     = 1;
+	Simple_SEO_Context::reset();
+	sseo_check( 'with no post given, the page being shown', 'Bc Post' === wpseo_replace_vars( '%%title%%', array() ) );
+
+	// yoast_breadcrumb().
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	update_option( Simple_SEO_Breadcrumbs::LABELS, array( 'home' => '', 'prefix' => 'You & me:' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_html = yoast_breadcrumb( '<div class="breadcrumbs">', '</div>', false );
+	$sseo_bsep = ' ' . esc_html( Simple_SEO_Breadcrumbs::separator() ) . ' ';
+	sseo_check( 'the markup themes styled for Yoast: spans in a span, the last one marked', '<div class="breadcrumbs"><span>You &amp; me: <span><a href="' . esc_url( home_url( '/' ) ) . '">Home</a></span>' . $sseo_bsep . '<span><a href="' . esc_url( (string) get_category_link( $sseo_news ) ) . '">Bc News</a></span>' . $sseo_bsep . '<span><a href="' . esc_url( (string) get_category_link( $sseo_sport ) ) . '">Bc Sport</a></span>' . $sseo_bsep . '<span class="breadcrumb_last" aria-current="page">Bc Post</span></span></div>' === $sseo_html, $sseo_html );
+	$sseo_ret  = 'x';
+	$sseo_out  = sseo_capture( static function () use ( &$sseo_ret ): void {
+		$sseo_ret = yoast_breadcrumb( '<p>', '</p>' );
+	} );
+	sseo_check( 'printed by default, returning nothing to print twice', '' === $sseo_ret && $sseo_out === str_replace( array( '<div class="breadcrumbs">', '</div>' ), array( '<p>', '</p>' ), $sseo_html ), $sseo_out );
+	// The row as if a sanitizer had let markup through: the output must escape it itself.
+	$sseo_raw = static fn(): array => array( 'show_current' => false, 'separator' => '<b>' );
+	add_filter( 'pre_option_' . Simple_SEO_Breadcrumbs::OPTION, $sseo_raw );
+	Simple_SEO_Settings::flush();
+	$sseo_html = yoast_breadcrumb( '', '', false );
+	remove_filter( 'pre_option_' . Simple_SEO_Breadcrumbs::OPTION, $sseo_raw );
+	sseo_check( 'without the page itself no last mark; the separator escaped', ! str_contains( $sseo_html, 'breadcrumb_last' ) && ! str_contains( $sseo_html, 'Bc Post' ) && str_contains( $sseo_html, ' &lt;b&gt; ' ), $sseo_html );
+	delete_option( Simple_SEO_Breadcrumbs::OPTION );
+	delete_option( Simple_SEO_Breadcrumbs::LABELS );
+	$GLOBALS['wp_query'] = sseo_query( array() );
+	$GLOBALS['wp_query']->is_home = true;
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Context::reset();
+	sseo_check( 'no trail on the home page, not even the wrappers', '' === yoast_breadcrumb( '<div>', '</div>', false ) );
+	$sseo['posts'][]             = (int) wp_insert_post( array( 'post_title' => 'Compat & <i>co</i>', 'post_status' => 'publish', 'post_category' => array( $sseo_news ) ) );
+	$GLOBALS['wp_query']         = sseo_query( array( 'p' => end( $sseo['posts'] ) ) );
+	Simple_SEO_Context::reset();
+	sseo_check( 'the page title escaped', str_contains( yoast_breadcrumb( '', '', false ), '<span class="breadcrumb_last" aria-current="page">Compat &amp; co</span>' ), yoast_breadcrumb( '', '', false ) );
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+	if ( null === $sseo_saved_wp_actions ) {
+		unset( $GLOBALS['wp_actions']['wp'] );
+	} else {
+		$GLOBALS['wp_actions']['wp'] = $sseo_saved_wp_actions;
+	}
+	Simple_SEO_Context::reset();
+
+	// WPSEO_Primary_Term and the primary term helpers.
+	$sseo_bc_other = (int) get_term_by( 'name', 'Bc Other', 'category' )->term_id;
+	$sseo_primary  = new WPSEO_Primary_Term( 'category', $sseo_p['bc'] );
+	sseo_check( 'without a pick, the deepest category', $sseo_sport === $sseo_primary->get_primary_term(), $sseo_primary->get_primary_term() );
+	$sseo_primary->set_primary_term( $sseo_bc_other );
+	sseo_check( 'set_primary_term() picks it in the SEO box', (string) $sseo_bc_other === Simple_SEO_Fields::post_value( $sseo_p['bc'], Simple_SEO_Primary_Term::field( 'category' ) ) && $sseo_bc_other === $sseo_primary->get_primary_term() );
+	sseo_check( 'yoast_get_primary_term_id() and yoast_get_primary_term()', $sseo_bc_other === yoast_get_primary_term_id( 'category', $sseo_p['bc'] ) && 'Bc Other' === yoast_get_primary_term( 'category', get_post( $sseo_p['bc'] ) ) );
+	sseo_check( 'false without terms in the taxonomy or for an unknown one', false === ( new WPSEO_Primary_Term( 'post_tag', $sseo_p['bc'] ) )->get_primary_term() && false === yoast_get_primary_term_id( 'nope', $sseo_p['bc'] ) && '' === yoast_get_primary_term( 'nope', $sseo_p['bc'] ) );
+	update_post_meta( $sseo_p['bc'], Simple_SEO_Fields::meta_key( Simple_SEO_Primary_Term::field( 'category' ) ), '' );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';

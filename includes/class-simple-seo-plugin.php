@@ -36,6 +36,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Files::init();
 		Simple_SEO_Cleanup::init();
 		Simple_SEO_Llms::init();
+		Simple_SEO_Yoast_Compat::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
