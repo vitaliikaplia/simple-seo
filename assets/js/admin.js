@@ -122,6 +122,9 @@
 
 	var canvas = null;
 
+	// What the search result preview shows now: the content analysis checks the same title and description.
+	var lastSnippet = null;
+
 	function textWidth( text, font ) {
 		canvas = canvas || document.createElement( 'canvas' );
 		var context = canvas.getContext( '2d' );
@@ -312,6 +315,8 @@
 			}
 		}
 
+		lastSnippet = { title: texts.title, description: texts.description, url: url };
+
 		var limits      = LIMITS[ state.view ];
 		// Without a title of ours search engines show the theme's: close to the post's own title.
 		var title       = fit( texts.title || plain( source.title ), limits.title );
@@ -407,6 +412,125 @@
 	}
 
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-snippet]' ), initSnippet );
+
+	/*
+	 * The content analysis (Simple_SEO_Analysis): redone through its REST route a moment after the
+	 * text, the keyphrases, the title or the description change; the server's checks are drawn as
+	 * they come.
+	 */
+	function editorContent() {
+		var block = blockEditor();
+		if ( block && 'function' === typeof block.getEditedPostContent ) {
+			return block.getEditedPostContent();
+		}
+
+		var classic = window.tinymce && 'function' === typeof window.tinymce.get ? window.tinymce.get( 'content' ) : null;
+		if ( classic && ! classic.isHidden() ) {
+			return classic.getContent();
+		}
+
+		return fieldValue( 'content' );
+	}
+
+	function initAnalysis( root ) {
+		var data;
+		try {
+			data = JSON.parse( root.getAttribute( 'data-simple-seo-analysis' ) );
+		} catch ( error ) {
+			return;
+		}
+
+		var score   = root.querySelector( '.simple-seo-analysis-score' );
+		var list    = root.querySelector( '.simple-seo-analysis-checks' );
+		var failed  = root.querySelector( '.simple-seo-analysis-error' );
+		var sent    = null;
+		var timer   = null;
+		var running = false;
+
+		function payload() {
+			var body = {
+				keyphrase: fieldValue( 'simple-seo-field-keyphrase' ),
+				keyphrases: fieldValue( 'simple-seo-field-keyphrases' ),
+				content: editorContent()
+			};
+			if ( lastSnippet ) {
+				body.title       = lastSnippet.title;
+				body.description = lastSnippet.description;
+				body.url         = lastSnippet.url;
+			}
+			// What this screen has no field for, the server takes as saved.
+			Object.keys( body ).forEach( function ( key ) {
+				if ( null == body[ key ] ) {
+					delete body[ key ];
+				}
+			} );
+
+			return JSON.stringify( body );
+		}
+
+		function draw( result ) {
+			score.className = 'simple-seo-analysis-score is-' + result.rating;
+			score.firstChild.textContent = data.score.replace( '%s', String( result.score ) );
+			list.textContent = '';
+			result.checks.forEach( function ( check ) {
+				var item = document.createElement( 'li' );
+				item.className   = 'is-' + check.status;
+				item.textContent = check.text;
+				list.appendChild( item );
+			} );
+		}
+
+		function send() {
+			if ( running ) {
+				soon( 500 );
+				return;
+			}
+			var body = payload();
+			if ( body === sent ) {
+				return;
+			}
+			// A failed request is not repeated for the same text: the next change sends it again.
+			sent    = body;
+			running = true;
+			window.fetch( data.url + ( -1 === data.url.indexOf( '?' ) ? '?' : '&' ) + '_locale=user', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': data.nonce },
+				body: body
+			} ).then( function ( response ) {
+				if ( ! response.ok ) {
+					throw new Error( String( response.status ) );
+				}
+				return response.json();
+			} ).then( function ( result ) {
+				failed.hidden = true;
+				draw( result );
+			} ).catch( function () {
+				failed.hidden = false;
+			} ).then( function () {
+				running = false;
+			} );
+		}
+
+		function soon( delay ) {
+			window.clearTimeout( timer );
+			timer = window.setTimeout( send, delay );
+		}
+
+		// The page came with the analysis of what it had then.
+		sent = payload();
+		document.addEventListener( 'input', function ( event ) {
+			if ( event.target && /^simple-seo-field-(?:keyphrases?|title|description)$/.test( event.target.id ) ) {
+				soon( 800 );
+			}
+		} );
+		// The text of the editors changes without events of their own: look every few seconds.
+		window.setInterval( function () {
+			soon( 0 );
+		}, 3000 );
+	}
+
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-analysis]' ), initAnalysis );
 
 	// The import goes on by itself, a request at a time; the button stays for a page that stops.
 	var next = document.querySelector( '[data-simple-seo-continue]' );

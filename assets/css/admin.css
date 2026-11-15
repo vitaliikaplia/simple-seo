@@ -126,3 +126,51 @@
 	font: normal 16px/1 dashicons;
 	vertical-align: text-bottom;
 }
+
+/* The content analysis under the keyphrases: a dot coloured by how each check went. */
+.simple-seo-analysis {
+	max-width: 760px;
+	margin: 1em 0 0;
+}
+
+.simple-seo-analysis-score {
+	margin: 0 0 0.6em;
+	font-size: 14px;
+}
+
+.simple-seo-analysis-checks {
+	margin: 0;
+}
+
+.simple-seo-analysis-checks li {
+	margin: 0 0 6px;
+	padding-left: 18px;
+	text-indent: -18px;
+}
+
+.simple-seo-analysis-score::before,
+.simple-seo-analysis-checks li::before {
+	content: "";
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-right: 8px;
+	border-radius: 50%;
+	background: #8c8f94;
+}
+
+.simple-seo-analysis .is-good::before {
+	background: #00a32a;
+}
+
+.simple-seo-analysis .is-ok::before {
+	background: #dba617;
+}
+
+.simple-seo-analysis .is-bad::before {
+	background: #d63638;
+}
+
+.simple-seo-analysis .is-info::before {
+	background: #72aee6;
+}

@@ -444,7 +444,7 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'test_advanced', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -1715,6 +1715,119 @@ try {
 	remove_shortcode( 'sseo_pt' );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Content analysis' );
+
+	wp_set_current_user( $sseo_ed );
+	$sseo_an_post              = wp_insert_post( array( 'post_title' => 'Ключова фраза', 'post_name' => 'kliuchova-fraza', 'post_status' => 'publish' ) );
+	$sseo['posts']['analysis'] = $sseo_an_post;
+	$sseo_an_find              = static fn( array $result, string $id ): array => array_values( array_filter( $result['checks'], static fn( array $check ): bool => $id === $check['id'] ) );
+	$sseo_an_status            = static fn( array $result, string $id ): string => $sseo_an_find( $result, $id )[0]['status'] ?? 'none';
+	$sseo_an_text              = static fn( array $result, string $id ): string => $sseo_an_find( $result, $id )[0]['text'] ?? '';
+	$sseo_an_field             = Simple_SEO_Fields::get( 'keyphrase' );
+	sseo_check( 'the keyphrase fields: posts only, in the analysis group', array( 'post' ) === $sseo_an_field['objects'] && 'analysis' === $sseo_an_field['group'] && 'textarea' === Simple_SEO_Fields::get( 'keyphrases' )['type'] && array( 'post' ) === Simple_SEO_Fields::get( 'keyphrases' )['objects'] && 'Content analysis' === Simple_SEO_Fields::group_heading( 'analysis' ) );
+
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => '<p>Short text.</p>', 'title' => '', 'description' => '', 'keyphrase' => ' ' ) );
+	sseo_check( 'no keyphrase: a note, and the checks of the page only', 'info' === $sseo_an_status( $sseo_an, 'keyphrase' ) && 'none' === $sseo_an_status( $sseo_an, 'keyphrase_title' ) && 'bad' === $sseo_an_status( $sseo_an, 'length' ) && 'bad' === $sseo_an_status( $sseo_an, 'title_length' ) && 'bad' === $sseo_an_status( $sseo_an, 'description_length' ) && 'ok' === $sseo_an_status( $sseo_an, 'images' ) && 'none' === $sseo_an_status( $sseo_an, 'alt' ), $sseo_an['checks'] );
+	sseo_check( 'a note counts for nothing; the score of the rest and its rating', 2 === $sseo_an['words'] && 25 === $sseo_an['score'] && 'bad' === $sseo_an['rating'], $sseo_an );
+
+	$sseo_an_body = '<p>Ключова фраза на початку тексту.</p><h2>Де шукати ключові фрази</h2><p>' . str_repeat( 'Слово ', 300 ) . 'і трохи ключової фрази.</p>'
+		. '<p><a href="/inside/">всередині</a> <a href="/second/">ще</a> <a href="https://example.org/">назовні</a></p><img src="/a.png" alt="Ключова фраза на фото">';
+	$sseo_an_good = array(
+		'content'     => $sseo_an_body,
+		'title'       => 'Ключова фраза: як знайти і де вжити – IT',
+		'description' => 'Що таке ключова фраза і чому вона важлива для пошуку сторінки в Google та інших пошуковиках.',
+		'url'         => home_url( '/kliuchova-fraza/' ),
+		'keyphrase'   => '  Ключова   фраза ',
+	);
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), $sseo_an_good );
+	$sseo_an_ids = array( 'keyphrase_length', 'keyphrase_title', 'keyphrase_description', 'keyphrase_slug', 'keyphrase_intro', 'keyphrase_headings', 'keyphrase_density', 'keyphrase_images', 'keyphrase_used', 'length', 'links_internal', 'links_external', 'images', 'title_length', 'description_length' );
+	sseo_check( 'a page that does it all: every check good, in their order, other forms of the words found', $sseo_an_ids === array_column( $sseo_an['checks'], 'id' ) && array( 'good' ) === array_values( array_unique( array_column( $sseo_an['checks'], 'status' ) ) ) && 100 === $sseo_an['score'] && 'good' === $sseo_an['rating'], $sseo_an['checks'] );
+	sseo_check( 'the counts are told', str_contains( $sseo_an_text( $sseo_an, 'keyphrase_density' ), ' 3 ' ) && str_contains( $sseo_an_text( $sseo_an, 'links_internal' ), ': 2.' ) && str_contains( $sseo_an_text( $sseo_an, 'links_external' ), ': 1.' ) && str_contains( $sseo_an_text( $sseo_an, 'length' ), '316' ), $sseo_an['checks'] );
+
+	$sseo_an = Simple_SEO_Analysis::run(
+		get_post( $sseo_an_post ),
+		array(
+			'content'     => '<h2>Про інше</h2><p>Перший абзац без неї.</p><p>Другий теж.</p><p>Ось ключова фраза.</p><img src="/a.png"><img src="/c.png" alt=""><img src="/b.png" alt="Фото">',
+			'title'       => 'Зовсім інша назва цієї сторінки, задовга для пошукової видачі – IT',
+			'description' => 'Короткий опис.',
+			'url'         => home_url( '/insha-adresa/' ),
+			'keyphrase'   => 'ключова фраза',
+		)
+	);
+	sseo_check( 'the keyphrase missing from the title, description, address, first paragraph and subheadings', 'bad' === $sseo_an_status( $sseo_an, 'keyphrase_title' ) && 'bad' === $sseo_an_status( $sseo_an, 'keyphrase_description' ) && 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_slug' ) && 'bad' === $sseo_an_status( $sseo_an, 'keyphrase_intro' ) && 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_headings' ) && 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_images' ), $sseo_an['checks'] );
+	sseo_check( 'a short text with the keyphrase once is enough', 'good' === $sseo_an_status( $sseo_an, 'keyphrase_density' ) );
+	sseo_check( 'images without alt text are counted; no links of either kind', 'bad' === $sseo_an_status( $sseo_an, 'alt' ) && str_contains( $sseo_an_text( $sseo_an, 'alt' ), ': 2.' ) && 'ok' === $sseo_an_status( $sseo_an, 'links_internal' ) && 'ok' === $sseo_an_status( $sseo_an, 'links_external' ) && 'good' === $sseo_an_status( $sseo_an, 'images' ), $sseo_an['checks'] );
+	sseo_check( 'a title too long and a description too short', 'ok' === $sseo_an_status( $sseo_an, 'title_length' ) && str_contains( $sseo_an_text( $sseo_an, 'title_length' ), 'cut' ) && 'ok' === $sseo_an_status( $sseo_an, 'description_length' ) && str_contains( $sseo_an_text( $sseo_an, 'description_length' ), 'short' ), $sseo_an['checks'] );
+
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => '<p>Ключова фраза. Ключова фраза. Ключова фраза. Ключова фраза.</p>', 'keyphrase' => 'ключова фраза' ) );
+	sseo_check( 'the keyphrase too often, without subheadings or images to check', 'bad' === $sseo_an_status( $sseo_an, 'keyphrase_density' ) && str_contains( $sseo_an_text( $sseo_an, 'keyphrase_density' ), '100' ) && 'none' === $sseo_an_status( $sseo_an, 'keyphrase_headings' ) && 'none' === $sseo_an_status( $sseo_an, 'keyphrase_images' ), $sseo_an['checks'] );
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => '<p>Ключова фраза ' . str_repeat( 'слово ', 500 ) . '</p>', 'keyphrase' => 'ключова фраза' ) );
+	sseo_check( 'the keyphrase rare in a long text', 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_density' ), $sseo_an_text( $sseo_an, 'keyphrase_density' ) );
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => '<p>Нічого.</p>', 'keyphrase' => 'ключова фраза' ) );
+	sseo_check( 'the keyphrase not in the text at all', 'bad' === $sseo_an_status( $sseo_an, 'keyphrase_density' ) );
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => '<p>Text.</p>', 'keyphrase' => 'one two three four five' ) );
+	sseo_check( 'a keyphrase of five words is long', 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_length' ) );
+
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), array( 'content' => $sseo_an_body, 'keyphrase' => '', 'keyphrases' => "інша фраза\nслово\n\nінша фраза\nп'ята\nшоста\nсьома" ) );
+	$sseo_an_more = $sseo_an_find( $sseo_an, 'more_keyphrases' );
+	sseo_check( 'more keyphrases: each once, four at most, counted in the text', 4 === count( $sseo_an_more ) && 'bad' === $sseo_an_more[0]['status'] && str_contains( $sseo_an_more[0]['text'], 'інша фраза' ) && 'good' === $sseo_an_more[1]['status'] && str_contains( $sseo_an_more[1]['text'], '300' ) && str_contains( $sseo_an_more[3]['text'], 'шоста' ), $sseo_an_more );
+
+	// As saved: the post's content, its fields, its title and address as the site shows them.
+	wp_update_post( array( 'ID' => $sseo_an_post, 'post_content' => $sseo_an_body ) );
+	update_post_meta( $sseo_an_post, '_simple_seo_keyphrase', 'Ключова фраза' );
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ) );
+	sseo_check( 'as saved: the post\'s own text, keyphrase, title and address', 'good' === $sseo_an_status( $sseo_an, 'keyphrase_title' ) && 'good' === $sseo_an_status( $sseo_an, 'keyphrase_slug' ) && 'good' === $sseo_an_status( $sseo_an, 'keyphrase_intro' ) && 'bad' !== $sseo_an_status( $sseo_an, 'description_length' ), $sseo_an['checks'] );
+
+	$sseo_an_other = wp_insert_post( array( 'post_title' => 'Other page on the phrase', 'post_status' => 'publish' ) );
+	$sseo_an_trash = wp_insert_post( array( 'post_title' => 'Trashed page on the phrase', 'post_status' => 'trash' ) );
+	$sseo['posts']['analysis_other'] = $sseo_an_other;
+	$sseo['posts']['analysis_trash'] = $sseo_an_trash;
+	update_post_meta( $sseo_an_other, '_simple_seo_keyphrase', 'КЛЮЧОВА ФРАЗА' );
+	update_post_meta( $sseo_an_trash, '_simple_seo_keyphrase', 'ключова фраза' );
+	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), $sseo_an_good );
+	sseo_check( 'the same focus keyphrase on another page, whatever its case; a trashed page does not count', 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_used' ) && str_contains( $sseo_an_text( $sseo_an, 'keyphrase_used' ), '"Other page on the phrase"' ) && ! str_contains( $sseo_an_text( $sseo_an, 'keyphrase_used' ), 'Trashed' ), $sseo_an_text( $sseo_an, 'keyphrase_used' ) );
+	delete_post_meta( $sseo_an_other, '_simple_seo_keyphrase' );
+
+	sseo_check( 'words: lower case, apostrophes alike', array( "мар'яна", "п'є", 'seo-аналіз' ) === Simple_SEO_Analysis::words( 'Мар’яна пʼє SEO-аналіз!' ) );
+	sseo_check( 'stems: two letters off a long word, one off a middle one, short ones whole', 'анал' === Simple_SEO_Analysis::stem( 'аналіз' ) && 'фраз' === Simple_SEO_Analysis::stem( 'фраза' ) && 'seo' === Simple_SEO_Analysis::stem( 'seo' ) && 'page' === Simple_SEO_Analysis::stem( 'pages' ) && 'сай' === Simple_SEO_Analysis::stem( 'сайт' ) );
+	sseo_check( 'contains: every stem, in any order; nothing to look for is not found', Simple_SEO_Analysis::contains( array( 'фрази', 'ключові' ), array( 'ключо', 'фраз' ) ) && ! Simple_SEO_Analysis::contains( array( 'ключові' ), array( 'ключо', 'фраз' ) ) && ! Simple_SEO_Analysis::contains( array( 'x' ), array() ) );
+	sseo_check( 'occurrences: the stems one after another, not overlapping', 2 === Simple_SEO_Analysis::occurrences( array( 'a', 'b', 'a', 'b', 'a' ), array( 'a', 'b' ) ) && 0 === Simple_SEO_Analysis::occurrences( array( 'b', 'a' ), array( 'a', 'b' ) ) && 3 === Simple_SEO_Analysis::occurrences( array( 'a', 'a', 'a' ), array( 'a' ) ) && 1 === Simple_SEO_Analysis::occurrences( array( 'a', 'a', 'a' ), array( 'a', 'a' ) ) );
+	sseo_check( 'Cyrillic in Latin letters, as slugs spell it', 'shchastia izhak kliuchova' === Simple_SEO_Analysis::latin( 'Щастя Їжак ключова' ) );
+
+	// The REST route the editor sends its text to.
+	$sseo_an_rest = static function ( int $id, array $params ): WP_REST_Response {
+		$request = new WP_REST_Request( 'POST', '/simple-seo/v1/analysis/' . $id );
+		$request->set_body_params( $params );
+
+		return rest_do_request( $request );
+	};
+	$sseo_an_response = $sseo_an_rest( $sseo_an_post, array_merge( $sseo_an_good, array( 'content' => '<p>Ключова фраза одна.</p>' ) ) );
+	sseo_check( 'REST: the analysis of the text sent', 200 === $sseo_an_response->get_status() && 3 === $sseo_an_response->get_data()['words'] && 'good' === $sseo_an_status( $sseo_an_response->get_data(), 'keyphrase_used' ) && 'good' === $sseo_an_status( $sseo_an_response->get_data(), 'keyphrase_title' ), $sseo_an_response->get_data() );
+	wp_set_current_user( $sseo_au );
+	sseo_check( 'REST: not for an author on someone else\'s post', in_array( $sseo_an_rest( $sseo_an_post, array() )->get_status(), array( 401, 403 ), true ) );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_an_response = $sseo_an_rest( $sseo_an_post, $sseo_an_good );
+	sseo_check( 'REST: not for whoever cannot edit the post', in_array( $sseo_an_response->get_status(), array( 401, 403 ), true ), $sseo_an_response->get_status() );
+	wp_set_current_user( $sseo_ed );
+	$sseo_an_private = wp_insert_post( array( 'post_type' => 'sseo_private', 'post_title' => 'No fields here', 'post_status' => 'publish' ) );
+	$sseo['posts']['analysis_private'] = $sseo_an_private;
+	sseo_check( 'REST: not for a type without SEO fields, nor for a post that is not there', in_array( $sseo_an_rest( $sseo_an_private, array() )->get_status(), array( 401, 403 ), true ) && in_array( $sseo_an_rest( 99999999, array() )->get_status(), array( 401, 403, 404 ), true ) );
+
+	update_post_meta( $sseo_an_post, '_simple_seo_keyphrases', "\"quoted\" <i>tag</i>" );
+	$sseo_html = Simple_SEO_Analysis::render( get_post( $sseo_an_post ) );
+	$sseo_an   = Simple_SEO_Analysis::run( get_post( $sseo_an_post ) );
+	preg_match( '/data-simple-seo-analysis="([^"]*)"/', $sseo_html, $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check( 'the panel: the route, a nonce and the labels for the script', is_array( $sseo_json ) && rest_url( 'simple-seo/v1/analysis/' . $sseo_an_post ) === $sseo_json['url'] && false !== wp_verify_nonce( $sseo_json['nonce'], 'wp_rest' ) && str_contains( $sseo_json['score'], '%s' ), $sseo_json );
+	sseo_check( 'the panel: the score of the saved post and a line for each check', str_contains( $sseo_html, '<p class="simple-seo-analysis-score is-' . $sseo_an['rating'] . '"><strong>SEO score: ' . $sseo_an['score'] . ' of 100</strong>' ) && count( $sseo_an['checks'] ) === substr_count( $sseo_html, '<li class="is-' ), $sseo_html );
+	sseo_check( 'the panel escapes what it prints', str_contains( $sseo_html, '&quot;quoted&quot;' ) && ! str_contains( $sseo_html, '<i>' ) );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_an_post ) ) );
+	sseo_check( 'meta box: the panel after the keyphrases', strpos( $sseo_html, 'simple-seo-analysis"' ) > strpos( $sseo_html, 'id="simple-seo-field-keyphrases"' ) && str_contains( $sseo_html, 'name="simple_seo[keyphrase]"' ) );
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
+	sseo_check( 'term screen: no keyphrases and no analysis', ! str_contains( $sseo_html, 'simple_seo[keyphrase]' ) && ! str_contains( $sseo_html, 'simple-seo-analysis' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'wp-loc' );
 
 	if ( ! Simple_SEO_WP_Loc::active() || count( WP_LOC_Languages::get_active_languages() ) < 2 ) {
@@ -1787,6 +1900,17 @@ try {
 			sseo_check( "the text of a post in {$sseo_code} is rendered in its language, and the language is back afterwards", 'language ' . $sseo_code === $sseo_pt['text'] && ! WP_LOC_Routing::has_switched_language(), $sseo_pt['text'] );
 		}
 		unregister_block_type( 'sseo/language' );
+
+		// The same focus keyphrase on a page of another language is no competitor; of the same, it is.
+		foreach ( $sseo_locked as $sseo_id ) {
+			update_post_meta( $sseo_id, '_simple_seo_keyphrase', 'спільна фраза' );
+		}
+		$sseo_an_lang = static fn(): string => current( array_filter( Simple_SEO_Analysis::run( get_post( $sseo_locked[ $sseo_codes[0] ] ), array( 'content' => '<p>x</p>' ) )['checks'], static fn( array $check ): bool => 'keyphrase_used' === $check['id'] ) )['status'] ?? 'none';
+		sseo_check( 'the same keyphrase on a page of the other language: no competitor', 'good' === $sseo_an_lang() );
+		$sseo['posts']['analysis_same_language'] = wp_insert_post( array( 'post_title' => 'Same language', 'post_status' => 'publish' ) );
+		do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo['posts']['analysis_same_language'], 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_codes[0], 'source_language_code' => null ) );
+		update_post_meta( $sseo['posts']['analysis_same_language'], '_simple_seo_keyphrase', 'Спільна фраза' );
+		sseo_check( 'the same keyphrase on a page of the same language: a competitor', 'ok' === $sseo_an_lang() );
 		delete_option( $sseo_other_row );
 	}
 
@@ -5245,6 +5369,7 @@ try {
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
 	sseo_check( 'the Import tab is translated', 'Імпорт' === __( 'Import', 'simple-seo' ) && 'Імпортувати з %s' === __( 'Import from %s', 'simple-seo' ) && 'шаблони: %s' === __( 'templates: %s', 'simple-seo' ) && 'Прибрати дані %s' === __( 'Remove the data of %s', 'simple-seo' ) );
 	sseo_check( 'the search result preview is translated', 'Вигляд у пошуковій видачі' === __( 'Search result preview', 'simple-seo' ) && 'SEO-заголовок: символів — %s, пошуковик його обріже.' === __( 'SEO title: %s characters, search engines will cut it.', 'simple-seo' ) );
+	sseo_check( 'the content analysis is translated', 'Аналіз контенту' === __( 'Content analysis', 'simple-seo' ) && 'SEO-оцінка: %s зі 100' === __( 'SEO score: %s of 100', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
