@@ -105,17 +105,96 @@ $sseo_saved_options = array(
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
+	'llms'           => get_option( Simple_SEO_Llms::OPTION ),
+	'llms_text'      => get_option( Simple_SEO_Llms::TEXT ),
+	'blogname'       => get_option( 'blogname' ),
+	'blogdescription' => get_option( 'blogdescription' ),
 	'file_backups'   => get_option( Simple_SEO_Files::BACKUPS_OPTION ),
 );
 
 // robots.txt, .htaccess and the copy next to it as they were: the Files section changes them.
 require_once ABSPATH . 'wp-admin/includes/file.php';
 $sseo_saved_files = array();
-foreach ( array( 'robots.txt', '.htaccess', Simple_SEO_Files::DISK_COPY ) as $sseo_name ) {
+foreach ( array( 'robots.txt', '.htaccess', Simple_SEO_Files::DISK_COPY, 'llms.txt' ) as $sseo_name ) {
 	$sseo_path                      = get_home_path() . $sseo_name;
 	$sseo_saved_files[ $sseo_path ] = is_file( $sseo_path ) ? (string) file_get_contents( $sseo_path ) : null;
 }
 $sseo_saved_apache = $GLOBALS['is_apache'] ?? false;
+
+// Everything the test changes goes back here: in finally, and at shutdown when something in the
+// code under test exits (a served file, or a mutation that makes it serve one), so a broken run
+// never leaves users, posts, options or files behind for the next one.
+$sseo_cleaned = false;
+$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned ): void {
+	if ( $sseo_cleaned ) {
+		return;
+	}
+	$sseo_cleaned = true;
+
+	$_POST = array();
+	wp_set_current_user( 0 );
+	foreach ( $sseo['posts'] as $sseo_id ) {
+		wp_delete_post( (int) $sseo_id, true );
+	}
+	foreach ( $sseo['terms'] as $sseo_term ) {
+		wp_delete_term( $sseo_term[0], $sseo_term[1] );
+		// wp-loc keeps a term of another language out of reach: delete it in its own language.
+		foreach ( Simple_SEO_WP_Loc::codes() as $sseo_code ) {
+			if ( '' !== $sseo_code && $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( "SELECT term_id FROM {$GLOBALS['wpdb']->terms} WHERE term_id = %d", (int) $sseo_term[0] ) ) ) {
+				Simple_SEO_WP_Loc::in_language( $sseo_code, static fn() => wp_delete_term( $sseo_term[0], $sseo_term[1] ) );
+			}
+		}
+	}
+	foreach ( $sseo['users'] as $sseo_id ) {
+		if ( is_int( $sseo_id ) ) {
+			wp_delete_user( $sseo_id );
+		}
+	}
+	remove_role( 'sseo_seo_manager' );
+	foreach ( array( 'show_on_front', 'page_on_front', 'page_for_posts' ) as $sseo_name ) {
+		update_option( $sseo_name, $sseo_saved_options[ $sseo_name ] );
+	}
+	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
+	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
+	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels' ) as $sseo_name => $sseo_key ) {
+		delete_option( $sseo_name );
+		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
+			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
+		}
+	}
+	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
+	update_option( 'blogname', (string) $sseo_saved_options['blogname'] );
+	update_option( 'blogdescription', (string) $sseo_saved_options['blogdescription'] );
+	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION => 'robots_txt', Simple_SEO_Files::BACKUPS_OPTION => 'file_backups', Simple_SEO_Cleanup::OPTION => 'cleanup', Simple_SEO_Llms::OPTION => 'llms', Simple_SEO_Llms::TEXT => 'llms_text' ) as $sseo_name => $sseo_key ) {
+		delete_option( $sseo_name );
+		if ( false !== $sseo_saved_options[ $sseo_key ] ) {
+			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ], '', false );
+		}
+	}
+	// A run broken in the middle can leave the site root read-only.
+	if ( ! is_writable( ABSPATH ) ) {
+		chmod( ABSPATH, 0755 );
+	}
+	foreach ( $sseo_saved_files as $sseo_path => $sseo_text ) {
+		if ( is_file( $sseo_path ) ) {
+			chmod( $sseo_path, 0644 );
+			unlink( $sseo_path );
+		}
+		if ( null !== $sseo_text ) {
+			file_put_contents( $sseo_path, $sseo_text );
+		}
+	}
+	$GLOBALS['is_apache'] = $sseo_saved_apache;
+	unset( $_SERVER['REQUEST_METHOD'] );
+	flush_rewrite_rules( false );
+	// Rows of other languages that a broken run may have left behind.
+	unset( $_COOKIE['admin_lang'] );
+	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%' OR option_name LIKE 'simple\\_seo\\_llms\\_text\\_%'" ) as $sseo_name ) {
+		delete_option( (string) $sseo_name );
+	}
+};
+register_shutdown_function( $sseo_cleanup );
 
 try {
 	// ------------------------------------------------------------------------------------------
@@ -1278,7 +1357,7 @@ try {
 	Simple_SEO_Context::reset();
 	$sseo_404 = static fn(): Simple_SEO_Context => Simple_SEO_Context::from_query( $sseo_q404 );
 
-	sseo_check( 'only the special pages row and the breadcrumb labels are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
+	sseo_check( 'only the special pages row, the breadcrumb labels and the llms.txt text are kept per language', array( Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Llms::TEXT ) === Simple_SEO_Settings::localized(), Simple_SEO_Settings::localized() );
 	Simple_SEO_Settings::install();
 	sseo_check( 'install() creates the special pages row', array() === get_option( Simple_SEO_Special::OPTION, null ) );
 
@@ -2341,6 +2420,243 @@ try {
 	Simple_SEO_Settings::flush();
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'llms.txt' );
+
+	delete_option( Simple_SEO_Llms::OPTION );
+	delete_option( Simple_SEO_Llms::TEXT );
+	Simple_SEO_Settings::flush();
+	Simple_SEO_Llms::flush();
+	update_option( 'blog_public', '1' );
+	update_option( 'show_on_front', 'posts' );
+	update_option( Simple_SEO_Sitemaps::OPTION, array( 'enabled' => true ) );
+	$sseo_page = static function ( string $title, array $args = array() ) use ( &$sseo ): int {
+		$id              = (int) wp_insert_post( array_merge( array( 'post_type' => 'page', 'post_title' => $title, 'post_status' => 'publish' ), $args ) );
+		$sseo['posts'][] = $id;
+
+		return $id;
+	};
+	$sseo_lp = array(
+		'about'    => $sseo_page( 'Llms About', array( 'menu_order' => 2 ) ),
+		'contacts' => $sseo_page( 'Llms Contacts', array( 'menu_order' => 1 ) ),
+		'hidden'   => $sseo_page( 'Llms Hidden' ),
+		'locked'   => $sseo_page( 'Llms Locked', array( 'post_password' => 'x' ) ),
+		'draft'    => $sseo_page( 'Llms Draft', array( 'post_status' => 'draft' ) ),
+		'old'      => $sseo_page( 'Llms [old] post', array( 'post_type' => 'post', 'post_date' => '2020-01-01 10:00:00' ) ),
+		'new'      => $sseo_page( 'Llms new post', array( 'post_type' => 'post', 'post_date' => '2026-01-01 10:00:00' ) ),
+		'away'     => $sseo_page( 'Llms Elsewhere' ),
+		'marked'   => $sseo_page( 'Llms Tom\'s & <em>Jerry</em>' ),
+	);
+	update_post_meta( $sseo_lp['away'], Simple_SEO_Fields::meta_key( 'canonical' ), 'https://example.com/elsewhere/' );
+	$sseo_few        = wp_insert_term( 'Llms Few', 'category' );
+	$sseo_many       = wp_insert_term( 'Llms Many', 'category' );
+	$sseo['terms'][] = array( (int) $sseo_few['term_id'], 'category' );
+	$sseo['terms'][] = array( (int) $sseo_many['term_id'], 'category' );
+	wp_set_post_categories( $sseo_lp['old'], array( (int) $sseo_many['term_id'] ) );
+	wp_set_post_categories( $sseo_lp['new'], array( (int) $sseo_many['term_id'], (int) $sseo_few['term_id'] ) );
+	clean_term_cache( array( (int) $sseo_few['term_id'], (int) $sseo_many['term_id'] ), 'category' );
+	update_post_meta( $sseo_lp['hidden'], Simple_SEO_Fields::meta_key( 'index' ), 'noindex' );
+	update_post_meta( $sseo_lp['new'], Simple_SEO_Fields::meta_key( 'description' ), 'Own description of the new post.' );
+	$sseo_section = static function ( string $text, string $heading ): string {
+		$start = strpos( $text, "\n## {$heading}\n" );
+		if ( false === $start ) {
+			return '';
+		}
+		$end = strpos( $text, "\n## ", $start + 4 );
+
+		return false === $end ? substr( $text, $start ) : substr( $text, $start, $end - $start );
+	};
+
+	Simple_SEO_Llms::register_rewrites();
+	sseo_check( 'llms.txt has its address', isset( $GLOBALS['wp_rewrite']->extra_rules_top['^llms\.txt$'] ) && in_array( Simple_SEO_Llms::QUERY_VAR, apply_filters( 'query_vars', array() ), true ) );
+	unset( $GLOBALS['wp_rewrite']->extra_rules_top['^llms\.txt$'] );
+	add_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	Simple_SEO_Llms::register_rewrites();
+	sseo_check( 'next to another SEO plugin the address is left to it, and nothing is served', ! isset( $GLOBALS['wp_rewrite']->extra_rules_top['^llms\.txt$'] ) && ! Simple_SEO_Llms::enabled() );
+	remove_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	Simple_SEO_Llms::register_rewrites();
+	flush_rewrite_rules( false );
+	sseo_check( 'the rewrite rules carry it', isset( get_option( 'rewrite_rules' )['^llms\.txt$'] ) );
+	sseo_check( 'it is on out of the box, at /llms.txt', Simple_SEO_Llms::enabled() && home_url( '/llms.txt' ) === Simple_SEO_Llms::url() );
+	update_option( 'blog_public', '0' );
+	sseo_check( 'a site hidden from search engines has none', ! Simple_SEO_Llms::enabled() );
+	update_option( 'blog_public', '1' );
+	$sseo_q = new WP_Query();
+	$sseo_q->set( Simple_SEO_Llms::QUERY_VAR, '1' );
+	$sseo_main               = $GLOBALS['wp_the_query'];
+	$GLOBALS['wp_the_query'] = $sseo_q;
+	$sseo_skipped            = apply_filters( 'posts_pre_query', null, $sseo_q );
+	$GLOBALS['wp_the_query'] = $sseo_main;
+	sseo_check( 'the llms.txt request skips the posts query', array() === $sseo_skipped );
+
+	$sseo_txt = Simple_SEO_Llms::build( '' );
+	sseo_check( 'it opens with the site name as the only H1', str_starts_with( $sseo_txt, '# ' . get_bloginfo( 'name' ) . "\n" ) && 1 === preg_match_all( '/^# /m', $sseo_txt ), substr( $sseo_txt, 0, 200 ) );
+	$sseo_pages = $sseo_section( $sseo_txt, 'Pages' );
+	$sseo_posts = $sseo_section( $sseo_txt, 'Posts' );
+	sseo_check( 'pages come first, then posts', '' !== $sseo_pages && '' !== $sseo_posts && strpos( $sseo_txt, '## Pages' ) < strpos( $sseo_txt, '## Posts' ) );
+	sseo_check( 'pages in their order', strpos( $sseo_pages, '[Llms Contacts]' ) < strpos( $sseo_pages, '[Llms About]' ) && false !== strpos( $sseo_pages, '[Llms Contacts]' ) );
+	sseo_check( 'a link without a description is just the link', str_contains( $sseo_pages, '- [Llms Contacts](' . get_permalink( $sseo_lp['contacts'] ) . ")\n" ), $sseo_pages );
+	sseo_check( 'hidden, password-protected and draft pages are left out', ! str_contains( $sseo_txt, 'Llms Hidden' ) && ! str_contains( $sseo_txt, 'Llms Locked' ) && ! str_contains( $sseo_txt, 'Llms Draft' ) );
+	sseo_check( 'a page whose canonical is elsewhere is left out', ! str_contains( $sseo_txt, 'Llms Elsewhere' ) );
+	sseo_check( 'titles are plain text: no tags, entities decoded', str_contains( $sseo_pages, "- [Llms Tom\u{2019}s & Jerry](" ), $sseo_pages );
+	sseo_check( 'posts newest first, brackets in a title escaped, the description after a colon', str_contains( $sseo_posts, '- [Llms new post](' . get_permalink( $sseo_lp['new'] ) . '): Own description of the new post.' ) && strpos( $sseo_posts, '[Llms new post]' ) < strpos( $sseo_posts, '[Llms \[old\] post]' ), $sseo_posts );
+	sseo_check( 'taxonomies are left out by default', ! str_contains( $sseo_txt, '## Categories' ) && ! str_contains( $sseo_txt, '## Tags' ) );
+	sseo_check( 'the Optional section names the XML sitemap', str_contains( $sseo_section( $sseo_txt, 'Optional' ), '- [XML sitemap](' . Simple_SEO_Sitemaps::index_url() . '): ' ) );
+	sseo_check( 'one language: no other languages line', ! str_contains( $sseo_txt, 'Other languages:' ) || Simple_SEO_WP_Loc::languages() );
+	sseo_check( 'one line break at the end', str_ends_with( $sseo_txt, "\n" ) && ! str_ends_with( $sseo_txt, "\n\n" ) );
+
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_lp['contacts'] );
+	sseo_check( 'the static front page is the site, not one of its pages', ! str_contains( Simple_SEO_Llms::build( '' ), '[Llms Contacts]' ) );
+	update_option( 'show_on_front', 'posts' );
+
+	$sseo_paren = static fn( $link, $post ) => ( $post instanceof WP_Post ? $post->ID : (int) $post ) === $sseo_lp['new'] ? $link . '?a=(1) b' : $link;
+	add_filter( 'post_link', $sseo_paren, 10, 2 );
+	sseo_check( 'parentheses and spaces in an address are encoded', str_contains( Simple_SEO_Llms::build( '' ), '?a=%281%29%20b)' ) );
+	remove_filter( 'post_link', $sseo_paren, 10 );
+
+	update_option( Simple_SEO_Llms::TEXT, Simple_SEO_Llms::sanitize_text( array( 'summary' => " Our <b>studio</b>\n builds sites. ", 'details' => "We make sites.\n## Prices\n  ### From 100 EUR.\n<script>x</script>Ask us." ) ) );
+	// With wp-loc the row is written through its language row: forget what this request read.
+	Simple_SEO_Settings::flush();
+	$sseo_txt = Simple_SEO_Llms::build( '' );
+	sseo_check( 'the summary is the blockquote, the details follow without headings', str_contains( $sseo_txt, "\n\n> Our studio builds sites.\n\nWe make sites.\nPrices\nFrom 100 EUR.\nAsk us.\n\n" ), substr( $sseo_txt, 0, 300 ) );
+	update_option( Simple_SEO_Llms::TEXT, array( 'summary' => '', 'details' => '' ) );
+	Simple_SEO_Settings::flush();
+	$sseo_home = static fn( $text, $context ) => Simple_SEO_Context::HOME === $context->kind ? 'Home said so.' : $text;
+	add_filter( 'simple_seo_description', $sseo_home, 10, 2 );
+	sseo_check( 'without a summary, the description of the home page', str_contains( Simple_SEO_Llms::build( '' ), "\n\n> Home said so.\n" ) );
+	remove_filter( 'simple_seo_description', $sseo_home, 10 );
+	$sseo_none = static fn( $text, $context ) => Simple_SEO_Context::HOME === $context->kind ? '' : $text;
+	add_filter( 'simple_seo_description', $sseo_none, 10, 2 );
+	update_option( 'blogdescription', 'Tagline of the site' );
+	sseo_check( 'without that either, the tagline', str_contains( Simple_SEO_Llms::build( '' ), "\n\n> Tagline of the site\n" ) );
+	update_option( 'blogdescription', '' );
+	$sseo_txt = Simple_SEO_Llms::build( '' );
+	sseo_check( 'with nothing at all, no blockquote', ! str_contains( $sseo_txt, "\n> " ) && str_contains( $sseo_txt, "\n\n## " ) );
+	remove_filter( 'simple_seo_description', $sseo_none, 10 );
+
+	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'term:category' => 'main', 'post:post' => 'optional', 'post:page' => '' ) ) );
+	$sseo_txt = Simple_SEO_Llms::build( '' );
+	$sseo_opt = $sseo_section( $sseo_txt, 'Optional' );
+	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'term:category' => 'main' ), 'limit' => 500 ) );
+	$sseo_cats = $sseo_section( Simple_SEO_Llms::build( '' ), 'Categories' );
+	sseo_check( 'terms with the most posts first', false !== strpos( $sseo_cats, '[Llms Many]' ) && strpos( $sseo_cats, '[Llms Many]' ) < strpos( $sseo_cats, '[Llms Few]' ), $sseo_cats );
+	sseo_check( 'sections follow the settings: categories in, posts optional, pages out', str_contains( $sseo_txt, '## Categories' ) && ! str_contains( $sseo_txt, '## Posts' ) && ! str_contains( $sseo_txt, '## Pages' ) && str_contains( $sseo_opt, '[Llms new post]' ), $sseo_txt );
+	sseo_check( 'one Optional section, at the end', 1 === substr_count( $sseo_txt, '## Optional' ) && strrpos( $sseo_txt, '## ' ) === strpos( $sseo_txt, '## Optional' ) );
+	update_option( Simple_SEO_Llms::OPTION, array( 'limit' => 1 ) );
+	sseo_check( 'at most the limit of links in a section', 1 === substr_count( $sseo_section( Simple_SEO_Llms::build( '' ), 'Pages' ), "\n- [" ) );
+	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'post:post' => '', 'post:page' => '' ) ) );
+	update_option( Simple_SEO_Sitemaps::OPTION, array( 'enabled' => false ) );
+	$sseo_txt = Simple_SEO_Llms::build( '' );
+	sseo_check( 'without a sitemap and optional types there is no Optional section', ! str_contains( $sseo_txt, '## Optional' ) );
+	sseo_check( 'and the file still ends with one line break', str_ends_with( $sseo_txt, "\n" ) && ! str_ends_with( $sseo_txt, "\n\n" ), $sseo_txt );
+	update_option( Simple_SEO_Sitemaps::OPTION, array( 'enabled' => true ) );
+	delete_option( Simple_SEO_Llms::OPTION );
+	$sseo_more = static fn( string $text ): string => $text . "- extra\n";
+	add_filter( 'simple_seo_llms_txt', $sseo_more );
+	sseo_check( 'the text goes through simple_seo_llms_txt', str_ends_with( Simple_SEO_Llms::build( '' ), "- extra\n" ) );
+	remove_filter( 'simple_seo_llms_txt', $sseo_more );
+
+	// The cache: one transient per language (the request's language with wp-loc), dropped when
+	// what the file shows changes.
+	$sseo_code = Simple_SEO_WP_Loc::current_language();
+	$sseo_key  = 'simple_seo_llms_' . ( '' !== $sseo_code ? sanitize_key( $sseo_code ) : 'default' );
+	Simple_SEO_Llms::flush();
+	$sseo_first = Simple_SEO_Llms::get( $sseo_code );
+	sseo_check( 'the built file is kept for a day', $sseo_first === get_transient( $sseo_key ) && (int) get_option( '_transient_timeout_' . $sseo_key ) > time() + DAY_IN_SECONDS - 60 );
+	$sseo_cached = static fn(): bool => 'CACHED' === get_transient( $sseo_key );
+	set_transient( $sseo_key, 'CACHED', DAY_IN_SECONDS );
+	sseo_check( 'the next request reads it from the cache', 'CACHED' === Simple_SEO_Llms::get( $sseo_code ) );
+	wp_update_post( array( 'ID' => $sseo_lp['contacts'], 'post_title' => 'Llms Contacts us' ) );
+	sseo_check( 'saving a post drops it', ! $sseo_cached() );
+	set_transient( $sseo_key, 'CACHED', DAY_IN_SECONDS );
+	$sseo['posts'][] = (int) wp_insert_post( array( 'post_type' => 'revision', 'post_parent' => $sseo_lp['about'], 'post_status' => 'inherit', 'post_title' => 'Llms About' ) );
+	update_post_meta( $sseo_lp['about'], '_edit_lock', '1:1' );
+	update_option( 'sseo_unrelated_option', 1 );
+	delete_option( 'sseo_unrelated_option' );
+	$sseo['posts'][] = (int) wp_insert_post( array( 'post_type' => 'nav_menu_item', 'post_status' => 'publish', 'post_title' => 'Llms menu item' ) );
+	$sseo['posts'][] = (int) wp_insert_post( array( 'post_type' => 'post', 'post_status' => 'auto-draft', 'post_title' => 'Llms auto draft' ) );
+	sseo_check( 'a revision, a menu item, an auto-draft, another meta or an unrelated option keep it', $sseo_cached() );
+	update_post_meta( $sseo_lp['about'], Simple_SEO_Fields::meta_key( 'title' ), 'About the studio' );
+	sseo_check( 'an SEO field drops it', ! $sseo_cached() );
+	foreach ( array(
+		'a term'                   => static function () use ( &$sseo ): void {
+			$sseo_t          = wp_insert_term( 'Llms term', 'category' );
+			$sseo['terms'][] = array( (int) $sseo_t['term_id'], 'category' );
+		},
+		'a Simple SEO setting'     => static fn() => update_option( Simple_SEO_Cleanup::OPTION, array( 'emoji' => true ) ),
+		'the site name'            => static fn() => update_option( 'blogname', 'IT renamed' ),
+		'a deleted post'           => static fn() => wp_delete_post( $sseo_lp['draft'], true ),
+	) as $sseo_name => $sseo_change ) {
+		set_transient( $sseo_key, 'CACHED', DAY_IN_SECONDS );
+		$sseo_change();
+		sseo_check( "{$sseo_name} drops it", ! $sseo_cached() );
+	}
+	update_option( 'blogname', $sseo_saved_options['blogname'] );
+	delete_option( Simple_SEO_Cleanup::OPTION );
+
+	// serve(): the switched-off and the foreign cases return (a served file exits).
+	$sseo_saved_query    = $GLOBALS['wp_query'];
+	$GLOBALS['wp_query'] = new WP_Query();
+	$GLOBALS['wp_query']->set( Simple_SEO_Llms::QUERY_VAR, '1' );
+	update_option( Simple_SEO_Llms::OPTION, array( 'enabled' => false ) );
+	Simple_SEO_Llms::serve();
+	sseo_check( 'switched off, /llms.txt is a 404', is_404() );
+	$GLOBALS['wp_query'] = new WP_Query();
+	$GLOBALS['wp_query']->set( Simple_SEO_Llms::QUERY_VAR, '1' );
+	delete_option( Simple_SEO_Llms::OPTION );
+	add_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	Simple_SEO_Llms::serve();
+	sseo_check( 'next to another SEO plugin the request is left to it', ! is_404() );
+	remove_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	$GLOBALS['wp_query'] = $sseo_saved_query;
+
+	// The settings.
+	$sseo_clean = Simple_SEO_Llms::sanitize( array( 'enabled' => '0', 'sections' => array( 'post:page' => 'optional', 'post:nope' => 'main', 'term:category' => 'weird', 'term:post_tag' => '' ), 'limit' => '9999' ) );
+	sseo_check( 'the sanitizer keeps known sections with known places and clamps the limit', array( 'enabled' => false, 'sections' => array( 'post:page' => 'optional', 'term:post_tag' => '' ), 'limit' => 500 ) === $sseo_clean, $sseo_clean );
+	sseo_check( 'a limit of 0 is the default 50', 50 === Simple_SEO_Llms::sanitize( array( 'limit' => '0' ) )['limit'] );
+	sseo_check( 'the text loses its tags', array( 'summary' => 'Our studio builds', 'details' => 'Line' ) === Simple_SEO_Llms::sanitize_text( array( 'summary' => " Our <b>studio</b>\n builds ", 'details' => '<script>x</script>Line' ) ) );
+	sseo_check( 'the summary and the details are kept per language', in_array( Simple_SEO_Llms::TEXT, Simple_SEO_Settings::localized(), true ) && ! in_array( Simple_SEO_Llms::OPTION, Simple_SEO_Settings::localized(), true ) );
+	Simple_SEO_Llms::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	$sseo_tabs = Simple_SEO_Admin::tabs();
+	sseo_check( 'the llms.txt tab saves both rows', isset( $sseo_tabs['llms'] ) && array( Simple_SEO_Llms::OPTION, Simple_SEO_Llms::TEXT ) === $sseo_tabs['llms']['options'] && 35 === $sseo_tabs['llms']['order'] );
+	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'post:post' => 'optional' ) ) );
+	update_option( Simple_SEO_Llms::TEXT, array( 'summary' => 'Sites & shops', 'details' => '' ) );
+	Simple_SEO_Settings::flush();
+	file_put_contents( ABSPATH . 'llms.txt', "# A file\n" );
+	$_GET['tab'] = 'llms';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	unlink( ABSPATH . 'llms.txt' );
+	sseo_check( 'the tab is an options.php form of its group', str_contains( $sseo_html, 'action="options.php"' ) && str_contains( $sseo_html, "value='simple-seo-llms'" ) );
+	sseo_check( 'each post type and taxonomy has its place, the saved one selected', (bool) preg_match( '/name="simple_seo_llms\[sections\]\[post:post\]">\s*<option value="main"\s*>[^<]*<\/option>\s*<option value="optional"\s+selected/', $sseo_html ) && str_contains( $sseo_html, 'name="simple_seo_llms[sections][term:category]"' ) );
+	sseo_check( 'it shows the file as the site serves it, escaped', str_contains( $sseo_html, esc_html( '# ' . get_bloginfo( 'name' ) ) ) && str_contains( $sseo_html, '&gt; Sites &amp; shops' ) && str_contains( $sseo_html, esc_html( Simple_SEO_Llms::url() ) ) );
+	sseo_check( 'a file in the site root is named', str_contains( $sseo_html, esc_html( ABSPATH . 'llms.txt' ) ) );
+	delete_option( Simple_SEO_Llms::OPTION );
+	delete_option( Simple_SEO_Llms::TEXT );
+	Simple_SEO_Settings::flush();
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_d      = Simple_SEO_WP_Loc::default_language();
+		$sseo_o      = (string) current( array_diff( Simple_SEO_WP_Loc::codes(), array( $sseo_d ) ) );
+		$sseo_names  = Simple_SEO_WP_Loc::language_names();
+		$sseo_prefix = '/' . WP_LOC_DB::from_db_language_code( $sseo_o ) . '/';
+		Simple_SEO_Llms::flush();
+		$sseo_fd = Simple_SEO_Llms::get( $sseo_d );
+		$sseo_fo = Simple_SEO_Llms::get( $sseo_o );
+		$sseo_lo = (string) Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => get_permalink( $sseo['posts']['ml_o'] ) );
+		sseo_check( 'wp-loc: each language has its file under its prefix', home_url( '/llms.txt' ) === Simple_SEO_Llms::url( $sseo_d ) && home_url( $sseo_prefix . 'llms.txt' ) === Simple_SEO_Llms::url( $sseo_o ), Simple_SEO_Llms::url( $sseo_o ) );
+		sseo_check( 'wp-loc: the default file lists its language and names the other', str_contains( $sseo_fd, '[Ml default](' . get_permalink( $sseo['posts']['ml_d'] ) . ')' ) && ! str_contains( $sseo_fd, 'Ml other' ) && str_contains( $sseo_fd, 'Other languages: [' . $sseo_names[ $sseo_o ] . '](' . Simple_SEO_Llms::url( $sseo_o ) . ')' ) && ! str_contains( $sseo_fd, '[' . $sseo_names[ $sseo_d ] . '](' . Simple_SEO_Llms::url( $sseo_d ) . ')' ), $sseo_fd );
+		sseo_check( 'wp-loc: the other file lists its own posts at their addresses and names the default', str_contains( $sseo_fo, '[Ml other](' . $sseo_lo . ')' ) && str_contains( $sseo_lo, $sseo_prefix ) && ! str_contains( $sseo_fo, 'Ml default' ) && str_contains( $sseo_fo, 'Other languages: [' . $sseo_names[ $sseo_d ] . '](' . Simple_SEO_Llms::url( $sseo_d ) . ')' ), $sseo_fo );
+		sseo_check( 'wp-loc: a type wp-loc does not translate stays in the default file', ! isset( $sseo_shown ) || ( str_contains( $sseo_fd, (string) get_permalink( $sseo_shown ) ) && ! str_contains( $sseo_fo, (string) get_permalink( $sseo_shown ) ) ) );
+		sseo_check( 'wp-loc: one cache per language, flush drops both', is_string( get_transient( 'simple_seo_llms_' . sanitize_key( $sseo_d ) ) ) && is_string( get_transient( 'simple_seo_llms_' . sanitize_key( $sseo_o ) ) ) );
+		Simple_SEO_Llms::flush();
+		sseo_check( 'wp-loc: …and flush drops both', false === get_transient( 'simple_seo_llms_' . sanitize_key( $sseo_d ) ) && false === get_transient( 'simple_seo_llms_' . sanitize_key( $sseo_o ) ) );
+	} else {
+		echo "  skip  llms.txt with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -2355,6 +2671,7 @@ try {
 	sseo_check( 'the Special pages tab is translated', 'Спецсторінки' === __( 'Special pages', 'simple-seo' ) );
 	sseo_check( 'the sitemap switch is translated', 'Створювати XML-карту сайту' === __( 'Create an XML sitemap', 'simple-seo' ) );
 	sseo_check( 'the breadcrumbs are translated', 'Хлібні крихти' === __( 'Breadcrumbs', 'simple-seo' ) && 'Головна' === __( 'Home', 'simple-seo' ) && '%s у хлібних крихтах' === __( '%s in breadcrumbs', 'simple-seo' ) );
+	sseo_check( 'the llms.txt tab is translated', 'Посилань у розділі' === __( 'Links in a section', 'simple-seo' ) && 'Інші мови:' === __( 'Other languages:', 'simple-seo' ) );
 	sseo_check( 'the Clean-up tab is translated', 'Чистка коду' === __( 'Clean-up', 'simple-seo' ) && 'Версія WordPress' === __( 'WordPress version', 'simple-seo' ) );
 	sseo_check( 'the Files tab is translated', 'Файли' === __( 'Files', 'simple-seo' ) && 'Історія' === __( 'History', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
@@ -2365,6 +2682,11 @@ try {
 
 	update_option( 'simple_seo_sseo_extra', array( 'x' => 1 ) );
 	file_put_contents( get_home_path() . Simple_SEO_Files::DISK_COPY, "# copy\n" );
+	set_transient( 'simple_seo_llms_default', 'x', DAY_IN_SECONDS );
+	// uninstall.php runs without the plugin: none of its hooks drop the cache on the way.
+	foreach ( array( 'added_option', 'updated_option', 'deleted_option' ) as $sseo_name ) {
+		remove_action( $sseo_name, array( Simple_SEO_Llms::class, 'option_changed' ) );
+	}
 	if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 		define( 'WP_UNINSTALL_PLUGIN', 'simple-seo/simple-seo.php' );
 	}
@@ -2372,6 +2694,7 @@ try {
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
 	sseo_check( 'uninstall removes the copy of .htaccess', ! is_file( get_home_path() . Simple_SEO_Files::DISK_COPY ) );
+	sseo_check( 'uninstall removes the cached llms.txt', array() === $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_%'" ) );
 	sseo_check( 'uninstall leaves the options cache consistent', null === get_option( Simple_SEO_Plugin::VERSION_OPTION, null ) && null === get_option( Simple_SEO_Access::OPTION, null ) );
 	sseo_check( 'uninstall keeps the SEO fields of posts', 'Welcome {sep} {site}' === Simple_SEO_Fields::post_value( $sseo_p['front'], 'title' ) );
 	sseo_check( 'uninstall keeps the SEO fields of terms', 'Saved from the term form' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
@@ -2381,60 +2704,7 @@ try {
 } catch ( Throwable $sseo_error ) {
 	sseo_check( 'no exception', false, get_class( $sseo_error ) . ': ' . $sseo_error->getMessage() . ' at ' . $sseo_error->getFile() . ':' . $sseo_error->getLine() );
 } finally {
-	$_POST = array();
-	wp_set_current_user( 0 );
-	foreach ( $sseo['posts'] as $sseo_id ) {
-		wp_delete_post( (int) $sseo_id, true );
-	}
-	foreach ( $sseo['terms'] as $sseo_term ) {
-		wp_delete_term( $sseo_term[0], $sseo_term[1] );
-	}
-	foreach ( $sseo['users'] as $sseo_id ) {
-		if ( is_int( $sseo_id ) ) {
-			wp_delete_user( $sseo_id );
-		}
-	}
-	remove_role( 'sseo_seo_manager' );
-	foreach ( array( 'show_on_front', 'page_on_front', 'page_for_posts' ) as $sseo_name ) {
-		update_option( $sseo_name, $sseo_saved_options[ $sseo_name ] );
-	}
-	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
-	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
-	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels' ) as $sseo_name => $sseo_key ) {
-		delete_option( $sseo_name );
-		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
-			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
-		}
-	}
-	update_option( 'blog_public', '0' === (string) $sseo_saved_options['blog_public'] ? '0' : '1' );
-	foreach ( array( Simple_SEO_Files::ROBOTS_OPTION => 'robots_txt', Simple_SEO_Files::BACKUPS_OPTION => 'file_backups', Simple_SEO_Cleanup::OPTION => 'cleanup' ) as $sseo_name => $sseo_key ) {
-		delete_option( $sseo_name );
-		if ( false !== $sseo_saved_options[ $sseo_key ] ) {
-			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ], '', false );
-		}
-	}
-	// A run broken in the middle can leave the site root read-only.
-	if ( ! is_writable( ABSPATH ) ) {
-		chmod( ABSPATH, 0755 );
-	}
-	foreach ( $sseo_saved_files as $sseo_path => $sseo_text ) {
-		if ( is_file( $sseo_path ) ) {
-			chmod( $sseo_path, 0644 );
-			unlink( $sseo_path );
-		}
-		if ( null !== $sseo_text ) {
-			file_put_contents( $sseo_path, $sseo_text );
-		}
-	}
-	$GLOBALS['is_apache'] = $sseo_saved_apache;
-	unset( $_SERVER['REQUEST_METHOD'] );
-	flush_rewrite_rules( false );
-	// Rows of other languages that a broken run may have left behind.
-	unset( $_COOKIE['admin_lang'] );
-	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_special\\_%' OR option_name LIKE 'simple\\_seo\\_breadcrumb\\_labels\\_%'" ) as $sseo_name ) {
-		delete_option( (string) $sseo_name );
-	}
+	$sseo_cleanup();
 }
 
 $sseo_r = $GLOBALS['sseo_results'];

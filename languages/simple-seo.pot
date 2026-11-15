@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.10.0\n"
+"Project-Id-Version: Simple SEO 0.11.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-15T01:10:20+00:00\n"
+"POT-Creation-Date: 2026-11-15T01:38:05+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -244,7 +244,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-indexing.php:58
@@ -289,6 +289,39 @@ msgstr ""
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr ""
 
+#: includes/class-simple-seo-llms.php:186
+msgid "Other languages:"
+msgstr ""
+
+#: includes/class-simple-seo-llms.php:212
+#: includes/class-simple-seo-sitemaps.php:907
+#: includes/views/tab-indexing.php:32
+msgid "XML sitemap"
+msgstr ""
+
+#: includes/class-simple-seo-llms.php:212
+msgid "Every address of the site that search engines may show."
+msgstr ""
+
+#: includes/class-simple-seo-llms.php:243
+msgid "Pages"
+msgstr ""
+
+#: includes/class-simple-seo-llms.php:244
+#: includes/views/tab-cleanup.php:48
+msgid "Posts"
+msgstr ""
+
+#: includes/class-simple-seo-llms.php:251
+#: includes/views/tab-cleanup.php:51
+msgid "Categories"
+msgstr ""
+
+#: includes/class-simple-seo-llms.php:252
+#: includes/views/tab-cleanup.php:52
+msgid "Tags"
+msgstr ""
+
 #. translators: %s: taxonomy name, singular, e.g. Category.
 #: includes/class-simple-seo-primary-term.php:55
 #, php-format
@@ -303,32 +336,27 @@ msgstr ""
 msgid "Automatically"
 msgstr ""
 
-#: includes/class-simple-seo-sitemaps.php:853
-#: includes/views/tab-indexing.php:32
-msgid "XML sitemap"
-msgstr ""
-
-#: includes/class-simple-seo-sitemaps.php:854
+#: includes/class-simple-seo-sitemaps.php:908
 msgid "The sitemaps of the site, language by language. Search engines read every one of them."
 msgstr ""
 
-#: includes/class-simple-seo-sitemaps.php:855
+#: includes/class-simple-seo-sitemaps.php:909
 msgid "Pages search engines may show, with their translations and images."
 msgstr ""
 
-#: includes/class-simple-seo-sitemaps.php:856
+#: includes/class-simple-seo-sitemaps.php:910
 msgid "Last modified:"
 msgstr ""
 
-#: includes/class-simple-seo-sitemaps.php:857
+#: includes/class-simple-seo-sitemaps.php:911
 msgid "Languages:"
 msgstr ""
 
-#: includes/class-simple-seo-sitemaps.php:858
+#: includes/class-simple-seo-sitemaps.php:912
 msgid "Image:"
 msgstr ""
 
-#: includes/class-simple-seo-sitemaps.php:859
+#: includes/class-simple-seo-sitemaps.php:913
 msgid "Addresses:"
 msgstr ""
 
@@ -655,10 +683,6 @@ msgid "Replace emoji with images where the browser cannot draw them; today's bro
 msgstr ""
 
 #: includes/views/tab-cleanup.php:48
-msgid "Posts"
-msgstr ""
-
-#: includes/views/tab-cleanup.php:48
 msgid "The main feed of the site; feed readers find the site by it."
 msgstr ""
 
@@ -672,14 +696,6 @@ msgstr ""
 
 #: includes/views/tab-cleanup.php:50
 msgid "Comments of each post"
-msgstr ""
-
-#: includes/views/tab-cleanup.php:51
-msgid "Categories"
-msgstr ""
-
-#: includes/views/tab-cleanup.php:52
-msgid "Tags"
 msgstr ""
 
 #: includes/views/tab-cleanup.php:53
@@ -798,6 +814,7 @@ msgid "Open robots.txt"
 msgstr ""
 
 #: includes/views/tab-files.php:132
+#: includes/views/tab-llms.php:130
 msgid "What the site serves"
 msgstr ""
 
@@ -863,6 +880,7 @@ msgid "The whole site is hidden from search engines in %s, whatever is chosen he
 msgstr ""
 
 #: includes/views/tab-indexing.php:26
+#: includes/views/tab-llms.php:42
 msgid "Settings → Reading"
 msgstr ""
 
@@ -897,6 +915,94 @@ msgstr ""
 
 #: includes/views/tab-indexing.php:72
 msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
+msgstr ""
+
+#: includes/views/tab-llms.php:21
+msgid "Section of its own"
+msgstr ""
+
+#: includes/views/tab-llms.php:22
+msgid "Optional section"
+msgstr ""
+
+#: includes/views/tab-llms.php:23
+msgid "Not listed"
+msgstr ""
+
+#. translators: %s: link to llmstxt.org.
+#: includes/views/tab-llms.php:30
+#, php-format
+msgid "llms.txt is a Markdown file that tells AI assistants and agents what the site is about and which of its pages matter (%s). Simple SEO builds it from the pages search engines may show, with their descriptions, and keeps it up to date."
+msgstr ""
+
+#. translators: %s: link to Settings → Reading.
+#: includes/views/tab-llms.php:41
+#, php-format
+msgid "The site is hidden from search engines in %s, so there is no llms.txt either."
+msgstr ""
+
+#. translators: %s: path of the file.
+#: includes/views/tab-llms.php:51
+#, php-format
+msgid "There is an llms.txt file in the site root (%s): the server sends it instead of the one Simple SEO builds."
+msgstr ""
+
+#: includes/views/tab-llms.php:59
+msgid "llms.txt"
+msgstr ""
+
+#: includes/views/tab-llms.php:64
+msgid "Build llms.txt"
+msgstr ""
+
+#: includes/views/tab-llms.php:74
+msgid "About the site"
+msgstr ""
+
+#. translators: %s: language name, e.g. English.
+#: includes/views/tab-llms.php:77
+#, php-format
+msgid "The summary and the details are kept for each language, and each language has its own llms.txt under its prefix; you are editing them for: %s. The other settings on this tab are common to all languages."
+msgstr ""
+
+#: includes/views/tab-llms.php:83
+msgid "Summary"
+msgstr ""
+
+#: includes/views/tab-llms.php:86
+msgid "One or two sentences on what the site is and for whom. Empty: the description of the home page, or the tagline."
+msgstr ""
+
+#: includes/views/tab-llms.php:90
+msgid "Details"
+msgstr ""
+
+#: includes/views/tab-llms.php:93
+msgid "Optional: what an assistant should know besides the summary — services, prices, contacts, how to read the sections. Markdown without headings."
+msgstr ""
+
+#: includes/views/tab-llms.php:99
+msgid "Sections"
+msgstr ""
+
+#: includes/views/tab-llms.php:100
+msgid "Each post type and taxonomy can have a section of links of its own or go into the Optional section, which an assistant may skip when it is short of space. Only what search engines may show is listed: pages in their order, other posts newest first, terms with the most posts first."
+msgstr ""
+
+#: includes/views/tab-llms.php:114
+msgid "Hidden from search engines on the Indexing tab: only those shown on their own are listed."
+msgstr ""
+
+#: includes/views/tab-llms.php:120
+msgid "Links in a section"
+msgstr ""
+
+#: includes/views/tab-llms.php:123
+msgid "At most this many from each post type or taxonomy: the file should fit into what an assistant reads at once."
+msgstr ""
+
+#: includes/views/tab-llms.php:131
+msgid "As saved; it is built again whenever content or settings change."
 msgstr ""
 
 #: includes/views/tab-social.php:14

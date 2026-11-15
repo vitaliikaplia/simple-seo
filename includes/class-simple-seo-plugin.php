@@ -35,6 +35,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Breadcrumbs::init();
 		Simple_SEO_Files::init();
 		Simple_SEO_Cleanup::init();
+		Simple_SEO_Llms::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
@@ -97,10 +98,11 @@ final class Simple_SEO_Plugin {
 
 	public static function activate( bool $network_wide = false ): void {
 		Simple_SEO_Sitemaps::register_rewrites();
+		Simple_SEO_Llms::register_rewrites();
 		flush_rewrite_rules( false );
 	}
 
-	/** WordPress builds the rewrite rules again on the next request, without the sitemap addresses. */
+	/** WordPress builds the rewrite rules again on the next request, without the sitemap and llms.txt addresses. */
 	public static function deactivate( bool $network_wide = false ): void {
 		delete_option( 'rewrite_rules' );
 	}

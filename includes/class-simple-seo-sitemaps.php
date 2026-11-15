@@ -373,6 +373,60 @@ final class Simple_SEO_Sitemaps {
 		return $sql . $language . $tail;
 	}
 
+	/**
+	 * Posts of a type its sitemap would list in a language (published, no password, not hidden,
+	 * their own canonical): a hierarchical type in its own order, others newest first. Run it in the
+	 * language (Simple_SEO_WP_Loc::in_language): the addresses are checked in it. For llms.txt.
+	 *
+	 * @return WP_Post[]
+	 */
+	public static function posts( string $type, string $code, int $limit ): array {
+		if ( $limit < 1 || ! self::has_language( $code, Simple_SEO_WP_Loc::translatable_post_type( $type ) ) ) {
+			return array();
+		}
+
+		$order = is_post_type_hierarchical( $type ) ? ' ORDER BY p.menu_order ASC, p.post_title ASC' : ' ORDER BY p.post_date DESC, p.ID DESC';
+		$ids   = array_map( 'intval', (array) $GLOBALS['wpdb']->get_col( self::post_sql( $type, 'p.ID', $code, $order . sprintf( ' LIMIT %d', $limit ) ) ) );
+		_prime_post_caches( $ids, true, true );
+
+		$posts = array();
+		foreach ( $ids as $id ) {
+			$post = get_post( $id );
+			if ( $post instanceof WP_Post && '' !== self::post_url( $id ) ) {
+				$posts[] = $post;
+			}
+		}
+
+		return $posts;
+	}
+
+	/**
+	 * Terms of a taxonomy its sitemap would list in a language, those with the most posts first.
+	 * Run it in the language, as posts().
+	 *
+	 * @return WP_Term[]
+	 */
+	public static function terms( string $taxonomy, string $code, int $limit ): array {
+		global $wpdb;
+
+		if ( $limit < 1 || ! self::has_language( $code, Simple_SEO_WP_Loc::translatable_taxonomy( $taxonomy ) ) ) {
+			return array();
+		}
+
+		$term_ids = array_map( 'intval', (array) $wpdb->get_col( self::term_sql( $taxonomy, 'tt.term_id', $code, sprintf( ' ORDER BY tt.count DESC, tt.term_id ASC LIMIT %d', $limit ) ) ) );
+		_prime_term_caches( $term_ids, true );
+
+		$terms = array();
+		foreach ( $term_ids as $term_id ) {
+			$term = get_term( $term_id, $taxonomy );
+			if ( $term instanceof WP_Term && '' !== self::term_url( $term_id, $taxonomy ) ) {
+				$terms[] = $term;
+			}
+		}
+
+		return $terms;
+	}
+
 	private static function limit( int $page ): string {
 		return sprintf( ' LIMIT %d OFFSET %d', self::page_size(), ( $page - 1 ) * self::page_size() );
 	}

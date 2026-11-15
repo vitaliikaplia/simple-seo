@@ -19,6 +19,13 @@ foreach ( (array) $simple_seo_options as $simple_seo_option ) {
 }
 unset( $simple_seo_options, $simple_seo_option );
 
+// The cached llms.txt of each language (transients simple_seo_llms_*).
+$simple_seo_transients = $wpdb->get_col( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_simple\\_seo\\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+foreach ( (array) $simple_seo_transients as $simple_seo_transient ) {
+	delete_transient( substr( (string) $simple_seo_transient, strlen( '_transient_' ) ) );
+}
+unset( $simple_seo_transients, $simple_seo_transient );
+
 delete_site_transient( 'simple_seo_github_update_data' );
 
 // The copy of the previous .htaccess kept next to it (Simple_SEO_Files::DISK_COPY).

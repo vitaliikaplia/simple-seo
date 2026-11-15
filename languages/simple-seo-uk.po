@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.10.0\n"
+"Project-Id-Version: Simple SEO 0.11.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -242,8 +242,8 @@ msgid "The page has expired. Open it again and repeat."
 msgstr "Сторінка застаріла. Відкрийте її знову й повторіть."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-indexing.php:58
 #: includes/class-simple-seo-indexing.php:103
@@ -287,6 +287,39 @@ msgstr "Канонічна адреса"
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
 
+#: includes/class-simple-seo-llms.php:186
+msgid "Other languages:"
+msgstr "Інші мови:"
+
+#: includes/class-simple-seo-llms.php:212
+#: includes/class-simple-seo-sitemaps.php:907
+#: includes/views/tab-indexing.php:32
+msgid "XML sitemap"
+msgstr "XML-карта сайту"
+
+#: includes/class-simple-seo-llms.php:212
+msgid "Every address of the site that search engines may show."
+msgstr "Усі адреси сайту, які можуть показувати пошуковики."
+
+#: includes/class-simple-seo-llms.php:243
+msgid "Pages"
+msgstr "Сторінки"
+
+#: includes/class-simple-seo-llms.php:244
+#: includes/views/tab-cleanup.php:48
+msgid "Posts"
+msgstr "Записи"
+
+#: includes/class-simple-seo-llms.php:251
+#: includes/views/tab-cleanup.php:51
+msgid "Categories"
+msgstr "Рубрики"
+
+#: includes/class-simple-seo-llms.php:252
+#: includes/views/tab-cleanup.php:52
+msgid "Tags"
+msgstr "Мітки"
+
 #. translators: %s: taxonomy name, singular, e.g. Category.
 #: includes/class-simple-seo-primary-term.php:55
 #, php-format
@@ -301,32 +334,27 @@ msgstr "Коли в запису їх кілька: та, через яку йд
 msgid "Automatically"
 msgstr "Автоматично"
 
-#: includes/class-simple-seo-sitemaps.php:853
-#: includes/views/tab-indexing.php:32
-msgid "XML sitemap"
-msgstr "XML-карта сайту"
-
-#: includes/class-simple-seo-sitemaps.php:854
+#: includes/class-simple-seo-sitemaps.php:908
 msgid "The sitemaps of the site, language by language. Search engines read every one of them."
 msgstr "Карти сайту, мова за мовою. Пошуковики читають кожну з них."
 
-#: includes/class-simple-seo-sitemaps.php:855
+#: includes/class-simple-seo-sitemaps.php:909
 msgid "Pages search engines may show, with their translations and images."
 msgstr "Сторінки, які можуть показувати пошуковики, з їхніми перекладами й зображеннями."
 
-#: includes/class-simple-seo-sitemaps.php:856
+#: includes/class-simple-seo-sitemaps.php:910
 msgid "Last modified:"
 msgstr "Остання зміна:"
 
-#: includes/class-simple-seo-sitemaps.php:857
+#: includes/class-simple-seo-sitemaps.php:911
 msgid "Languages:"
 msgstr "Мови:"
 
-#: includes/class-simple-seo-sitemaps.php:858
+#: includes/class-simple-seo-sitemaps.php:912
 msgid "Image:"
 msgstr "Зображення:"
 
-#: includes/class-simple-seo-sitemaps.php:859
+#: includes/class-simple-seo-sitemaps.php:913
 msgid "Addresses:"
 msgstr "Адрес:"
 
@@ -653,10 +681,6 @@ msgid "Replace emoji with images where the browser cannot draw them; today's bro
 msgstr "Замінюють емодзі зображеннями там, де браузер не вміє їх малювати; сучасні браузери малюють емодзі самі."
 
 #: includes/views/tab-cleanup.php:48
-msgid "Posts"
-msgstr "Записи"
-
-#: includes/views/tab-cleanup.php:48
 msgid "The main feed of the site; feed readers find the site by it."
 msgstr "Головна стрічка сайту; за нею сайт знаходять читалки стрічок."
 
@@ -671,14 +695,6 @@ msgstr "Тоді WordPress прибирає й стрічки коментарі
 #: includes/views/tab-cleanup.php:50
 msgid "Comments of each post"
 msgstr "Коментарі кожного запису"
-
-#: includes/views/tab-cleanup.php:51
-msgid "Categories"
-msgstr "Рубрики"
-
-#: includes/views/tab-cleanup.php:52
-msgid "Tags"
-msgstr "Мітки"
 
 #: includes/views/tab-cleanup.php:53
 msgid "Other taxonomies"
@@ -796,6 +812,7 @@ msgid "Open robots.txt"
 msgstr "Відкрити robots.txt"
 
 #: includes/views/tab-files.php:132
+#: includes/views/tab-llms.php:130
 msgid "What the site serves"
 msgstr "Що віддає сайт"
 
@@ -861,6 +878,7 @@ msgid "The whole site is hidden from search engines in %s, whatever is chosen he
 msgstr "Увесь сайт приховано від пошуковиків у %s, що б тут не було обрано."
 
 #: includes/views/tab-indexing.php:26
+#: includes/views/tab-llms.php:42
 msgid "Settings → Reading"
 msgstr "Налаштування → Читання"
 
@@ -896,6 +914,94 @@ msgstr "лишається окремою сторінкою"
 #: includes/views/tab-indexing.php:72
 msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
 msgstr "WordPress створює сторінку для кожного завантаженого файлу. На ній немає нічого, крім зображення, тож пошуковики вважають її порожньою сторінкою."
+
+#: includes/views/tab-llms.php:21
+msgid "Section of its own"
+msgstr "Окремий розділ"
+
+#: includes/views/tab-llms.php:22
+msgid "Optional section"
+msgstr "Розділ Optional"
+
+#: includes/views/tab-llms.php:23
+msgid "Not listed"
+msgstr "Не додавати"
+
+#. translators: %s: link to llmstxt.org.
+#: includes/views/tab-llms.php:30
+#, php-format
+msgid "llms.txt is a Markdown file that tells AI assistants and agents what the site is about and which of its pages matter (%s). Simple SEO builds it from the pages search engines may show, with their descriptions, and keeps it up to date."
+msgstr "llms.txt — це Markdown-файл, який розповідає ШІ-асистентам і агентам, про що сайт і які його сторінки важливі (%s). Simple SEO збирає його зі сторінок, які можуть показувати пошуковики, разом з їхніми описами, і сам оновлює."
+
+#. translators: %s: link to Settings → Reading.
+#: includes/views/tab-llms.php:41
+#, php-format
+msgid "The site is hidden from search engines in %s, so there is no llms.txt either."
+msgstr "Сайт приховано від пошуковиків у %s, тож llms.txt теж немає."
+
+#. translators: %s: path of the file.
+#: includes/views/tab-llms.php:51
+#, php-format
+msgid "There is an llms.txt file in the site root (%s): the server sends it instead of the one Simple SEO builds."
+msgstr "У корені сайту лежить файл llms.txt (%s): сервер віддає його замість того, що збирає Simple SEO."
+
+#: includes/views/tab-llms.php:59
+msgid "llms.txt"
+msgstr "llms.txt"
+
+#: includes/views/tab-llms.php:64
+msgid "Build llms.txt"
+msgstr "Створювати llms.txt"
+
+#: includes/views/tab-llms.php:74
+msgid "About the site"
+msgstr "Про сайт"
+
+#. translators: %s: language name, e.g. English.
+#: includes/views/tab-llms.php:77
+#, php-format
+msgid "The summary and the details are kept for each language, and each language has its own llms.txt under its prefix; you are editing them for: %s. The other settings on this tab are common to all languages."
+msgstr "Короткий опис і подробиці зберігаються для кожної мови, і кожна мова має власний llms.txt під своїм префіксом; ви редагуєте їх для мови: %s. Решта налаштувань цієї вкладки спільна для всіх мов."
+
+#: includes/views/tab-llms.php:83
+msgid "Summary"
+msgstr "Короткий опис"
+
+#: includes/views/tab-llms.php:86
+msgid "One or two sentences on what the site is and for whom. Empty: the description of the home page, or the tagline."
+msgstr "Одне-два речення про те, що це за сайт і для кого. Якщо порожньо — опис головної сторінки або короткий опис сайту."
+
+#: includes/views/tab-llms.php:90
+msgid "Details"
+msgstr "Подробиці"
+
+#: includes/views/tab-llms.php:93
+msgid "Optional: what an assistant should know besides the summary — services, prices, contacts, how to read the sections. Markdown without headings."
+msgstr "Необов'язково: що ще варто знати асистентові — послуги, ціни, контакти, як читати розділи. Markdown без заголовків."
+
+#: includes/views/tab-llms.php:99
+msgid "Sections"
+msgstr "Розділи"
+
+#: includes/views/tab-llms.php:100
+msgid "Each post type and taxonomy can have a section of links of its own or go into the Optional section, which an assistant may skip when it is short of space. Only what search engines may show is listed: pages in their order, other posts newest first, terms with the most posts first."
+msgstr "Кожен тип записів і кожна таксономія можуть мати окремий розділ посилань або йти в розділ Optional, який асистент може пропустити, коли бракує місця. Потрапляє лише те, що можуть показувати пошуковики: сторінки — у їхньому порядку, інші записи — від найновіших, терміни — від тих, де найбільше записів."
+
+#: includes/views/tab-llms.php:114
+msgid "Hidden from search engines on the Indexing tab: only those shown on their own are listed."
+msgstr "Приховано від пошуковиків на вкладці «Індексація»: потрапляють лише ті, що показані окремо."
+
+#: includes/views/tab-llms.php:120
+msgid "Links in a section"
+msgstr "Посилань у розділі"
+
+#: includes/views/tab-llms.php:123
+msgid "At most this many from each post type or taxonomy: the file should fit into what an assistant reads at once."
+msgstr "Щонайбільше стільки з кожного типу записів чи таксономії: файл має вміщатися в те, що асистент читає за раз."
+
+#: includes/views/tab-llms.php:131
+msgid "As saved; it is built again whenever content or settings change."
+msgstr "Як збережено; файл збирається знову щоразу, коли змінюються вміст чи налаштування."
 
 #: includes/views/tab-social.php:14
 msgid "When a page is shared on Facebook, Telegram, Viber, LinkedIn, X and the like, the preview shows its title, description and image: the SEO title and meta description, unless a post or term has its own for social networks."

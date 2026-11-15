@@ -317,6 +317,27 @@ final class Simple_SEO_WP_Loc {
 		}
 	}
 
+	/**
+	 * Native names of the languages by code (Українська, English); [] without wp-loc or with only
+	 * one language.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function language_names(): array {
+		if ( ! self::languages() ) {
+			return array();
+		}
+
+		$names = array();
+		foreach ( (array) apply_filters( 'wpml_active_languages', null ) as $code => $language ) {
+			if ( is_array( $language ) && '' !== (string) $code ) {
+				$names[ (string) $code ] = (string) ( $language['native_name'] ?? $language['translated_name'] ?? $code );
+			}
+		}
+
+		return $names;
+	}
+
 	/** The WordPress locale of a language code (uk, en_US); '' for none. */
 	public static function locale_of( string $code ): string {
 		if ( '' === $code || ! self::languages() ) {
