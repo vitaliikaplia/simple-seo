@@ -568,7 +568,8 @@ try {
 	$sseo_post_meta = get_registered_meta_keys( 'post' );
 	sseo_check( 'a field registered after init gets its meta at once', isset( $sseo_post_meta['_simple_seo_test_advanced'] ) && 'boolean' === $sseo_post_meta['_simple_seo_test_advanced']['type'] );
 	sseo_check( 'a post-only field has no term meta', ! isset( get_registered_meta_keys( 'term' )['_simple_seo_test_choice'] ) );
-	sseo_check( 'fields come in editor order', array( 'title', 'description', 'og_title', 'og_description', 'og_image', 'primary_category', 'index', 'nofollow', 'canonical', 'schema_page_type', 'schema_article_type', 'schema_custom', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
+	// The primary terms are of the hierarchical taxonomies there are (WooCommerce adds those of products).
+	sseo_check( 'fields come in editor order', array_merge( array( 'title', 'description', 'og_title', 'og_description', 'og_image' ), array_map( array( Simple_SEO_Primary_Term::class, 'field' ), array_keys( Simple_SEO_Primary_Term::taxonomies() ) ), array( 'index', 'nofollow', 'canonical', 'schema_page_type', 'schema_article_type', 'schema_custom', 'keyphrase', 'test_advanced', 'keyphrases', 'test_choice' ) ) === array_keys( Simple_SEO_Fields::all( 'post' ) ), array_keys( Simple_SEO_Fields::all( 'post' ) ) );
 
 	sseo_check( 'text: tags stripped, trimmed', 'Hello world' === Simple_SEO_Fields::sanitize_value( 'title', "  Hello <b>world</b> \n" ) );
 	sseo_check( 'textarea: line breaks kept', "One\nTwo" === Simple_SEO_Fields::sanitize_value( 'description', "One\nTwo  " ) );
@@ -5435,6 +5436,12 @@ try {
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );
 
+	// WooCommerce adds lines of its own to the virtual robots.txt: not the ones checked here.
+	$sseo_wc_robots = function_exists( 'WC' ) && false !== has_filter( 'robots_txt', array( WC(), 'robots_txt' ) );
+	if ( $sseo_wc_robots ) {
+		remove_filter( 'robots_txt', array( WC(), 'robots_txt' ) );
+	}
+
 	$sseo_robots_path = Simple_SEO_Files::path( Simple_SEO_Files::ROBOTS );
 	$sseo_ht_path     = Simple_SEO_Files::path( Simple_SEO_Files::HTACCESS );
 	$sseo_copy_path   = dirname( $sseo_ht_path ) . '/' . Simple_SEO_Files::DISK_COPY;
@@ -5762,6 +5769,10 @@ try {
 	remove_filter( 'pre_http_request', $sseo_fake, 10 );
 	$GLOBALS['is_apache'] = $sseo_saved_apache;
 	update_option( Simple_SEO_Access::OPTION, array() );
+
+	if ( $sseo_wc_robots ) {
+		add_filter( 'robots_txt', array( WC(), 'robots_txt' ) );
+	}
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Clean-up of the page head' );
@@ -9504,7 +9515,7 @@ try {
 	$_GET = array();
 	sseo_check(
 		'paged: 50 on a page, the links to the others; no visitor came from elsewhere, a dash',
-		50 === substr_count( $sseo_html, 'value="delete"' ) && str_contains( $sseo_html, 'page-numbers' ) && str_contains( $sseo_html, 'paged=2' ) && 1 === substr_count( $sseo_html2, 'value="delete"' ) && str_contains( $sseo_html2, '<span aria-current="page" class="page-numbers current">2</span>' )
+		50 === substr_count( $sseo_html, 'value="delete"' ) && str_contains( $sseo_html, 'page-numbers' ) && str_contains( $sseo_html, 'paged=2' ) && 1 === substr_count( $sseo_html2, 'value="delete"' ) && (bool) preg_match( '/<span (?:aria-label="[^"]*" )?aria-current="page" class="page-numbers current">2<\/span>/', $sseo_html2 )
 			&& 3 === substr_count( $sseo_html2, '<input type="hidden" name="paged" value="2">' ) && str_contains( $sseo_html2, 'order=last&amp;paged=1' ) && str_contains( $sseo_html, '—' ) && ! str_contains( $sseo_html, 'href=""' ),
 		array( substr_count( $sseo_html, 'value="delete"' ), $sseo_html2 )
 	);
@@ -9964,9 +9975,9 @@ try {
 	$sseo_vals = array( $sseo_au_page(), $sseo_au_page( array( 'paged' => '2' ) ), $sseo_au_page( array( 'issue' => 'no_h1', 'paged' => '2' ) ), Simple_SEO_Audit::counts(), $sseo_au_page( array( 'paged' => '-3' ) ) );
 	sseo_check(
 		'paged: 50 pages a page, the links to the others keep the problem chosen',
-		50 === substr_count( $sseo_vals[0], 'class="simple-seo-audit-title"' ) && str_contains( $sseo_vals[0], 'page-numbers' ) && 1 === substr_count( $sseo_vals[1], 'class="simple-seo-audit-title"' ) && str_contains( $sseo_vals[1], '<span aria-current="page" class="page-numbers current">2</span>' )
+		50 === substr_count( $sseo_vals[0], 'class="simple-seo-audit-title"' ) && str_contains( $sseo_vals[0], 'page-numbers' ) && 1 === substr_count( $sseo_vals[1], 'class="simple-seo-audit-title"' ) && (bool) preg_match( '/<span (?:aria-label="[^"]*" )?aria-current="page" class="page-numbers current">2<\/span>/', $sseo_vals[1] )
 			&& str_contains( $sseo_vals[2], 'issue=no_h1&amp;paged=1' ) && 51 === $sseo_vals[3]['same_title'] && 51 === $sseo_vals[3]['no_description'] && 0 === $sseo_vals[3]['same_description']
-			&& 50 === substr_count( $sseo_vals[4], 'class="simple-seo-audit-title"' ) && str_contains( $sseo_vals[4], '<span aria-current="page" class="page-numbers current">1</span>' ),
+			&& 50 === substr_count( $sseo_vals[4], 'class="simple-seo-audit-title"' ) && (bool) preg_match( '/<span (?:aria-label="[^"]*" )?aria-current="page" class="page-numbers current">1<\/span>/', $sseo_vals[4] ),
 		array( substr_count( $sseo_vals[0], 'class="simple-seo-audit-title"' ), $sseo_vals[2] )
 	);
 	$sseo_au_list    = array( 'https://audit.example/s1/', 'https://audit.example/s2/' );
@@ -10437,7 +10448,7 @@ try {
 	$sseo_vals = array( $sseo_au_page(), $sseo_au_page( array( 'lpaged' => '2', 'links' => 'broken' ) ) );
 	sseo_check(
 		'the broken links paged: 50 a page, the links to the others at the links',
-		50 === substr_count( $sseo_vals[0], 'Answers 410' ) && 1 === substr_count( $sseo_vals[1], 'Answers 410' ) && str_contains( $sseo_vals[1], '<span aria-current="page" class="page-numbers current">2</span>' ) && str_contains( $sseo_vals[0], 'links=broken&amp;lpaged=2#links' ),
+		50 === substr_count( $sseo_vals[0], 'Answers 410' ) && 1 === substr_count( $sseo_vals[1], 'Answers 410' ) && (bool) preg_match( '/<span (?:aria-label="[^"]*" )?aria-current="page" class="page-numbers current">2<\/span>/', $sseo_vals[1] ) && str_contains( $sseo_vals[0], 'links=broken&amp;lpaged=2#links' ),
 		substr_count( $sseo_vals[0], 'Answers 410' )
 	);
 	$sseo_au_list    = array( 'https://audit.example/p2/' );
@@ -11555,6 +11566,233 @@ try {
 	update_option( 'blogdescription', $sseo_ai_tagline );
 	Simple_SEO_Settings::flush();
 	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'WooCommerce' );
+
+	// The page shown, as the Schema section shows it.
+	$sseo_wc_query   = $GLOBALS['wp_query'];
+	$sseo_wc_actions = $GLOBALS['wp_actions']['wp'] ?? null;
+	$GLOBALS['wp_actions']['wp'] = 1;
+	$sseo_wc_show = static function ( array $vars ): Simple_SEO_Context {
+		$GLOBALS['wp_query'] = sseo_query( $vars );
+		Simple_SEO_Context::reset();
+
+		return Simple_SEO_Context::current();
+	};
+	$sseo_wc_schema = get_option( Simple_SEO_Schema::OPTION );
+	$sseo_wc_set    = static function ( array $values ): void {
+		update_option( Simple_SEO_Schema::OPTION, array_replace( Simple_SEO_Schema::sanitize( array() ), $values ) );
+		Simple_SEO_Settings::flush();
+	};
+	$sseo_wc_set( array( 'mode' => 'always' ) );
+	wp_set_current_user( 0 );
+
+	$sseo_vals = array( Simple_SEO_Schema::builtin_page_type( 'product' ), Simple_SEO_Schema::builtin_page_type( 'post' ), Simple_SEO_Schema::builtin_page_type( 'page' ), Simple_SEO_Schema::default_page_type( 'product' ), Simple_SEO_Schema::default_page_type( 'page' ) );
+	sseo_check( 'products are item pages by default, the rest web pages', array( 'ItemPage', 'WebPage', 'WebPage', 'ItemPage', 'WebPage' ) === $sseo_vals, $sseo_vals );
+
+	// WooCommerce's JSON-LD where Simple SEO's graph is printed: none of what the graph says.
+	$sseo_wc_types = array( 'product', '', 'website', 'onlinestore', 'review', 'breadcrumblist', 'order' );
+	$sseo_wc_show( array( 'p' => $sseo_p['author_post'] ) );
+	$sseo_vals = array(
+		Simple_SEO_WooCommerce::woocommerce_types( $sseo_wc_types ),
+		Simple_SEO_WooCommerce::woocommerce_types( array( 'product', 'review' ) ),
+		Simple_SEO_WooCommerce::woocommerce_types( 'x' ),
+	);
+	$sseo_wc_set( array( 'mode' => 'always', 'breadcrumbs' => false ) );
+	$sseo_wc_show( array( 'p' => $sseo_p['author_post'] ) );
+	$sseo_vals[] = Simple_SEO_WooCommerce::woocommerce_types( $sseo_wc_types );
+	$sseo_wc_set( array( 'mode' => 'off' ) );
+	$sseo_vals[] = Simple_SEO_WooCommerce::woocommerce_types( $sseo_wc_types );
+	$sseo_wc_set( array( 'mode' => 'always' ) );
+	sseo_check(
+		'WooCommerce\'s JSON-LD with the graph of Simple SEO: only what the graph does not say, the trail when it has none; one that is none rather than an empty list; all without the graph',
+		array( array( 'order' ), array( 'none' ), 'x', array( 'breadcrumblist', 'order' ), $sseo_wc_types ) === $sseo_vals && has_filter( 'woocommerce_structured_data_type_for_page', array( Simple_SEO_WooCommerce::class, 'woocommerce_types' ) ),
+		$sseo_vals
+	);
+
+	if ( ! Simple_SEO_WooCommerce::active() ) {
+		$sseo_ctx  = Simple_SEO_Context::current();
+		$sseo_vals = array(
+			Simple_SEO_WooCommerce::schema_pieces( array( 'webpage' => array( '@id' => 'x' ) ), $sseo_ctx ),
+			Simple_SEO_WooCommerce::head_tags( array( 'og:type' => array( 'tag' => 'meta', 'attributes' => array( 'property' => 'og:type', 'content' => 'article' ) ) ), $sseo_ctx ),
+			Simple_SEO_WooCommerce::product( $sseo_ctx ),
+			Simple_SEO_WooCommerce::return_policy(),
+		);
+		sseo_check(
+			'without WooCommerce: no product, no policy, the graph and the tags as they are',
+			array( array( 'webpage' => array( '@id' => 'x' ) ), array( 'og:type' => array( 'tag' => 'meta', 'attributes' => array( 'property' => 'og:type', 'content' => 'article' ) ) ), null, '' ) === $sseo_vals,
+			$sseo_vals
+		);
+	} else {
+		// The pieces of a page's graph as the filters make them.
+		$sseo_wc_pieces = static fn( Simple_SEO_Context $context ): array => (array) apply_filters( 'simple_seo_schema_pieces', Simple_SEO_Schema::pieces( $context ), $context );
+
+		// Products, a brand, an image, a review.
+		$sseo_wc_product = static function ( array $set ) use ( &$sseo ): int {
+			$product = new WC_Product_Simple();
+			$product->set_name( $set['name'] );
+			$product->set_status( 'publish' );
+			foreach ( array( 'regular_price', 'sale_price', 'sku', 'global_unique_id', 'short_description', 'stock_status', 'image_id' ) as $key ) {
+				if ( isset( $set[ $key ] ) ) {
+					$product->{'set_' . $key}( $set[ $key ] );
+				}
+			}
+			$id              = (int) $product->save();
+			$sseo['posts'][] = $id;
+
+			return $id;
+		};
+		$sseo_wc_image = (int) wp_insert_attachment( array( 'post_title' => 'Wooimage', 'post_mime_type' => 'image/jpeg', 'post_status' => 'inherit' ), 'woo-oak-table.jpg' );
+		$sseo['posts'][] = $sseo_wc_image;
+		update_post_meta( $sseo_wc_image, '_wp_attachment_metadata', array( 'width' => 800, 'height' => 600, 'file' => 'woo-oak-table.jpg' ) );
+		$sseo_wc_table = $sseo_wc_product(
+			array(
+				'name'              => 'Wootest oak table',
+				'regular_price'     => '100',
+				'sale_price'        => '80',
+				'sku'               => 'OAK-1',
+				'global_unique_id'  => '4006381333931',
+				'short_description' => 'A solid <b>oak</b> table.',
+				'image_id'          => $sseo_wc_image,
+			)
+		);
+		$sseo_wc_brands = array();
+		foreach ( array( 'Woobrand one', 'Woobrand two' ) as $sseo_name ) {
+			$sseo_term        = wp_insert_term( $sseo_name, Simple_SEO_WooCommerce::BRANDS );
+			$sseo_wc_brands[] = (int) $sseo_term['term_id'];
+			$sseo['terms'][]  = array( (int) $sseo_term['term_id'], Simple_SEO_WooCommerce::BRANDS );
+		}
+		wp_set_object_terms( $sseo_wc_table, $sseo_wc_brands, Simple_SEO_WooCommerce::BRANDS );
+		update_post_meta( $sseo_wc_table, Simple_SEO_Fields::meta_key( Simple_SEO_Primary_Term::field( Simple_SEO_WooCommerce::BRANDS ) ), (string) $sseo_wc_brands[1] );
+		$sseo_val = (int) wp_insert_comment( array( 'comment_post_ID' => $sseo_wc_table, 'comment_content' => 'Great table', 'comment_type' => 'review', 'comment_approved' => 1, 'comment_author' => 'Ann' ) );
+		update_comment_meta( $sseo_val, 'rating', 5 );
+		WC_Comments::clear_transients( $sseo_wc_table );
+		$sseo_wc_bare = $sseo_wc_product( array( 'name' => 'Wootest no price' ) );
+
+		$sseo_ctx   = $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) );
+		$sseo_graph = Simple_SEO_Schema::graph( $sseo_ctx );
+		$sseo_url   = (string) get_permalink( $sseo_wc_table );
+		$sseo_node  = array_values( array_filter( $sseo_graph, static fn( array $node ): bool => 'Product' === ( $node['@type'] ?? '' ) ) )[0] ?? array();
+		$sseo_page  = array_values( array_filter( $sseo_graph, static fn( array $node ): bool => $sseo_url === ( $node['@id'] ?? '' ) ) )[0] ?? array();
+		sseo_check(
+			'a product in the graph: WooCommerce\'s own, the main entity of its item page, with the image of the page, the site as the seller and the primary brand',
+			$sseo_url . '#product' === ( $sseo_node['@id'] ?? null ) && array( '@id' => $sseo_url ) === ( $sseo_node['mainEntityOfPage'] ?? null ) && array( '@id' => $sseo_url . '#primaryimage' ) === ( $sseo_node['image'] ?? null )
+				&& array( '@type' => 'Brand', 'name' => 'Woobrand two' ) === ( $sseo_node['brand'] ?? null ) && 'ItemPage' === ( $sseo_page['@type'] ?? null )
+				&& 'Wootest oak table' === $sseo_node['name'] && 'OAK-1' === $sseo_node['sku'] && '4006381333931' === $sseo_node['gtin'] && 'A solid oak table.' === $sseo_node['description']
+				&& array( '@id' => home_url( '/' ) . '#organization' ) === ( $sseo_node['offers'][0]['seller'] ?? null ) && '80.00' === ( $sseo_node['offers'][0]['price'] ?? null ) && 'https://schema.org/InStock' === $sseo_node['offers'][0]['availability']
+				&& '5.00' === (string) ( $sseo_node['aggregateRating']['ratingValue'] ?? '' ) && 'Ann' === ( $sseo_node['review'][0]['author']['name'] ?? null ),
+			$sseo_graph
+		);
+		// A brand with its picture: its logo.
+		update_term_meta( $sseo_wc_brands[1], 'thumbnail_id', $sseo_wc_image );
+		$sseo_vals = array( $sseo_wc_pieces( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) )['product']['brand'] ?? null );
+		delete_term_meta( $sseo_wc_brands[1], 'thumbnail_id' );
+		sseo_check( 'a brand with a picture has its logo', array( '@type' => 'Brand', 'name' => 'Woobrand two', 'logo' => wp_get_attachment_image_url( $sseo_wc_image, 'full' ) ) === $sseo_vals[0] && '' !== (string) wp_get_attachment_image_url( $sseo_wc_image, 'full' ), $sseo_vals );
+
+		// The type of page of products in the settings.
+		wp_set_current_user( $sseo_u['administrator'] );
+		$sseo_vals = array(
+			Simple_SEO_Schema::sanitize( array( 'page_types' => array( 'product' => 'ItemPage', 'page' => 'WebPage' ) ) )['page_types'],
+			Simple_SEO_Schema::sanitize( array( 'page_types' => array( 'product' => 'WebPage' ) ) )['page_types'],
+			(bool) preg_match( '/name="simple_seo_schema\[page_types\]\[product\]">.*?<option value="ItemPage"\s+selected/s', sseo_capture( array( Simple_SEO_Schema::class, 'render_tab' ) ) ),
+		);
+		wp_set_current_user( 0 );
+		sseo_check( 'the type of page of products: item page by default on the tab, kept only when it differs', array( array(), array( 'product' => 'WebPage' ), true ) === $sseo_vals, $sseo_vals );
+
+		$sseo_vals = array();
+		$sseo_vals['no price'] = array_keys( $sseo_wc_pieces( $sseo_wc_show( array( 'p' => $sseo_wc_bare, 'post_type' => 'product' ) ) ) );
+		wp_update_post( array( 'ID' => $sseo_wc_bare, 'post_password' => 'secret' ) );
+		update_post_meta( $sseo_wc_bare, '_regular_price', '10' );
+		update_post_meta( $sseo_wc_bare, '_price', '10' );
+		wc_delete_product_transients( $sseo_wc_bare );
+		$sseo_vals['password'] = array_keys( $sseo_wc_pieces( $sseo_wc_show( array( 'p' => $sseo_wc_bare, 'post_type' => 'product' ) ) ) );
+		$sseo_vals['a post']   = isset( $sseo_wc_pieces( $sseo_wc_show( array( 'p' => $sseo_p['author_post'] ) ) )['product'] );
+		wp_update_post( array( 'ID' => $sseo_wc_bare, 'post_password' => '' ) );
+		wp_set_object_terms( $sseo_wc_table, array(), Simple_SEO_WooCommerce::BRANDS );
+		$sseo_vals['no brand'] = $sseo_wc_pieces( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) )['product']['brand'] ?? null;
+		wp_set_object_terms( $sseo_wc_table, $sseo_wc_brands, Simple_SEO_WooCommerce::BRANDS );
+		$sseo_wc_set( array( 'mode' => 'always', 'represents' => 'person', 'person' => $sseo_u['administrator'] ) );
+		$sseo_vals['person']    = $sseo_wc_pieces( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) )['product']['offers'][0]['seller'] ?? null;
+		$sseo_vals['person id'] = Simple_SEO_Schema::publisher()['@id'] ?? null;
+		$sseo_wc_set( array( 'mode' => 'always' ) );
+		sseo_check(
+			'no product node: WooCommerce makes none without a price or a rating, none behind a password, none on a post; no brand, none said; a person as the seller',
+			! in_array( 'product', $sseo_vals['no price'], true ) && in_array( 'webpage', $sseo_vals['no price'], true ) && ! in_array( 'product', $sseo_vals['password'], true ) && false === $sseo_vals['a post'] && null === $sseo_vals['no brand']
+				&& is_string( $sseo_vals['person id'] ) && ! str_ends_with( $sseo_vals['person id'], '#organization' ) && array( '@id' => $sseo_vals['person id'] ) === $sseo_vals['person'],
+			$sseo_vals
+		);
+
+		// The return policy.
+		$sseo_wc_refund = (int) wc_get_page_id( 'refund_returns' );
+		$sseo_vals      = array( Simple_SEO_WooCommerce::return_policy(), isset( $sseo_wc_pieces( $sseo_wc_show( array() ) )['organization']['hasMerchantReturnPolicy'] ) );
+		wp_update_post( array( 'ID' => $sseo_wc_refund, 'post_status' => 'publish' ) );
+		$sseo_wc_link = (string) get_permalink( $sseo_wc_refund );
+		$sseo_vals[]  = Simple_SEO_WooCommerce::return_policy();
+		$sseo_vals[] = $sseo_wc_pieces( $sseo_wc_show( array() ) )['organization']['hasMerchantReturnPolicy'] ?? null;
+		wp_update_post( array( 'ID' => $sseo_wc_refund, 'post_password' => 'secret' ) );
+		$sseo_vals[] = Simple_SEO_WooCommerce::return_policy();
+		wp_update_post( array( 'ID' => $sseo_wc_refund, 'post_password' => '', 'post_status' => 'draft' ) );
+		sseo_check(
+			'the return policy of the shop on the organization, when its page is published and open',
+			array( '', false, $sseo_wc_link, array( '@type' => 'MerchantReturnPolicy', 'merchantReturnLink' => $sseo_wc_link ), '' ) === $sseo_vals && str_contains( $sseo_wc_link, 'refund_returns' ),
+			$sseo_vals
+		);
+
+		// Open Graph of a product.
+		$sseo_og = static function ( Simple_SEO_Context $context ): array {
+			$tags = array();
+			foreach ( Simple_SEO_Head::tags( $context ) as $key => $tag ) {
+				if ( preg_match( '/^(og:type|product:|article:)/', $key ) ) {
+					$tags[ $key ] = $tag['attributes']['content'];
+				}
+			}
+
+			return $tags;
+		};
+		$sseo_vals = array( $sseo_og( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) ) );
+		foreach ( array( 'outofstock', 'onbackorder' ) as $sseo_name ) {
+			$sseo_product = wc_get_product( $sseo_wc_table );
+			$sseo_product->set_stock_status( $sseo_name );
+			$sseo_product->save();
+			$sseo_vals[] = Simple_SEO_WooCommerce::availability( wc_get_product( $sseo_wc_table ) );
+		}
+		$sseo_vals[] = $sseo_og( $sseo_wc_show( array( 'p' => $sseo_wc_bare, 'post_type' => 'product' ) ) );
+		update_post_meta( $sseo_wc_bare, '_regular_price', '' );
+		update_post_meta( $sseo_wc_bare, '_price', '' );
+		wc_delete_product_transients( $sseo_wc_bare );
+		$sseo_vals[] = $sseo_og( $sseo_wc_show( array( 'p' => $sseo_wc_bare, 'post_type' => 'product' ) ) );
+		$sseo_vals[] = $sseo_og( $sseo_wc_show( array( 'p' => $sseo_p['author_post'] ) ) );
+		sseo_check(
+			'Open Graph of a product: of the type product, its price as shown, the currency, availability, code and brand, no dates of an article',
+			array( 'og:type' => 'product', 'product:price:amount' => '80.00', 'product:price:currency' => get_woocommerce_currency(), 'product:availability' => 'in stock', 'product:retailer_item_id' => 'OAK-1', 'product:brand' => 'Woobrand two' ) === $sseo_vals[0]
+				&& 'out of stock' === $sseo_vals[1] && 'available for order' === $sseo_vals[2]
+				&& array( 'og:type' => 'product', 'product:price:amount' => '10.00', 'product:price:currency' => get_woocommerce_currency(), 'product:availability' => 'in stock' ) === $sseo_vals[3]
+				&& array( 'og:type' => 'product', 'product:availability' => 'in stock' ) === $sseo_vals[4]
+				&& 'article' === ( $sseo_vals[5]['og:type'] ?? null ) && isset( $sseo_vals[5]['article:published_time'] ),
+			$sseo_vals
+		);
+
+		// WooCommerce prints none of its own on the page of a product.
+		$sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) );
+		$GLOBALS['post'] = get_post( $sseo_wc_table );
+		WC()->structured_data->generate_product_data( wc_get_product( $sseo_wc_table ) );
+		$sseo_vals = array( sseo_capture( array( WC()->structured_data, 'output_structured_data' ) ) );
+		$sseo_wc_set( array( 'mode' => 'off' ) );
+		$sseo_vals[] = sseo_capture( array( WC()->structured_data, 'output_structured_data' ) );
+		$sseo_wc_set( array( 'mode' => 'always' ) );
+		unset( $GLOBALS['post'] );
+		sseo_check( 'WooCommerce prints no JSON-LD of its own where the graph has the product; with the graph off, its own', '' === $sseo_vals[0] && str_contains( $sseo_vals[1], '"@type":"Product"' ), $sseo_vals );
+	}
+
+	update_option( Simple_SEO_Schema::OPTION, $sseo_wc_schema );
+	Simple_SEO_Settings::flush();
+	$GLOBALS['wp_query'] = $sseo_wc_query;
+	unset( $GLOBALS['wp_actions']['wp'] );
+	if ( null !== $sseo_wc_actions ) {
+		$GLOBALS['wp_actions']['wp'] = $sseo_wc_actions;
+	}
+	Simple_SEO_Context::reset();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );

@@ -133,7 +133,7 @@ require __DIR__ . '/language-notice.php';
 	<tbody>
 		<?php
 		foreach ( $types as $simple_seo_type => $simple_seo_type_name ) :
-			$simple_seo_page    = Simple_SEO_Schema::known( $settings['page_types'][ $simple_seo_type ] ?? '', Simple_SEO_Schema::PAGE_TYPES ) ?: 'WebPage';
+			$simple_seo_page    = Simple_SEO_Schema::known( $settings['page_types'][ $simple_seo_type ] ?? '', Simple_SEO_Schema::PAGE_TYPES ) ?: Simple_SEO_Schema::builtin_page_type( $simple_seo_type );
 			$simple_seo_article = Simple_SEO_Schema::known( $settings['article_types'][ $simple_seo_type ] ?? '', Simple_SEO_Schema::ARTICLE_TYPES ) ?: Simple_SEO_Schema::builtin_article_type( $simple_seo_type );
 			?>
 			<tr>

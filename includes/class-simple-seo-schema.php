@@ -283,11 +283,16 @@ final class Simple_SEO_Schema {
 		return '';
 	}
 
-	/** The type of page of a post type's posts: the settings', else WebPage. */
+	/** The type of page of a post type's posts: the settings', else Simple SEO's own. */
 	public static function default_page_type( string $post_type ): string {
 		$types = (array) Simple_SEO_Settings::value( self::OPTION, 'page_types' );
 
-		return self::known( $types[ $post_type ] ?? '', self::PAGE_TYPES ) ?: 'WebPage';
+		return self::known( $types[ $post_type ] ?? '', self::PAGE_TYPES ) ?: self::builtin_page_type( $post_type );
+	}
+
+	/** Simple SEO's own type of page of a post type: ItemPage for products (WooCommerce), WebPage for the rest. */
+	public static function builtin_page_type( string $post_type ): string {
+		return 'product' === $post_type ? 'ItemPage' : 'WebPage';
 	}
 
 	/** Simple SEO's own type of article of a post type: Article for posts, None for the rest. */
@@ -1017,7 +1022,7 @@ final class Simple_SEO_Schema {
 			'logo'        => Simple_SEO_Fields::image_attachment( $input['logo'] ?? 0 ),
 			'profiles'    => self::sanitize_profiles( $input['profiles'] ?? array() ),
 			'breadcrumbs' => ! isset( $input['breadcrumbs'] ) || '1' === (string) $input['breadcrumbs'],
-			'page_types'    => self::sanitize_types( $input['page_types'] ?? array(), self::PAGE_TYPES, static fn( string $post_type ): string => 'WebPage' ),
+			'page_types'    => self::sanitize_types( $input['page_types'] ?? array(), self::PAGE_TYPES, array( self::class, 'builtin_page_type' ) ),
 			'article_types' => self::sanitize_types( $input['article_types'] ?? array(), self::ARTICLE_TYPES, array( self::class, 'builtin_article_type' ) ),
 		);
 	}
