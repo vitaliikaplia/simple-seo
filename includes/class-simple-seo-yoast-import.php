@@ -145,6 +145,17 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 			self::take_local( '', $titles, $report );
 		}
 		if ( is_array( $main ) ) {
+			self::verification(
+				array(
+					'google'    => $main['googleverify'] ?? '',
+					'bing'      => $main['msverify'] ?? '',
+					'yandex'    => $main['yandexverify'] ?? '',
+					'baidu'     => $main['baiduverify'] ?? '',
+					'pinterest' => $main['pinterestverify'] ?? '',
+					'ahrefs'    => $main['ahrefsverify'] ?? '',
+				),
+				$report
+			);
 			if ( array_key_exists( 'enable_xml_sitemap', $main ) && empty( $main['enable_xml_sitemap'] ) ) {
 				self::sitemaps_off( $report );
 			}

@@ -68,7 +68,11 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 	);
 
 	/** AIOSEO's codes for webmaster tools. */
-	private const VERIFICATION = array( 'google', 'bing', 'yandex', 'baidu', 'pinterest', 'norton', 'microsoftClarityProjectId', 'miscellaneousVerification' );
+	/** AIOSEO's codes for webmaster tools Simple SEO has a field for (the same names). */
+	private const VERIFICATION = array( 'google', 'bing', 'yandex', 'baidu', 'pinterest' );
+
+	/** AIOSEO's codes Simple SEO has no field for. */
+	private const VERIFICATION_LEFT = array( 'norton', 'microsoftClarityProjectId', 'miscellaneousVerification' );
 
 	/** AIOSEO's feeds (kept when on) => Simple SEO's switches that remove them. */
 	private const FEEDS = array(
@@ -280,7 +284,12 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 		if ( $filled( array( 'breadcrumbs.archiveFormat', 'breadcrumbs.searchResultFormat', 'breadcrumbs.errorFormat404' ) ) ) {
 			$report['left']['breadcrumb_texts'] = 1;
 		}
-		if ( $filled( array_map( static fn( string $key ): string => 'webmasterTools.' . $key, self::VERIFICATION ) ) ) {
+		$codes = array();
+		foreach ( self::VERIFICATION as $key ) {
+			$codes[ $key ] = self::get( $options, 'webmasterTools.' . $key );
+		}
+		self::verification( $codes, $report );
+		if ( $filled( array_map( static fn( string $key ): string => 'webmasterTools.' . $key, self::VERIFICATION_LEFT ) ) ) {
 			$report['left']['verification'] = 1;
 		}
 		if ( true === self::get( $options, 'searchAppearance.advanced.removeCategoryBase' ) ) {

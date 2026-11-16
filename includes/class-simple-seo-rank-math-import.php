@@ -83,8 +83,17 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		'robots_adv' => array( 'rank_math_advanced_robots' ),
 	);
 
-	/** Rank Math's codes for webmaster tools. */
-	private const VERIFICATION = array( 'google_verify', 'bing_verify', 'baidu_verify', 'yandex_verify', 'pinterest_verify', 'norton_verify', 'custom_webmaster_tags' );
+	/** Rank Math's codes for webmaster tools Simple SEO has a field for: its key => Simple SEO's. */
+	private const VERIFICATION = array(
+		'google_verify'    => 'google',
+		'bing_verify'      => 'bing',
+		'baidu_verify'     => 'baidu',
+		'yandex_verify'    => 'yandex',
+		'pinterest_verify' => 'pinterest',
+	);
+
+	/** Rank Math's codes Simple SEO has no field for. */
+	private const VERIFICATION_LEFT = array( 'norton_verify', 'custom_webmaster_tags' );
 
 	/** Rank Math's switches that take a base out of addresses. */
 	private const URL_BASES = array( 'strip_category_base', 'wc_remove_product_base', 'wc_remove_category_base', 'wc_remove_category_parent_slugs' );
@@ -296,7 +305,12 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		if ( $filled( $general, array( 'breadcrumbs_archive_format', 'breadcrumbs_search_format', 'breadcrumbs_404_label' ) ) ) {
 			$report['left']['breadcrumb_texts'] = 1;
 		}
-		if ( $filled( $general, self::VERIFICATION ) ) {
+		$codes = array();
+		foreach ( self::VERIFICATION as $key => $field ) {
+			$codes[ $field ] = $general[ $key ] ?? '';
+		}
+		self::verification( $codes, $report );
+		if ( $filled( $general, self::VERIFICATION_LEFT ) ) {
 			$report['left']['verification'] = 1;
 		}
 		if ( array_filter( self::URL_BASES, static fn( string $key ): bool => self::on( $general[ $key ] ?? '' ) ) ) {

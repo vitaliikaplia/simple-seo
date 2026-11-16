@@ -100,6 +100,8 @@ endif;
 		'schema'        => __( 'Schema: %s', 'simple-seo' ),
 		/* translators: %s: number. */
 		'local'         => __( 'Local SEO: %s', 'simple-seo' ),
+		/* translators: %s: number. */
+		'verification'  => __( 'codes of webmaster tools: %s', 'simple-seo' ),
 	);
 	foreach ( $simple_seo_labels as $simple_seo_what => $simple_seo_label ) {
 		if ( $simple_seo_count( 'settings', $simple_seo_what ) ) {
@@ -165,7 +167,7 @@ endif;
 						'social_templates' => __( 'templates of titles and descriptions for social networks', 'simple-seo' ),
 						'breadcrumb_texts' => __( 'the texts the breadcrumbs put before archives and search results and on the 404 page', 'simple-seo' ),
 						'schema_person'    => __( 'the person the site represents: choose the user on the Schema tab', 'simple-seo' ),
-						'verification'     => __( 'the codes that confirm the site to Google, Bing and other webmaster tools: put them where the site keeps such codes, or they stop working', 'simple-seo' ),
+						'verification'     => __( 'codes of webmaster tools Simple SEO has no field for (Norton, Microsoft Clarity, custom tags): put them into the custom code of the theme, or they stop working', 'simple-seo' ),
 						'url_bases'        => __( 'addresses without the category base: with the plugin off, the addresses of categories get it back', 'simple-seo' ),
 						'robots_rules'     => __( 'the rules added to robots.txt: put them on the Files tab', 'simple-seo' ),
 						/* translators: %s: number of redirections. */

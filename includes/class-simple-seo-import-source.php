@@ -403,6 +403,29 @@ abstract class Simple_SEO_Import_Source {
 	}
 
 	/**
+	 * The codes of webmaster tools for the Integrations tab: only where Simple SEO has none.
+	 *
+	 * @param array<string, mixed> $codes  google, bing, yandex, baidu, pinterest, facebook, ahrefs.
+	 * @param array<string, mixed> $report
+	 */
+	protected static function verification( array $codes, array &$report ): void {
+		$row   = Simple_SEO_Integrations::sanitize( self::row( Simple_SEO_Integrations::OPTION ) );
+		$count = 0;
+		foreach ( array_keys( Simple_SEO_Integrations::VERIFICATION ) as $field ) {
+			$code = Simple_SEO_Integrations::sanitize_code( $codes[ $field ] ?? '' );
+			if ( '' !== $code && empty( $row['verification'][ $field ] ) ) {
+				$row['verification'][ $field ] = $code;
+				++$count;
+			}
+		}
+
+		if ( $count ) {
+			self::save( Simple_SEO_Integrations::OPTION, $row );
+			self::add( $report, 'settings', 'verification', $count );
+		}
+	}
+
+	/**
 	 * The details of the organization for the tab Local SEO: those common to all languages (taken
 	 * with $code '' only) and the texts of one language. Only empty fields are filled.
 	 *

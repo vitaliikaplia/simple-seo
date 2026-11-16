@@ -108,6 +108,7 @@ $sseo_saved_options = array(
 	'local'          => get_option( Simple_SEO_Local::OPTION ),
 	'local_names'    => get_option( Simple_SEO_Local::NAMES ),
 	'images'         => get_option( Simple_SEO_Images::OPTION ),
+	'integrations'   => get_option( Simple_SEO_Integrations::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -180,7 +181,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -3805,6 +3806,125 @@ try {
 	sseo_check( 'the tab: both switches on, each with its 0, and the way to the images without alt text', str_contains( $sseo_html, 'name="simple_seo_images[alt]" value="1"  checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_images[title]" value="1"  checked=\'checked\'' ) && 2 === substr_count( $sseo_html, 'value="0"' ) && str_contains( $sseo_html, esc_url( add_query_arg( array( 'page' => Simple_SEO_Bulk::PAGE, 'object' => Simple_SEO_Bulk::IMAGES, 'filter' => 'alt' ), admin_url( 'admin.php' ) ) ) ) && 'simple-seo-images' === ( get_registered_settings()[ Simple_SEO_Images::OPTION ]['group'] ?? '' ), $sseo_html );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Integrations' );
+
+	$sseo_in_theme = array( 'header_custom_code', 'after_body_custom_code', 'footer_custom_code', 'ga4_measurement_id' );
+	$sseo_in_saved = array();
+	foreach ( $sseo_in_theme as $sseo_name ) {
+		$sseo_in_saved[ $sseo_name ] = get_option( $sseo_name, null );
+		delete_option( $sseo_name );
+	}
+	delete_option( Simple_SEO_Integrations::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'the defaults: no codes, no tags, lazy, no waiting for consent, no tags for editors; the row is read on every page', array( 'verification' => array(), 'tags' => array(), 'lazy' => true, 'consent' => false, 'editors' => false ) === Simple_SEO_Settings::get( Simple_SEO_Integrations::OPTION ) && true === Simple_SEO_Settings::registered()[ Simple_SEO_Integrations::OPTION ]['autoload'] );
+
+	// The settings.
+	$sseo_val = Simple_SEO_Integrations::sanitize(
+		array(
+			'verification' => array(
+				'google'    => ' abc-DEF_123 ',
+				'bing'      => '<meta name="msvalidate.01" content="0123456789ABCDEF" />',
+				'yandex'    => "bad code\"><script>",
+				'baidu'     => 'abc',
+				'pinterest' => array( 'no' ),
+				'facebook'  => "<meta name='facebook-domain-verification' content='fbcode123' />",
+				'ahrefs'    => 'code<script>alert(1)</script>',
+				'unknown'   => 'abcdef',
+			),
+			'tags'         => array(
+				'google' => 'g-abc1234567',
+				'gtm'    => "<!-- Google Tag Manager -->\n<script>(function(w,d,s,l,i){})(window,document,'script','dataLayer','GTM-AB12CD3');</script>",
+				'meta'   => "<script>fbq('init', '123456789012345'); fbq('track', 'PageView');</script>",
+				'tiktok' => 'not a pixel',
+			),
+			'lazy'         => '0',
+			'consent'      => '1',
+			'editors'      => '1',
+		)
+	);
+	sseo_check( 'sanitized: codes as typed or from a whole meta tag; a code with other characters, a short one or no text is none; IDs in capitals or from a pasted snippet; a wrong ID is none; the switches', array( 'google' => 'abc-DEF_123', 'bing' => '0123456789ABCDEF', 'facebook' => 'fbcode123' ) === $sseo_val['verification'] && array( 'google' => 'G-ABC1234567', 'gtm' => 'GTM-AB12CD3', 'meta' => '123456789012345' ) === $sseo_val['tags'] && false === $sseo_val['lazy'] && true === $sseo_val['consent'] && true === $sseo_val['editors'], $sseo_val );
+	$sseo_val = Simple_SEO_Integrations::sanitize( array() );
+	sseo_check( 'sanitized: nothing sent is lazy and nothing else', true === $sseo_val['lazy'] && false === $sseo_val['consent'] && false === $sseo_val['editors'] && array() === $sseo_val['tags'] );
+	$sseo_val = Simple_SEO_Integrations::find_ids( "<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-XYZ9876543\"></script><script>gtag('config', 'AW-1234567890');</script><script>ttq.load('CABCDEFGHIJ1234567');</script> GTM-QWERTY1 gtm-qwerty1" );
+	sseo_check( 'IDs in code: of Google by its address or its config, of GTM once whatever the case, of TikTok', array( 'google' => array( 'G-XYZ9876543', 'AW-1234567890' ), 'gtm' => array( 'GTM-QWERTY1' ), 'tiktok' => array( 'CABCDEFGHIJ1234567' ) ) === $sseo_val, $sseo_val );
+
+	// The codes on the home page.
+	update_option( Simple_SEO_Integrations::OPTION, array( 'verification' => array( 'google' => 'gcode1234', 'bing' => 'bcode1234', 'pinterest' => 'pcode1234' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_html = Simple_SEO_Head::render( Simple_SEO_Head::tags( Simple_SEO_Context::for_home() ) );
+	$sseo_val  = Simple_SEO_Integrations::head_tags( Simple_SEO_Context::for_post( get_post( $sseo['posts']['long'] ) ) );
+	sseo_check( 'the codes are meta tags of the home page, by the names the tools look for, only those there are; none on other pages', str_contains( $sseo_html, '<meta name="google-site-verification" content="gcode1234"' ) && str_contains( $sseo_html, '<meta name="p:domain_verify" content="pcode1234"' ) && str_contains( $sseo_html, '<meta name="msvalidate.01" content="bcode1234"' ) && array( 'google-site-verification', 'msvalidate.01', 'p:domain_verify' ) === array_keys( Simple_SEO_Integrations::head_tags( Simple_SEO_Context::for_home() ) ) && array() === $sseo_val, $sseo_html );
+
+	// The tags.
+	delete_option( Simple_SEO_Integrations::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'no tags: no script', array() === Simple_SEO_Integrations::config() && '' === sseo_capture( array( Simple_SEO_Integrations::class, 'output' ) ) );
+	update_option( Simple_SEO_Integrations::OPTION, array( 'tags' => array( 'google' => 'G-ABC1234567', 'meta' => '123456789012345' ) ) );
+	Simple_SEO_Settings::flush();
+	wp_set_current_user( 0 );
+	$sseo_val  = Simple_SEO_Integrations::config();
+	$sseo_html = sseo_capture( array( Simple_SEO_Integrations::class, 'output' ) );
+	sseo_check( 'a visitor gets the tags: their IDs, lazy, no waiting for consent, the timer', array( 'google' => 'G-ABC1234567', 'meta' => '123456789012345', 'lazy' => true, 'consent' => false, 'timer' => Simple_SEO_Integrations::LAZY_TIMER ) === $sseo_val && str_starts_with( $sseo_html, '<script id="simple-seo-tags">' ) && str_contains( $sseo_html, '"google":"G-ABC1234567","meta":"123456789012345","lazy":true,"consent":false,"timer":8000' ) && str_contains( $sseo_html, 'googletagmanager.com/gtag/js?id=' ) && str_contains( $sseo_html, 'connect.facebook.net/en_US/fbevents.js' ), $sseo_val );
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_val = array( Simple_SEO_Integrations::config() );
+	update_option( Simple_SEO_Integrations::OPTION, array( 'tags' => array( 'google' => 'G-ABC1234567' ), 'editors' => true ) );
+	Simple_SEO_Settings::flush();
+	$sseo_val[] = Simple_SEO_Integrations::config();
+	wp_set_current_user( 0 );
+	sseo_check( 'an editor gets no tags, unless they are counted too', array() === $sseo_val[0] && 'G-ABC1234567' === ( $sseo_val[1]['google'] ?? '' ), $sseo_val );
+	$sseo_in_filter = static fn( array $config ): array => array( 'google' => '</script><script>alert(1)', 'gtm' => 'GTM-AB12CD3', 'consent' => true, 'lazy' => false, 'timer' => -5 );
+	add_filter( 'simple_seo_integrations_tags', $sseo_in_filter );
+	$sseo_html = sseo_capture( array( Simple_SEO_Integrations::class, 'output' ) );
+	remove_filter( 'simple_seo_integrations_tags', $sseo_in_filter );
+	sseo_check( 'the filter changes the tags; an ID that is no ID is left out, so nothing can close the script; the timer is not negative', str_contains( $sseo_html, '{"gtm":"GTM-AB12CD3","lazy":false,"consent":true,"timer":0}' ) && 1 === substr_count( $sseo_html, '</script>' ) && ! str_contains( $sseo_html, 'alert' ), $sseo_html );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Yoast SEO' );
+	$sseo_val = sseo_capture( array( Simple_SEO_Integrations::class, 'output' ) );
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	sseo_check( 'no tags next to another SEO plugin', '' === $sseo_val && '' !== sseo_capture( array( Simple_SEO_Integrations::class, 'output' ) ) );
+	add_filter( 'simple_seo_integrations_tags', '__return_empty_array' );
+	$sseo_val = sseo_capture( array( Simple_SEO_Integrations::class, 'output' ) );
+	remove_filter( 'simple_seo_integrations_tags', '__return_empty_array' );
+	sseo_check( 'the filter can leave out all of them', '' === $sseo_val );
+	sseo_check( 'the tags after the head tags of Simple SEO', 3 === has_action( 'wp_head', array( Simple_SEO_Integrations::class, 'output' ) ) );
+
+	// What the theme prints already.
+	update_option( 'header_custom_code', "<script>(function(w,d,s,l,i){})(window,document,'script','dataLayer','GTM-AB12CD3');</script>" );
+	update_option( 'ga4_measurement_id', 'g-theme12345' );
+	update_option( 'footer_custom_code', 'nothing of these' );
+	$sseo_val = Simple_SEO_Integrations::theme_tags();
+	update_option( 'ga4_measurement_id', 'not an id' );
+	$sseo_val2 = Simple_SEO_Integrations::theme_tags();
+	sseo_check( "what the theme prints already: from its custom code and its measurement ID; a measurement ID that is no ID is none", array( 'gtm' => array( 'GTM-AB12CD3' ), 'google' => array( 'G-THEME12345' ) ) === $sseo_val && array( 'gtm' => array( 'GTM-AB12CD3' ) ) === $sseo_val2, array( $sseo_val, $sseo_val2 ) );
+
+	// The tab.
+	Simple_SEO_Integrations::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	update_option( Simple_SEO_Integrations::OPTION, array( 'verification' => array( 'google' => 'gcode1234' ), 'tags' => array( 'gtm' => 'GTM-AB12CD3' ), 'lazy' => false ) );
+	Simple_SEO_Settings::flush();
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab'] = 'integrations';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	foreach ( $sseo_in_theme as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	$sseo_html_clean = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	// The tabs of later sections (llms.txt, Files) are not added yet; Access is.
+	sseo_check( 'the Integrations tab sits after Images and before Access', false !== strpos( $sseo_html, '>Access<' ) && strpos( $sseo_html, '>Images<' ) < strpos( $sseo_html, '>Integrations<' ) && strpos( $sseo_html, '>Integrations<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check( 'the tab: the codes and the IDs as saved, the switches each with its 0, lazy off as saved', str_contains( $sseo_html, 'name="simple_seo_integrations[verification][google]" value="gcode1234"' ) && str_contains( $sseo_html, 'name="simple_seo_integrations[tags][gtm]" value="GTM-AB12CD3"' ) && str_contains( $sseo_html, 'name="simple_seo_integrations[lazy]" value="1" >' ) && 3 === substr_count( $sseo_html, 'value="0">' ) && 7 === substr_count( $sseo_html, 'name="simple_seo_integrations[verification][' ) && 4 === substr_count( $sseo_html, 'name="simple_seo_integrations[tags][' ), $sseo_html );
+	sseo_check( 'the tab says what the theme prints already, and that a tag printed by both is counted twice', str_contains( $sseo_html, 'The theme prints these itself (its options of custom code): Google Tag Manager GTM-AB12CD3' ) && 1 === substr_count( $sseo_html, 'class="description simple-seo-twice"' ) && ! str_contains( $sseo_html_clean, 'The theme prints these itself' ) && ! str_contains( $sseo_html_clean, 'simple-seo-twice' ) );
+	sseo_check( 'the tab saves its row', 'simple-seo-integrations' === ( get_registered_settings()[ Simple_SEO_Integrations::OPTION ]['group'] ?? '' ) );
+
+	delete_option( Simple_SEO_Integrations::OPTION );
+	foreach ( $sseo_in_saved as $sseo_name => $sseo_value ) {
+		if ( null !== $sseo_value ) {
+			update_option( $sseo_name, $sseo_value );
+		}
+	}
+	Simple_SEO_Settings::flush();
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );
 
 	$sseo_robots_path = Simple_SEO_Files::path( Simple_SEO_Files::ROBOTS );
@@ -5189,7 +5309,7 @@ try {
 	foreach ( array( 'wpseo', 'wpseo_titles', 'wpseo_social', 'wpseo_taxonomy_meta', Simple_SEO_Yoast_Import::STATE ) as $sseo_name ) {
 		delete_option( $sseo_name );
 	}
-	$sseo_yi_rows = array( Simple_SEO_Titles::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Sitemaps::OPTION, Simple_SEO_Cleanup::OPTION );
+	$sseo_yi_rows = array( Simple_SEO_Titles::OPTION, Simple_SEO_Indexing::OPTION, Simple_SEO_Social::OPTION, Simple_SEO_Special::OPTION, Simple_SEO_Breadcrumbs::OPTION, Simple_SEO_Breadcrumbs::LABELS, Simple_SEO_Sitemaps::OPTION, Simple_SEO_Cleanup::OPTION, Simple_SEO_Integrations::OPTION );
 	foreach ( $sseo_yi_rows as $sseo_name ) {
 		// Earlier sections registered the tabs' sanitizers, which fill a row with its defaults even
 		// on add_option(); on a site install() runs before them and the rows start empty.
@@ -5475,6 +5595,18 @@ try {
 	$sseo_yi_again = array();
 	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
 	sseo_check( 'Schema, run again: nothing more to take', ! isset( $sseo_yi_again['settings']['schema'] ), $sseo_yi_again );
+	// The codes of webmaster tools.
+	$sseo_yi_main = get_option( 'wpseo' );
+	update_option( 'wpseo', array_merge( (array) $sseo_yi_main, array( 'googleverify' => 'yoast-google-1', 'msverify' => '<meta name="msvalidate.01" content="BING123ABC" />', 'yandexverify' => 'bad code!', 'pinterestverify' => 'pin1234' ) ) );
+	update_option( Simple_SEO_Integrations::OPTION, array( 'verification' => array( 'pinterest' => 'own-pin' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_yi_again = array();
+	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
+	$sseo_val = get_option( Simple_SEO_Integrations::OPTION )['verification'] ?? array();
+	sseo_check( "codes of webmaster tools from Yoast: Google's, Bing's from its whole meta tag; a code that is no code is left; Simple SEO's own code stays", array( 'google' => 'yoast-google-1', 'bing' => 'BING123ABC', 'pinterest' => 'own-pin' ) == $sseo_val && 2 === ( $sseo_yi_again['settings']['verification'] ?? 0 ), array( $sseo_val, $sseo_yi_again ) ); // phpcs:ignore Universal.Operators.StrictComparisons
+	update_option( 'wpseo', $sseo_yi_main );
+	delete_option( Simple_SEO_Integrations::OPTION );
+	Simple_SEO_Settings::flush();
 	update_option( 'wpseo_titles', array_merge( get_option( 'wpseo_titles' ), array( 'company_or_person' => 'person', 'company_or_person_user_id' => $sseo_au ) ) );
 	delete_option( Simple_SEO_Schema::OPTION );
 	delete_option( Simple_SEO_Schema::NAMES );
@@ -5999,6 +6131,7 @@ try {
 			'breadcrumbs_archive_format'    => 'Archives for %s',
 			'robots_txt_content'            => "User-agent: *\r\nDisallow: /private/",
 			'google_verify'                 => 'abc123',
+			'norton_verify'                 => 'norton123',
 			'strip_category_base'           => 'on',
 		)
 	);
@@ -6160,7 +6293,8 @@ try {
 			'labels'        => 1,
 			'sitemaps'      => 1,
 			'robots_txt'    => 1,
-		) == $sseo_rm_report['settings'] && array( 'social_templates' => 1, 'breadcrumb_texts' => 1, 'verification' => 1, 'url_bases' => 1 ) == $sseo_rm_report['left'], // phpcs:ignore Universal.Operators.StrictComparisons
+			'verification'  => 1,
+		) == $sseo_rm_report['settings'] && array( 'social_templates' => 1, 'breadcrumb_texts' => 1, 'verification' => 1, 'url_bases' => 1 ) == $sseo_rm_report['left'] && array( 'google' => 'abc123' ) === ( get_option( Simple_SEO_Integrations::OPTION )['verification'] ?? null ), // phpcs:ignore Universal.Operators.StrictComparisons
 		$sseo_rm_report
 	);
 	$sseo_rm_again = array();
@@ -6383,6 +6517,7 @@ try {
 			'report'   => array(
 				'post'    => array( 'seen' => 3 ),
 				'dropped' => array( 'focuskw' => 2 ),
+				'settings' => array( 'verification' => 1 ),
 				'left'    => array(
 					'redirections' => 2,
 					'verification' => 1,
@@ -6392,7 +6527,7 @@ try {
 		)
 	);
 	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	sseo_check( "after a run: Rank Math's variables as Rank Math writes them, and what to do about the redirections and the codes", str_contains( $sseo_html, 'Posts with SEO fields: 3, 0 of them changed.' ) && str_contains( $sseo_html, '%focuskw% (2)' ) && str_contains( $sseo_html, 'redirections (2): with the plugin off they stop working' ) && str_contains( $sseo_html, 'the codes that confirm the site to Google' ) && str_contains( $sseo_html, 'author archives (authors: 1)' ), $sseo_html );
+	sseo_check( "after a run: Rank Math's variables as Rank Math writes them, and what to do about the redirections and the codes", str_contains( $sseo_html, 'Posts with SEO fields: 3, 0 of them changed.' ) && str_contains( $sseo_html, '%focuskw% (2)' ) && str_contains( $sseo_html, 'redirections (2): with the plugin off they stop working' ) && str_contains( $sseo_html, 'codes of webmaster tools Simple SEO has no field for' ) && str_contains( $sseo_html, 'codes of webmaster tools: 1' ) && str_contains( $sseo_html, 'author archives (authors: 1)' ), $sseo_html );
 	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'running', 'report' => array( 'post' => array( 'seen' => 7 ) ) ) );
 	update_option( Simple_SEO_Yoast_Import::STATE, array( 'status' => 'done' ) );
 	update_option( Simple_SEO_Rank_Math_Cleanup::OPTION, array( 'status' => 'done', 'report' => array( 'tables' => 1 ) ) );
@@ -6621,7 +6756,7 @@ try {
 		'aioseo_options',
 		wp_json_encode(
 			array(
-				'webmasterTools'   => array( 'google' => 'abc123', 'bing' => null ),
+				'webmasterTools'   => array( 'google' => 'abc123', 'bing' => null, 'microsoftClarityProjectId' => 'clarity1' ),
 				'breadcrumbs'      => array( 'separator' => '&raquo;', 'homepageLabel' => 'Start', 'breadcrumbPrefix' => 'You are here:', 'archiveFormat' => 'Archives for #breadcrumb_archive_post_type_name', 'showCurrentItem' => false, 'showBlogHome' => true ),
 				'social'           => array(
 					'facebook' => array(
@@ -6754,7 +6889,8 @@ try {
 	sseo_check( "clean-up: the feeds AIOSEO switched off; Simple SEO's own choice stays; nothing without AIOSEO's crawl clean-up", '1' === $sseo_ai_clean['feed_comments'] && '1' === $sseo_ai_clean['feed_tags'] && '0' === $sseo_ai_clean['feed_authors'] && '0' === $sseo_ai_clean['feed_posts'] && '0' === $sseo_ai_clean['feed_categories'] && '0' === $sseo_ai_clean['feed_post_comments'], $sseo_ai_clean );
 	sseo_check(
 		'the report names what was taken and what Simple SEO has nothing for',
-		array( 'separator' => 1, 'templates' => 7, 'indexing' => 1, 'attachments' => 1, 'special' => 3, 'default_image' => 1, 'breadcrumbs' => 1, 'labels' => 1, 'sitemaps' => 1, 'cleanup' => 2 ) == $sseo_ai_report['settings'] // phpcs:ignore Universal.Operators.StrictComparisons
+		array( 'separator' => 1, 'templates' => 7, 'indexing' => 1, 'attachments' => 1, 'special' => 3, 'default_image' => 1, 'breadcrumbs' => 1, 'labels' => 1, 'sitemaps' => 1, 'cleanup' => 2, 'verification' => 1 ) == $sseo_ai_report['settings'] // phpcs:ignore Universal.Operators.StrictComparisons
+			&& array( 'google' => 'abc123' ) === ( get_option( Simple_SEO_Integrations::OPTION )['verification'] ?? null )
 			&& array( 'social_templates' => 1, 'breadcrumb_texts' => 1, 'verification' => 1, 'url_bases' => 1, 'robots_rules' => 1 ) == $sseo_ai_report['left'], // phpcs:ignore Universal.Operators.StrictComparisons
 		$sseo_ai_report
 	);

@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.30.0
+Stable tag: 0.31.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ A lightweight SEO plugin for WordPress.
 
 == Description ==
 
-Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; builds llms.txt for AI assistants from the same pages; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; removes what WordPress adds to the code of pages (the version, the shortlink, discovery links, the emoji script, links to feeds), each by its own switch; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); tells search engines in Schema structured data what each page is and who stands behind the site, with FAQ pages from the questions and answers on them, JSON-LD of a page's own and local SEO (the type of the organization, its address, phone, opening hours and place on the map); gives images alt texts and titles from their names, on upload and in bulk; has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. The SEO block of the post editor and of the term form shows how the page will look in search results, on a computer and on a phone, while you type. It also analyses the content of a post for a focus keyphrase and a few more, and how easy its text is to read, each with a score and what to do; the lists of posts show both scores, and a table edits the SEO titles and descriptions of many posts or terms at once. Themes made for Yoast SEO keep working once Yoast is gone: Simple SEO answers the Yoast functions they call. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
+Simple SEO is in early development. It sets the title and the meta description of every page from templates with variables ({title}, {sep}, {site} and more), with the SEO title and description of a post, page or term taking precedence; prints the canonical address and tells search engines which pages to leave out (noindex, nofollow) by kind of page or one by one; makes an XML sitemap of what search engines may show, at the addresses Yoast SEO used; builds llms.txt for AI assistants from the same pages; gives themes breadcrumbs and the primary category of a post; edits robots.txt and .htaccess with a history of versions; removes what WordPress adds to the code of pages (the version, the shortlink, discovery links, the emoji script, links to feeds), each by its own switch; decides where attachment pages go; gives shared links a proper preview on Facebook, Telegram, X and the like (Open Graph); tells search engines in Schema structured data what each page is and who stands behind the site, with FAQ pages from the questions and answers on them, JSON-LD of a page's own and local SEO (the type of the organization, its address, phone, opening hours and place on the map); gives images alt texts and titles from their names, on upload and in bulk; prints the codes of webmaster tools and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded without slowing pages down; has its own settings for the home page, the 404 page and password-protected content, per language with wp-loc; and lets you choose which roles edit what. The SEO block of the post editor and of the term form shows how the page will look in search results, on a computer and on a phone, while you type. It also analyses the content of a post for a focus keyphrase and a few more, and how easy its text is to read, each with a score and what to do; the lists of posts show both scores, and a table edits the SEO titles and descriptions of many posts or terms at once. Themes made for Yoast SEO keep working once Yoast is gone: Simple SEO answers the Yoast functions they call. While another SEO plugin such as Yoast SEO is active, it prints nothing on the site.
 
 == Installation ==
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.31.0 =
+* An Integrations tab: the codes that confirm the site to Google Search Console, Bing, Yandex, Baidu, Pinterest, Meta and Ahrefs, as meta tags of the home page — paste the code or the whole meta tag. The import takes them from Yoast SEO, Rank Math and All in One SEO.
+* The tags of Google Analytics 4 (or another Google tag), Google Tag Manager, Meta Pixel and TikTok Pixel — paste the ID or the whole snippet. They load on the visitor's first move, so pages stay fast, or at once by a switch; with consent asked, they wait for the theme's cookie banner. Editors are not counted unless asked. The tab warns when the theme prints the same tags itself.
 
 = 0.30.0 =
 * The description made from the text of a post is as wide as a description in search results on a computer, not 156 characters: Cyrillic letters are wider than Latin ones, and such a description was cut with an ellipsis.
