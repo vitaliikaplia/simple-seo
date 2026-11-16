@@ -26,7 +26,7 @@ require __DIR__ . '/language-notice.php';
 
 <?php foreach ( $sections as $simple_seo_slot => $simple_seo_section ) : ?>
 	<?php $simple_seo_slot = (string) $simple_seo_slot; ?>
-	<h2><?php echo esc_html( $simple_seo_section['label'] ); ?></h2>
+	<?php Simple_SEO_Admin::section( '404' === $simple_seo_slot ? 'not-found' : $simple_seo_slot ); ?>
 	<p>
 		<?php echo esc_html( $simple_seo_section['text'] ); ?>
 		<?php if ( ! empty( $simple_seo_section['link'] ) ) : ?>
@@ -72,4 +72,5 @@ require __DIR__ . '/language-notice.php';
 		<?php endif; ?>
 		</tbody>
 	</table>
+	<?php Simple_SEO_Admin::section_end(); ?>
 <?php endforeach; ?>

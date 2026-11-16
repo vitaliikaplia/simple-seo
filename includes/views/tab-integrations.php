@@ -31,7 +31,7 @@ $simple_seo_services = array(
 ?>
 <p><?php esc_html_e( 'The codes that confirm the site to webmaster tools, and the tags of analytics and advertising: paste the code or the ID, or the whole snippet the service gives, and Simple SEO takes what it needs from it.', 'simple-seo' ); ?></p>
 
-<h2><?php esc_html_e( 'Site verification', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section( 'verification' ); ?>
 <p><?php esc_html_e( 'Each code is a meta tag on the home page, where these tools look for it.', 'simple-seo' ); ?></p>
 <table class="form-table" role="presentation">
 	<tbody>
@@ -46,7 +46,9 @@ $simple_seo_services = array(
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Analytics and pixels', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'analytics' ); ?>
 <?php if ( $theme ) : ?>
 	<div class="notice notice-warning inline">
 		<p>
@@ -107,3 +109,4 @@ $simple_seo_services = array(
 		</tr>
 	</tbody>
 </table>
+<?php Simple_SEO_Admin::section_end(); ?>

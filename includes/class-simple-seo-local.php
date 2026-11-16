@@ -141,7 +141,18 @@ final class Simple_SEO_Local {
 
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'local', __( 'Local SEO', 'simple-seo' ), array( self::OPTION, self::NAMES ), array( self::class, 'render_tab' ), 18 );
+		Simple_SEO_Admin::add_tab(
+			'local',
+			__( 'Local SEO', 'simple-seo' ),
+			array( self::OPTION, self::NAMES ),
+			array( self::class, 'render_tab' ),
+			30,
+			'markup',
+			static fn(): array => array(
+				'general' => __( 'General', 'simple-seo' ),
+				'address' => __( 'Address and description', 'simple-seo' ),
+			)
+		);
 	}
 
 	/**

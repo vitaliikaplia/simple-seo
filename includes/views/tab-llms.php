@@ -54,6 +54,7 @@ $simple_seo_where  = array(
 	</p></div>
 <?php endif; ?>
 
+<?php Simple_SEO_Admin::section( 'llms' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -127,10 +128,15 @@ require __DIR__ . '/language-notice.php';
 	</tbody>
 </table>
 
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'markdown' ); ?>
 <?php Simple_SEO_Markdown::render_section(); ?>
+<?php Simple_SEO_Admin::section_end(); ?>
 
 <?php if ( '' !== $preview ) : ?>
-	<h2><?php esc_html_e( 'What the site serves', 'simple-seo' ); ?></h2>
+	<?php Simple_SEO_Admin::section( 'preview' ); ?>
 	<p class="description"><?php esc_html_e( 'As saved; it is built again whenever content or settings change.', 'simple-seo' ); ?></p>
 	<pre style="background:#fff;border:1px solid #c3c4c7;padding:8px 12px;max-width:860px;max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-word"><?php echo esc_html( $preview ); ?></pre>
+	<?php Simple_SEO_Admin::section_end(); ?>
 <?php endif; ?>

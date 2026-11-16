@@ -24,6 +24,7 @@ $simple_seo_when   = static fn( int $time ): string => (string) wp_date( get_opt
 	<div class="notice notice-warning inline"><p><?php echo esc_html( $simple_seo_reason ); ?></p></div>
 <?php endforeach; ?>
 
+<?php Simple_SEO_Admin::section( 'settings' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -64,7 +65,9 @@ $simple_seo_when   = static fn( int $time ): string => (string) wp_date( get_opt
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'The last answers', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'answers' ); ?>
 <?php if ( $queue['urls'] ) : ?>
 	<p>
 		<?php
@@ -110,3 +113,4 @@ $simple_seo_when   = static fn( int $time ): string => (string) wp_date( get_opt
 <?php else : ?>
 	<p><?php esc_html_e( 'Nothing has been sent yet.', 'simple-seo' ); ?></p>
 <?php endif; ?>
+<?php Simple_SEO_Admin::section_end(); ?>

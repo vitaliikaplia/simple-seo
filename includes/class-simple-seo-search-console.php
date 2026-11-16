@@ -76,7 +76,18 @@ final class Simple_SEO_Search_Console {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'search-console', __( 'Search Console', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 42 );
+		Simple_SEO_Admin::add_tab(
+			'search-console',
+			__( 'Search Console', 'simple-seo' ),
+			array( self::OPTION ),
+			array( self::class, 'render_tab' ),
+			20,
+			'services',
+			static fn(): array => array(
+				'connection' => __( 'Connection', 'simple-seo' ),
+				'how'        => __( 'How to connect', 'simple-seo' ),
+			)
+		);
 	}
 
 	public static function add_menu(): void {

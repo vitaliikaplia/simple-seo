@@ -811,7 +811,7 @@ final class Simple_SEO_AI {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'ai', __( 'AI', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 48 );
+		Simple_SEO_Admin::add_tab( 'ai', __( 'AI', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 10, 'ai' );
 	}
 
 	public static function render_tab(): void {

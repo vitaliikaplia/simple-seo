@@ -67,7 +67,18 @@ final class Simple_SEO_IndexNow {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'indexnow', __( 'IndexNow', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 44 );
+		Simple_SEO_Admin::add_tab(
+			'indexnow',
+			__( 'IndexNow', 'simple-seo' ),
+			array( self::OPTION ),
+			array( self::class, 'render_tab' ),
+			20,
+			'crawl',
+			static fn(): array => array(
+				'settings' => __( 'Settings', 'simple-seo' ),
+				'answers'  => __( 'The last answers', 'simple-seo' ),
+			)
+		);
 	}
 
 	/*

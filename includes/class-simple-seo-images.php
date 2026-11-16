@@ -51,7 +51,7 @@ final class Simple_SEO_Images {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'images', __( 'Images', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 19 );
+		Simple_SEO_Admin::add_tab( 'images', __( 'Images', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 40, 'search' );
 	}
 
 	/**

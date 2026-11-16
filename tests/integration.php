@@ -1030,13 +1030,13 @@ try {
 	sseo_check( 'settings page lists the roles', str_contains( $sseo_html, 'value="editor"' ) && str_contains( $sseo_html, 'value="subscriber"' ) );
 	sseo_check( 'administrator checkbox of the settings row is checked and locked', (bool) preg_match( '/name="simple_seo_access\[settings\]\[\]"\s+value="administrator"\s+checked=\'checked\'\s+disabled=\'disabled\'/', $sseo_html ) );
 	sseo_check( 'so is that of the row of Search Console, and those of the other rows are not locked', (bool) preg_match( '/name="simple_seo_access\[reports\]\[\]"\s+value="administrator"\s+checked=\'checked\'\s+disabled=\'disabled\'/', $sseo_html ) && ! preg_match( '/name="simple_seo_access\[(?:fields|advanced)\]\[\]"\s+value="administrator"\s+checked=\'checked\'\s+disabled/', $sseo_html ) && str_contains( $sseo_html, 'See Search Console data' ) );
-	sseo_check( 'one tab: no tab bar yet', ! str_contains( $sseo_html, 'nav-tab-wrapper' ) );
+	sseo_check( 'one tab: no menu and no tab bar yet', ! str_contains( $sseo_html, 'nav-tab-wrapper' ) && ! str_contains( $sseo_html, 'simple-seo-sidebar' ) && ! str_contains( $sseo_html, 'data-simple-seo-jump' ) );
 	Simple_SEO_Admin::add_tab( 'sseo_test', 'Test tab', array(), static function (): void {
 		echo '<p id="sseo-test-tab">test tab</p>';
 	}, 5 );
 	$_GET['tab'] = 'sseo_test';
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	sseo_check( 'a second tab shows the tab bar, ordered', str_contains( $sseo_html, 'nav-tab-wrapper' ) && strpos( $sseo_html, 'Test tab' ) < strpos( $sseo_html, 'Access' ) );
+	sseo_check( 'a second tab shows the menu on the left, ordered, the current tab marked', str_contains( $sseo_html, 'class="simple-seo-sidebar"' ) && strpos( $sseo_html, 'Test tab' ) < strpos( $sseo_html, 'Access' ) && (bool) preg_match( '/<a href="[^"]*tab=sseo_test" class="is-current" aria-current="page">Test tab<\/a>/', $sseo_html ), $sseo_html );
 	sseo_check( 'the chosen tab renders', str_contains( $sseo_html, 'id="sseo-test-tab"' ) );
 	$_GET['tab'] = 'no-such-tab';
 	sseo_check( 'an unknown tab falls back to the first', 'sseo_test' === Simple_SEO_Admin::current_tab() );
@@ -3171,7 +3171,7 @@ try {
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
 	unset( $_GET['tab'] );
 	wp_set_current_user( 0 );
-	sseo_check( 'the Breadcrumbs tab sits between Indexing and Access', strpos( $sseo_html, '>Indexing<' ) < strpos( $sseo_html, '>Breadcrumbs<' ) && strpos( $sseo_html, '>Breadcrumbs<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check( 'the Breadcrumbs tab is in the group of the search appearance, after Special pages, before the group of Indexing', 'search' === Simple_SEO_Admin::tabs()['breadcrumbs']['group'] && 30 === Simple_SEO_Admin::tabs()['breadcrumbs']['order'] && false !== strpos( $sseo_html, '>Breadcrumbs<' ) && strpos( $sseo_html, '>Breadcrumbs<' ) < (int) strpos( $sseo_html, '>Indexing<' ) );
 	sseo_check( 'the tab: how to use it, the newest post\'s trail, the settings', str_contains( $sseo_html, 'simple_seo_the_breadcrumbs()' ) && str_contains( $sseo_html, '[simple_seo_breadcrumbs]' ) && str_contains( $sseo_html, 'The newest post now:' ) && str_contains( $sseo_html, 'name="simple_seo_breadcrumbs[separator]" value="›"' ) && str_contains( $sseo_html, 'name="simple_seo_breadcrumb_labels[home]"' ) && str_contains( $sseo_html, 'name="simple_seo_breadcrumbs[taxonomies][post]"' ) );
 	sseo_check( 'the tab saves both rows', 'simple-seo-breadcrumbs' === ( get_registered_settings()[ Simple_SEO_Breadcrumbs::OPTION ]['group'] ?? '' ) && 'simple-seo-breadcrumbs' === ( get_registered_settings()[ Simple_SEO_Breadcrumbs::LABELS ]['group'] ?? '' ) );
 
@@ -4208,7 +4208,7 @@ try {
 	Simple_SEO_Settings::flush();
 	unset( $_GET['tab'] );
 	wp_set_current_user( 0 );
-	sseo_check( 'the Images tab sits between Local SEO and Indexing', strpos( $sseo_html, '>Local SEO<' ) < strpos( $sseo_html, '>Images<' ) && strpos( $sseo_html, '>Images<' ) < strpos( $sseo_html, '>Indexing<' ) );
+	sseo_check( 'the Images tab closes the group of the search appearance, before Social networks', strpos( $sseo_html, '>Breadcrumbs<' ) < strpos( $sseo_html, '>Images<' ) && strpos( $sseo_html, '>Images<' ) < strpos( $sseo_html, '>Social networks<' ) );
 	sseo_check( 'the tab: a switch turned off is shown off', str_contains( $sseo_html_off, 'name="simple_seo_images[alt]" value="1" >' ) && str_contains( $sseo_html_off, 'name="simple_seo_images[title]" value="1"  checked=\'checked\'' ) );
 	sseo_check( 'the tab: both switches on, each with its 0, and the way to the images without alt text', str_contains( $sseo_html, 'name="simple_seo_images[alt]" value="1"  checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_images[title]" value="1"  checked=\'checked\'' ) && 2 === substr_count( $sseo_html, 'value="0"' ) && str_contains( $sseo_html, esc_url( add_query_arg( array( 'page' => Simple_SEO_Bulk::PAGE, 'object' => Simple_SEO_Bulk::IMAGES, 'filter' => 'alt' ), admin_url( 'admin.php' ) ) ) ) && 'simple-seo-images' === ( get_registered_settings()[ Simple_SEO_Images::OPTION ]['group'] ?? '' ), $sseo_html );
 
@@ -5413,7 +5413,7 @@ try {
 	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => true, 'key' => $sseo_ix_key ) );
 	unset( $_GET['tab'] );
 	wp_set_current_user( 0 );
-	sseo_check( 'the IndexNow tab sits after Search Console and before Access', strpos( $sseo_html, '>Search Console<' ) < strpos( $sseo_html, '>IndexNow<' ) && strpos( $sseo_html, '>IndexNow<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check( 'the IndexNow tab is in the group for search engines, after Indexing, before the group of services', 'crawl' === Simple_SEO_Admin::tabs()['indexnow']['group'] && 20 === Simple_SEO_Admin::tabs()['indexnow']['order'] && false !== strpos( $sseo_html, '>Indexing<' ) && strpos( $sseo_html, '>Indexing<' ) < strpos( $sseo_html, '>IndexNow<' ) && strpos( $sseo_html, '>IndexNow<' ) < (int) strpos( $sseo_html, '>Integrations<' ) );
 	sseo_check(
 		'the tab: the switch on with its 0, the key and the link to its file, the box for a new one with its 0; no warning; the batch waiting; the log, escaped, the address readable',
 		str_contains( $sseo_html, 'name="simple_seo_indexnow[enabled]" value="1" checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_indexnow[enabled]" value="0"' ) && str_contains( $sseo_html, '<code>' . $sseo_ix_key . '</code>' )
@@ -5721,7 +5721,7 @@ try {
 	// The tab.
 	Simple_SEO_Files::add_admin_tab();
 	$sseo_tabs = Simple_SEO_Admin::tabs();
-	sseo_check( 'the Files tab has no option rows of its own', isset( $sseo_tabs['files'] ) && array() === $sseo_tabs['files']['options'] && 80 === $sseo_tabs['files']['order'] );
+	sseo_check( 'the Files tab has no option rows of its own', isset( $sseo_tabs['files'] ) && array() === $sseo_tabs['files']['options'] && 40 === $sseo_tabs['files']['order'] && 'crawl' === $sseo_tabs['files']['group'] && array( 'robots' => 'robots.txt', 'htaccess' => '.htaccess' ) === Simple_SEO_Admin::sections( 'files' ) );
 	sseo_check( 'its forms are handled when the page loads', 10 === has_action( 'load-toplevel_page_simple-seo', array( Simple_SEO_Files::class, 'handle' ) ) );
 	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_POST                     = wp_slash(
@@ -5738,7 +5738,7 @@ try {
 	$_POST       = array();
 	$_GET['tab'] = 'files';
 	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	sseo_check( 'the tab is not an options.php form', ! str_contains( $sseo_html, 'action="options.php"' ) && str_contains( $sseo_html, 'tab=files#simple-seo-htaccess' ) );
+	sseo_check( 'the tab is not an options.php form; each form returns to its sub-tab', ! str_contains( $sseo_html, 'action="options.php"' ) && str_contains( $sseo_html, 'section=htaccess#simple-seo-htaccess' ) && str_contains( $sseo_html, 'section=robots#simple-seo-robots' ) && str_contains( (string) $sseo_url, 'section=htaccess' ) );
 	sseo_check( 'it shows both files, .htaccess with its tags escaped', str_contains( $sseo_html, 'id="simple-seo-robots-text"' ) && str_contains( $sseo_html, '&lt;IfModule mod_rewrite.c&gt;' ) && ! str_contains( $sseo_html, '<IfModule' ) );
 	sseo_check( 'the virtual robots.txt shows what the site serves', str_contains( $sseo_html, 'What the site serves' ) && str_contains( $sseo_html, 'Sitemap: ' . home_url( '/sitemap_index.xml' ) ) );
 	sseo_check( 'each form has its nonce and fingerprint', 2 <= substr_count( $sseo_html, 'name="simple_seo_loaded" value="' . $sseo_fp( 'htaccess' ) . '"' ) && str_contains( $sseo_html, 'name="_wpnonce"' ) );
@@ -5869,7 +5869,7 @@ try {
 	Simple_SEO_Cleanup::add_admin_tab();
 	Simple_SEO_Admin::register_settings();
 	$sseo_tabs = Simple_SEO_Admin::tabs();
-	sseo_check( 'the Clean-up tab saves its row', isset( $sseo_tabs['cleanup'] ) && array( Simple_SEO_Cleanup::OPTION ) === $sseo_tabs['cleanup']['options'] && 30 === $sseo_tabs['cleanup']['order'] );
+	sseo_check( 'the Clean-up tab saves its row', isset( $sseo_tabs['cleanup'] ) && array( Simple_SEO_Cleanup::OPTION ) === $sseo_tabs['cleanup']['options'] && 50 === $sseo_tabs['cleanup']['order'] && 'crawl' === $sseo_tabs['cleanup']['group'] );
 	delete_option( Simple_SEO_Cleanup::OPTION );
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Settings::install();
@@ -6088,7 +6088,7 @@ try {
 	Simple_SEO_Llms::add_admin_tab();
 	Simple_SEO_Admin::register_settings();
 	$sseo_tabs = Simple_SEO_Admin::tabs();
-	sseo_check( 'the llms.txt tab saves its rows and the Markdown versions', isset( $sseo_tabs['llms'] ) && array( Simple_SEO_Llms::OPTION, Simple_SEO_Llms::TEXT, Simple_SEO_Markdown::OPTION ) === $sseo_tabs['llms']['options'] && 35 === $sseo_tabs['llms']['order'] );
+	sseo_check( 'the llms.txt tab saves its rows and the Markdown versions', isset( $sseo_tabs['llms'] ) && array( Simple_SEO_Llms::OPTION, Simple_SEO_Llms::TEXT, Simple_SEO_Markdown::OPTION ) === $sseo_tabs['llms']['options'] && 20 === $sseo_tabs['llms']['order'] && 'ai' === $sseo_tabs['llms']['group'] );
 	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'post:post' => 'optional' ) ) );
 	update_option( Simple_SEO_Llms::TEXT, array( 'summary' => 'Sites & shops', 'details' => '' ) );
 	Simple_SEO_Settings::flush();
@@ -6636,7 +6636,7 @@ MD === $sseo_val,
 		(bool) preg_match( '/name="simple_seo_markdown\[enabled\]" value="1"\s+checked/', $sseo_html ) && (bool) preg_match( '/name="simple_seo_markdown\[slots\]\[post:page\]\[on\]" value="1"\s*>/', $sseo_html )
 			&& (bool) preg_match( '/name="simple_seo_markdown\[slots\]\[post:post\]\[on\]" value="1"\s+checked/', $sseo_html ) && (bool) preg_match( '/name="simple_seo_markdown\[slots\]\[post:page\]\[image\]" value="1"\s*>/', $sseo_html )
 			&& str_contains( $sseo_html, 'name="simple_seo_markdown[slots][post:page][meta]"' ) && str_contains( $sseo_html, 'name="simple_seo_markdown[slots][term:category][description]"' ) && ! str_contains( $sseo_html, 'name="simple_seo_markdown[slots][term:category][meta]"' )
-			&& str_contains( $sseo_html, esc_url( home_url( '/' ) . 'index.md' ) ) && str_contains( $sseo_html, 'id="simple-seo-markdown"' ),
+			&& str_contains( $sseo_html, esc_url( home_url( '/' ) . 'index.md' ) ) && str_contains( $sseo_html, 'id="simple-seo-section-markdown"' ),
 		substr( (string) strstr( $sseo_html, 'simple-seo-markdown' ), 0, 600 )
 	);
 	$sseo_md_off();
@@ -12103,7 +12103,7 @@ MD === $sseo_val,
 	wp_set_current_user( $sseo_u['administrator'] );
 	Simple_SEO_AI::add_admin_tab();
 	$sseo_tabs = Simple_SEO_Admin::tabs();
-	sseo_check( 'the AI tab: after 404, with its row', isset( $sseo_tabs['ai'] ) && 'AI' === $sseo_tabs['ai']['label'] && array( Simple_SEO_AI::OPTION ) === $sseo_tabs['ai']['options'] && 48 === $sseo_tabs['ai']['order'], $sseo_tabs['ai'] ?? null );
+	sseo_check( 'the AI tab: first of the group of AI and agents, with its row', isset( $sseo_tabs['ai'] ) && 'AI' === $sseo_tabs['ai']['label'] && array( Simple_SEO_AI::OPTION ) === $sseo_tabs['ai']['options'] && 10 === $sseo_tabs['ai']['order'] && 'ai' === $sseo_tabs['ai']['group'], $sseo_tabs['ai'] ?? null );
 	$sseo_ai_set( 2 );
 	set_transient( Simple_SEO_AI::READY, array( 'providers' => 'sseo-test', 'ready' => false ), HOUR_IN_SECONDS );
 	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
@@ -12563,6 +12563,152 @@ MD === $sseo_val,
 		$GLOBALS['wp_actions']['wp'] = $sseo_wc_actions;
 	}
 	Simple_SEO_Context::reset();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Settings layout' );
+
+	$sseo_lay_tabs = new ReflectionProperty( Simple_SEO_Admin::class, 'tabs' );
+	$sseo_lay_kept = $sseo_lay_tabs->getValue();
+	$sseo_lay_tabs->setValue( null, array() );
+	foreach ( array( 'Simple_SEO_Titles', 'Simple_SEO_Special', 'Simple_SEO_Breadcrumbs', 'Simple_SEO_Images', 'Simple_SEO_Social', 'Simple_SEO_Schema', 'Simple_SEO_Local', 'Simple_SEO_Indexing', 'Simple_SEO_IndexNow', 'Simple_SEO_Monitor', 'Simple_SEO_Files', 'Simple_SEO_Cleanup', 'Simple_SEO_AI', 'Simple_SEO_Llms', 'Simple_SEO_Integrations', 'Simple_SEO_Search_Console', 'Simple_SEO_Import' ) as $sseo_class ) {
+		$sseo_class::add_admin_tab();
+	}
+	Simple_SEO_Admin::add_core_tabs();
+	$sseo_vals = array( array_keys( Simple_SEO_Admin::groups() ), array_keys( Simple_SEO_Admin::tabs() ), array_unique( array_column( Simple_SEO_Admin::tabs(), 'group' ) ) );
+	sseo_check(
+		'the tabs stand in six groups, each in its order: the search appearance, social networks and Schema, for search engines, AI and agents, services, the plugin',
+		array( 'search', 'markup', 'crawl', 'ai', 'services', 'plugin' ) === $sseo_vals[0]
+			&& array( 'titles', 'special', 'breadcrumbs', 'images', 'social', 'schema', 'local', 'indexing', 'indexnow', 'monitor', 'files', 'cleanup', 'ai', 'llms', 'integrations', 'search-console', 'access', 'import' ) === $sseo_vals[1]
+			&& array( 'search', 'markup', 'crawl', 'ai', 'services', 'plugin' ) === array_values( $sseo_vals[2] ),
+		$sseo_vals
+	);
+	Simple_SEO_Admin::add_tab( 'sseo_other', 'Other tab', array(), '__return_null', 1, 'nope' );
+	Simple_SEO_Admin::add_tab( 'sseo_one', 'One part', array(), '__return_null', 99, 'plugin', static fn(): array => array( 'only' => 'Only' ) );
+	$sseo_vals = array( Simple_SEO_Admin::tabs()['sseo_other']['group'], array_slice( array_keys( Simple_SEO_Admin::tabs() ), -4 ), Simple_SEO_Admin::sections( 'sseo_one' ), Simple_SEO_Admin::sections( 'social' ), Simple_SEO_Admin::sections( 'nope' ) );
+	sseo_check( 'a tab of a group that is none goes into the last; a tab of one part, or none, has no sub-tabs', array( 'plugin', array( 'sseo_other', 'access', 'import', 'sseo_one' ), array(), array(), array() ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array( array_keys( Simple_SEO_Admin::sections( 'titles' ) ), array_keys( Simple_SEO_Admin::sections( 'special' ) ), array_keys( Simple_SEO_Admin::sections( 'indexing' ) ), Simple_SEO_Admin::sections( 'files' ) );
+	sseo_check(
+		'the sub-tabs of a tab: the separator then the groups of Titles; ids that are no numbers (the 404 page); the kinds of pages first on Indexing',
+		'general' === $sseo_vals[0][0] && in_array( 'posts', $sseo_vals[0], true ) && array( 'home', 'not-found', 'password' ) === $sseo_vals[1] && array( 'pages', 'sitemap', 'attachments' ) === $sseo_vals[2] && array( 'robots' => 'robots.txt', 'htaccess' => '.htaccess' ) === $sseo_vals[3],
+		$sseo_vals
+	);
+	$sseo_vals = array();
+	foreach ( array( 'sitemap', 'nope', '' ) as $sseo_name ) {
+		$_GET['section'] = $sseo_name;
+		$sseo_vals[]     = Simple_SEO_Admin::current_section( Simple_SEO_Admin::sections( 'indexing' ) );
+	}
+	unset( $_GET['section'] );
+	$sseo_vals[] = Simple_SEO_Admin::current_section( array() );
+	$sseo_vals[] = Simple_SEO_Admin::url( 'indexing', 'sitemap' );
+	$sseo_vals[] = Simple_SEO_Admin::url( 'indexing' );
+	sseo_check(
+		'the sub-tab shown: the one the address names, else the first; its address',
+		array( 'sitemap', 'pages', 'pages', '', admin_url( 'admin.php?page=simple-seo&tab=indexing&section=sitemap' ), admin_url( 'admin.php?page=simple-seo&tab=indexing' ) ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab']     = 'indexing';
+	$_GET['section'] = 'sitemap';
+	$sseo_html       = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'], $_GET['section'] );
+	$sseo_vals = array(
+		'groups'   => substr_count( $sseo_html, '<div class="simple-seo-sidebar-section">' ),
+		'group'    => str_contains( $sseo_html, '<h2 class="simple-seo-sidebar-group"><span class="dashicons dashicons-admin-site-alt3" aria-hidden="true"></span>For search engines</h2>' ),
+		'current'  => (bool) preg_match( '/<a href="[^"]*tab=indexing" class="is-current" aria-current="page">Indexing<\/a>/', $sseo_html ),
+		'title'    => str_contains( $sseo_html, '<h2 class="simple-seo-main-title">Indexing</h2>' ),
+		'subtab'   => (bool) preg_match( '/<a href="[^"]*section=sitemap" class="nav-tab nav-tab-active" data-simple-seo-subtab="sitemap" aria-current="page">/', $sseo_html ) && (bool) preg_match( '/<a href="[^"]*section=pages" class="nav-tab" data-simple-seo-subtab="pages">/', $sseo_html ),
+		'shown'    => str_contains( $sseo_html, '<div class="simple-seo-section" id="simple-seo-section-sitemap" data-simple-seo-section="sitemap">' ),
+		'hidden'   => str_contains( $sseo_html, 'data-simple-seo-section="pages" hidden>' ) && str_contains( $sseo_html, 'data-simple-seo-section="attachments" hidden>' ),
+		'fields'   => str_contains( $sseo_html, 'name="simple_seo_sitemaps[enabled]"' ) && str_contains( $sseo_html, 'name="simple_seo_indexing[attachments]"' ) && str_contains( $sseo_html, 'name="simple_seo_indexing[index][post:post]"' ),
+		'panel'    => (bool) preg_match( '/<form method="post" action="options.php">\s*<div class="simple-seo-panel has-subtabs">/', $sseo_html ),
+		'list'     => str_contains( $sseo_html, '<optgroup label="Search appearance">' ) && (bool) preg_match( '/<option value="indexing"\s+selected=\'selected\'>Indexing<\/option>/', $sseo_html ),
+		'after'    => sseo_capture( static fn() => Simple_SEO_Admin::section( 'x' ) ),
+	);
+	sseo_check(
+		'the page: the groups in the menu with the tab marked, its title, its sub-tabs with the one asked for shown and the others hidden but in the form, the white panel, the list for a phone; after the page a part is not hidden',
+		array( 'groups' => 6, 'group' => true, 'current' => true, 'title' => true, 'subtab' => true, 'shown' => true, 'hidden' => true, 'fields' => true, 'panel' => true, 'list' => true, 'after' => '<div class="simple-seo-section" id="simple-seo-section-x" data-simple-seo-section="x">' ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_vals = array();
+	foreach ( array( 'social', 'import', 'special' ) as $sseo_name ) {
+		$_GET['tab'] = $sseo_name;
+		$sseo_vals[] = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	}
+	unset( $_GET['tab'] );
+	sseo_check(
+		'a tab of one part: no sub-tabs, a plain panel; a tab of its own forms: the panel without options.php; the 404 page of Special pages as the sub-tab not-found',
+		! str_contains( $sseo_vals[0], 'simple-seo-subtabs' ) && (bool) preg_match( '/<form method="post" action="options.php">\s*<div class="simple-seo-panel">/', $sseo_vals[0] )
+			&& str_contains( $sseo_vals[1], '<div class="simple-seo-panel">' ) && ! str_contains( $sseo_vals[1], 'action="options.php"' )
+			&& str_contains( $sseo_vals[2], 'data-simple-seo-section="not-found" hidden>' ) && str_contains( $sseo_vals[2], 'data-simple-seo-subtab="not-found"' )
+	);
+	// Every tab: its sub-tabs, each with one part of its own, no part inside another, and the button
+	// that saves outside them all (a part left open would hide it).
+	$sseo_titles = array( 'general' );
+	foreach ( Simple_SEO_Titles::slot_groups() as $sseo_name => $sseo_group ) {
+		if ( $sseo_group['slots'] ) {
+			$sseo_titles[] = (string) $sseo_name;
+		}
+	}
+	$sseo_expect = array(
+		'titles'         => $sseo_titles,
+		'special'        => array( 'home', 'not-found', 'password' ),
+		'breadcrumbs'    => Simple_SEO_Breadcrumbs::trail_types() ? array( 'use', 'look', 'categories' ) : array( 'use', 'look' ),
+		'images'         => array(),
+		'social'         => array(),
+		'schema'         => array( 'general', 'names', 'types', 'logo' ),
+		'local'          => array( 'general', 'address' ),
+		'indexing'       => array( 'pages', 'sitemap', 'attachments' ),
+		'indexnow'       => array( 'settings', 'answers' ),
+		'monitor'        => array(),
+		'files'          => array( 'robots', 'htaccess' ),
+		'cleanup'        => array( 'links', 'feeds' ),
+		'ai'             => array(),
+		'llms'           => Simple_SEO_Llms::enabled() ? array( 'llms', 'markdown', 'preview' ) : array( 'llms', 'markdown' ),
+		'integrations'   => array( 'verification', 'analytics' ),
+		'search-console' => array( 'connection', 'how' ),
+		'access'         => array(),
+		'import'         => array(),
+	);
+	$sseo_vals = array();
+	foreach ( $sseo_expect as $sseo_name => $sseo_ids ) {
+		$sseo_vals[ $sseo_name ] = array_keys( Simple_SEO_Admin::sections( $sseo_name ) );
+	}
+	sseo_check( 'the sub-tabs of every tab', $sseo_expect === $sseo_vals, $sseo_vals );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_vals = array();
+	foreach ( array_filter( $sseo_expect ) as $sseo_name => $sseo_ids ) {
+		$_GET['tab'] = $sseo_name;
+		$sseo_dom    = new DOMDocument();
+		$sseo_prev   = libxml_use_internal_errors( true );
+		$sseo_dom->loadHTML( '<?xml encoding="utf-8"?>' . sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) ) );
+		libxml_clear_errors();
+		libxml_use_internal_errors( $sseo_prev );
+		$sseo_xpath = new DOMXPath( $sseo_dom );
+		$sseo_parts = array();
+		foreach ( $sseo_xpath->query( '//*[@data-simple-seo-section]' ) as $sseo_node ) {
+			$sseo_parts[] = $sseo_node->getAttribute( 'data-simple-seo-section' );
+		}
+		$sseo_links = array();
+		foreach ( $sseo_xpath->query( '//*[@data-simple-seo-subtab]' ) as $sseo_node ) {
+			$sseo_links[] = $sseo_node->getAttribute( 'data-simple-seo-subtab' );
+		}
+		sort( $sseo_parts );
+		$sseo_sorted = $sseo_ids;
+		sort( $sseo_sorted );
+		$sseo_vals[ $sseo_name ] = array(
+			'parts'  => $sseo_sorted === $sseo_parts,
+			'links'  => $sseo_ids === $sseo_links,
+			'nested' => $sseo_xpath->query( '//*[@data-simple-seo-section]//*[@data-simple-seo-section]' )->length,
+			'button' => Simple_SEO_Admin::tabs()[ $sseo_name ]['options'] ? $sseo_xpath->query( '//*[@data-simple-seo-section]//*[@id="submit"]' )->length : 0,
+			'shown'  => $sseo_xpath->query( '//*[@data-simple-seo-section and not(@hidden)]' )->length,
+		);
+	}
+	unset( $_GET['tab'] );
+	$sseo_ok = array_map( static fn(): array => array( 'parts' => true, 'links' => true, 'nested' => 0, 'button' => 0, 'shown' => 1 ), array_filter( $sseo_expect ) );
+	sseo_check( 'every tab with sub-tabs: one part for each, in the order of its sub-tabs, one shown, none inside another, the button that saves outside them', $sseo_ok === $sseo_vals, $sseo_vals );
+	wp_set_current_user( 0 );
+	$sseo_lay_tabs->setValue( null, $sseo_lay_kept );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );

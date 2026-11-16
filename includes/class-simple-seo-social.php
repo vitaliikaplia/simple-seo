@@ -91,7 +91,7 @@ final class Simple_SEO_Social {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'social', __( 'Social networks', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 15 );
+		Simple_SEO_Admin::add_tab( 'social', __( 'Social networks', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 10, 'markup' );
 	}
 
 	/** Whether a page gets social tags: everything Simple SEO knows except search results and 404. */

@@ -81,7 +81,21 @@ final class Simple_SEO_Llms {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'llms', 'llms.txt', array( self::OPTION, self::TEXT, Simple_SEO_Markdown::OPTION ), array( self::class, 'render_tab' ), 35 );
+		Simple_SEO_Admin::add_tab(
+			'llms',
+			'llms.txt',
+			array( self::OPTION, self::TEXT, Simple_SEO_Markdown::OPTION ),
+			array( self::class, 'render_tab' ),
+			20,
+			'ai',
+			static fn(): array => array_filter(
+				array(
+					'llms'     => 'llms.txt',
+					'markdown' => __( 'Markdown versions', 'simple-seo' ),
+					'preview'  => self::enabled() ? __( 'What the site serves', 'simple-seo' ) : '',
+				)
+			)
+		);
 	}
 
 	/** Whether Simple SEO serves llms.txt: switched on, a public site, no other SEO plugin. */

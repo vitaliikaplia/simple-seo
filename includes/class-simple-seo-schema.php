@@ -359,7 +359,20 @@ final class Simple_SEO_Schema {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'schema', __( 'Schema', 'simple-seo' ), array( self::OPTION, self::NAMES ), array( self::class, 'render_tab' ), 17 );
+		Simple_SEO_Admin::add_tab(
+			'schema',
+			__( 'Schema', 'simple-seo' ),
+			array( self::OPTION, self::NAMES ),
+			array( self::class, 'render_tab' ),
+			20,
+			'markup',
+			static fn(): array => array(
+				'general' => __( 'General', 'simple-seo' ),
+				'names'   => __( 'Names', 'simple-seo' ),
+				'types'   => __( 'Types of pages', 'simple-seo' ),
+				'logo'    => __( 'Logo and profiles', 'simple-seo' ),
+			)
+		);
 	}
 
 	public static function mode(): string {

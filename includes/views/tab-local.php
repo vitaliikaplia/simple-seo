@@ -50,6 +50,7 @@ $simple_seo_day_numbers = array_flip( array_keys( Simple_SEO_Local::DAYS ) );
 	</div>
 <?php endif; ?>
 
+<?php Simple_SEO_Admin::section( 'general' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -120,7 +121,9 @@ $simple_seo_day_numbers = array_flip( array_keys( Simple_SEO_Local::DAYS ) );
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Address and description', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'address' ); ?>
 <?php
 /* translators: %s: language name, e.g. English. */
 $simple_seo_notice = __( 'These texts are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages.', 'simple-seo' );
@@ -210,6 +213,7 @@ require __DIR__ . '/language-notice.php';
 		</tbody>
 	</table>
 </div>
+<?php Simple_SEO_Admin::section_end(); ?>
 
 <?php if ( $example ) : ?>
 	<details style="margin-top:1.5em">

@@ -67,7 +67,18 @@ final class Simple_SEO_Integrations {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'integrations', __( 'Integrations', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 40 );
+		Simple_SEO_Admin::add_tab(
+			'integrations',
+			__( 'Integrations', 'simple-seo' ),
+			array( self::OPTION ),
+			array( self::class, 'render_tab' ),
+			10,
+			'services',
+			static fn(): array => array(
+				'verification' => __( 'Site verification', 'simple-seo' ),
+				'analytics'    => __( 'Analytics and pixels', 'simple-seo' ),
+			)
+		);
 	}
 
 	/**

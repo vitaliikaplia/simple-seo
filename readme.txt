@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.46.0
+Stable tag: 0.47.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,11 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.47.0 =
+* The settings page has its tabs in a menu on the left, in groups, each a band of its own with an icon: the search appearance, social networks and Schema, for search engines, AI and agents, services, the plugin. The menu and the page stick to the top: the shorter of them stays in view while the other scrolls. On a phone the menu is a list to choose from.
+* A tab of several parts has WordPress's own tabs on top: Titles (general, post types, taxonomies, archives and search), Special pages, Breadcrumbs, Schema, Local SEO, Indexing (kinds of pages, the XML sitemap, attachment pages), IndexNow, Files (robots.txt, .htaccess), Clean-up, llms.txt (llms.txt, the Markdown versions, what the site serves), Integrations and Search Console. They switch without a reload, every field stays in the form, so saving loses none, and saving returns to the sub-tab shown.
+* The settings stand on a white panel.
 
 = 0.46.0 =
 * Fewer queries to the database. On an update Simple SEO puts right the autoload flag of each of its rows, so a row that came to be with another flag no longer costs a query on every page. The rows read on the site are autoloaded: llms.txt's (every page names it while the Markdown versions are on) and the monitor's (every 404 read it). Pages of the site now cost no query of Simple SEO's own; a 404 one, the count of its address.

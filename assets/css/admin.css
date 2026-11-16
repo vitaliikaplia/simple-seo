@@ -602,3 +602,207 @@
 .simple-seo-ai-long {
 	color: #996800;
 }
+
+/* The settings page: the tabs in groups in a menu on the left, the sub-tabs of a tab on top, its form
+   on a white panel. On a phone the menu is a list to choose from. */
+.simple-seo-layout {
+	display: flex;
+	align-items: flex-start;
+	gap: 24px;
+	margin-top: 16px;
+}
+
+/* Both columns stick to the top: the shorter one stays in view while the taller one scrolls (a sticky
+   column as tall as the row cannot move). The menu keeps clear of the admin bar and of the footer of
+   the admin; one taller than that scrolls inside itself. */
+.simple-seo-sidebar {
+	position: sticky;
+	top: 48px;
+	flex: 0 0 230px;
+	box-sizing: border-box;
+	max-height: calc(100vh - 136px);
+	overflow-x: hidden;
+	overflow-y: auto;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* Each group is a band of its own: its name with an icon on grey, its tabs below, set in under it. */
+.simple-seo-sidebar-section + .simple-seo-sidebar-section {
+	border-top: 1px solid #dcdcde;
+}
+
+.simple-seo-sidebar .simple-seo-sidebar-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	padding: 8px 14px;
+	background: #f6f7f7;
+	border-bottom: 1px solid #dcdcde;
+	color: #50575e;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.simple-seo-sidebar .simple-seo-sidebar-group .dashicons {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	color: #787c82;
+	font-size: 18px;
+}
+
+.simple-seo-sidebar ul {
+	margin: 0;
+	padding: 3px 0;
+}
+
+.simple-seo-sidebar li {
+	margin: 0;
+}
+
+.simple-seo-sidebar a {
+	display: block;
+	padding: 6px 14px 6px 37px;
+	border-left: 3px solid transparent;
+	color: #1d2327;
+	font-size: 13px;
+	text-decoration: none;
+}
+
+.simple-seo-sidebar a:hover,
+.simple-seo-sidebar a:focus {
+	background: #f6f7f7;
+	color: #2271b1;
+}
+
+.simple-seo-sidebar a:focus {
+	box-shadow: inset 0 0 0 2px #2271b1;
+	outline: none;
+}
+
+.simple-seo-sidebar a.is-current {
+	border-left-color: #2271b1;
+	background: #f0f6fc;
+	color: #2271b1;
+	font-weight: 600;
+}
+
+.simple-seo-jump {
+	display: none;
+}
+
+/* The button of the list is for a browser without JavaScript: choosing opens the tab by itself. */
+.simple-seo-jump [hidden] {
+	display: none;
+}
+
+.simple-seo-main {
+	position: sticky;
+	top: 48px;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.simple-seo-main .simple-seo-main-title {
+	margin: 0 0 12px;
+	padding: 0;
+	font-size: 1.4em;
+}
+
+/* WordPress's own tabs on top of the panel: the active one is white and runs into it. */
+.simple-seo-main .simple-seo-subtabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 4px;
+	margin: 0;
+	padding: 0;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.simple-seo-main .simple-seo-subtabs .nav-tab {
+	float: none;
+	margin: 0 0 -1px;
+}
+
+.simple-seo-main .simple-seo-subtabs .nav-tab-active,
+.simple-seo-main .simple-seo-subtabs .nav-tab-active:hover,
+.simple-seo-main .simple-seo-subtabs .nav-tab-active:focus {
+	background: #fff;
+	border-bottom-color: #fff;
+	color: #000;
+}
+
+.simple-seo-panel {
+	box-sizing: border-box;
+	padding: 8px 24px 16px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.simple-seo-panel.has-subtabs {
+	border-top: 0;
+}
+
+.simple-seo-panel > .simple-seo-section > :first-child,
+.simple-seo-panel > :first-child {
+	margin-top: 16px;
+}
+
+.simple-seo-panel .submit {
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+/* A notice inside the panel keeps to its width. */
+.simple-seo-panel .notice.inline {
+	margin: 16px 0;
+}
+
+@media screen and (max-width: 782px) {
+	.simple-seo-layout {
+		display: block;
+	}
+
+	.simple-seo-sidebar {
+		display: none;
+	}
+
+	.simple-seo-main {
+		position: static;
+	}
+
+	.simple-seo-jump {
+		display: flex;
+		gap: 8px;
+		margin: 0 0 16px;
+	}
+
+	.simple-seo-jump select {
+		flex: 1 1 auto;
+		min-width: 0;
+		max-width: none;
+	}
+
+	/* On a phone the sub-tabs scroll sideways instead of stacking. */
+	.simple-seo-main .simple-seo-subtabs {
+		flex-wrap: nowrap;
+		overflow-x: auto;
+	}
+
+	.simple-seo-main .simple-seo-subtabs .nav-tab {
+		flex: 0 0 auto;
+		white-space: nowrap;
+	}
+
+	.simple-seo-panel {
+		padding: 4px 12px 12px;
+	}
+}

@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.46.0\n"
+"Project-Id-Version: Simple SEO 0.47.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -14,9 +14,9 @@ msgstr ""
 
 #. Plugin Name of the plugin
 #: simple-seo.php
-#: includes/class-simple-seo-admin.php:61
-#: includes/class-simple-seo-admin.php:70
-#: includes/views/settings.php:14
+#: includes/class-simple-seo-admin.php:149
+#: includes/class-simple-seo-admin.php:158
+#: includes/views/settings.php:23
 msgid "Simple SEO"
 msgstr "Simple SEO"
 
@@ -233,55 +233,80 @@ msgstr "Бачити дані Search Console"
 msgid "The clicks, impressions and queries of Google Search Console: on its page in the SEO menu, and in the SEO box of the posts the user can edit. Administrators always can."
 msgstr "Кліки, покази й запити Google Search Console: на її сторінці в меню SEO та в SEO-блоці записів, які користувач може редагувати. Адміністратори можуть завжди."
 
-#: includes/class-simple-seo-admin.php:32
+#: includes/class-simple-seo-admin.php:39
 msgid "Access"
 msgstr "Доступ"
 
+#: includes/class-simple-seo-admin.php:59
+msgid "Search appearance"
+msgstr "Вигляд у пошуку"
+
+#: includes/class-simple-seo-admin.php:60
+msgid "Social networks and Schema"
+msgstr "Соцмережі й Schema"
+
+#: includes/class-simple-seo-admin.php:61
+msgid "For search engines"
+msgstr "Для пошуковиків"
+
 #: includes/class-simple-seo-admin.php:62
+msgid "AI and agents"
+msgstr "ШІ й агенти"
+
+#: includes/class-simple-seo-admin.php:63
+msgid "Services"
+msgstr "Сервіси"
+
+#: includes/class-simple-seo-admin.php:64
+msgid "Plugin"
+msgstr "Плагін"
+
+#: includes/class-simple-seo-admin.php:150
 #: includes/class-simple-seo-editor.php:28
 #: includes/class-simple-seo-editor.php:111
 #: includes/class-simple-seo-scores.php:112
 msgid "SEO"
 msgstr "SEO"
 
-#: includes/class-simple-seo-admin.php:70
-#: includes/class-simple-seo-admin.php:231
+#: includes/class-simple-seo-admin.php:158
+#: includes/class-simple-seo-admin.php:332
+#: includes/class-simple-seo-indexnow.php:78
 msgid "Settings"
 msgstr "Налаштування"
 
-#: includes/class-simple-seo-admin.php:121
+#: includes/class-simple-seo-admin.php:212
 #: includes/class-simple-seo-audit.php:907
 #: includes/class-simple-seo-audit.php:941
 #: includes/class-simple-seo-bulk.php:278
 #: includes/class-simple-seo-monitor.php:418
 #: includes/class-simple-seo-monitor.php:436
-#: includes/class-simple-seo-search-console.php:1042
+#: includes/class-simple-seo-search-console.php:1053
 msgid "Sorry, you are not allowed to access this page."
 msgstr "На жаль, у вас немає доступу до цієї сторінки."
 
 #. translators: %s: name of another SEO plugin, e.g. Yoast SEO.
-#: includes/class-simple-seo-admin.php:147
+#: includes/class-simple-seo-admin.php:248
 #, php-format
 msgid "%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime."
 msgstr "%s активний, тому Simple SEO нічого не виводить на сайті — ні заголовків, ні описів, ні інших тегів, — і сторінки ніколи не отримують їх двічі. Вимкніть його, коли переходитимете на Simple SEO; налаштування й поля тут можна підготувати заздалегідь."
 
-#: includes/class-simple-seo-admin.php:206
+#: includes/class-simple-seo-admin.php:307
 msgid "Choose an image"
 msgstr "Оберіть зображення"
 
-#: includes/class-simple-seo-admin.php:207
+#: includes/class-simple-seo-admin.php:308
 msgid "Use this image"
 msgstr "Використати це зображення"
 
-#: includes/class-simple-seo-admin.php:209
+#: includes/class-simple-seo-admin.php:310
 msgid "Choose image"
 msgstr "Обрати зображення"
 
-#: includes/class-simple-seo-admin.php:210
+#: includes/class-simple-seo-admin.php:311
 msgid "Remove image"
 msgstr "Прибрати зображення"
 
-#: includes/class-simple-seo-admin.php:221
+#: includes/class-simple-seo-admin.php:322
 msgid "Insert structure"
 msgstr "Вставити структуру"
 
@@ -669,22 +694,34 @@ msgid "Checked %1$s of %2$s pages."
 msgstr "Перевірено %1$s із %2$s сторінок."
 
 #: includes/class-simple-seo-breadcrumbs.php:62
-#: includes/class-simple-seo-breadcrumbs.php:66
-#: includes/class-simple-seo-breadcrumbs.php:168
+#: includes/class-simple-seo-breadcrumbs.php:68
+#: includes/class-simple-seo-breadcrumbs.php:182
 #: includes/views/markdown.php:17
-#: includes/views/tab-schema.php:187
+#: includes/views/tab-schema.php:194
 msgid "Breadcrumbs"
 msgstr "Хлібні крихти"
 
+#: includes/class-simple-seo-breadcrumbs.php:75
+msgid "In the theme"
+msgstr "У темі"
+
+#: includes/class-simple-seo-breadcrumbs.php:76
+msgid "Look"
+msgstr "Вигляд"
+
+#: includes/class-simple-seo-breadcrumbs.php:77
+msgid "Categories in the trail"
+msgstr "Рубрики в шляху"
+
 #. translators: %d: page number.
-#: includes/class-simple-seo-breadcrumbs.php:111
+#: includes/class-simple-seo-breadcrumbs.php:125
 #: includes/class-simple-seo-variables.php:149
 #, php-format
 msgid "Page %d"
 msgstr "Сторінка %d"
 
-#: includes/class-simple-seo-breadcrumbs.php:216
-#: includes/views/tab-breadcrumbs.php:55
+#: includes/class-simple-seo-breadcrumbs.php:230
+#: includes/views/tab-breadcrumbs.php:58
 msgid "Home"
 msgstr "Головна"
 
@@ -817,9 +854,17 @@ msgstr "Такого зображення немає."
 msgid "You may not edit this image."
 msgstr "Вам не можна редагувати це зображення."
 
-#: includes/class-simple-seo-cleanup.php:106
+#: includes/class-simple-seo-cleanup.php:108
 msgid "Clean-up"
 msgstr "Чистка коду"
+
+#: includes/class-simple-seo-cleanup.php:114
+msgid "Links and tags"
+msgstr "Посилання й теги"
+
+#: includes/class-simple-seo-cleanup.php:115
+msgid "Links to feeds"
+msgstr "Посилання на стрічки"
 
 #: includes/class-simple-seo-cli-fields.php:92
 msgid "Name the fields to change, for example --title=\"…\"."
@@ -832,7 +877,7 @@ msgid "Fields saved: %s."
 msgstr "Збережено поля: %s."
 
 #: includes/class-simple-seo-cli-indexnow.php:63
-#: includes/views/tab-indexnow.php:111
+#: includes/views/tab-indexnow.php:114
 msgid "Nothing has been sent yet."
 msgstr "Ще нічого не надіслано."
 
@@ -842,7 +887,7 @@ msgstr "Нічого не чекає надсилання."
 
 #. translators: 1: an address, 2: how many more.
 #: includes/class-simple-seo-cli-indexnow.php:132
-#: includes/views/tab-indexnow.php:100
+#: includes/views/tab-indexnow.php:103
 #, php-format
 msgid "%1$s and %2$s more"
 msgstr "%1$s і ще %2$s"
@@ -993,7 +1038,7 @@ msgstr "Питання"
 #: includes/class-simple-seo-faq.php:65
 #: includes/views/audit.php:306
 #: includes/views/audit.php:314
-#: includes/views/tab-indexnow.php:87
+#: includes/views/tab-indexnow.php:90
 msgid "Answer"
 msgstr "Відповідь"
 
@@ -1052,115 +1097,115 @@ msgstr "SEO-поле %1$s приймає одне з: %2$s."
 msgid "The SEO field %s cannot hold this value."
 msgstr "SEO-поле %s не може мати такого значення."
 
-#: includes/class-simple-seo-files.php:60
+#: includes/class-simple-seo-files.php:62
 msgid "Files"
 msgstr "Файли"
 
-#: includes/class-simple-seo-files.php:153
+#: includes/class-simple-seo-files.php:164
 msgid "You may not change the Simple SEO settings."
 msgstr "Вам не можна змінювати налаштування Simple SEO."
 
-#: includes/class-simple-seo-files.php:162
+#: includes/class-simple-seo-files.php:173
 msgid "Changing files is switched off on this site (DISALLOW_FILE_MODS in wp-config.php)."
 msgstr "Зміну файлів на цьому сайті вимкнено (DISALLOW_FILE_MODS у wp-config.php)."
 
-#: includes/class-simple-seo-files.php:165
+#: includes/class-simple-seo-files.php:176
 msgid "Editing files is switched off on this site (DISALLOW_FILE_EDIT in wp-config.php)."
 msgstr "Редагування файлів на цьому сайті вимкнено (DISALLOW_FILE_EDIT у wp-config.php)."
 
-#: includes/class-simple-seo-files.php:169
+#: includes/class-simple-seo-files.php:180
 msgid "On a network of sites only a super admin may edit files."
 msgstr "У мережі сайтів редагувати файли може лише суперадміністратор."
 
-#: includes/class-simple-seo-files.php:170
+#: includes/class-simple-seo-files.php:181
 msgid "Your role may not edit files; an administrator can."
 msgstr "Ваша роль не може редагувати файли — це може адміністратор."
 
 #. translators: 1: file path, 2: its permissions, e.g. 0444.
-#: includes/class-simple-seo-files.php:177
+#: includes/class-simple-seo-files.php:188
 #, php-format
 msgid "The web server may not write %1$s (its permissions are %2$s)."
 msgstr "Вебсервер не може записати %1$s (права доступу %2$s)."
 
 #. translators: %s: folder path.
-#: includes/class-simple-seo-files.php:181
+#: includes/class-simple-seo-files.php:192
 #, php-format
 msgid "The web server may not create files in %s."
 msgstr "Вебсервер не може створювати файли в %s."
 
-#: includes/class-simple-seo-files.php:370
+#: includes/class-simple-seo-files.php:381
 msgid "no answer"
 msgstr "немає відповіді"
 
-#: includes/class-simple-seo-files.php:459
+#: includes/class-simple-seo-files.php:471
 msgid "The file cannot be read."
 msgstr "Файл неможливо прочитати."
 
 #. translators: %s: robots.txt or .htaccess.
-#: includes/class-simple-seo-files.php:594
+#: includes/class-simple-seo-files.php:606
 #, php-format
 msgid "%s is saved. The previous version is in the history."
 msgstr "%s збережено. Попередня версія — в історії."
 
 #. translators: %s: robots.txt or .htaccess.
-#: includes/class-simple-seo-files.php:599
+#: includes/class-simple-seo-files.php:611
 #, php-format
 msgid "%s is restored from the history."
 msgstr "%s відновлено з історії."
 
-#: includes/class-simple-seo-files.php:603
+#: includes/class-simple-seo-files.php:615
 msgid "The robots.txt file is deleted: WordPress now serves its text. The file is in the history."
 msgstr "Файл robots.txt видалено: тепер його текст віддає WordPress. Сам файл — в історії."
 
-#: includes/class-simple-seo-files.php:607
+#: includes/class-simple-seo-files.php:619
 msgid ".htaccess is saved, but the server could not open the site to check it. Open the site now; if it does not work, restore the previous version from the history."
 msgstr ".htaccess збережено, але сервер не зміг відкрити сайт, щоб його перевірити. Відкрийте сайт зараз; якщо він не працює, відновіть попередню версію з історії."
 
-#: includes/class-simple-seo-files.php:611
+#: includes/class-simple-seo-files.php:623
 msgid "Nothing to save: the text is the same."
 msgstr "Нічого зберігати: текст той самий."
 
 #. translators: %s: robots.txt or .htaccess.
-#: includes/class-simple-seo-files.php:616
+#: includes/class-simple-seo-files.php:628
 #, php-format
 msgid "%s changed after you opened it (WordPress, for one, rewrites its own rules in .htaccess). Nothing is saved. Your text is in the editor and the file as it is now below it; save again to replace the file."
 msgstr "%s змінився після того, як ви його відкрили (наприклад, WordPress сам переписує свої правила в .htaccess). Нічого не збережено. Ваш текст — у редакторі, а файл, яким він є зараз, — під ним; збережіть ще раз, щоб замінити файл."
 
 #. translators: %s: address that stopped answering, with its status, e.g. https://example.com/ (500).
-#: includes/class-simple-seo-files.php:621
+#: includes/class-simple-seo-files.php:633
 #, php-format
 msgid "With the new .htaccess the site stopped answering: %s. The previous file is back, nothing has changed; your text is in the editor."
 msgstr "З новим .htaccess сайт перестав відповідати: %s. Попередній файл повернуто, нічого не змінилося; ваш текст — у редакторі."
 
 #. translators: 1: robots.txt or .htaccess, 2: size, e.g. 500 KB.
-#: includes/class-simple-seo-files.php:626
+#: includes/class-simple-seo-files.php:638
 #, php-format
 msgid "The text of %1$s is too long: at most %2$s."
 msgstr "Текст %1$s задовгий: щонайбільше %2$s."
 
 #. translators: %s: robots.txt or .htaccess.
-#: includes/class-simple-seo-files.php:631
+#: includes/class-simple-seo-files.php:643
 #, php-format
 msgid "%s could not be written; nothing has changed."
 msgstr "%s не вдалося записати; нічого не змінилося."
 
 #. translators: %s: robots.txt or .htaccess.
-#: includes/class-simple-seo-files.php:636
+#: includes/class-simple-seo-files.php:648
 #, php-format
 msgid "%s cannot be read, so it is not changed."
 msgstr "%s неможливо прочитати, тому його не змінено."
 
-#: includes/class-simple-seo-files.php:640
+#: includes/class-simple-seo-files.php:652
 msgid "That version is no longer in the history."
 msgstr "Цієї версії вже немає в історії."
 
-#: includes/class-simple-seo-files.php:644
+#: includes/class-simple-seo-files.php:656
 msgid "The page has expired. Open it again and repeat."
 msgstr "Сторінка застаріла. Відкрийте її знову й повторіть."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.46.0: менше запитів до бази на сайті й в адмінці. Версія 0.45.0: Markdown-версії сторінок для ШІ-асистентів і агентів (llmstxt.org), вмикаються на вкладці llms.txt, для кожного типу сторінок — зі своїми частинами; сторінки й llms.txt посилаються на них. Версія 0.44.0: магазин WooCommerce бере SEO-поля й назву своєї сторінки; хлібні крихти товарів ідуть через магазин і категорії; кошик, оформлення, акаунт і приховані товари — поза пошуком і картами сайту. Версія 0.43.0: товари WooCommerce у графі Schema (власні дані товару WooCommerce, пов'язані зі сторінкою, продавцем і брендом) і в Open Graph; політика повернень магазину. Версія 0.42.0: AI пише alt-тексти зображень за тим, що бачить на них: кнопка в медіатеці, порожні — в масовому редагуванні, а кожне нове зображення — у фоні. Версія 0.41.0: SEO-блок пише SEO-заголовок, мета-опис і основну ключову фразу за допомогою AI — через провайдера, підключеного в Налаштування → Підключення; змінні шаблону лишаються. Версія 0.40.0: SEO-блок підказує внутрішні посилання — інші сторінки цього сайту, які текст згадує їхньою ключовою фразою чи назвою, але ще не посилається на них. Версія 0.39.0: аудит показує сторінки, на які не посилається жодна інша. Версія 0.38.0: аудит перевіряє й посилання на сторінках — на цей сайт та інші: биті, посилання цього сайту з переспрямуванням, а ті, що не відповіли, — знову через день. Версія 0.37.0: аудит сторінок карти сайту такими, як їх бачить відвідувач: заголовки й описи, яких немає або які повторюються, заголовки H1, зображення без alt-тексту, канонічні адреси, noindex і сторінки, що не відкриваються, — у фоні, на сторінці меню SEO. Версія 0.36.0: монітор ненайдених сторінок: адреси, що відповідають 404, скільки разів і звідки прийшли відвідувачі, без IP-адрес, на сторінці меню SEO, і чернетка редиректу теми WP Base з однієї в один клік. Версія 0.35.0: інструменти для AI-агентів через Simple MCP: SEO-поля записів і термінів, сторінки без власного заголовка чи опису, аналіз, Search Console, налаштування та IndexNow. Версія 0.34.0: команди WP-CLI (wp simple-seo) для SEO-полів записів і термінів, аналізу, імпорту та IndexNow, а SEO-поля кожного типу записів і таксономії — в REST API. Версія 0.33.0: IndexNow — опубліковану, змінену, перенесену чи зняту сторінку за хвилину надсилаємо до Bing, щоб пошуковики прийшли на неї раніше; Яндекс більше не підтримується. Версія 0.32.0: Google Search Console в адмінці — кліки, покази, CTR і позиція сайту з найчастішими запитами й найпопулярнішими сторінками на сторінці меню SEO, а також дані кожного запису в його SEO-блоці; читаються ключем сервісного акаунта Google. Версія 0.31.0: вкладка «Інтеграції» — коди вебмайстрів на головній з перенесенням із Yoast SEO, Rank Math і All in One SEO та теги Google Analytics, Google Tag Manager, Meta Pixel і TikTok Pixel, що вантажаться на перший рух відвідувача й за потреби чекають згоди. Версія 0.30.0: опис, зроблений із тексту запису, і перевірки довжини в аналізі контенту враховують ширину, яку дає пошукова видача, а не кількість символів. Версія 0.29.0: alt-тексти й заголовки зображень з їхніх назв — під час завантаження й у масовому редагуванні для вже завантажених. Версія 0.28.0: локальне SEO — тип організації, її адреса, телефон, години роботи й місце на карті в графі Schema, з перенесенням із Rank Math, Yoast SEO, All in One SEO чи теми. Версія 0.27.0: власна JSON-LD розмітка запису чи терміна, що додається до його графа. Версія 0.26.0: тип сторінки й статті кожного запису й типу записів, сторінки FAQ із питань і відповідей блоків теми, акордеонів або нового блоку «Питання й відповіді». Версія 0.25.0: структуровані дані Schema — один граф JSON-LD: сайт, кого він представляє, сторінка, стаття й хлібні крихти; у режимі «Авто» мовчить там, де тема друкує свій. Версія 0.24.0: масове редагування SEO-заголовків і описів у таблиці — для всіх, хто редагує SEO-поля. Версія 0.23.0: читабельність тексту з власною оцінкою та колонка з SEO-оцінкою й оцінкою читабельності в списках записів. Версія 0.22.0: імпорт переносить також ключові фрази з Yoast SEO, Rank Math і All in One SEO. Версія 0.21.0: аналіз контенту в SEO-блоці записів — основна й додаткові ключові фрази, перевірки сторінки на них і оцінка. Версія 0.20.0: основа для аналізу контенту — Simple SEO читає текст сторінки з будь-якого редактора, разом із блоками ACF і Builder. Версія 0.19.0: над SEO-полями записів і термінів — вигляд сторінки в пошуковій видачі, на комп'ютері й на телефоні, що оновлюється під час набору. Версія 0.18.0: вкладка «Імпорт» переносить налаштування й SEO-поля також з All in One SEO і прибирає з бази те, що лишилося від AIOSEO. Версія 0.17.0: вкладка «Імпорт» переносить налаштування й SEO-поля також із Rank Math і прибирає з бази те, що лишилося від Rank Math. Версія 0.16.0: вкладка «Імпорт» також прибирає з бази те, що лишив Yoast SEO, після імпорту його даних — частинами й після підтвердження резервної копії. Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.47.0: налаштування в групах у меню ліворуч, підвкладки згори, на білому тлі. Версія 0.46.0: менше запитів до бази на сайті й в адмінці. Версія 0.45.0: Markdown-версії сторінок для ШІ-асистентів і агентів (llmstxt.org), вмикаються на вкладці llms.txt, для кожного типу сторінок — зі своїми частинами; сторінки й llms.txt посилаються на них. Версія 0.44.0: магазин WooCommerce бере SEO-поля й назву своєї сторінки; хлібні крихти товарів ідуть через магазин і категорії; кошик, оформлення, акаунт і приховані товари — поза пошуком і картами сайту. Версія 0.43.0: товари WooCommerce у графі Schema (власні дані товару WooCommerce, пов'язані зі сторінкою, продавцем і брендом) і в Open Graph; політика повернень магазину. Версія 0.42.0: AI пише alt-тексти зображень за тим, що бачить на них: кнопка в медіатеці, порожні — в масовому редагуванні, а кожне нове зображення — у фоні. Версія 0.41.0: SEO-блок пише SEO-заголовок, мета-опис і основну ключову фразу за допомогою AI — через провайдера, підключеного в Налаштування → Підключення; змінні шаблону лишаються. Версія 0.40.0: SEO-блок підказує внутрішні посилання — інші сторінки цього сайту, які текст згадує їхньою ключовою фразою чи назвою, але ще не посилається на них. Версія 0.39.0: аудит показує сторінки, на які не посилається жодна інша. Версія 0.38.0: аудит перевіряє й посилання на сторінках — на цей сайт та інші: биті, посилання цього сайту з переспрямуванням, а ті, що не відповіли, — знову через день. Версія 0.37.0: аудит сторінок карти сайту такими, як їх бачить відвідувач: заголовки й описи, яких немає або які повторюються, заголовки H1, зображення без alt-тексту, канонічні адреси, noindex і сторінки, що не відкриваються, — у фоні, на сторінці меню SEO. Версія 0.36.0: монітор ненайдених сторінок: адреси, що відповідають 404, скільки разів і звідки прийшли відвідувачі, без IP-адрес, на сторінці меню SEO, і чернетка редиректу теми WP Base з однієї в один клік. Версія 0.35.0: інструменти для AI-агентів через Simple MCP: SEO-поля записів і термінів, сторінки без власного заголовка чи опису, аналіз, Search Console, налаштування та IndexNow. Версія 0.34.0: команди WP-CLI (wp simple-seo) для SEO-полів записів і термінів, аналізу, імпорту та IndexNow, а SEO-поля кожного типу записів і таксономії — в REST API. Версія 0.33.0: IndexNow — опубліковану, змінену, перенесену чи зняту сторінку за хвилину надсилаємо до Bing, щоб пошуковики прийшли на неї раніше; Яндекс більше не підтримується. Версія 0.32.0: Google Search Console в адмінці — кліки, покази, CTR і позиція сайту з найчастішими запитами й найпопулярнішими сторінками на сторінці меню SEO, а також дані кожного запису в його SEO-блоці; читаються ключем сервісного акаунта Google. Версія 0.31.0: вкладка «Інтеграції» — коди вебмайстрів на головній з перенесенням із Yoast SEO, Rank Math і All in One SEO та теги Google Analytics, Google Tag Manager, Meta Pixel і TikTok Pixel, що вантажаться на перший рух відвідувача й за потреби чекають згоди. Версія 0.30.0: опис, зроблений із тексту запису, і перевірки довжини в аналізі контенту враховують ширину, яку дає пошукова видача, а не кількість символів. Версія 0.29.0: alt-тексти й заголовки зображень з їхніх назв — під час завантаження й у масовому редагуванні для вже завантажених. Версія 0.28.0: локальне SEO — тип організації, її адреса, телефон, години роботи й місце на карті в графі Schema, з перенесенням із Rank Math, Yoast SEO, All in One SEO чи теми. Версія 0.27.0: власна JSON-LD розмітка запису чи терміна, що додається до його графа. Версія 0.26.0: тип сторінки й статті кожного запису й типу записів, сторінки FAQ із питань і відповідей блоків теми, акордеонів або нового блоку «Питання й відповіді». Версія 0.25.0: структуровані дані Schema — один граф JSON-LD: сайт, кого він представляє, сторінка, стаття й хлібні крихти; у режимі «Авто» мовчить там, де тема друкує свій. Версія 0.24.0: масове редагування SEO-заголовків і описів у таблиці — для всіх, хто редагує SEO-поля. Версія 0.23.0: читабельність тексту з власною оцінкою та колонка з SEO-оцінкою й оцінкою читабельності в списках записів. Версія 0.22.0: імпорт переносить також ключові фрази з Yoast SEO, Rank Math і All in One SEO. Версія 0.21.0: аналіз контенту в SEO-блоці записів — основна й додаткові ключові фрази, перевірки сторінки на них і оцінка. Версія 0.20.0: основа для аналізу контенту — Simple SEO читає текст сторінки з будь-якого редактора, разом із блоками ACF і Builder. Версія 0.19.0: над SEO-полями записів і термінів — вигляд сторінки в пошуковій видачі, на комп'ютері й на телефоні, що оновлюється під час набору. Версія 0.18.0: вкладка «Імпорт» переносить налаштування й SEO-поля також з All in One SEO і прибирає з бази те, що лишилося від AIOSEO. Версія 0.17.0: вкладка «Імпорт» переносить налаштування й SEO-поля також із Rank Math і прибирає з бази те, що лишилося від Rank Math. Версія 0.16.0: вкладка «Імпорт» також прибирає з бази те, що лишив Yoast SEO, після імпорту його даних — частинами й після підтвердження резервної копії. Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-import.php:39
 msgid "Import"
@@ -1317,7 +1362,7 @@ msgid "redirections (%s): with the plugin off they stop working; move them to a 
 msgstr "переспрямування (%s): з вимкненим плагіном вони перестануть діяти; спершу перенесіть їх у плагін переспрямувань"
 
 #: includes/class-simple-seo-indexing.php:58
-#: includes/class-simple-seo-indexing.php:103
+#: includes/class-simple-seo-indexing.php:105
 msgid "Indexing"
 msgstr "Індексація"
 
@@ -1331,7 +1376,7 @@ msgid "As set for this type of page"
 msgstr "Як налаштовано для цього виду сторінок"
 
 #: includes/class-simple-seo-indexing.php:67
-#: includes/views/tab-indexing.php:96
+#: includes/views/tab-indexing.php:101
 msgid "Show in search results"
 msgstr "Показувати в результатах пошуку"
 
@@ -1359,361 +1404,402 @@ msgstr "Канонічна адреса"
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr "Лише коли ця сторінка повторює іншу: адреса оригіналу. Залиште порожнім, щоб узяти власну адресу сторінки."
 
-#: includes/class-simple-seo-indexnow.php:70
-#: includes/views/tab-indexnow.php:30
+#: includes/class-simple-seo-indexing.php:111
+msgid "Kinds of pages"
+msgstr "Види сторінок"
+
+#: includes/class-simple-seo-indexing.php:112
+#: includes/class-simple-seo-llms.php:229
+#: includes/class-simple-seo-sitemaps.php:992
+msgid "XML sitemap"
+msgstr "XML-карта сайту"
+
+#: includes/class-simple-seo-indexing.php:113
+#: includes/views/tab-indexing.php:16
+msgid "Attachment pages"
+msgstr "Сторінки вкладень"
+
+#: includes/class-simple-seo-indexnow.php:72
+#: includes/views/tab-indexnow.php:31
 msgid "IndexNow"
 msgstr "IndexNow"
 
-#: includes/class-simple-seo-indexnow.php:177
+#: includes/class-simple-seo-indexnow.php:79
+msgid "The last answers"
+msgstr "Останні відповіді"
+
+#: includes/class-simple-seo-indexnow.php:188
 msgid "IndexNow is off."
 msgstr "IndexNow вимкнено."
 
-#: includes/class-simple-seo-indexnow.php:180
+#: includes/class-simple-seo-indexnow.php:191
 msgid "WordPress asks search engines not to index this site (Settings, Reading): nothing is sent."
 msgstr "WordPress просить пошуковики не індексувати цей сайт («Налаштування», «Читання»): нічого не надсилається."
 
-#: includes/class-simple-seo-indexnow.php:183
+#: includes/class-simple-seo-indexnow.php:194
 msgid "The address of this site is local or for development: search engines cannot reach it, so nothing is sent."
 msgstr "Адреса цього сайту локальна або для розробки: пошуковики до неї не дістануться, тож нічого не надсилається."
 
 #. translators: %s: name of an SEO plugin.
-#: includes/class-simple-seo-indexnow.php:188
+#: includes/class-simple-seo-indexnow.php:199
 #, php-format
 msgid "%s is active: Simple SEO steps aside while it is, and sends nothing."
 msgstr "Активний %s: поки він працює, Simple SEO поступається йому й нічого не надсилає."
 
-#: includes/class-simple-seo-indexnow.php:337
+#: includes/class-simple-seo-indexnow.php:348
 msgid "It will be tried again in ten minutes."
 msgstr "Наступна спроба — за десять хвилин."
 
-#: includes/class-simple-seo-indexnow.php:339
+#: includes/class-simple-seo-indexnow.php:350
 msgid "Given up after three tries."
 msgstr "Після трьох спроб надсилання припинено."
 
 #. translators: %s: ID of a post.
-#: includes/class-simple-seo-indexnow.php:381
+#: includes/class-simple-seo-indexnow.php:392
 #, php-format
 msgid "Post %s is not a page search engines may show: left out."
 msgstr "Запис %s — не сторінка, яку пошуковики можуть показувати: пропущено."
 
 #. translators: %s: an address.
-#: includes/class-simple-seo-indexnow.php:389
+#: includes/class-simple-seo-indexnow.php:400
 #, php-format
 msgid "Not an address of this site: %s"
 msgstr "Це не адреса цього сайту: %s"
 
 #. translators: %s: the error.
-#: includes/class-simple-seo-indexnow.php:472
+#: includes/class-simple-seo-indexnow.php:483
 #, php-format
 msgid "Bing cannot be reached from this server: %s"
 msgstr "З цього сервера Bing недоступний: %s"
 
-#: includes/class-simple-seo-indexnow.php:490
+#: includes/class-simple-seo-indexnow.php:501
 msgid "Taken."
 msgstr "Прийнято."
 
-#: includes/class-simple-seo-indexnow.php:492
+#: includes/class-simple-seo-indexnow.php:503
 msgid "Taken; Bing checks the key file first."
 msgstr "Прийнято; спершу Bing перевіряє файл ключа."
 
-#: includes/class-simple-seo-indexnow.php:494
+#: includes/class-simple-seo-indexnow.php:505
 msgid "Bing found the request wrong."
 msgstr "Bing вважає запит хибним."
 
 #. translators: %s: address of the key file.
-#: includes/class-simple-seo-indexnow.php:497
+#: includes/class-simple-seo-indexnow.php:508
 #, php-format
 msgid "The key is not valid: Bing could not read the key file at %s."
 msgstr "Ключ недійсний: Bing не зміг прочитати файл ключа за адресою %s."
 
-#: includes/class-simple-seo-indexnow.php:499
+#: includes/class-simple-seo-indexnow.php:510
 msgid "The addresses do not belong to the host of the site or to its key."
 msgstr "Адреси не належать до хоста сайту або до його ключа."
 
-#: includes/class-simple-seo-indexnow.php:501
+#: includes/class-simple-seo-indexnow.php:512
 msgid "Too many requests: Bing asks to wait."
 msgstr "Забагато запитів: Bing просить зачекати."
 
 #. translators: %s: HTTP status.
-#: includes/class-simple-seo-indexnow.php:505
+#: includes/class-simple-seo-indexnow.php:516
 #, php-format
 msgid "Bing answered %s."
 msgstr "Bing відповів %s."
 
-#: includes/class-simple-seo-integrations.php:70
+#: includes/class-simple-seo-integrations.php:72
 msgid "Integrations"
 msgstr "Інтеграції"
 
-#: includes/class-simple-seo-llms.php:189
+#: includes/class-simple-seo-integrations.php:78
+msgid "Site verification"
+msgstr "Підтвердження сайту"
+
+#: includes/class-simple-seo-integrations.php:79
+msgid "Analytics and pixels"
+msgstr "Аналітика й пікселі"
+
+#: includes/class-simple-seo-llms.php:94
+#: includes/views/markdown.php:37
+msgid "Markdown versions"
+msgstr "Markdown-версії"
+
+#: includes/class-simple-seo-llms.php:95
+#: includes/views/tab-files.php:133
+msgid "What the site serves"
+msgstr "Що віддає сайт"
+
+#: includes/class-simple-seo-llms.php:203
 msgid "Other languages:"
 msgstr "Інші мови:"
 
-#: includes/class-simple-seo-llms.php:215
-#: includes/class-simple-seo-sitemaps.php:992
-#: includes/views/tab-indexing.php:32
-msgid "XML sitemap"
-msgstr "XML-карта сайту"
-
-#: includes/class-simple-seo-llms.php:215
+#: includes/class-simple-seo-llms.php:229
 msgid "Every address of the site that search engines may show."
 msgstr "Усі адреси сайту, які можуть показувати пошуковики."
 
-#: includes/class-simple-seo-llms.php:246
+#: includes/class-simple-seo-llms.php:260
 msgid "Pages"
 msgstr "Сторінки"
 
-#: includes/class-simple-seo-llms.php:247
+#: includes/class-simple-seo-llms.php:261
 #: includes/class-simple-seo-markdown.php:726
 #: includes/views/tab-cleanup.php:48
 msgid "Posts"
 msgstr "Записи"
 
-#: includes/class-simple-seo-llms.php:254
+#: includes/class-simple-seo-llms.php:268
 #: includes/views/tab-cleanup.php:51
 msgid "Categories"
 msgstr "Рубрики"
 
-#: includes/class-simple-seo-llms.php:255
+#: includes/class-simple-seo-llms.php:269
 #: includes/views/tab-cleanup.php:52
 msgid "Tags"
 msgstr "Мітки"
 
-#: includes/class-simple-seo-local.php:144
+#: includes/class-simple-seo-local.php:146
 msgid "Local SEO"
 msgstr "Локальне SEO"
 
-#: includes/class-simple-seo-local.php:180
+#: includes/class-simple-seo-local.php:152
+#: includes/class-simple-seo-schema.php:370
+#: includes/class-simple-seo-titles.php:82
+msgid "General"
+msgstr "Загальне"
+
+#: includes/class-simple-seo-local.php:153
+msgid "Address and description"
+msgstr "Адреса й опис"
+
+#: includes/class-simple-seo-local.php:191
 msgid "Organization"
 msgstr "Організація"
 
-#: includes/class-simple-seo-local.php:181
+#: includes/class-simple-seo-local.php:192
 msgid "Corporation"
 msgstr "Корпорація"
 
-#: includes/class-simple-seo-local.php:182
+#: includes/class-simple-seo-local.php:193
 msgid "Online business"
 msgstr "Онлайн-бізнес"
 
-#: includes/class-simple-seo-local.php:183
+#: includes/class-simple-seo-local.php:194
 msgid "Online store"
 msgstr "Інтернет-магазин"
 
-#: includes/class-simple-seo-local.php:184
+#: includes/class-simple-seo-local.php:195
 msgid "Non-governmental organization"
 msgstr "Громадська організація"
 
-#: includes/class-simple-seo-local.php:185
+#: includes/class-simple-seo-local.php:196
 msgid "News media"
 msgstr "ЗМІ"
 
-#: includes/class-simple-seo-local.php:186
+#: includes/class-simple-seo-local.php:197
 msgid "Educational organization"
 msgstr "Навчальний заклад"
 
-#: includes/class-simple-seo-local.php:187
+#: includes/class-simple-seo-local.php:198
 msgid "Government organization"
 msgstr "Державна установа"
 
-#: includes/class-simple-seo-local.php:188
+#: includes/class-simple-seo-local.php:199
 msgid "Medical organization"
 msgstr "Медична організація"
 
-#: includes/class-simple-seo-local.php:189
+#: includes/class-simple-seo-local.php:200
 msgid "Sports organization"
 msgstr "Спортивна організація"
 
-#: includes/class-simple-seo-local.php:190
+#: includes/class-simple-seo-local.php:201
 msgid "Performing group"
 msgstr "Творчий колектив"
 
-#: includes/class-simple-seo-local.php:191
+#: includes/class-simple-seo-local.php:202
 msgid "Local business"
 msgstr "Місцевий бізнес загалом"
 
-#: includes/class-simple-seo-local.php:192
+#: includes/class-simple-seo-local.php:203
 msgid "Professional service"
 msgstr "Професійні послуги"
 
-#: includes/class-simple-seo-local.php:193
+#: includes/class-simple-seo-local.php:204
 msgid "Legal service"
 msgstr "Юридичні послуги"
 
-#: includes/class-simple-seo-local.php:194
+#: includes/class-simple-seo-local.php:205
 msgid "Attorney"
 msgstr "Адвокат"
 
-#: includes/class-simple-seo-local.php:195
+#: includes/class-simple-seo-local.php:206
 msgid "Notary"
 msgstr "Нотаріус"
 
-#: includes/class-simple-seo-local.php:196
+#: includes/class-simple-seo-local.php:207
 msgid "Accounting service"
 msgstr "Бухгалтерські послуги"
 
-#: includes/class-simple-seo-local.php:197
+#: includes/class-simple-seo-local.php:208
 msgid "Financial service"
 msgstr "Фінансові послуги"
 
-#: includes/class-simple-seo-local.php:198
+#: includes/class-simple-seo-local.php:209
 msgid "Insurance agency"
 msgstr "Страхова агенція"
 
-#: includes/class-simple-seo-local.php:199
+#: includes/class-simple-seo-local.php:210
 msgid "Real estate agency"
 msgstr "Агенція нерухомості"
 
-#: includes/class-simple-seo-local.php:200
+#: includes/class-simple-seo-local.php:211
 msgid "Travel agency"
 msgstr "Туристична агенція"
 
-#: includes/class-simple-seo-local.php:201
+#: includes/class-simple-seo-local.php:212
 msgid "Employment agency"
 msgstr "Кадрова агенція"
 
-#: includes/class-simple-seo-local.php:202
+#: includes/class-simple-seo-local.php:213
 msgid "Medical clinic"
 msgstr "Медична клініка"
 
-#: includes/class-simple-seo-local.php:203
+#: includes/class-simple-seo-local.php:214
 msgid "Dentist"
 msgstr "Стоматологія"
 
-#: includes/class-simple-seo-local.php:204
+#: includes/class-simple-seo-local.php:215
 msgid "Physician"
 msgstr "Лікар"
 
-#: includes/class-simple-seo-local.php:205
+#: includes/class-simple-seo-local.php:216
 msgid "Pharmacy"
 msgstr "Аптека"
 
-#: includes/class-simple-seo-local.php:206
+#: includes/class-simple-seo-local.php:217
 msgid "Optician"
 msgstr "Оптика"
 
-#: includes/class-simple-seo-local.php:207
+#: includes/class-simple-seo-local.php:218
 msgid "Health and beauty"
 msgstr "Здоров'я і краса"
 
-#: includes/class-simple-seo-local.php:208
+#: includes/class-simple-seo-local.php:219
 msgid "Beauty salon"
 msgstr "Салон краси"
 
-#: includes/class-simple-seo-local.php:209
+#: includes/class-simple-seo-local.php:220
 msgid "Hair salon"
 msgstr "Перукарня"
 
-#: includes/class-simple-seo-local.php:210
+#: includes/class-simple-seo-local.php:221
 msgid "Spa"
 msgstr "Спа"
 
-#: includes/class-simple-seo-local.php:211
+#: includes/class-simple-seo-local.php:222
 msgid "Gym"
 msgstr "Спортзал"
 
-#: includes/class-simple-seo-local.php:212
+#: includes/class-simple-seo-local.php:223
 msgid "Place to eat"
 msgstr "Заклад харчування"
 
-#: includes/class-simple-seo-local.php:213
+#: includes/class-simple-seo-local.php:224
 msgid "Restaurant"
 msgstr "Ресторан"
 
-#: includes/class-simple-seo-local.php:214
+#: includes/class-simple-seo-local.php:225
 msgid "Café or coffee shop"
 msgstr "Кафе чи кав'ярня"
 
-#: includes/class-simple-seo-local.php:215
+#: includes/class-simple-seo-local.php:226
 msgid "Bar or pub"
 msgstr "Бар чи паб"
 
-#: includes/class-simple-seo-local.php:216
+#: includes/class-simple-seo-local.php:227
 msgid "Bakery"
 msgstr "Пекарня"
 
-#: includes/class-simple-seo-local.php:217
+#: includes/class-simple-seo-local.php:228
 msgid "Lodging"
 msgstr "Житло для подорожніх"
 
-#: includes/class-simple-seo-local.php:218
+#: includes/class-simple-seo-local.php:229
 msgid "Hotel"
 msgstr "Готель"
 
-#: includes/class-simple-seo-local.php:219
+#: includes/class-simple-seo-local.php:230
 msgid "Store"
 msgstr "Магазин"
 
-#: includes/class-simple-seo-local.php:220
+#: includes/class-simple-seo-local.php:231
 msgid "Clothing store"
 msgstr "Магазин одягу"
 
-#: includes/class-simple-seo-local.php:221
+#: includes/class-simple-seo-local.php:232
 msgid "Electronics store"
 msgstr "Магазин електроніки"
 
-#: includes/class-simple-seo-local.php:222
+#: includes/class-simple-seo-local.php:233
 msgid "Furniture store"
 msgstr "Меблевий магазин"
 
-#: includes/class-simple-seo-local.php:223
+#: includes/class-simple-seo-local.php:234
 msgid "Grocery store"
 msgstr "Продуктовий магазин"
 
-#: includes/class-simple-seo-local.php:224
+#: includes/class-simple-seo-local.php:235
 msgid "Hardware store"
 msgstr "Господарський магазин"
 
-#: includes/class-simple-seo-local.php:225
+#: includes/class-simple-seo-local.php:236
 msgid "Automotive business"
 msgstr "Автобізнес"
 
-#: includes/class-simple-seo-local.php:226
+#: includes/class-simple-seo-local.php:237
 msgid "Car dealer"
 msgstr "Автосалон"
 
-#: includes/class-simple-seo-local.php:227
+#: includes/class-simple-seo-local.php:238
 msgid "Car repair"
 msgstr "Автосервіс"
 
-#: includes/class-simple-seo-local.php:228
+#: includes/class-simple-seo-local.php:239
 msgid "Home and construction"
 msgstr "Будівництво й ремонт"
 
-#: includes/class-simple-seo-local.php:229
+#: includes/class-simple-seo-local.php:240
 msgid "General contractor"
 msgstr "Генпідрядник"
 
-#: includes/class-simple-seo-local.php:230
+#: includes/class-simple-seo-local.php:241
 msgid "Electrician"
 msgstr "Електрик"
 
-#: includes/class-simple-seo-local.php:231
+#: includes/class-simple-seo-local.php:242
 msgid "Plumber"
 msgstr "Сантехнік"
 
-#: includes/class-simple-seo-local.php:232
+#: includes/class-simple-seo-local.php:243
 msgid "Heating and air conditioning"
 msgstr "Опалення й кондиціювання"
 
-#: includes/class-simple-seo-local.php:233
+#: includes/class-simple-seo-local.php:244
 msgid "Child care"
 msgstr "Догляд за дітьми"
 
-#: includes/class-simple-seo-local.php:234
+#: includes/class-simple-seo-local.php:245
 msgid "Entertainment"
 msgstr "Розваги"
 
 #. translators: %s: number of fields.
-#: includes/class-simple-seo-local.php:671
+#: includes/class-simple-seo-local.php:682
 #, php-format
 msgid "Fields taken from the theme: %s."
 msgstr "Перенесено з теми полів: %s."
 
-#: includes/class-simple-seo-local.php:672
+#: includes/class-simple-seo-local.php:683
 msgid "Nothing was taken from the theme: the fields it has are filled in already."
 msgstr "З теми нічого не перенесено: поля, які в ній є, уже заповнені."
 
 #: includes/class-simple-seo-markdown.php:80
-#: includes/views/markdown.php:65
+#: includes/views/markdown.php:64
 msgid "Markdown version"
 msgstr "Markdown-версія"
 
@@ -1886,19 +1972,19 @@ msgid "The SEO fields of Simple SEO the user may edit. An empty value clears a f
 msgstr "SEO-поля Simple SEO, які користувач може редагувати. Порожнє значення очищує поле: порожній текст, false, 0 для зображення."
 
 #: includes/class-simple-seo-schema.php:98
-#: includes/class-simple-seo-schema.php:362
+#: includes/class-simple-seo-schema.php:364
 msgid "Schema"
 msgstr "Schema"
 
 #: includes/class-simple-seo-schema.php:102
-#: includes/views/tab-schema.php:129
-#: includes/views/tab-schema.php:142
+#: includes/views/tab-schema.php:134
+#: includes/views/tab-schema.php:147
 msgid "Type of page"
 msgstr "Тип сторінки"
 
 #: includes/class-simple-seo-schema.php:115
-#: includes/views/tab-schema.php:130
-#: includes/views/tab-schema.php:150
+#: includes/views/tab-schema.php:135
+#: includes/views/tab-schema.php:155
 msgid "Type of article"
 msgstr "Тип статті"
 
@@ -2040,6 +2126,18 @@ msgstr "Вебсторінка: питань і відповідей не зна
 msgid "%1$s. The page has an accordion (items: %2$s): choose FAQ page to mark it up as questions and answers."
 msgstr "%1$s. На сторінці є акордеон (пунктів: %2$s): оберіть «Сторінка FAQ», щоб розмітити його як питання й відповіді."
 
+#: includes/class-simple-seo-schema.php:371
+msgid "Names"
+msgstr "Назви"
+
+#: includes/class-simple-seo-schema.php:372
+msgid "Types of pages"
+msgstr "Типи сторінок"
+
+#: includes/class-simple-seo-schema.php:373
+msgid "Logo and profiles"
+msgstr "Логотип і профілі"
+
 #: includes/class-simple-seo-scores.php:128
 msgid "Not analysed since the last change: open or save the post."
 msgstr "Не проаналізовано після останньої зміни: відкрийте або збережіть запис."
@@ -2056,147 +2154,155 @@ msgstr "SEO: %s"
 msgid "Readability: %s"
 msgstr "Читабельність: %s"
 
-#: includes/class-simple-seo-search-console.php:79
-#: includes/class-simple-seo-search-console.php:85
-#: includes/class-simple-seo-search-console.php:86
-#: includes/class-simple-seo-search-console.php:857
+#: includes/class-simple-seo-search-console.php:81
+#: includes/class-simple-seo-search-console.php:96
+#: includes/class-simple-seo-search-console.php:97
+#: includes/class-simple-seo-search-console.php:868
 #: includes/views/search-console.php:20
 msgid "Search Console"
 msgstr "Search Console"
 
-#: includes/class-simple-seo-search-console.php:172
+#: includes/class-simple-seo-search-console.php:87
+msgid "Connection"
+msgstr "Підключення"
+
+#: includes/class-simple-seo-search-console.php:88
+msgid "How to connect"
+msgstr "Як підключити"
+
+#: includes/class-simple-seo-search-console.php:183
 msgid "The PHP of this server has no openssl extension: Simple SEO cannot sign in to Google without it."
 msgstr "PHP на цьому сервері не має розширення openssl: без нього Simple SEO не може увійти в Google."
 
-#: includes/class-simple-seo-search-console.php:177
+#: includes/class-simple-seo-search-console.php:188
 msgid "The key is not JSON: paste the whole content of the file Google gave."
 msgstr "Ключ не є JSON: вставте весь вміст файлу, який дав Google."
 
-#: includes/class-simple-seo-search-console.php:180
+#: includes/class-simple-seo-search-console.php:191
 msgid "This is not the key of a service account: create a key of the service account as a JSON file."
 msgstr "Це не ключ сервісного акаунта: створіть ключ сервісного акаунта у вигляді файлу JSON."
 
-#: includes/class-simple-seo-search-console.php:186
+#: includes/class-simple-seo-search-console.php:197
 msgid "The key has no email of the service account (client_email)."
 msgstr "У ключі немає email сервісного акаунта (client_email)."
 
-#: includes/class-simple-seo-search-console.php:190
+#: includes/class-simple-seo-search-console.php:201
 msgid "The private key in the file cannot be read (private_key): create a new key and paste the file as it is."
 msgstr "Приватний ключ у файлі не читається (private_key): створіть новий ключ і вставте файл як є."
 
-#: includes/class-simple-seo-search-console.php:195
+#: includes/class-simple-seo-search-console.php:206
 msgid "The key cannot be kept encrypted on this server."
 msgstr "На цьому сервері ключ неможливо зберегти зашифрованим."
 
-#: includes/class-simple-seo-search-console.php:302
+#: includes/class-simple-seo-search-console.php:313
 msgid "The private key cannot sign the request to Google: paste the key again."
 msgstr "Приватний ключ не може підписати запит до Google: вставте ключ ще раз."
 
-#: includes/class-simple-seo-search-console.php:321
+#: includes/class-simple-seo-search-console.php:332
 msgid "Search Console is not connected."
 msgstr "Search Console не підключено."
 
-#: includes/class-simple-seo-search-console.php:335
+#: includes/class-simple-seo-search-console.php:346
 msgid "The saved key cannot be read: the keys and salts of the site in wp-config.php have changed since. Paste the key again."
 msgstr "Збережений ключ не читається: ключі й солі сайту в wp-config.php відтоді змінилися. Вставте ключ ще раз."
 
 #. translators: %s: what Google answered.
-#: includes/class-simple-seo-search-console.php:376
+#: includes/class-simple-seo-search-console.php:387
 #, php-format
 msgid "Google did not let the service account in (%s): check that its key is not deleted in Google Cloud, or paste a new one."
 msgstr "Google не впустив сервісний акаунт (%s): перевірте, чи його ключ не видалено в Google Cloud, або вставте новий."
 
-#: includes/class-simple-seo-search-console.php:440
+#: includes/class-simple-seo-search-console.php:451
 msgid "The Google Search Console API is off in the project of the service account: turn it on in Google Cloud (APIs and services, Library), wait a few minutes and open this page again."
 msgstr "У проєкті сервісного акаунта вимкнено Google Search Console API: увімкніть його в Google Cloud («API та сервіси», «Бібліотека»), зачекайте кілька хвилин і відкрийте цю сторінку знову."
 
 #. translators: %s: email of the service account.
-#: includes/class-simple-seo-search-console.php:444
+#: includes/class-simple-seo-search-console.php:455
 #, php-format
 msgid "The service account has no access to the property: in Search Console, add %s as a user of the property (Settings, Users and permissions; Restricted is enough)."
 msgstr "Сервісний акаунт не має доступу до ресурсу: у Search Console додайте %s користувачем ресурсу («Налаштування», «Користувачі та дозволи»; досить дозволу «Обмежений»)."
 
-#: includes/class-simple-seo-search-console.php:447
+#: includes/class-simple-seo-search-console.php:458
 msgid "Search Console has no such property: choose another one on the Search Console tab of the settings."
 msgstr "У Search Console немає такого ресурсу: оберіть інший на вкладці «Search Console» налаштувань."
 
-#: includes/class-simple-seo-search-console.php:450
+#: includes/class-simple-seo-search-console.php:461
 msgid "Google asks to wait: too many requests. Open this page again in a few minutes."
 msgstr "Google просить зачекати: забагато запитів. Відкрийте цю сторінку знову за кілька хвилин."
 
 #. translators: 1: HTTP status, 2: what Google said.
-#: includes/class-simple-seo-search-console.php:454
+#: includes/class-simple-seo-search-console.php:465
 #, php-format
 msgid "Search Console answered %1$s: %2$s"
 msgstr "Search Console відповів %1$s: %2$s"
 
 #. translators: %s: the error.
-#: includes/class-simple-seo-search-console.php:459
+#: includes/class-simple-seo-search-console.php:470
 #, php-format
 msgid "Google cannot be reached from this server: %s"
 msgstr "З цього сервера Google недоступний: %s"
 
 #. translators: %s: email of the service account.
-#: includes/class-simple-seo-search-console.php:553
+#: includes/class-simple-seo-search-console.php:564
 #, php-format
 msgid "The service account sees no property of this site: in Search Console, add %s as a user of the property of this site, or choose a property on the Search Console tab of the settings."
 msgstr "Сервісний акаунт не бачить ресурсу цього сайту: у Search Console додайте %s користувачем ресурсу цього сайту або оберіть ресурс на вкладці «Search Console» налаштувань."
 
-#: includes/class-simple-seo-search-console.php:751
+#: includes/class-simple-seo-search-console.php:762
 msgid "Search Console has data of published pages only."
 msgstr "Search Console має дані лише опублікованих сторінок."
 
-#: includes/class-simple-seo-search-console.php:851
+#: includes/class-simple-seo-search-console.php:862
 msgid "The data of Search Console cannot be loaded now."
 msgstr "Дані Search Console зараз не завантажуються."
 
-#: includes/class-simple-seo-search-console.php:858
+#: includes/class-simple-seo-search-console.php:869
 msgid "Loading the data of Search Console…"
 msgstr "Завантаження даних Search Console…"
 
-#: includes/class-simple-seo-search-console.php:869
+#: includes/class-simple-seo-search-console.php:880
 msgid "Search Console has no data of the site yet."
 msgstr "Search Console ще не має даних сайту."
 
 #. translators: 1: first day, 2: last day.
-#: includes/class-simple-seo-search-console.php:876
+#: includes/class-simple-seo-search-console.php:887
 #, php-format
 msgid "Google search, %1$s – %2$s:"
 msgstr "Пошук Google, %1$s – %2$s:"
 
-#: includes/class-simple-seo-search-console.php:881
+#: includes/class-simple-seo-search-console.php:892
 msgid "No queries of this page in these days: Google shows it to no one yet, or leaves out its rare queries."
 msgstr "За ці дні запитів цієї сторінки немає: Google її ще нікому не показує або не називає її рідкісних запитів."
 
-#: includes/class-simple-seo-search-console.php:885
+#: includes/class-simple-seo-search-console.php:896
 #: includes/views/search-console.php:76
 msgid "Query"
 msgstr "Запит"
 
-#: includes/class-simple-seo-search-console.php:897
-#: includes/class-simple-seo-search-console.php:959
+#: includes/class-simple-seo-search-console.php:908
+#: includes/class-simple-seo-search-console.php:970
 msgid "Clicks"
 msgstr "Кліки"
 
-#: includes/class-simple-seo-search-console.php:898
-#: includes/class-simple-seo-search-console.php:959
+#: includes/class-simple-seo-search-console.php:909
+#: includes/class-simple-seo-search-console.php:970
 msgid "Impressions"
 msgstr "Покази"
 
-#: includes/class-simple-seo-search-console.php:899
-#: includes/class-simple-seo-search-console.php:959
+#: includes/class-simple-seo-search-console.php:910
+#: includes/class-simple-seo-search-console.php:970
 msgid "CTR"
 msgstr "CTR"
 
-#: includes/class-simple-seo-search-console.php:900
+#: includes/class-simple-seo-search-console.php:911
 msgid "Average position"
 msgstr "Середня позиція"
 
-#: includes/class-simple-seo-search-console.php:959
+#: includes/class-simple-seo-search-console.php:970
 msgid "Position"
 msgstr "Позиція"
 
-#: includes/class-simple-seo-search-console.php:964
+#: includes/class-simple-seo-search-console.php:975
 msgid "Language"
 msgstr "Мова"
 
@@ -2362,39 +2468,42 @@ msgstr "рядків мети термінів — %s"
 msgid "rows of post meta: %s"
 msgstr "рядків мети записів — %s"
 
-#: includes/class-simple-seo-special.php:34
-#: includes/views/tab-titles.php:31
+#: includes/class-simple-seo-special.php:36
+#: includes/views/tab-titles.php:32
 msgid "Special pages"
 msgstr "Спецсторінки"
 
-#: includes/class-simple-seo-special.php:105
-#: includes/views/tab-breadcrumbs.php:53
+#: includes/class-simple-seo-special.php:42
+#: includes/class-simple-seo-special.php:117
+#: includes/views/tab-breadcrumbs.php:56
 msgid "Home page"
 msgstr "Головна сторінка"
 
+#: includes/class-simple-seo-special.php:43
+#: includes/class-simple-seo-special.php:125
+msgid "Page not found (404)"
+msgstr "Сторінку не знайдено (404)"
+
+#: includes/class-simple-seo-special.php:44
+#: includes/class-simple-seo-special.php:129
+msgid "Password-protected content"
+msgstr "Вміст, захищений паролем"
+
 #. translators: %s: title of the page set as the front page.
-#: includes/class-simple-seo-special.php:108
+#: includes/class-simple-seo-special.php:120
 #, php-format
 msgid "The front page of the site is the page \"%s\": these settings apply to it where its own SEO fields are empty."
 msgstr "Головна сайту — сторінка «%s»: ці налаштування діють для неї там, де її власні SEO-поля порожні."
 
-#: includes/class-simple-seo-special.php:109
+#: includes/class-simple-seo-special.php:121
 msgid "The front page of the site lists the latest posts."
 msgstr "Головна сайту показує останні записи."
 
-#: includes/class-simple-seo-special.php:113
-msgid "Page not found (404)"
-msgstr "Сторінку не знайдено (404)"
-
-#: includes/class-simple-seo-special.php:114
+#: includes/class-simple-seo-special.php:126
 msgid "Shown for addresses that lead nowhere. Search engines do not index it and social networks get no preview of it, so it has no image. {title} here is \"Page not found\" in the language of the page."
 msgstr "Показується за адресами, що ведуть у нікуди. Пошуковики її не індексують, а соцмережі не отримують її прев'ю, тож зображення в неї немає. {title} тут — «Сторінку не знайдено» мовою сторінки."
 
-#: includes/class-simple-seo-special.php:117
-msgid "Password-protected content"
-msgstr "Вміст, захищений паролем"
-
-#: includes/class-simple-seo-special.php:118
+#: includes/class-simple-seo-special.php:130
 msgid "A post or page protected with a password shows only the password form until the visitor enters it. Meanwhile these templates replace those of its post type, and its featured image and excerpt stay hidden; an SEO title, description or image of its own still wins. {title} here is the post title."
 msgstr "Запис чи сторінка під паролем показує лише форму пароля, доки відвідувач його не введе. Тим часом ці шаблони заміняють шаблони його типу запису, а головне зображення й витяг лишаються прихованими; власні SEO-заголовок, опис чи зображення запису все одно мають перевагу. {title} тут — назва запису."
 
@@ -2411,33 +2520,33 @@ msgid "Titles"
 msgstr "Заголовки"
 
 #. translators: %s: post type name, plural.
-#: includes/class-simple-seo-titles.php:278
+#: includes/class-simple-seo-titles.php:294
 #, php-format
 msgid "Archive: %s"
 msgstr "Архів: %s"
 
-#: includes/class-simple-seo-titles.php:281
+#: includes/class-simple-seo-titles.php:297
 msgid "Author archives"
 msgstr "Архіви авторів"
 
-#: includes/class-simple-seo-titles.php:282
+#: includes/class-simple-seo-titles.php:298
 msgid "Date archives"
 msgstr "Архіви за датами"
 
-#: includes/class-simple-seo-titles.php:283
+#: includes/class-simple-seo-titles.php:299
 #: includes/views/tab-cleanup.php:55
 msgid "Search results"
 msgstr "Результати пошуку"
 
-#: includes/class-simple-seo-titles.php:287
+#: includes/class-simple-seo-titles.php:303
 msgid "Post types"
 msgstr "Типи записів"
 
-#: includes/class-simple-seo-titles.php:291
+#: includes/class-simple-seo-titles.php:307
 msgid "Taxonomies"
 msgstr "Таксономії"
 
-#: includes/class-simple-seo-titles.php:295
+#: includes/class-simple-seo-titles.php:311
 msgid "Archives and search"
 msgstr "Архіви й пошук"
 
@@ -2824,7 +2933,7 @@ msgstr "Пошук"
 
 #: includes/views/bulk.php:58
 #: includes/views/monitor.php:145
-#: includes/views/tab-files.php:173
+#: includes/views/tab-files.php:174
 msgid "Show"
 msgstr "Показати"
 
@@ -2862,7 +2971,7 @@ msgid "Nothing found."
 msgstr "Нічого не знайдено."
 
 #: includes/views/markdown.php:18
-#: includes/views/tab-local.php:132
+#: includes/views/tab-local.php:135
 msgid "Description"
 msgstr "Опис"
 
@@ -2874,37 +2983,29 @@ msgstr "Подробиці: адреса, дати, автор, терміни"
 msgid "Featured image"
 msgstr "Головне зображення"
 
-#: includes/views/markdown.php:23
-msgid "Markdown versions of pages"
-msgstr "Markdown-версії сторінок"
-
 #. translators: 1: an example address, 2: the same with index.md.
-#: includes/views/markdown.php:28
+#: includes/views/markdown.php:27
 #, php-format
 msgid "Each page can also be served as clean Markdown at its own address with index.md added (%1$s → %2$s): the title and the text without menus, scripts and styles, for AI assistants and agents. Pages name their Markdown version in their head, and llms.txt links to it. Only pages search engines may show have one."
 msgstr "Кожну сторінку можна віддавати ще й чистим Markdown за її власною адресою з index.md у кінці (%1$s → %2$s): назва й текст без меню, скриптів і стилів — для ШІ-асистентів і агентів. Сторінки називають свою Markdown-версію у своєму head, а llms.txt посилається на неї. Markdown-версію мають лише сторінки, які можуть показувати пошуковики."
 
-#: includes/views/markdown.php:38
-msgid "Markdown versions"
-msgstr "Markdown-версії"
-
-#: includes/views/markdown.php:43
+#: includes/views/markdown.php:42
 msgid "Serve Markdown versions of pages"
 msgstr "Віддавати Markdown-версії сторінок"
 
-#: includes/views/markdown.php:46
+#: includes/views/markdown.php:45
 msgid "The home page:"
 msgstr "Головна сторінка:"
 
-#: includes/views/markdown.php:48
+#: includes/views/markdown.php:47
 msgid "A post or a term can say otherwise in the Indexing group of its SEO fields."
 msgstr "Запис чи термін може вирішити інакше в групі «Індексація» своїх SEO-полів."
 
-#: includes/views/markdown.php:79
+#: includes/views/markdown.php:78
 msgid "With the list of posts on that page of the archive."
 msgstr "Зі списком записів на цій сторінці архіву."
 
-#: includes/views/markdown.php:81
+#: includes/views/markdown.php:80
 msgid "Hidden from search engines on the Indexing tab: only those shown on their own have one."
 msgstr "Приховано від пошуковиків на вкладці «Індексація»: Markdown-версію мають лише ті, що показані власним полем."
 
@@ -3087,6 +3188,15 @@ msgstr "Найпопулярніші сторінки"
 msgid "No pages in these days."
 msgstr "За ці дні сторінок немає."
 
+#: includes/views/settings.php:29
+#: includes/views/settings.php:49
+msgid "Settings of Simple SEO"
+msgstr "Налаштування Simple SEO"
+
+#: includes/views/settings.php:64
+msgid "Open"
+msgstr "Відкрити"
+
 #: includes/views/tab-access.php:14
 msgid "Choose which roles can do what. Editing SEO fields of a post or term also needs the right to edit that post or term itself."
 msgstr "Оберіть, які ролі що можуть. Щоб редагувати SEO-поля запису чи терміна, потрібне ще й право редагувати сам запис чи термін."
@@ -3131,86 +3241,78 @@ msgstr "Варіанти"
 msgid "How many variants the AI writes at a time: one goes straight into the field; of more, you choose one."
 msgstr "Скільки варіантів AI пише за раз: один одразу йде в поле, з кількох ви обираєте один."
 
-#: includes/views/tab-breadcrumbs.php:20
+#: includes/views/tab-breadcrumbs.php:21
 msgid "The trail from the home page to the page shown: home, the blog page or the archive, the category with its parents, the page itself. The theme decides where it goes:"
 msgstr "Шлях від головної до показаної сторінки: головна, сторінка блогу чи архів, рубрика з батьківськими, сама сторінка. Де його показати, вирішує тема:"
 
-#: includes/views/tab-breadcrumbs.php:23
+#: includes/views/tab-breadcrumbs.php:24
 msgid "PHP template"
 msgstr "PHP-шаблон"
 
-#: includes/views/tab-breadcrumbs.php:24
+#: includes/views/tab-breadcrumbs.php:25
 msgid "Twig (Timber)"
 msgstr "Twig (Timber)"
 
-#: includes/views/tab-breadcrumbs.php:25
+#: includes/views/tab-breadcrumbs.php:26
 msgid "Shortcode"
 msgstr "Шорткод"
 
 #. translators: %s: breadcrumbs of the newest post, e.g. Home › News › Post title.
-#: includes/views/tab-breadcrumbs.php:32
+#: includes/views/tab-breadcrumbs.php:33
 #, php-format
 msgid "The newest post now: %s"
 msgstr "Найновіший запис зараз: %s"
 
-#: includes/views/tab-breadcrumbs.php:37
-msgid "Look"
-msgstr "Вигляд"
-
 #. translators: %s: language name, e.g. English.
-#: includes/views/tab-breadcrumbs.php:40
+#: includes/views/tab-breadcrumbs.php:43
 #, php-format
 msgid "The labels are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages."
 msgstr "Підписи зберігаються для кожної мови окремо; ви редагуєте їх для: %s. Решта налаштувань цієї вкладки спільна для всіх мов."
 
-#: includes/views/tab-breadcrumbs.php:46
-#: includes/views/tab-titles.php:41
-#: includes/views/tab-titles.php:44
+#: includes/views/tab-breadcrumbs.php:49
+#: includes/views/tab-titles.php:42
+#: includes/views/tab-titles.php:45
 msgid "Separator"
 msgstr "Роздільник"
 
-#: includes/views/tab-breadcrumbs.php:49
+#: includes/views/tab-breadcrumbs.php:52
 msgid "Between the items, for example › » / or |."
 msgstr "Між пунктами, наприклад › » / або |."
 
-#: includes/views/tab-breadcrumbs.php:56
+#: includes/views/tab-breadcrumbs.php:59
 msgid "The first item. Empty: \"Home\" in the language of the page."
 msgstr "Перший пункт. Порожнє — «Головна» мовою сторінки."
 
-#: includes/views/tab-breadcrumbs.php:60
+#: includes/views/tab-breadcrumbs.php:63
 msgid "Text before"
 msgstr "Текст перед"
 
-#: includes/views/tab-breadcrumbs.php:63
+#: includes/views/tab-breadcrumbs.php:66
 msgid "Optional, for example \"You are here:\"."
 msgstr "Необов'язково, наприклад «Ви тут:»."
 
-#: includes/views/tab-breadcrumbs.php:67
 #: includes/views/tab-breadcrumbs.php:70
+#: includes/views/tab-breadcrumbs.php:73
 msgid "The trail"
 msgstr "Шлях"
 
-#: includes/views/tab-breadcrumbs.php:74
+#: includes/views/tab-breadcrumbs.php:77
 msgid "End with the page itself, as text"
 msgstr "Закінчувати самою сторінкою, текстом"
 
-#: includes/views/tab-breadcrumbs.php:79
+#: includes/views/tab-breadcrumbs.php:82
 msgid "Show the posts page (Settings → Reading) before posts and their categories"
 msgstr "Показувати сторінку записів («Налаштування → Читання») перед записами та їхніми рубриками"
 
-#: includes/views/tab-breadcrumbs.php:88
-msgid "Categories in the trail"
-msgstr "Рубрики в шляху"
-
-#: includes/views/tab-breadcrumbs.php:89
+#: includes/views/tab-breadcrumbs.php:94
 msgid "Which taxonomy the trail of each post type goes through. A post with several terms there goes through its primary one, chosen in the SEO box of the editor; otherwise through the deepest of them."
 msgstr "Через яку таксономію йде шлях кожного типу записів. Запис із кількома термінами йде через основний, обраний у SEO-блоці редактора, а інакше — через найглибший з них."
 
-#: includes/views/tab-breadcrumbs.php:102
+#: includes/views/tab-breadcrumbs.php:107
 msgid "None — parent pages instead"
 msgstr "Жодна — натомість батьківські сторінки"
 
-#: includes/views/tab-breadcrumbs.php:102
+#: includes/views/tab-breadcrumbs.php:107
 msgid "None"
 msgstr "Жодна"
 
@@ -3294,20 +3396,12 @@ msgstr "Архіви типів записів"
 msgid "What WordPress adds to the code of every page. Ticked items are removed; only the links, tags and scripts go, the features behind them keep working. Out of the box only what nobody uses is removed."
 msgstr "Що WordPress додає до коду кожної сторінки. Позначене прибирається; зникають лише посилання, теги й скрипти, а можливості за ними і далі працюють. Одразу після встановлення прибрано тільки те, чим ніхто не користується."
 
-#: includes/views/tab-cleanup.php:61
-msgid "Links and tags"
-msgstr "Посилання й теги"
-
-#: includes/views/tab-cleanup.php:81
-msgid "Links to feeds"
-msgstr "Посилання на стрічки"
-
-#: includes/views/tab-cleanup.php:82
+#: includes/views/tab-cleanup.php:84
 msgid "Feed readers find feeds through these links. The feeds keep working at their addresses; only the links go."
 msgstr "За цими посиланнями стрічки знаходять читалки. Самі стрічки й далі працюють за своїми адресами; зникають лише посилання."
 
-#: includes/views/tab-cleanup.php:86
-#: includes/views/tab-cleanup.php:89
+#: includes/views/tab-cleanup.php:88
+#: includes/views/tab-cleanup.php:91
 msgid "Remove the links to"
 msgstr "Прибрати посилання на"
 
@@ -3316,123 +3410,118 @@ msgid "Two files in the root of the site: robots.txt tells search engines what t
 msgstr "Два файли в корені сайту: robots.txt підказує пошуковикам, що обходити, а .htaccess — вебсерверу, як відповідати. Кожна зміна зберігає попередню версію в історії під файлом, щоб її можна було повернути одним натиском."
 
 #. translators: %s: folder of the site, e.g. /blog/.
-#: includes/views/tab-files.php:35
+#: includes/views/tab-files.php:36
 #, php-format
 msgid "The site lives in the folder %s, not at the root of its domain. Search engines read robots.txt only from the root of the domain, so they do not see this one."
 msgstr "Сайт розташований у теці %s, а не в корені свого домену. Пошуковики читають robots.txt лише з кореня домену, тож цього вони не бачать."
 
 #. translators: %s: path of robots.txt.
-#: includes/views/tab-files.php:43
+#: includes/views/tab-files.php:44
 #, php-format
 msgid "There is a robots.txt file in the site root (%s). The server sends it as it is, so it is the file you edit here; the robots.txt of WordPress, with the sitemap line Simple SEO adds to it, is not used."
 msgstr "У корені сайту лежить файл robots.txt (%s). Сервер віддає його як є, тож тут ви редагуєте саме цей файл; robots.txt від WordPress разом із рядком карти сайту, який додає Simple SEO, не використовується."
 
-#: includes/views/tab-files.php:47
+#: includes/views/tab-files.php:48
 msgid "There is no robots.txt file in the site root, so WordPress serves this text. Saved empty, it is the text of WordPress again."
 msgstr "Файлу robots.txt у корені сайту немає, тож цей текст віддає WordPress. Якщо зберегти порожнім, знову буде текст WordPress."
 
 #. translators: %s: name of the web server, e.g. nginx/1.27.
-#: includes/views/tab-files.php:56
+#: includes/views/tab-files.php:57
 #, php-format
 msgid "This server (%s) is not Apache or LiteSpeed and does not read .htaccess: the file changes nothing here."
 msgstr "Цей сервер (%s) — не Apache і не LiteSpeed, він не читає .htaccess: файл тут нічого не змінює."
 
-#: includes/views/tab-files.php:57
+#: includes/views/tab-files.php:58
 msgid "This server does not look like Apache or LiteSpeed, so .htaccess probably changes nothing here."
 msgstr "Цей сервер не схожий на Apache чи LiteSpeed, тож .htaccess тут, найімовірніше, нічого не змінює."
 
 #. translators: %s: path of .htaccess.
-#: includes/views/tab-files.php:65
+#: includes/views/tab-files.php:66
 #, php-format
 msgid "The .htaccess file in the site root (%s). A mistake in it can stop the whole site, so after saving Simple SEO opens the home page and the REST API from the server and puts the previous file back at once if either stops answering."
 msgstr "Файл .htaccess у корені сайту (%s). Помилка в ньому може зупинити весь сайт, тож після збереження Simple SEO відкриває із сервера головну сторінку й REST API і одразу повертає попередній файл, якщо щось із них перестало відповідати."
 
-#: includes/views/tab-files.php:68
+#: includes/views/tab-files.php:69
 msgid "WordPress writes the lines between # BEGIN WordPress and # END WordPress itself whenever permalinks are saved: keep your own rules outside them."
 msgstr "Рядки між # BEGIN WordPress і # END WordPress пише сам WordPress щоразу, коли зберігаються постійні посилання: власні правила тримайте поза ними."
 
-#: includes/views/tab-files.php:70
+#: includes/views/tab-files.php:71
 msgid "There is no .htaccess yet; saving creates it."
 msgstr "Файлу .htaccess ще немає; збереження його створить."
 
-#: includes/views/tab-files.php:87
+#: includes/views/tab-files.php:88
 msgid "The file as it is now"
 msgstr "Файл, яким він є зараз"
 
 #. translators: %s: the sitemap line, e.g. Sitemap: https://example.com/sitemap_index.xml.
-#: includes/views/tab-files.php:97
+#: includes/views/tab-files.php:98
 #, php-format
 msgid "Simple SEO adds %s at the end, unless the text has it already."
 msgstr "Simple SEO додає в кінці %s, якщо цього рядка в тексті ще немає."
 
 #. translators: %s: the sitemap line, e.g. Sitemap: https://example.com/sitemap_index.xml.
-#: includes/views/tab-files.php:104
+#: includes/views/tab-files.php:105
 #, php-format
 msgid "Search engines find the XML sitemap through robots.txt. The file does not name it; add the line %s."
 msgstr "Пошуковики знаходять XML-карту сайту через robots.txt. У файлі її немає; додайте рядок %s."
 
 #. translators: %s: robots.txt or .htaccess.
-#: includes/views/tab-files.php:115
+#: includes/views/tab-files.php:116
 #, php-format
 msgid "Save %s"
 msgstr "Зберегти %s"
 
-#: includes/views/tab-files.php:119
+#: includes/views/tab-files.php:120
 msgid "Back to the text of WordPress"
 msgstr "Повернути текст WordPress"
 
-#: includes/views/tab-files.php:122
+#: includes/views/tab-files.php:123
 msgid "Delete the file, let WordPress serve this text"
 msgstr "Видалити файл, нехай цей текст віддає WordPress"
 
-#: includes/views/tab-files.php:126
+#: includes/views/tab-files.php:127
 msgid "Open robots.txt"
 msgstr "Відкрити robots.txt"
 
-#: includes/views/tab-files.php:132
-#: includes/views/tab-llms.php:133
-msgid "What the site serves"
-msgstr "Що віддає сайт"
-
-#: includes/views/tab-files.php:133
+#: includes/views/tab-files.php:134
 msgid "The saved text with what Simple SEO and other plugins add to it."
 msgstr "Збережений текст разом із тим, що додають до нього Simple SEO та інші плагіни."
 
 #. translators: %s: path of the copy, e.g. /var/www/.htaccess.simple-seo-backup.
-#: includes/views/tab-files.php:141
+#: includes/views/tab-files.php:142
 #, php-format
 msgid "A copy of the previous file is also kept next to it: %s. If the site ever stops opening after a change, rename it to .htaccess over FTP or SSH."
 msgstr "Копія попереднього файлу лежить також поруч: %s. Якщо після зміни сайт колись перестане відкриватися, перейменуйте її на .htaccess через FTP чи SSH."
 
-#: includes/views/tab-files.php:146
+#: includes/views/tab-files.php:147
 msgid "History"
 msgstr "Історія"
 
-#: includes/views/tab-files.php:148
+#: includes/views/tab-files.php:149
 msgid "No versions yet: the text is kept here before each change."
 msgstr "Версій поки немає: текст зберігається тут перед кожною зміною."
 
-#: includes/views/tab-files.php:158
+#: includes/views/tab-files.php:159
 msgid "Replaced"
 msgstr "Замінено"
 
-#: includes/views/tab-files.php:159
+#: includes/views/tab-files.php:160
 msgid "By"
 msgstr "Ким"
 
-#: includes/views/tab-files.php:160
+#: includes/views/tab-files.php:161
 msgid "Size"
 msgstr "Розмір"
 
-#: includes/views/tab-files.php:161
+#: includes/views/tab-files.php:162
 msgid "Text"
 msgstr "Текст"
 
-#: includes/views/tab-files.php:170
+#: includes/views/tab-files.php:171
 msgid "empty"
 msgstr "порожньо"
 
-#: includes/views/tab-files.php:177
+#: includes/views/tab-files.php:178
 msgid "Restore"
 msgstr "Відновити"
 
@@ -3613,11 +3702,6 @@ msgstr "Імпортувати з %s"
 msgid "The last import"
 msgstr "Останній імпорт"
 
-#: includes/views/tab-indexing.php:16
-#: includes/views/tab-indexing.php:52
-msgid "Attachment pages"
-msgstr "Сторінки вкладень"
-
 #: includes/views/tab-indexing.php:18
 msgid "Choose which kinds of pages search engines may show. A hidden kind gets \"noindex\" and stays out of the XML sitemap; links on it are still followed. Each post, page or term can override its kind in its own SEO fields. Search results and the 404 page are always hidden."
 msgstr "Оберіть, які види сторінок можуть показувати пошуковики. Прихований вид отримує «noindex» і не потрапляє в XML-карту сайту; посилання на ньому пошуковики все одно відстежують. Кожен запис, сторінка чи термін може змінити це для себе у власних SEO-полях. Результати пошуку й сторінка 404 приховані завжди."
@@ -3645,24 +3729,24 @@ msgstr "Створювати XML-карту сайту"
 msgid "It lists only what search engines may show, with the images of posts; with wp-loc each language has its own sitemaps under its prefix, every address with its translations. Its address is the one Yoast SEO used, so a sitemap already submitted to Google Search Console keeps working, and robots.txt names it. Switched off, the WordPress sitemap (wp-sitemap.xml) takes its place."
 msgstr "У ній лише те, що можуть показувати пошуковики, із зображеннями записів; з wp-loc кожна мова має власні карти під своїм префіксом, а кожна адреса — свої переклади. Її адреса та сама, що була в Yoast SEO, тож карта, уже додана в Google Search Console, і далі працює, а robots.txt на неї вказує. Якщо вимкнути, її місце займе карта сайту WordPress (wp-sitemap.xml)."
 
-#: includes/views/tab-indexing.php:56
-#: includes/views/tab-indexing.php:59
+#: includes/views/tab-indexing.php:58
+#: includes/views/tab-indexing.php:61
 msgid "An attachment page"
 msgstr "Сторінка вкладення"
 
-#: includes/views/tab-indexing.php:62
+#: includes/views/tab-indexing.php:64
 msgid "redirects to the file itself (recommended)"
 msgstr "веде на сам файл (рекомендовано)"
 
-#: includes/views/tab-indexing.php:63
+#: includes/views/tab-indexing.php:65
 msgid "redirects to the post it is attached to, or to the file when there is none"
 msgstr "веде на запис, до якого прикріплено файл, а якщо такого немає — на сам файл"
 
-#: includes/views/tab-indexing.php:64
+#: includes/views/tab-indexing.php:66
 msgid "stays a page of its own"
 msgstr "лишається окремою сторінкою"
 
-#: includes/views/tab-indexing.php:72
+#: includes/views/tab-indexing.php:74
 msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
 msgstr "WordPress створює сторінку для кожного завантаженого файлу. На ній немає нічого, крім зображення, тож пошуковики вважають її порожньою сторінкою."
 
@@ -3670,57 +3754,53 @@ msgstr "WordPress створює сторінку для кожного зава
 msgid "IndexNow tells search engines at once when a page is published, changed, moved or taken down, so they visit it sooner than they would by themselves. Simple SEO sends the addresses of such pages to Bing, together, a minute after the change; the search engines that take part in IndexNow share them. Google does not take part: it finds changes through the sitemap."
 msgstr "IndexNow одразу повідомляє пошуковикам, що сторінку опубліковано, змінено, перенесено чи знято, тож вони приходять на неї раніше, ніж прийшли б самі. Simple SEO надсилає адреси таких сторінок до Bing разом, через хвилину після зміни; пошуковики, що беруть участь в IndexNow, обмінюються ними між собою. Google участі не бере: він бачить зміни через карту сайту."
 
-#: includes/views/tab-indexnow.php:33
+#: includes/views/tab-indexnow.php:34
 msgid "Tell search engines about the changes of pages"
 msgstr "Повідомляти пошуковикам про зміни сторінок"
 
-#: includes/views/tab-indexnow.php:34
+#: includes/views/tab-indexnow.php:35
 msgid "Only pages search engines may show are sent, as the sitemap lists them; a page taken down or moved is sent too, so they see it is gone."
 msgstr "Надсилаються лише сторінки, які можуть показувати пошуковики, як у карті сайту; зняту чи перенесену сторінку теж надсилаємо, щоб пошуковики побачили, що її більше немає."
 
-#: includes/views/tab-indexnow.php:38
+#: includes/views/tab-indexnow.php:39
 msgid "Key"
 msgstr "Ключ"
 
 #. translators: %s: link to the key file.
-#: includes/views/tab-indexnow.php:47
+#: includes/views/tab-indexnow.php:48
 #, php-format
 msgid "Bing checks that the site owns the key by its file: %s"
 msgstr "Bing перевіряє, що ключ належить сайту, за його файлом: %s"
 
-#: includes/views/tab-indexnow.php:51
+#: includes/views/tab-indexnow.php:52
 msgid "Its file is answered at the root of the site while IndexNow is on."
 msgstr "Поки IndexNow увімкнено, файл ключа віддається з кореня сайту."
 
-#: includes/views/tab-indexnow.php:57
+#: includes/views/tab-indexnow.php:58
 msgid "Make a new key"
 msgstr "Створити новий ключ"
 
-#: includes/views/tab-indexnow.php:60
+#: includes/views/tab-indexnow.php:61
 msgid "A key is made when the settings are saved."
 msgstr "Ключ створюється під час збереження налаштувань."
 
-#: includes/views/tab-indexnow.php:67
-msgid "The last answers"
-msgstr "Останні відповіді"
-
 #. translators: 1: number of addresses, 2: date and time.
-#: includes/views/tab-indexnow.php:74
+#: includes/views/tab-indexnow.php:77
 #, php-format
 msgid "Waiting to be sent: %1$s addresses, at %2$s."
 msgstr "Чекають надсилання адрес: %1$s, о %2$s."
 
 #. translators: %s: number of addresses.
-#: includes/views/tab-indexnow.php:76
+#: includes/views/tab-indexnow.php:79
 #, php-format
 msgid "Waiting to be sent: %s addresses."
 msgstr "Чекають надсилання адрес: %s."
 
-#: includes/views/tab-indexnow.php:85
+#: includes/views/tab-indexnow.php:88
 msgid "When"
 msgstr "Коли"
 
-#: includes/views/tab-indexnow.php:86
+#: includes/views/tab-indexnow.php:89
 msgid "Addresses"
 msgstr "Адреси"
 
@@ -3768,56 +3848,48 @@ msgstr "TikTok Pixel"
 msgid "The codes that confirm the site to webmaster tools, and the tags of analytics and advertising: paste the code or the ID, or the whole snippet the service gives, and Simple SEO takes what it needs from it."
 msgstr "Коди, що підтверджують сайт у кабінетах вебмайстрів, і теги аналітики та реклами: вставте код чи ID або весь сніпет, який дає сервіс, — Simple SEO візьме з нього потрібне."
 
-#: includes/views/tab-integrations.php:34
-msgid "Site verification"
-msgstr "Підтвердження сайту"
-
 #: includes/views/tab-integrations.php:35
 msgid "Each code is a meta tag on the home page, where these tools look for it."
 msgstr "Кожен код — це мета-тег на головній сторінці: саме там ці сервіси його шукають."
 
-#: includes/views/tab-integrations.php:49
-msgid "Analytics and pixels"
-msgstr "Аналітика й пікселі"
-
 #. translators: %s: services with their IDs, e.g. Google Tag Manager GTM-ABC123.
-#: includes/views/tab-integrations.php:59
+#: includes/views/tab-integrations.php:61
 #, php-format
 msgid "The theme prints these itself (its options of custom code): %s. A tag printed by both is counted twice: keep it in one place."
 msgstr "Тема сама друкує (у своїх опціях власного коду): %s. Тег, надрукований і там, і тут, рахується двічі: лишіть його в одному місці."
 
-#: includes/views/tab-integrations.php:72
+#: includes/views/tab-integrations.php:74
 msgid "The theme prints this one too: it is counted twice."
 msgstr "Тема теж друкує цей тег: він рахується двічі."
 
-#: includes/views/tab-integrations.php:78
-#: includes/views/tab-integrations.php:81
+#: includes/views/tab-integrations.php:80
+#: includes/views/tab-integrations.php:83
 msgid "Loading"
 msgstr "Завантаження"
 
-#: includes/views/tab-integrations.php:85
+#: includes/views/tab-integrations.php:87
 msgid "Load the tags on the visitor's first move"
 msgstr "Вантажити теги на перший рух відвідувача"
 
 #. translators: %s: number of seconds.
-#: includes/views/tab-integrations.php:90
+#: includes/views/tab-integrations.php:92
 #, php-format
 msgid "The events are taken at once, the scripts of Google, Meta and TikTok come when the visitor scrolls, touches or types, leaves the page, or after %s seconds: pages are faster and PageSpeed does not see them. Off: they load at once, as their own snippets do."
 msgstr "Події записуються одразу, а скрипти Google, Meta й TikTok приходять, коли відвідувач гортає, торкається чи друкує, іде зі сторінки або через %s с: сторінки швидші, а PageSpeed їх не бачить. Вимкнено — вантажаться одразу, як їхні рідні сніпети."
 
-#: includes/views/tab-integrations.php:96
+#: includes/views/tab-integrations.php:98
 msgid "Wait for the visitor's consent to cookies"
 msgstr "Чекати згоди відвідувача на cookies"
 
-#: includes/views/tab-integrations.php:98
+#: includes/views/tab-integrations.php:100
 msgid "Google's consent mode starts denied and the pixels wait, until the theme's banner calls simpleSeoConsent( true ) or sends the event simple-seo-consent with { granted: true }. Without a banner that does it, nothing is counted."
 msgstr "Режим згоди Google починає з «відмовлено», а пікселі чекають, доки банер теми викличе simpleSeoConsent( true ) або надішле подію simple-seo-consent з { granted: true }. Без такого банера нічого не рахується."
 
-#: includes/views/tab-integrations.php:102
+#: includes/views/tab-integrations.php:104
 msgid "Count those who edit the site too"
 msgstr "Рахувати й тих, хто редагує сайт"
 
-#: includes/views/tab-integrations.php:104
+#: includes/views/tab-integrations.php:106
 msgid "Off: no tags for users who can edit posts, so their visits do not count."
 msgstr "Вимкнено — тим, хто може редагувати записи, тегів немає, тож їхні візити не рахуються."
 
@@ -3851,61 +3923,61 @@ msgstr "Сайт приховано від пошуковиків у %s, тож 
 msgid "There is an llms.txt file in the site root (%s): the server sends it instead of the one Simple SEO builds."
 msgstr "У корені сайту лежить файл llms.txt (%s): сервер віддає його замість того, що збирає Simple SEO."
 
-#: includes/views/tab-llms.php:60
+#: includes/views/tab-llms.php:61
 msgid "llms.txt"
 msgstr "llms.txt"
 
-#: includes/views/tab-llms.php:65
+#: includes/views/tab-llms.php:66
 msgid "Build llms.txt"
 msgstr "Створювати llms.txt"
 
-#: includes/views/tab-llms.php:75
+#: includes/views/tab-llms.php:76
 msgid "About the site"
 msgstr "Про сайт"
 
 #. translators: %s: language name, e.g. English.
-#: includes/views/tab-llms.php:78
+#: includes/views/tab-llms.php:79
 #, php-format
 msgid "The summary and the details are kept for each language, and each language has its own llms.txt under its prefix; you are editing them for: %s. The other settings on this tab are common to all languages."
 msgstr "Короткий опис і подробиці зберігаються для кожної мови, і кожна мова має власний llms.txt під своїм префіксом; ви редагуєте їх для мови: %s. Решта налаштувань цієї вкладки спільна для всіх мов."
 
-#: includes/views/tab-llms.php:84
+#: includes/views/tab-llms.php:85
 msgid "Summary"
 msgstr "Короткий опис"
 
-#: includes/views/tab-llms.php:87
+#: includes/views/tab-llms.php:88
 msgid "One or two sentences on what the site is and for whom. Empty: the description of the home page, or the tagline."
 msgstr "Одне-два речення про те, що це за сайт і для кого. Якщо порожньо — опис головної сторінки або короткий опис сайту."
 
-#: includes/views/tab-llms.php:91
+#: includes/views/tab-llms.php:92
 msgid "Details"
 msgstr "Подробиці"
 
-#: includes/views/tab-llms.php:94
+#: includes/views/tab-llms.php:95
 msgid "Optional: what an assistant should know besides the summary — services, prices, contacts, how to read the sections. Markdown without headings."
 msgstr "Необов'язково: що ще варто знати асистентові — послуги, ціни, контакти, як читати розділи. Markdown без заголовків."
 
-#: includes/views/tab-llms.php:100
+#: includes/views/tab-llms.php:101
 msgid "Sections"
 msgstr "Розділи"
 
-#: includes/views/tab-llms.php:101
+#: includes/views/tab-llms.php:102
 msgid "Each post type and taxonomy can have a section of links of its own or go into the Optional section, which an assistant may skip when it is short of space. Only what search engines may show is listed: pages in their order, other posts newest first, terms with the most posts first."
 msgstr "Кожен тип записів і кожна таксономія можуть мати окремий розділ посилань або йти в розділ Optional, який асистент може пропустити, коли бракує місця. Потрапляє лише те, що можуть показувати пошуковики: сторінки — у їхньому порядку, інші записи — від найновіших, терміни — від тих, де найбільше записів."
 
-#: includes/views/tab-llms.php:115
+#: includes/views/tab-llms.php:116
 msgid "Hidden from search engines on the Indexing tab: only those shown on their own are listed."
 msgstr "Приховано від пошуковиків на вкладці «Індексація»: потрапляють лише ті, що показані окремо."
 
-#: includes/views/tab-llms.php:121
+#: includes/views/tab-llms.php:122
 msgid "Links in a section"
 msgstr "Посилань у розділі"
 
-#: includes/views/tab-llms.php:124
+#: includes/views/tab-llms.php:125
 msgid "At most this many from each post type or taxonomy: the file should fit into what an assistant reads at once."
 msgstr "Щонайбільше стільки з кожного типу записів чи таксономії: файл має вміщатися в те, що асистент читає за раз."
 
-#: includes/views/tab-llms.php:134
+#: includes/views/tab-llms.php:139
 msgid "As saved; it is built again whenever content or settings change."
 msgstr "Як збережено; файл збирається знову щоразу, коли змінюються вміст чи налаштування."
 
@@ -3929,131 +4001,127 @@ msgstr "Тема зберігає дані організації (свої на
 msgid "Take from the theme"
 msgstr "Перенести з теми"
 
-#: includes/views/tab-local.php:56
+#: includes/views/tab-local.php:57
 msgid "Type of the organization"
 msgstr "Тип організації"
 
-#: includes/views/tab-local.php:61
+#: includes/views/tab-local.php:62
 msgid "Organizations"
 msgstr "Організації"
 
-#: includes/views/tab-local.php:62
+#: includes/views/tab-local.php:63
 msgid "Local businesses"
 msgstr "Місцевий бізнес"
 
-#: includes/views/tab-local.php:77
+#: includes/views/tab-local.php:78
 msgid "The narrowest type that fits. A local business — a place people come to, or an area it serves — also gets its coordinates, map, opening hours and price range."
 msgstr "Найвужчий тип, що підходить. Місцевий бізнес — місце, куди приходять люди, або територія, яку він обслуговує, — має ще координати, карту, години роботи й цінову категорію."
 
-#: includes/views/tab-local.php:81
+#: includes/views/tab-local.php:82
 msgid "Phone"
 msgstr "Телефон"
 
-#: includes/views/tab-local.php:84
+#: includes/views/tab-local.php:85
 msgid "With the country code."
 msgstr "З кодом країни."
 
-#: includes/views/tab-local.php:88
+#: includes/views/tab-local.php:89
 msgid "E-mail"
 msgstr "Електронна пошта"
 
-#: includes/views/tab-local.php:94
+#: includes/views/tab-local.php:95
 msgid "Postal code"
 msgstr "Поштовий індекс"
 
-#: includes/views/tab-local.php:100
+#: includes/views/tab-local.php:101
 msgid "Country"
 msgstr "Країна"
 
-#: includes/views/tab-local.php:103
+#: includes/views/tab-local.php:104
 msgid "A code of two letters, as search engines prefer it: UA, PL, US."
 msgstr "Код із двох літер, як воліють пошуковики: UA, PL, US."
 
-#: includes/views/tab-local.php:107
+#: includes/views/tab-local.php:108
 msgid "Coordinates"
 msgstr "Координати"
 
-#: includes/views/tab-local.php:110
+#: includes/views/tab-local.php:111
 msgid "Latitude and longitude, as a map copies them (in Google Maps: right-click the place and click the numbers)."
 msgstr "Широта й довгота, як їх копіює карта (у Google Maps: клацніть місце правою кнопкою й натисніть на числа)."
 
-#: includes/views/tab-local.php:114
+#: includes/views/tab-local.php:115
 msgid "Link to the map"
 msgstr "Посилання на карту"
 
-#: includes/views/tab-local.php:117
+#: includes/views/tab-local.php:118
 msgid "The address of the place on a map, such as its share link in Google Maps."
 msgstr "Адреса місця на карті, наприклад посилання «Поділитися» з Google Maps."
 
-#: includes/views/tab-local.php:123
-msgid "Address and description"
-msgstr "Адреса й опис"
-
 #. translators: %s: language name, e.g. English.
-#: includes/views/tab-local.php:126
+#: includes/views/tab-local.php:129
 #, php-format
 msgid "These texts are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages."
 msgstr "Ці тексти зберігаються для кожної мови; ви редагуєте їх для: %s. Решта налаштувань цієї вкладки спільні для всіх мов."
 
-#: includes/views/tab-local.php:135
+#: includes/views/tab-local.php:138
 msgid "What the organization does, in a sentence or two."
 msgstr "Чим займається організація — одним-двома реченнями."
 
-#: includes/views/tab-local.php:139
+#: includes/views/tab-local.php:142
 msgid "Street address"
 msgstr "Вулиця й будинок"
 
-#: includes/views/tab-local.php:142
+#: includes/views/tab-local.php:145
 msgid "The street, the building and the office."
 msgstr "Вулиця, будинок і офіс."
 
-#: includes/views/tab-local.php:146
+#: includes/views/tab-local.php:149
 msgid "City"
 msgstr "Місто"
 
-#: includes/views/tab-local.php:152
+#: includes/views/tab-local.php:155
 msgid "Region"
 msgstr "Область"
 
-#: includes/views/tab-local.php:158
+#: includes/views/tab-local.php:161
 msgid "Area served"
 msgstr "Зона обслуговування"
 
-#: includes/views/tab-local.php:161
+#: includes/views/tab-local.php:164
 msgid "Where it works: a city, a region, a country; several with commas between them."
 msgstr "Де працює: місто, область, країна; кілька — через кому."
 
-#: includes/views/tab-local.php:165
+#: includes/views/tab-local.php:168
 msgid "Price range"
 msgstr "Цінова категорія"
 
-#: includes/views/tab-local.php:168
+#: includes/views/tab-local.php:171
 msgid "How dear it is: $ to $$$$, or the prices, such as 500–2000 UAH."
 msgstr "Наскільки дорого: від $ до $$$$ або ціни, наприклад 500–2000 грн."
 
-#: includes/views/tab-local.php:175
+#: includes/views/tab-local.php:178
 msgid "Opening hours"
 msgstr "Години роботи"
 
-#: includes/views/tab-local.php:176
+#: includes/views/tab-local.php:179
 msgid "The days it is open, with the time it opens and closes. Without the times a day is open round the clock; a day that closes after midnight closes earlier than it opens."
 msgstr "Дні, коли відчинено, з часом відкриття й закриття. День без часу — цілодобовий; день, що закінчується після півночі, закривається раніше, ніж відкривається."
 
-#: includes/views/tab-local.php:180
+#: includes/views/tab-local.php:183
 msgid "Day"
 msgstr "День"
 
-#: includes/views/tab-local.php:181
-#: includes/views/tab-local.php:201
+#: includes/views/tab-local.php:184
+#: includes/views/tab-local.php:204
 msgid "Opens"
 msgstr "Відкривається"
 
-#: includes/views/tab-local.php:182
-#: includes/views/tab-local.php:205
+#: includes/views/tab-local.php:185
+#: includes/views/tab-local.php:208
 msgid "Closes"
 msgstr "Закривається"
 
-#: includes/views/tab-local.php:216
+#: includes/views/tab-local.php:220
 msgid "The organization in the graph as saved now"
 msgstr "Організація в графі, як збережено зараз"
 
@@ -4079,133 +4147,121 @@ msgstr "Структуровані дані кажуть пошуковикам,
 msgid "The active theme switches off the graph of SEO plugins (the filter wpseo_json_ld_output), most likely because it prints a graph of its own. In the mode Auto Simple SEO prints none on this site."
 msgstr "Активна тема вимикає граф SEO-плагінів (фільтр wpseo_json_ld_output) — найпевніше, бо друкує власний. У режимі «Авто» Simple SEO на цьому сайті графа не друкує."
 
-#: includes/views/tab-schema.php:32
-#: includes/views/tab-schema.php:35
+#: includes/views/tab-schema.php:33
+#: includes/views/tab-schema.php:36
 msgid "The graph"
 msgstr "Граф"
 
-#: includes/views/tab-schema.php:38
+#: includes/views/tab-schema.php:39
 msgid "Auto: printed unless the theme switches off the graph of SEO plugins (recommended)"
 msgstr "Авто: друкується, якщо тема не вимикає граф SEO-плагінів (рекомендовано)"
 
-#: includes/views/tab-schema.php:39
+#: includes/views/tab-schema.php:40
 msgid "Always: printed whatever the theme says"
 msgstr "Завжди: друкується, хоч би що казала тема"
 
-#: includes/views/tab-schema.php:40
+#: includes/views/tab-schema.php:41
 msgid "Off: Simple SEO prints no graph"
 msgstr "Вимкнено: Simple SEO графа не друкує"
 
-#: includes/views/tab-schema.php:48
+#: includes/views/tab-schema.php:49
 msgid "Two graphs on one page confuse search engines. Choose Always on a theme that switches off the graph of SEO plugins without printing its own, or after switching off its own."
 msgstr "Два графи на одній сторінці збивають пошуковиків. «Завжди» обирайте для теми, яка вимикає граф SEO-плагінів, а власного не друкує, або коли вимкнете власний граф теми."
 
-#: includes/views/tab-schema.php:53
-#: includes/views/tab-schema.php:56
+#: includes/views/tab-schema.php:54
+#: includes/views/tab-schema.php:57
 msgid "The site represents"
 msgstr "Сайт представляє"
 
-#: includes/views/tab-schema.php:59
+#: includes/views/tab-schema.php:60
 msgid "An organization: a company, a shop, a studio"
 msgstr "Організацію: компанію, магазин, студію"
 
-#: includes/views/tab-schema.php:63
+#: includes/views/tab-schema.php:64
 msgid "A person:"
 msgstr "Людину:"
 
-#: includes/views/tab-schema.php:65
+#: includes/views/tab-schema.php:66
 msgid "The person"
 msgstr "Людина"
 
-#: includes/views/tab-schema.php:72
+#: includes/views/tab-schema.php:73
 msgid "— Choose a user —"
 msgstr "— Оберіть користувача —"
 
-#: includes/views/tab-schema.php:78
+#: includes/views/tab-schema.php:79
 msgid "A person is a user of the site: the name, the avatar, the biography and the website of their profile."
 msgstr "Людина — це користувач сайту: ім'я, аватар, біографія й вебсайт із його профілю."
 
-#: includes/views/tab-schema.php:85
-msgid "Names"
-msgstr "Назви"
-
 #. translators: %s: language name, e.g. English.
-#: includes/views/tab-schema.php:88
+#: includes/views/tab-schema.php:91
 #, php-format
 msgid "The names are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages."
 msgstr "Назви зберігаються для кожної мови окремо; ви редагуєте їх для: %s. Решта налаштувань цієї вкладки спільна для всіх мов."
 
-#: includes/views/tab-schema.php:94
+#: includes/views/tab-schema.php:97
 msgid "Name of the organization"
 msgstr "Назва організації"
 
-#: includes/views/tab-schema.php:97
+#: includes/views/tab-schema.php:100
 msgid "Empty: the title of the site."
 msgstr "Порожньо — назва сайту з «Налаштування → Загальні»."
 
-#: includes/views/tab-schema.php:101
+#: includes/views/tab-schema.php:104
 msgid "Other name of the organization"
 msgstr "Інша назва організації"
 
-#: includes/views/tab-schema.php:104
+#: includes/views/tab-schema.php:107
 msgid "Optional: the legal name, an abbreviation."
 msgstr "Необов'язково: юридична назва, скорочення."
 
-#: includes/views/tab-schema.php:108
+#: includes/views/tab-schema.php:111
 msgid "Name of the site"
 msgstr "Назва сайту в пошуку"
 
-#: includes/views/tab-schema.php:111
+#: includes/views/tab-schema.php:114
 msgid "What search results may show as the site's name. Empty: the title of the site."
 msgstr "Як пошукова видача може назвати сайт. Порожньо — назва сайту з «Налаштування → Загальні»."
 
-#: includes/views/tab-schema.php:115
+#: includes/views/tab-schema.php:118
 msgid "Other name of the site"
 msgstr "Інша назва сайту"
 
-#: includes/views/tab-schema.php:123
-msgid "Types of pages"
-msgstr "Типи сторінок"
-
-#: includes/views/tab-schema.php:124
+#: includes/views/tab-schema.php:129
 msgid "What the posts of each type are, unless a post has a type of its own in its SEO block. A page with questions and answers becomes a FAQ page as well."
 msgstr "Чим є записи кожного типу, якщо запис не має власного типу в SEO-блоці. Сторінка з питаннями й відповідями стає ще й сторінкою FAQ."
 
-#: includes/views/tab-schema.php:128
+#: includes/views/tab-schema.php:133
 msgid "Post type"
 msgstr "Тип записів"
 
-#: includes/views/tab-schema.php:162
-msgid "Logo and profiles"
-msgstr "Логотип і профілі"
-
-#: includes/views/tab-schema.php:166
+#: includes/views/tab-schema.php:173
 msgid "Logo"
 msgstr "Логотип"
 
-#: includes/views/tab-schema.php:171
+#: includes/views/tab-schema.php:178
 msgid "At least 112 × 112 pixels. Empty: the logo of the theme, then the site icon."
 msgstr "Щонайменше 112 × 112 пікселів. Порожньо — логотип теми, а без нього значок сайту."
 
-#: includes/views/tab-schema.php:175
+#: includes/views/tab-schema.php:182
 msgid "Profiles elsewhere"
 msgstr "Профілі на інших сайтах"
 
 #. translators: %d: number of addresses.
-#: includes/views/tab-schema.php:181
+#: includes/views/tab-schema.php:188
 #, php-format
 msgid "Addresses of the organization's or person's pages on Facebook, Instagram, LinkedIn, YouTube, Wikipedia and the like, one per line, %d at most. The X account from the Social networks tab is added by itself."
 msgstr "Адреси сторінок організації чи людини у Facebook, Instagram, LinkedIn, YouTube, Вікіпедії тощо — по одній у рядку, не більше %d. Акаунт X із вкладки «Соцмережі» додається сам."
 
-#: includes/views/tab-schema.php:192
+#: includes/views/tab-schema.php:199
 msgid "Put the breadcrumb trail of each page into the graph"
 msgstr "Додавати хлібні крихти кожної сторінки в граф"
 
-#: includes/views/tab-schema.php:194
+#: includes/views/tab-schema.php:201
 msgid "Search results may show the trail instead of the address. Leave it on when the theme shows breadcrumbs."
 msgstr "Пошукова видача може показувати шлях замість адреси. Лишайте ввімкненим, якщо тема показує хлібні крихти."
 
-#: includes/views/tab-schema.php:202
+#: includes/views/tab-schema.php:210
 msgid "The graph of the home page as saved now"
 msgstr "Граф головної сторінки за збереженими налаштуваннями"
 
@@ -4218,10 +4274,6 @@ msgstr "%s (домен)"
 #: includes/views/tab-search-console.php:23
 msgid "Google Search Console tells how the site does in Google search: clicks, impressions, CTR and position, by query and by page. Simple SEO shows them on the Search Console page of the SEO menu and in the SEO box of each published post. It reads them as a service account of Google, with read access only."
 msgstr "Google Search Console показує, як сайт почувається в пошуку Google: кліки, покази, CTR і позиція за запитами й сторінками. Simple SEO показує ці дані на сторінці «Search Console» меню SEO і в SEO-блоці кожного опублікованого запису. Він читає їх як сервісний акаунт Google, лише з правом читання."
-
-#: includes/views/tab-search-console.php:25
-msgid "Connection"
-msgstr "Підключення"
 
 #. translators: 1: email of the service account, 2: Google Cloud project.
 #: includes/views/tab-search-console.php:31
@@ -4273,27 +4325,23 @@ msgstr "Ресурс цього сайту (не знайдено)"
 msgid "The data comes from this property. By default it is the one of this site: its domain, or the prefix of its address."
 msgstr "Дані беруться з цього ресурсу. Типово це ресурс цього сайту: його домен або префікс його адреси."
 
-#: includes/views/tab-search-console.php:102
-msgid "How to connect"
-msgstr "Як підключити"
-
 #. translators: %s: link to Google Cloud Console.
-#: includes/views/tab-search-console.php:108
+#: includes/views/tab-search-console.php:110
 #, php-format
 msgid "In %s, create a project or open one, and turn on the Google Search Console API (APIs and services, Library)."
 msgstr "У %s створіть проєкт або відкрийте наявний і ввімкніть Google Search Console API («API та сервіси», «Бібліотека»)."
 
-#: includes/views/tab-search-console.php:113
+#: includes/views/tab-search-console.php:115
 msgid "In IAM and admin, Service accounts, create a service account: it needs no roles. Then open it, Keys, Add key, Create new key, JSON: the browser saves the file of the key."
 msgstr "В «IAM і адміністрування», «Сервісні облікові записи» створіть сервісний акаунт: ролі йому не потрібні. Потім відкрийте його: «Ключі», «Додати ключ», «Створити новий ключ», JSON — браузер збереже файл ключа."
 
 #. translators: %s: link to Search Console.
-#: includes/views/tab-search-console.php:118
+#: includes/views/tab-search-console.php:120
 #, php-format
 msgid "In %s, open the property of this site: Settings, Users and permissions, Add user. Give the email of the service account (client_email in the file) the permission Restricted."
 msgstr "У %s відкрийте ресурс цього сайту: «Налаштування», «Користувачі та дозволи», «Додати користувача». Дайте email сервісного акаунта (client_email у файлі) дозвіл «Обмежений»."
 
-#: includes/views/tab-search-console.php:123
+#: includes/views/tab-search-console.php:125
 msgid "Paste the whole content of the file into the field above and save. Keep the file nowhere public, or delete it."
 msgstr "Вставте весь вміст файлу в поле вище й збережіть. Не тримайте файл у публічних місцях або видаліть його."
 
@@ -4332,12 +4380,12 @@ msgid "Edit the page"
 msgstr "Редагувати сторінку"
 
 #: includes/views/tab-special.php:40
-#: includes/views/tab-titles.php:75
+#: includes/views/tab-titles.php:78
 msgid "Title template"
 msgstr "Шаблон заголовка"
 
 #: includes/views/tab-special.php:41
-#: includes/views/tab-titles.php:76
+#: includes/views/tab-titles.php:79
 msgid "Description template"
 msgstr "Шаблон опису"
 
@@ -4345,17 +4393,17 @@ msgstr "Шаблон опису"
 msgid "Without it: the default image from the Social networks tab."
 msgstr "Без нього — типове зображення з вкладки «Соцмережі»."
 
-#: includes/views/tab-titles.php:25
+#: includes/views/tab-titles.php:26
 msgid "Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme's title and without a description."
 msgstr "Шаблони визначають заголовок і опис кожної сторінки, яка не має власного SEO-заголовка чи опису. Змінні у фігурних дужках замінюються на кожній сторінці; змінна, якій нічого показати, зникає разом із роздільником поруч. Порожній шаблон лишає сторінці заголовок теми й не дає їй опису."
 
 #. translators: %s: link to the Special pages tab.
-#: includes/views/tab-titles.php:30
+#: includes/views/tab-titles.php:31
 #, php-format
 msgid "The home page, the 404 page and password-protected content have their own templates on the %s tab."
 msgstr "Головна сторінка, сторінка 404 і вміст, захищений паролем, мають власні шаблони на вкладці «%s»."
 
-#: includes/views/tab-titles.php:53
+#: includes/views/tab-titles.php:54
 msgid "Goes where a template says {sep}."
 msgstr "Стоїть там, де в шаблоні {sep}."
 

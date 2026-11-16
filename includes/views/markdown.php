@@ -20,7 +20,6 @@ $simple_seo_parts  = array(
 	'image'       => __( 'Featured image', 'simple-seo' ),
 );
 ?>
-<h2 id="simple-seo-markdown"><?php esc_html_e( 'Markdown versions of pages', 'simple-seo' ); ?></h2>
 <p>
 	<?php
 	printf(

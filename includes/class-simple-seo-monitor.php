@@ -352,7 +352,7 @@ final class Simple_SEO_Monitor {
 	 */
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'monitor', __( '404', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 46 );
+		Simple_SEO_Admin::add_tab( 'monitor', __( '404', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 30, 'crawl' );
 	}
 
 	public static function add_menu(): void {

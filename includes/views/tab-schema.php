@@ -26,6 +26,7 @@ $simple_seo_site   = Simple_SEO_Variables::plain( (string) get_option( 'blogname
 	</div>
 <?php endif; ?>
 
+<?php Simple_SEO_Admin::section( 'general' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -82,7 +83,9 @@ $simple_seo_site   = Simple_SEO_Variables::plain( (string) get_option( 'blogname
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Names', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'names' ); ?>
 <?php
 /* translators: %s: language name, e.g. English. */
 $simple_seo_notice = __( 'The names are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages.', 'simple-seo' );
@@ -120,7 +123,9 @@ require __DIR__ . '/language-notice.php';
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Types of pages', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'types' ); ?>
 <p><?php esc_html_e( 'What the posts of each type are, unless a post has a type of its own in its SEO block. A page with questions and answers becomes a FAQ page as well.', 'simple-seo' ); ?></p>
 <table class="widefat striped simple-seo-schema-types" style="max-width:860px">
 	<thead>
@@ -159,7 +164,9 @@ require __DIR__ . '/language-notice.php';
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Logo and profiles', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'logo' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -196,6 +203,7 @@ require __DIR__ . '/language-notice.php';
 		</tr>
 	</tbody>
 </table>
+<?php Simple_SEO_Admin::section_end(); ?>
 
 <?php if ( $example ) : ?>
 	<details>

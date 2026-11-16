@@ -103,7 +103,18 @@ final class Simple_SEO_Cleanup {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'cleanup', __( 'Clean-up', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 30 );
+		Simple_SEO_Admin::add_tab(
+			'cleanup',
+			__( 'Clean-up', 'simple-seo' ),
+			array( self::OPTION ),
+			array( self::class, 'render_tab' ),
+			50,
+			'crawl',
+			static fn(): array => array(
+				'links' => __( 'Links and tags', 'simple-seo' ),
+				'feeds' => __( 'Links to feeds', 'simple-seo' ),
+			)
+		);
 	}
 
 	/** Whether an item is removed on this request: switched off, on the site, no other SEO plugin. */

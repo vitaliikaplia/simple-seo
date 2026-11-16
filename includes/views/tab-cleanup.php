@@ -58,7 +58,7 @@ $simple_seo_feeds = array(
 ?>
 <p><?php esc_html_e( 'What WordPress adds to the code of every page. Ticked items are removed; only the links, tags and scripts go, the features behind them keep working. Out of the box only what nobody uses is removed.', 'simple-seo' ); ?></p>
 
-<h2><?php esc_html_e( 'Links and tags', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section( 'links' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 	<?php foreach ( $simple_seo_items as $simple_seo_key => $simple_seo_item ) : ?>
@@ -78,7 +78,9 @@ $simple_seo_feeds = array(
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Links to feeds', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'feeds' ); ?>
 <p><?php esc_html_e( 'Feed readers find feeds through these links. The feeds keep working at their addresses; only the links go.', 'simple-seo' ); ?></p>
 <table class="form-table" role="presentation">
 	<tbody>
@@ -102,3 +104,4 @@ $simple_seo_feeds = array(
 		</tr>
 	</tbody>
 </table>
+<?php Simple_SEO_Admin::section_end(); ?>

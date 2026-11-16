@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 $simple_seo_option = Simple_SEO_Breadcrumbs::OPTION;
 $simple_seo_labels = Simple_SEO_Breadcrumbs::LABELS;
 ?>
+<?php Simple_SEO_Admin::section( 'use' ); ?>
 <p><?php esc_html_e( 'The trail from the home page to the page shown: home, the blog page or the archive, the category with its parents, the page itself. The theme decides where it goes:', 'simple-seo' ); ?></p>
 <table class="widefat striped" style="max-width:860px">
 	<tbody>
@@ -34,7 +35,9 @@ $simple_seo_labels = Simple_SEO_Breadcrumbs::LABELS;
 	</p>
 <?php endif; ?>
 
-<h2><?php esc_html_e( 'Look', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'look' ); ?>
 <?php
 /* translators: %s: language name, e.g. English. */
 $simple_seo_notice = __( 'The labels are kept for each language; you are editing them for: %s. The other settings on this tab are common to all languages.', 'simple-seo' );
@@ -84,8 +87,10 @@ require __DIR__ . '/language-notice.php';
 	</tbody>
 </table>
 
+<?php Simple_SEO_Admin::section_end(); ?>
+
 <?php if ( $types ) : ?>
-	<h2><?php esc_html_e( 'Categories in the trail', 'simple-seo' ); ?></h2>
+	<?php Simple_SEO_Admin::section( 'categories' ); ?>
 	<p><?php esc_html_e( 'Which taxonomy the trail of each post type goes through. A post with several terms there goes through its primary one, chosen in the SEO box of the editor; otherwise through the deepest of them.', 'simple-seo' ); ?></p>
 	<table class="form-table" role="presentation">
 		<tbody>
@@ -110,4 +115,5 @@ require __DIR__ . '/language-notice.php';
 		<?php endforeach; ?>
 		</tbody>
 	</table>
+	<?php Simple_SEO_Admin::section_end(); ?>
 <?php endif; ?>

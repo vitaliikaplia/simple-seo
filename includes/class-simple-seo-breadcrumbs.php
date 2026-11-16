@@ -63,7 +63,21 @@ final class Simple_SEO_Breadcrumbs {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'breadcrumbs', __( 'Breadcrumbs', 'simple-seo' ), array( self::OPTION, self::LABELS ), array( self::class, 'render_tab' ), 25 );
+		Simple_SEO_Admin::add_tab(
+			'breadcrumbs',
+			__( 'Breadcrumbs', 'simple-seo' ),
+			array( self::OPTION, self::LABELS ),
+			array( self::class, 'render_tab' ),
+			30,
+			'search',
+			static fn(): array => array_filter(
+				array(
+					'use'        => __( 'In the theme', 'simple-seo' ),
+					'look'       => __( 'Look', 'simple-seo' ),
+					'categories' => self::trail_types() ? __( 'Categories in the trail', 'simple-seo' ) : '',
+				)
+			)
+		);
 	}
 
 	/**
@@ -289,18 +303,29 @@ final class Simple_SEO_Breadcrumbs {
 		);
 	}
 
-	public static function render_tab(): void {
-		$settings = Simple_SEO_Settings::get( self::OPTION );
-		$labels   = Simple_SEO_Settings::get( self::LABELS );
-		$language = Simple_SEO_WP_Loc::admin_language();
-		$types    = array();
+	/**
+	 * The post types whose trail may go through one of several taxonomies, type => taxonomies.
+	 *
+	 * @return array<string, string[]>
+	 */
+	public static function trail_types(): array {
+		$types = array();
 		foreach ( Simple_SEO_Fields::post_types() as $type ) {
 			$choices = array_keys( array_filter( Simple_SEO_Primary_Term::taxonomies(), static fn( array $types ): bool => in_array( $type, $types, true ) ) );
 			if ( $choices ) {
 				$types[ $type ] = $choices;
 			}
 		}
-		$example = self::example();
+
+		return $types;
+	}
+
+	public static function render_tab(): void {
+		$settings = Simple_SEO_Settings::get( self::OPTION );
+		$labels   = Simple_SEO_Settings::get( self::LABELS );
+		$language = Simple_SEO_WP_Loc::admin_language();
+		$types    = self::trail_types();
+		$example  = self::example();
 
 		require SIMPLE_SEO_DIR . 'includes/views/tab-breadcrumbs.php';
 	}

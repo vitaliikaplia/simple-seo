@@ -100,7 +100,19 @@ final class Simple_SEO_Indexing {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'indexing', __( 'Indexing', 'simple-seo' ), array( self::OPTION, Simple_SEO_Sitemaps::OPTION ), array( self::class, 'render_tab' ), 20 );
+		Simple_SEO_Admin::add_tab(
+			'indexing',
+			__( 'Indexing', 'simple-seo' ),
+			array( self::OPTION, Simple_SEO_Sitemaps::OPTION ),
+			array( self::class, 'render_tab' ),
+			10,
+			'crawl',
+			static fn(): array => array(
+				'pages'       => __( 'Kinds of pages', 'simple-seo' ),
+				'sitemap'     => __( 'XML sitemap', 'simple-seo' ),
+				'attachments' => __( 'Attachment pages', 'simple-seo' ),
+			)
+		);
 	}
 
 	/**

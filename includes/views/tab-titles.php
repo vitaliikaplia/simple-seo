@@ -22,6 +22,7 @@ $simple_seo_option = Simple_SEO_Titles::OPTION;
 	.simple-seo-separators input:focus-visible + span { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1; }
 </style>
 
+<?php Simple_SEO_Admin::section( 'general' ); ?>
 <p><?php esc_html_e( 'Templates decide the title and the description of every page that has no SEO title or description of its own. Variables in curly braces are replaced on each page; a variable with nothing to show disappears together with the separator next to it. An empty template leaves the page with the theme\'s title and without a description.', 'simple-seo' ); ?></p>
 <p>
 	<?php
@@ -57,13 +58,15 @@ $simple_seo_option = Simple_SEO_Titles::OPTION;
 	</tbody>
 </table>
 
-<?php foreach ( $groups as $simple_seo_group ) : ?>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php foreach ( $groups as $simple_seo_key => $simple_seo_group ) : ?>
 	<?php
 	if ( ! $simple_seo_group['slots'] ) {
 		continue;
 	}
 	?>
-	<h2><?php echo esc_html( $simple_seo_group['label'] ); ?></h2>
+	<?php Simple_SEO_Admin::section( (string) $simple_seo_key ); ?>
 	<table class="form-table" role="presentation">
 		<tbody>
 		<?php foreach ( $simple_seo_group['slots'] as $simple_seo_slot => $simple_seo_label ) : ?>
@@ -95,4 +98,5 @@ $simple_seo_option = Simple_SEO_Titles::OPTION;
 		<?php endforeach; ?>
 		</tbody>
 	</table>
+	<?php Simple_SEO_Admin::section_end(); ?>
 <?php endforeach; ?>

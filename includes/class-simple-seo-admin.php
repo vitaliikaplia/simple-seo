@@ -1,6 +1,7 @@
 <?php
 /**
- * The SEO menu and settings page. Parts of the plugin add their own tabs.
+ * The SEO menu and settings page. Parts of the plugin add their own tabs; the tabs stand in groups
+ * in a menu on the left, and a tab of several parts has sub-tabs of its own on top.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -10,8 +11,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Simple_SEO_Admin {
 	public const PAGE = 'simple-seo';
 
-	/** @var array<string, array{label: string, options: string[], render: callable, order: int}> */
+	/** @var array<string, array{label: string, options: string[], render: callable, order: int, group: string, sections: callable|null}> */
 	private static array $tabs = array();
+
+	/** @var array<string, string> The sub-tabs of the tab being shown, id => label. */
+	private static array $sections = array();
+
+	/** The sub-tab being shown. */
+	private static string $section = '';
 
 	public static function init(): void {
 		add_action( 'admin_menu', array( self::class, 'add_menu' ) );
@@ -29,31 +36,112 @@ final class Simple_SEO_Admin {
 	}
 
 	public static function add_core_tabs(): void {
-		self::add_tab( 'access', __( 'Access', 'simple-seo' ), array( Simple_SEO_Access::OPTION ), array( Simple_SEO_Access::class, 'render_tab' ), 90 );
+		self::add_tab( 'access', __( 'Access', 'simple-seo' ), array( Simple_SEO_Access::OPTION ), array( Simple_SEO_Access::class, 'render_tab' ), 10, 'plugin' );
+	}
+
+	/** The icons of the groups in the menu on the left (Dashicons). */
+	public const GROUP_ICONS = array(
+		'search'   => 'dashicons-search',
+		'markup'   => 'dashicons-share',
+		'crawl'    => 'dashicons-admin-site-alt3',
+		'ai'       => 'dashicons-lightbulb',
+		'services' => 'dashicons-admin-links',
+		'plugin'   => 'dashicons-admin-plugins',
+	);
+
+	/**
+	 * The groups of the tabs in the menu on the left, in their order.
+	 *
+	 * @return array<string, string> Group => label.
+	 */
+	public static function groups(): array {
+		return array(
+			'search'   => __( 'Search appearance', 'simple-seo' ),
+			'markup'   => __( 'Social networks and Schema', 'simple-seo' ),
+			'crawl'    => __( 'For search engines', 'simple-seo' ),
+			'ai'       => __( 'AI and agents', 'simple-seo' ),
+			'services' => __( 'Services', 'simple-seo' ),
+			'plugin'   => __( 'Plugin', 'simple-seo' ),
+		);
 	}
 
 	/**
 	 * Add a settings tab. Call it on init (or later, before admin_init): the label is translated.
 	 *
-	 * @param string[] $options Option rows saved by the tab's form, registered with Simple_SEO_Settings;
-	 *                          none: the tab prints its own forms.
-	 * @param callable $render  Prints the tab's fields; the page prints the form around them.
+	 * @param string[]      $options  Option rows saved by the tab's form, registered with Simple_SEO_Settings;
+	 *                                none: the tab prints its own forms.
+	 * @param callable      $render   Prints the tab's fields; the page prints the form around them.
+	 * @param int           $order    Place in its group, lower first.
+	 * @param string        $group    One of groups(); another goes into the last one.
+	 * @param callable|null $sections Returns the tab's sub-tabs, id => label; the render marks their
+	 *                                parts with section() and section_end().
 	 */
-	public static function add_tab( string $id, string $label, array $options, callable $render, int $order = 50 ): void {
+	public static function add_tab( string $id, string $label, array $options, callable $render, int $order = 50, string $group = 'plugin', ?callable $sections = null ): void {
 		self::$tabs[ $id ] = array(
-			'label'   => $label,
-			'options' => $options,
-			'render'  => $render,
-			'order'   => $order,
+			'label'    => $label,
+			'options'  => $options,
+			'render'   => $render,
+			'order'    => $order,
+			'group'    => $group,
+			'sections' => $sections,
 		);
 	}
 
-	/** @return array<string, array{label: string, options: string[], render: callable, order: int}> */
+	/**
+	 * The tabs in the order of the menu: by group, then by their order in it.
+	 *
+	 * @return array<string, array{label: string, options: string[], render: callable, order: int, group: string, sections: callable|null}>
+	 */
 	public static function tabs(): array {
-		$tabs = self::$tabs;
-		uasort( $tabs, static fn( array $a, array $b ): int => $a['order'] <=> $b['order'] );
+		$groups = array_keys( self::groups() );
+		$tabs   = self::$tabs;
+		foreach ( $tabs as $id => $tab ) {
+			if ( ! in_array( $tab['group'], $groups, true ) ) {
+				$tabs[ $id ]['group'] = (string) end( $groups );
+			}
+		}
+		uasort( $tabs, static fn( array $a, array $b ): int => array( array_search( $a['group'], $groups, true ), $a['order'] ) <=> array( array_search( $b['group'], $groups, true ), $b['order'] ) );
 
 		return $tabs;
+	}
+
+	/**
+	 * The sub-tabs of a tab, id => label; none for a tab of one part.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function sections( string $tab ): array {
+		$tabs     = self::tabs();
+		$sections = isset( $tabs[ $tab ] ) && is_callable( $tabs[ $tab ]['sections'] ) ? (array) call_user_func( $tabs[ $tab ]['sections'] ) : array();
+
+		return count( $sections ) > 1 ? array_map( 'strval', $sections ) : array();
+	}
+
+	/**
+	 * The sub-tab shown: the one the address names, else the first.
+	 *
+	 * @param array<string, string> $sections
+	 */
+	public static function current_section( array $sections ): string {
+		$section = isset( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- navigation only.
+
+		return isset( $sections[ $section ] ) ? $section : (string) array_key_first( $sections );
+	}
+
+	/**
+	 * Open the part of a sub-tab. Every part is in the form, so saving loses no field of another;
+	 * only the current one is shown (assets/js/admin.js switches them without a reload).
+	 */
+	public static function section( string $id ): void {
+		printf(
+			'<div class="simple-seo-section" id="simple-seo-section-%1$s" data-simple-seo-section="%1$s"%2$s>',
+			esc_attr( $id ),
+			self::$sections && $id !== self::$section ? ' hidden' : ''
+		);
+	}
+
+	public static function section_end(): void {
+		echo '</div>';
 	}
 
 	public static function add_menu(): void {
@@ -107,10 +195,13 @@ final class Simple_SEO_Admin {
 		return isset( $tabs[ $tab ] ) ? $tab : (string) array_key_first( $tabs );
 	}
 
-	public static function url( string $tab = '' ): string {
+	public static function url( string $tab = '', string $section = '' ): string {
 		$args = array( 'page' => self::PAGE );
 		if ( '' !== $tab ) {
 			$args['tab'] = $tab;
+		}
+		if ( '' !== $section ) {
+			$args['section'] = $section;
 		}
 
 		return add_query_arg( $args, admin_url( 'admin.php' ) );
@@ -121,10 +212,20 @@ final class Simple_SEO_Admin {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'simple-seo' ), 403 );
 		}
 
-		$tabs    = self::tabs();
-		$current = self::current_tab();
+		$tabs          = self::tabs();
+		$current       = self::current_tab();
+		$groups        = self::groups();
+		self::$sections = self::sections( $current );
+		self::$section  = self::current_section( self::$sections );
+		$sections      = self::$sections;
+		$section       = self::$section;
 
-		require SIMPLE_SEO_DIR . 'includes/views/settings.php';
+		try {
+			require SIMPLE_SEO_DIR . 'includes/views/settings.php';
+		} finally {
+			self::$sections = array();
+			self::$section  = '';
+		}
 	}
 
 	/** On the plugin's page and the plugins list: say why the site shows nothing of Simple SEO. */

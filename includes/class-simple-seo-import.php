@@ -36,7 +36,7 @@ final class Simple_SEO_Import {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'import', __( 'Import', 'simple-seo' ), array(), array( self::class, 'render_tab' ), 95 );
+		Simple_SEO_Admin::add_tab( 'import', __( 'Import', 'simple-seo' ), array(), array( self::class, 'render_tab' ), 20, 'plugin' );
 	}
 
 	/**

@@ -31,7 +31,19 @@ final class Simple_SEO_Special {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'special', __( 'Special pages', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 12 );
+		Simple_SEO_Admin::add_tab(
+			'special',
+			__( 'Special pages', 'simple-seo' ),
+			array( self::OPTION ),
+			array( self::class, 'render_tab' ),
+			20,
+			'search',
+			static fn(): array => array(
+				'home'      => __( 'Home page', 'simple-seo' ),
+				'not-found' => __( 'Page not found (404)', 'simple-seo' ),
+				'password'  => __( 'Password-protected content', 'simple-seo' ),
+			)
+		);
 	}
 
 	public static function handles( string $slot ): bool {

@@ -25,7 +25,8 @@ foreach ( array( Simple_SEO_Files::ROBOTS, Simple_SEO_Files::HTACCESS ) as $simp
 	$simple_seo_ro    = '' !== $simple_seo_state['refusal'];
 	$simple_seo_id    = 'simple-seo-' . $simple_seo_file;
 	?>
-	<h2 id="<?php echo esc_attr( $simple_seo_id ); ?>"><?php echo esc_html( $simple_seo_name ); ?></h2>
+	<?php Simple_SEO_Admin::section( $simple_seo_file ); ?>
+	<span id="<?php echo esc_attr( $simple_seo_id ); ?>"></span>
 
 	<?php if ( Simple_SEO_Files::ROBOTS === $simple_seo_file ) : ?>
 		<?php if ( '' !== $home_path ) : ?>
@@ -75,7 +76,7 @@ foreach ( array( Simple_SEO_Files::ROBOTS, Simple_SEO_Files::HTACCESS ) as $simp
 		<div class="notice notice-info inline"><p><?php echo esc_html( $simple_seo_state['refusal'] ); ?></p></div>
 	<?php endif; ?>
 
-	<form method="post" action="<?php echo esc_url( $simple_seo_action . '#' . $simple_seo_id ); ?>">
+	<form method="post" action="<?php echo esc_url( Simple_SEO_Admin::url( 'files', $simple_seo_file ) . '#' . $simple_seo_id ); ?>">
 		<?php wp_nonce_field( 'simple_seo_file_' . $simple_seo_file ); ?>
 		<input type="hidden" name="simple_seo_file" value="<?php echo esc_attr( $simple_seo_file ); ?>">
 		<input type="hidden" name="simple_seo_loaded" value="<?php echo esc_attr( $simple_seo_state['loaded'] ); ?>">
@@ -147,7 +148,7 @@ foreach ( array( Simple_SEO_Files::ROBOTS, Simple_SEO_Files::HTACCESS ) as $simp
 	<?php if ( ! $simple_seo_state['history'] ) : ?>
 		<p class="description"><?php esc_html_e( 'No versions yet: the text is kept here before each change.', 'simple-seo' ); ?></p>
 	<?php else : ?>
-		<form method="post" action="<?php echo esc_url( $simple_seo_action . '#' . $simple_seo_id ); ?>">
+		<form method="post" action="<?php echo esc_url( Simple_SEO_Admin::url( 'files', $simple_seo_file ) . '#' . $simple_seo_id ); ?>">
 			<?php wp_nonce_field( 'simple_seo_file_' . $simple_seo_file ); ?>
 			<input type="hidden" name="simple_seo_file" value="<?php echo esc_attr( $simple_seo_file ); ?>">
 			<input type="hidden" name="simple_seo_do" value="restore">
@@ -183,6 +184,7 @@ foreach ( array( Simple_SEO_Files::ROBOTS, Simple_SEO_Files::HTACCESS ) as $simp
 			</table>
 		</form>
 	<?php endif; ?>
+	<?php Simple_SEO_Admin::section_end(); ?>
 <?php endforeach; ?>
 
 <style>

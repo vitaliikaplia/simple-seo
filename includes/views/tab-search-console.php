@@ -22,7 +22,7 @@ $simple_seo_name     = static fn( string $property ): string => str_starts_with(
 ?>
 <p><?php esc_html_e( 'Google Search Console tells how the site does in Google search: clicks, impressions, CTR and position, by query and by page. Simple SEO shows them on the Search Console page of the SEO menu and in the SEO box of each published post. It reads them as a service account of Google, with read access only.', 'simple-seo' ); ?></p>
 
-<h2><?php esc_html_e( 'Connection', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section( 'connection' ); ?>
 <?php if ( $key ) : ?>
 	<p>
 		<?php
@@ -99,7 +99,9 @@ $simple_seo_name     = static fn( string $property ): string => str_starts_with(
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'How to connect', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'how' ); ?>
 <ol>
 	<li>
 		<?php
@@ -122,3 +124,4 @@ $simple_seo_name     = static fn( string $property ): string => str_starts_with(
 	</li>
 	<li><?php esc_html_e( 'Paste the whole content of the file into the field above and save. Keep the file nowhere public, or delete it.', 'simple-seo' ); ?></li>
 </ol>
+<?php Simple_SEO_Admin::section_end(); ?>

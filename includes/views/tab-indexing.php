@@ -29,7 +29,7 @@ $groups['posts']['slots']['post:attachment'] = __( 'Attachment pages', 'simple-s
 	</p></div>
 <?php endif; ?>
 
-<h2><?php esc_html_e( 'XML sitemap', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section( 'sitemap' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -49,7 +49,9 @@ $groups['posts']['slots']['post:attachment'] = __( 'Attachment pages', 'simple-s
 	</tbody>
 </table>
 
-<h2><?php esc_html_e( 'Attachment pages', 'simple-seo' ); ?></h2>
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'attachments' ); ?>
 <table class="form-table" role="presentation">
 	<tbody>
 		<tr>
@@ -76,6 +78,9 @@ $groups['posts']['slots']['post:attachment'] = __( 'Attachment pages', 'simple-s
 	</tbody>
 </table>
 
+<?php Simple_SEO_Admin::section_end(); ?>
+
+<?php Simple_SEO_Admin::section( 'pages' ); ?>
 <?php foreach ( $groups as $simple_seo_group ) : ?>
 	<?php
 	if ( ! $simple_seo_group['slots'] ) {
@@ -101,3 +106,4 @@ $groups['posts']['slots']['post:attachment'] = __( 'Attachment pages', 'simple-s
 		</tbody>
 	</table>
 <?php endforeach; ?>
+<?php Simple_SEO_Admin::section_end(); ?>

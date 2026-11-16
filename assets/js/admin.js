@@ -1,7 +1,8 @@
 /**
  * Simple SEO admin: the "Insert structure" and AI buttons next to the SEO fields, the image pickers,
  * the search result preview, bulk editing (with alt texts of images filled from their names), the
- * rows of Local SEO for a local business and the import that goes on by itself.
+ * rows of Local SEO for a local business, the sub-tabs and the menu of the settings on a phone, and
+ * the import that goes on by itself.
  *
  * Empty field: the structure goes in as it is. Plain text without variables: the text takes the
  * place of {title} (or {excerpt}) in the structure, so the editor's words stay. A field that
@@ -932,6 +933,64 @@
 			Array.prototype.forEach.call( document.querySelectorAll( '.simple-seo-local-only' ), function ( element ) {
 				element.hidden = ! local;
 			} );
+		} );
+	}
+
+	// Settings: the sub-tabs switch without a reload. Every part stays in the form, so saving loses
+	// no field of another; the address and the page that saving returns to name the sub-tab shown.
+	var subtabs = document.querySelector( '.simple-seo-subtabs' );
+	if ( subtabs ) {
+		var showSection = function ( id ) {
+			Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-section]' ), function ( section ) {
+				section.hidden = section.getAttribute( 'data-simple-seo-section' ) !== id;
+			} );
+			Array.prototype.forEach.call( subtabs.querySelectorAll( '[data-simple-seo-subtab]' ), function ( link ) {
+				var on = link.getAttribute( 'data-simple-seo-subtab' ) === id;
+				link.classList.toggle( 'nav-tab-active', on );
+				if ( on ) {
+					link.setAttribute( 'aria-current', 'page' );
+				} else {
+					link.removeAttribute( 'aria-current' );
+				}
+			} );
+
+			var address = new URL( window.location.href );
+			address.searchParams.set( 'section', id );
+			address.searchParams.delete( 'settings-updated' );
+			window.history.replaceState( null, '', address );
+			Array.prototype.forEach.call( document.querySelectorAll( 'input[name="_wp_http_referer"]' ), function ( input ) {
+				var back = new URL( input.value, window.location.href );
+				back.searchParams.set( 'section', id );
+				input.value = back.pathname + back.search;
+			} );
+		};
+
+		subtabs.addEventListener( 'click', function ( event ) {
+			var link = event.target.closest( '[data-simple-seo-subtab]' );
+			if ( link ) {
+				event.preventDefault();
+				showSection( link.getAttribute( 'data-simple-seo-subtab' ) );
+			}
+		} );
+
+		// A field the browser will not take, on a sub-tab not shown: show that sub-tab.
+		document.addEventListener( 'invalid', function ( event ) {
+			var section = event.target.closest ? event.target.closest( '[data-simple-seo-section]' ) : null;
+			if ( section && section.hidden ) {
+				showSection( section.getAttribute( 'data-simple-seo-section' ) );
+			}
+		}, true );
+	}
+
+	// On a phone the menu of the settings is a list: choosing opens the tab.
+	var jump = document.querySelector( '[data-simple-seo-jump]' );
+	if ( jump ) {
+		var go = jump.form.querySelector( '[data-simple-seo-jump-go]' );
+		if ( go ) {
+			go.hidden = true;
+		}
+		jump.addEventListener( 'change', function () {
+			jump.form.submit();
 		} );
 	}
 

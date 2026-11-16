@@ -57,7 +57,18 @@ final class Simple_SEO_Files {
 
 	public static function add_admin_tab(): void {
 		// No option rows: the tab prints its own forms, the page no options.php form around them.
-		Simple_SEO_Admin::add_tab( 'files', __( 'Files', 'simple-seo' ), array(), array( self::class, 'render_tab' ), 80 );
+		Simple_SEO_Admin::add_tab(
+			'files',
+			__( 'Files', 'simple-seo' ),
+			array(),
+			array( self::class, 'render_tab' ),
+			40,
+			'crawl',
+			static fn(): array => array(
+				self::ROBOTS   => 'robots.txt',
+				self::HTACCESS => '.htaccess',
+			)
+		);
 		add_action( 'load-toplevel_page_' . Simple_SEO_Admin::PAGE, array( self::class, 'handle' ) );
 	}
 
@@ -433,6 +444,7 @@ final class Simple_SEO_Files {
 				array(
 					'simple-seo-file' => $file,
 					'simple-seo-done' => $result['code'],
+					'section'         => $file,
 				),
 				Simple_SEO_Admin::url( 'files' )
 			) . '#simple-seo-' . $file;

@@ -70,7 +70,23 @@ final class Simple_SEO_Titles {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'titles', __( 'Titles', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 10 );
+		Simple_SEO_Admin::add_tab( 'titles', __( 'Titles', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 10, 'search', array( self::class, 'sections' ) );
+	}
+
+	/**
+	 * The sub-tabs of the Titles tab: the separator and the variables, then each group of slots.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function sections(): array {
+		$sections = array( 'general' => __( 'General', 'simple-seo' ) );
+		foreach ( self::slot_groups() as $key => $group ) {
+			if ( $group['slots'] ) {
+				$sections[ (string) $key ] = $group['label'];
+			}
+		}
+
+		return $sections;
 	}
 
 	public static function separator(): string {
