@@ -109,6 +109,7 @@ $sseo_saved_options = array(
 	'local_names'    => get_option( Simple_SEO_Local::NAMES ),
 	'images'         => get_option( Simple_SEO_Images::OPTION ),
 	'integrations'   => get_option( Simple_SEO_Integrations::OPTION ),
+	'search_console' => get_option( Simple_SEO_Search_Console::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -181,7 +182,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations', Simple_SEO_Search_Console::OPTION => 'search_console' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -322,19 +323,20 @@ try {
 	$sseo_u = $sseo['users'];
 
 	$sseo_matrix = array(
-		'administrator' => array( true, true, true ),
-		'editor'        => array( false, true, true ),
-		'author'        => array( false, true, false ),
-		'contributor'   => array( false, true, false ),
-		'subscriber'    => array( false, false, false ),
+		'administrator' => array( true, true, true, true ),
+		'editor'        => array( false, true, true, true ),
+		'author'        => array( false, true, false, false ),
+		'contributor'   => array( false, true, false, false ),
+		'subscriber'    => array( false, false, false, false ),
 	);
 	foreach ( $sseo_matrix as $sseo_role => $sseo_expected ) {
 		$sseo_actual = array(
 			user_can( $sseo_u[ $sseo_role ], Simple_SEO_Access::CAP_SETTINGS ),
 			user_can( $sseo_u[ $sseo_role ], Simple_SEO_Access::CAP_FIELDS ),
 			user_can( $sseo_u[ $sseo_role ], Simple_SEO_Access::CAP_ADVANCED ),
+			user_can( $sseo_u[ $sseo_role ], Simple_SEO_Access::CAP_REPORTS ),
 		);
-		sseo_check( "default capabilities of {$sseo_role} (settings, fields, advanced)", $sseo_expected === $sseo_actual, $sseo_actual );
+		sseo_check( "default capabilities of {$sseo_role} (settings, fields, advanced, reports)", $sseo_expected === $sseo_actual, $sseo_actual );
 	}
 
 	update_option( Simple_SEO_Access::OPTION, array( 'fields' => array( 'editor' ), 'advanced' => array(), 'settings' => array( 'editor' ) ) );
@@ -343,11 +345,11 @@ try {
 	sseo_check( 'nobody has advanced when no role is chosen', ! user_can( $sseo_u['editor'], Simple_SEO_Access::CAP_ADVANCED ) );
 
 	// Stored past the sanitizer: even an empty list cannot lock out a site administrator.
-	$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->options, array( 'option_value' => maybe_serialize( array( 'settings' => array() ) ) ), array( 'option_name' => Simple_SEO_Access::OPTION ) );
+	$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->options, array( 'option_value' => maybe_serialize( array( 'settings' => array(), 'reports' => array() ) ) ), array( 'option_name' => Simple_SEO_Access::OPTION ) );
 	wp_cache_delete( 'alloptions', 'options' );
 	wp_cache_delete( Simple_SEO_Access::OPTION, 'options' );
 	Simple_SEO_Settings::flush();
-	sseo_check( 'manage_options always keeps the settings', user_can( $sseo_u['administrator'], Simple_SEO_Access::CAP_SETTINGS ) );
+	sseo_check( 'manage_options always keeps the settings and the data of Search Console', user_can( $sseo_u['administrator'], Simple_SEO_Access::CAP_SETTINGS ) && user_can( $sseo_u['administrator'], Simple_SEO_Access::CAP_REPORTS ) && ! user_can( $sseo_u['editor'], Simple_SEO_Access::CAP_REPORTS ) );
 
 	add_role( 'sseo_seo_manager', 'SEO manager', array( 'read' => true ) );
 	$sseo['users']['sseo_seo_manager'] = wp_insert_user(
@@ -368,11 +370,11 @@ try {
 			'advanced' => array( 'Editor<script>' ),
 		)
 	);
-	sseo_check( 'sanitize adds administrator to the settings', in_array( 'administrator', $sseo_clean['settings'], true ), $sseo_clean );
+	sseo_check( 'sanitize adds administrator to the settings and to the data of Search Console', in_array( 'administrator', $sseo_clean['settings'], true ) && array( 'administrator' ) === $sseo_clean['reports'], $sseo_clean );
 	sseo_check( 'sanitize drops roles that do not exist', ! in_array( 'ghost', $sseo_clean['settings'], true ), $sseo_clean );
 	sseo_check( 'sanitize turns a non-list into an empty list', array() === $sseo_clean['fields'], $sseo_clean );
 	sseo_check( 'sanitize drops a mangled role name', array() === $sseo_clean['advanced'], $sseo_clean );
-	sseo_check( 'sanitize keeps exactly the three keys', array( 'settings', 'fields', 'advanced' ) === array_keys( $sseo_clean ), array_keys( $sseo_clean ) );
+	sseo_check( 'sanitize keeps exactly the four keys', array( 'settings', 'fields', 'advanced', 'reports' ) === array_keys( $sseo_clean ), array_keys( $sseo_clean ) );
 
 	update_option( Simple_SEO_Access::OPTION, array() );
 
@@ -627,7 +629,7 @@ try {
 	sseo_check( 'saving the tab needs the plugin capability, not manage_options', Simple_SEO_Access::CAP_SETTINGS === apply_filters( 'option_page_capability_simple-seo-access', 'manage_options' ) );
 	update_option( Simple_SEO_Access::OPTION, array( 'settings' => array(), 'fields' => array( 'author', 'ghost' ) ) );
 	$sseo_stored = get_option( Simple_SEO_Access::OPTION );
-	sseo_check( 'update_option runs the sanitizer (administrator kept, ghost dropped)', array( 'administrator' ) === $sseo_stored['settings'] && array( 'author' ) === $sseo_stored['fields'], $sseo_stored );
+	sseo_check( 'update_option runs the sanitizer (administrator kept, ghost dropped)', array( 'administrator' ) === $sseo_stored['settings'] && array( 'administrator' ) === $sseo_stored['reports'] && array( 'author' ) === $sseo_stored['fields'], $sseo_stored );
 	update_option( Simple_SEO_Access::OPTION, array() );
 
 	wp_set_current_user( $sseo_u['administrator'] );
@@ -635,6 +637,7 @@ try {
 	sseo_check( 'settings page posts to options.php with the tab group', str_contains( $sseo_html, 'action="options.php"' ) && str_contains( $sseo_html, "value='simple-seo-access'" ) );
 	sseo_check( 'settings page lists the roles', str_contains( $sseo_html, 'value="editor"' ) && str_contains( $sseo_html, 'value="subscriber"' ) );
 	sseo_check( 'administrator checkbox of the settings row is checked and locked', (bool) preg_match( '/name="simple_seo_access\[settings\]\[\]"\s+value="administrator"\s+checked=\'checked\'\s+disabled=\'disabled\'/', $sseo_html ) );
+	sseo_check( 'so is that of the row of Search Console, and those of the other rows are not locked', (bool) preg_match( '/name="simple_seo_access\[reports\]\[\]"\s+value="administrator"\s+checked=\'checked\'\s+disabled=\'disabled\'/', $sseo_html ) && ! preg_match( '/name="simple_seo_access\[(?:fields|advanced)\]\[\]"\s+value="administrator"\s+checked=\'checked\'\s+disabled/', $sseo_html ) && str_contains( $sseo_html, 'See Search Console data' ) );
 	sseo_check( 'one tab: no tab bar yet', ! str_contains( $sseo_html, 'nav-tab-wrapper' ) );
 	Simple_SEO_Admin::add_tab( 'sseo_test', 'Test tab', array(), static function (): void {
 		echo '<p id="sseo-test-tab">test tab</p>';
@@ -3923,6 +3926,614 @@ try {
 		}
 	}
 	Simple_SEO_Settings::flush();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Search Console' );
+
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	Simple_SEO_Settings::flush();
+	delete_transient( Simple_SEO_Search_Console::CACHE . 'token' );
+	sseo_check( 'the defaults: no key, no property, not connected; the row is read in the admin only', array( 'key' => array(), 'property' => '' ) === Simple_SEO_Settings::get( Simple_SEO_Search_Console::OPTION ) && false === Simple_SEO_Settings::registered()[ Simple_SEO_Search_Console::OPTION ]['autoload'] && ! Simple_SEO_Search_Console::connected() && '' === Simple_SEO_Search_Console::account() );
+	$sseo_val = Simple_SEO_Search_Console::token();
+	sseo_check( 'without a key there is no token and no request', is_wp_error( $sseo_val ) && 'simple_seo_gsc_no_key' === $sseo_val->get_error_code() );
+
+	// A key of a service account, made here: no real account is needed.
+	$sseo_gc_pkey = openssl_pkey_new(
+		array(
+			'private_key_bits' => 2048,
+			'private_key_type' => OPENSSL_KEYTYPE_RSA,
+		)
+	);
+	openssl_pkey_export( $sseo_gc_pkey, $sseo_gc_pem );
+	$sseo_gc_public = openssl_pkey_get_details( $sseo_gc_pkey )['key'];
+	$sseo_gc_email  = 'simple-seo@sseo-test.iam.gserviceaccount.com';
+	$sseo_gc_file   = array(
+		'type'           => 'service_account',
+		'project_id'     => 'sseo-test',
+		'private_key_id' => 'kid123',
+		'private_key'    => $sseo_gc_pem,
+		'client_email'   => $sseo_gc_email,
+		'token_uri'      => 'https://evil.example/token',
+	);
+	$sseo_gc_json   = (string) wp_json_encode( $sseo_gc_file );
+
+	// The key.
+	$sseo_vals = array();
+	foreach ( array(
+		'json'    => 'not json',
+		'type'    => wp_json_encode( array( 'type' => 'authorized_user' ) + $sseo_gc_file ),
+		'email'   => wp_json_encode( array( 'client_email' => 'nobody' ) + $sseo_gc_file ),
+		'private' => wp_json_encode( array( 'private_key' => "-----BEGIN PRIVATE KEY-----\nnope\n-----END PRIVATE KEY-----\n" ) + $sseo_gc_file ),
+	) as $sseo_name => $sseo_value ) {
+		$sseo_val = Simple_SEO_Search_Console::read_key( (string) $sseo_value );
+		$sseo_vals[ $sseo_name ] = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() : 'taken';
+	}
+	sseo_check( 'refused: no JSON, a key of no service account, no email, a private key that cannot be read', array( 'json' => 'simple_seo_gsc_json', 'type' => 'simple_seo_gsc_type', 'email' => 'simple_seo_gsc_email', 'private' => 'simple_seo_gsc_private' ) === $sseo_vals, $sseo_vals );
+	$sseo_val = Simple_SEO_Search_Console::read_key( '  ' . $sseo_gc_json . "\n" );
+	sseo_check( 'a key read: the email, the project, the ID of the key and the private key encrypted; nothing else of the file', is_array( $sseo_val ) && array( 'email', 'project', 'id', 'secret' ) === array_keys( $sseo_val ) && $sseo_gc_email === $sseo_val['email'] && 'sseo-test' === $sseo_val['project'] && 'kid123' === $sseo_val['id'] && ! str_contains( $sseo_val['secret'], 'PRIVATE KEY' ) && $sseo_gc_pem === Simple_SEO_Search_Console::decrypt( $sseo_val['secret'] ), $sseo_val );
+	$sseo_val2 = Simple_SEO_Search_Console::read_key( $sseo_gc_json );
+	sseo_check( 'encrypted afresh each time', is_array( $sseo_val2 ) && $sseo_val2['secret'] !== $sseo_val['secret'] && $sseo_gc_pem === Simple_SEO_Search_Console::decrypt( $sseo_val2['secret'] ) );
+	$sseo_raw = base64_decode( $sseo_val['secret'] ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+	$sseo_raw[ strlen( $sseo_raw ) - 1 ] = chr( ord( $sseo_raw[ strlen( $sseo_raw ) - 1 ] ) ^ 1 );
+	$sseo_salt = static fn(): string => 'other salt of another site';
+	add_filter( 'salt', $sseo_salt );
+	$sseo_val2 = Simple_SEO_Search_Console::decrypt( $sseo_val['secret'] );
+	remove_filter( 'salt', $sseo_salt );
+	sseo_check( 'a changed secret, a short one, or the salts of another site decrypt to nothing', '' === Simple_SEO_Search_Console::decrypt( base64_encode( $sseo_raw ) ) && '' === Simple_SEO_Search_Console::decrypt( 'c2hvcnQ=' ) && '' === Simple_SEO_Search_Console::decrypt( '%%%' ) && '' === $sseo_val2 ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+
+	sseo_check(
+		'properties: a domain in small letters, an address prefix with its slash; nothing else',
+		'sc-domain:example.com' === Simple_SEO_Search_Console::clean_property( ' sc-domain:Example.COM ' )
+		&& 'https://example.com/blog/' === Simple_SEO_Search_Console::clean_property( 'https://example.com/blog/' )
+		&& 'http://example.com:8080/' === Simple_SEO_Search_Console::clean_property( 'http://example.com:8080/' )
+		&& '' === Simple_SEO_Search_Console::clean_property( 'https://example.com' )
+		&& '' === Simple_SEO_Search_Console::clean_property( 'https://example.com/blog' )
+		&& '' === Simple_SEO_Search_Console::clean_property( 'sc-domain:example' )
+		&& '' === Simple_SEO_Search_Console::clean_property( 'javascript:alert(1)//' )
+		&& '' === Simple_SEO_Search_Console::clean_property( 'https://exa mple.com/' )
+		&& '' === Simple_SEO_Search_Console::clean_property( 'https://example.com/"onmouseover="x/' )
+		&& '' === Simple_SEO_Search_Console::clean_property( array( 'sc-domain:example.com' ) )
+	);
+
+	$GLOBALS['wp_settings_errors'] = array();
+	$sseo_val = Simple_SEO_Search_Console::sanitize( array( 'json' => $sseo_gc_json, 'property' => 'sc-domain:Example.com' ) );
+	sseo_check( 'sanitized: the key pasted is taken, the property cleaned', $sseo_gc_email === ( $sseo_val['key']['email'] ?? '' ) && 'sc-domain:example.com' === $sseo_val['property'] && array() === get_settings_errors( Simple_SEO_Search_Console::OPTION ), $sseo_val );
+	update_option( Simple_SEO_Search_Console::OPTION, $sseo_val );
+	$sseo_gc_row = get_option( Simple_SEO_Search_Console::OPTION );
+	sseo_check( 'saved: connected, the account named; no private key in the database, as text', Simple_SEO_Search_Console::connected() && $sseo_gc_email === Simple_SEO_Search_Console::account() && ! str_contains( maybe_serialize( $sseo_gc_row ), 'PRIVATE KEY' ) && ! str_contains( maybe_serialize( $sseo_gc_row ), substr( $sseo_gc_pem, 40, 40 ) ) );
+	$sseo_val = Simple_SEO_Search_Console::sanitize( array( 'json' => '' ) );
+	sseo_check( 'sanitized: an empty field and no property keep both', $sseo_gc_row === $sseo_val, $sseo_val );
+	$sseo_val = Simple_SEO_Search_Console::sanitize( array( 'json' => '{"type":"user"}', 'forget' => '0', 'property' => '' ) );
+	$sseo_errors = get_settings_errors( Simple_SEO_Search_Console::OPTION );
+	sseo_check( 'sanitized: a wrong key is refused with its reason and the saved one stays; the property chosen empty is empty', $sseo_gc_row['key'] === $sseo_val['key'] && '' === $sseo_val['property'] && 1 === count( $sseo_errors ) && 'simple_seo_gsc_type' === $sseo_errors[0]['code'], $sseo_errors );
+	$GLOBALS['wp_settings_errors'] = array();
+	$sseo_val = Simple_SEO_Search_Console::sanitize( $sseo_gc_row );
+	sseo_check( 'sanitized: the row as stored stays as it is (add_option() sanitizes it once more)', $sseo_gc_row === $sseo_val, $sseo_val );
+	$sseo_val = Simple_SEO_Search_Console::sanitize( array( 'key' => array( 'email' => 'nobody', 'secret' => 'x' ) ) );
+	$sseo_val2 = Simple_SEO_Search_Console::sanitize( array( 'forget' => '1' ) );
+	sseo_check( 'sanitized: a stored key without an email is none; the box removes the key', array() === $sseo_val['key'] && array() === $sseo_val2['key'] && 'sc-domain:example.com' === $sseo_val2['property'] );
+	// From here on the saved key without a property.
+	$sseo_gc_row = array(
+		'key'      => $sseo_gc_row['key'],
+		'property' => '',
+	);
+
+	// The token.
+	$sseo_val = Simple_SEO_Search_Console::jwt( array( 'iss' => 'a@b.c', 'n' => 1 ), $sseo_gc_pem, 'kid9' );
+	$sseo_parts = explode( '.', (string) $sseo_val );
+	$sseo_b64   = static fn( string $part ): string => (string) base64_decode( strtr( $part, '-_', '+/' ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+	sseo_check(
+		'a JWT: RS256 with the ID of the key, the claims, and a signature the public key verifies',
+		3 === count( $sseo_parts ) && array( 'alg' => 'RS256', 'typ' => 'JWT', 'kid' => 'kid9' ) === json_decode( $sseo_b64( $sseo_parts[0] ), true ) && array( 'iss' => 'a@b.c', 'n' => 1 ) === json_decode( $sseo_b64( $sseo_parts[1] ), true )
+		&& 1 === openssl_verify( $sseo_parts[0] . '.' . $sseo_parts[1], $sseo_b64( $sseo_parts[2] ), $sseo_gc_public, OPENSSL_ALGO_SHA256 ) && ! preg_match( '/[+\/=]/', (string) $sseo_val ),
+		$sseo_val
+	);
+	$sseo_val = Simple_SEO_Search_Console::jwt( array(), 'no key' );
+	sseo_check( 'a JWT: no key, no signature', is_wp_error( $sseo_val ) && 'simple_seo_gsc_sign' === $sseo_val->get_error_code() );
+
+	// Google, answered here: each request is kept, the answer comes from $sseo_gc_answer.
+	$GLOBALS['sseo_gc_requests'] = array();
+	$sseo_gc_reply  = static fn( int $code, $body ): array => array(
+		'headers'  => array(),
+		'body'     => is_string( $body ) ? $body : (string) wp_json_encode( $body ),
+		'response' => array(
+			'code'    => $code,
+			'message' => '',
+		),
+		'cookies'  => array(),
+		'filename' => null,
+	);
+	$sseo_gc_answer = static fn( string $url, array $args ) => $sseo_gc_reply( 500, array() );
+	$sseo_gc_fake   = static function ( $pre, $args, $url ) use ( &$sseo_gc_answer ) {
+		if ( ! str_starts_with( (string) $url, 'https://oauth2.googleapis.com/' ) && ! str_starts_with( (string) $url, 'https://www.googleapis.com/' ) ) {
+			return $pre;
+		}
+		$GLOBALS['sseo_gc_requests'][] = array( (string) $url, $args );
+
+		return $sseo_gc_answer( (string) $url, $args );
+	};
+	add_filter( 'pre_http_request', $sseo_gc_fake, 10, 3 );
+	$sseo_gc_token_ok = static fn(): array => $sseo_gc_reply(
+		200,
+		array(
+			'access_token' => 'tok-1',
+			'expires_in'   => 3599,
+			'token_type'   => 'Bearer',
+		)
+	);
+
+	$sseo_gc_answer = static fn( string $url, array $args ): array => $sseo_gc_token_ok();
+	$sseo_val       = Simple_SEO_Search_Console::token();
+	$sseo_req       = $GLOBALS['sseo_gc_requests'][0] ?? array( '', array() );
+	$sseo_jwt       = explode( '.', (string) ( $sseo_req[1]['body']['assertion'] ?? '' ) );
+	$sseo_claims    = 3 === count( $sseo_jwt ) ? json_decode( $sseo_b64( $sseo_jwt[1] ), true ) : array();
+	sseo_check(
+		"a token: a JWT of the account for read access to Search Console, sent to Google's own token address (not the one in the file), signed by its key",
+		'tok-1' === $sseo_val && Simple_SEO_Search_Console::TOKEN_URL === $sseo_req[0] && 'POST' === ( $sseo_req[1]['method'] ?? '' ) && 'urn:ietf:params:oauth:grant-type:jwt-bearer' === ( $sseo_req[1]['body']['grant_type'] ?? '' )
+		&& $sseo_gc_email === ( $sseo_claims['iss'] ?? '' ) && Simple_SEO_Search_Console::SCOPE === ( $sseo_claims['scope'] ?? '' ) && 'https://www.googleapis.com/auth/webmasters.readonly' === Simple_SEO_Search_Console::SCOPE && 'https://oauth2.googleapis.com/token' === ( $sseo_claims['aud'] ?? '' )
+		&& abs( (int) ( $sseo_claims['iat'] ?? 0 ) - time() ) < 5 && 3600 === (int) ( $sseo_claims['exp'] ?? 0 ) - (int) ( $sseo_claims['iat'] ?? 0 )
+		&& 1 === openssl_verify( $sseo_jwt[0] . '.' . $sseo_jwt[1], $sseo_b64( $sseo_jwt[2] ), $sseo_gc_public, OPENSSL_ALGO_SHA256 ),
+		array( $sseo_val, $sseo_req[0], $sseo_claims )
+	);
+	$sseo_val = get_transient( Simple_SEO_Search_Console::CACHE . 'token' );
+	$sseo_timeout = (int) get_option( '_transient_timeout_' . Simple_SEO_Search_Console::CACHE . 'token' ) - time();
+	sseo_check( 'the token is kept encrypted until two minutes before it ends, and used again', is_array( $sseo_val ) && ! str_contains( (string) wp_json_encode( $sseo_val ), 'tok-1' ) && $sseo_timeout > 3470 && $sseo_timeout <= 3479 && 'tok-1' === Simple_SEO_Search_Console::token() && 1 === count( $GLOBALS['sseo_gc_requests'] ), array( $sseo_timeout, $sseo_val ) );
+
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'key' => Simple_SEO_Search_Console::read_key( $sseo_gc_json ) ) + $sseo_gc_row );
+	Simple_SEO_Search_Console::token();
+	update_option( Simple_SEO_Search_Console::OPTION, $sseo_gc_row );
+	sseo_check( 'a token kept for another key is not used: a new key asks for its own', 2 === count( $GLOBALS['sseo_gc_requests'] ) );
+
+	delete_transient( Simple_SEO_Search_Console::CACHE . 'token' );
+	$sseo_gc_answer = static fn( string $url, array $args ): array => $sseo_gc_reply(
+		400,
+		array(
+			'error'             => 'invalid_grant',
+			'error_description' => 'Invalid JWT Signature.',
+		)
+	);
+	$sseo_val       = Simple_SEO_Search_Console::token();
+	$sseo_gc_answer = static fn( string $url, array $args ) => new WP_Error( 'http_request_failed', 'cURL error 6: Could not resolve host' );
+	$sseo_val2      = Simple_SEO_Search_Console::token();
+	sseo_check( "no token: Google's reason, or why Google cannot be reached; nothing kept", is_wp_error( $sseo_val ) && 'simple_seo_gsc_token' === $sseo_val->get_error_code() && str_contains( $sseo_val->get_error_message(), 'Invalid JWT Signature.' ) && is_wp_error( $sseo_val2 ) && 'simple_seo_gsc_network' === $sseo_val2->get_error_code() && str_contains( $sseo_val2->get_error_message(), 'Could not resolve host' ) && false === get_transient( Simple_SEO_Search_Console::CACHE . 'token' ) );
+	add_filter( 'salt', $sseo_salt );
+	$sseo_val = Simple_SEO_Search_Console::token();
+	remove_filter( 'salt', $sseo_salt );
+	sseo_check( 'no token when the salts of the site have changed since the key was saved: paste it again', is_wp_error( $sseo_val ) && 'simple_seo_gsc_secret' === $sseo_val->get_error_code() );
+
+	// The properties.
+	$GLOBALS['sseo_gc_requests'] = array();
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok ): array {
+		if ( Simple_SEO_Search_Console::TOKEN_URL === $url ) {
+			return $sseo_gc_token_ok();
+		}
+
+		return $sseo_gc_reply(
+			200,
+			array(
+				'siteEntry' => array(
+					array(
+						'siteUrl'         => 'https://www.example.com/',
+						'permissionLevel' => 'siteOwner',
+					),
+					array(
+						'siteUrl'         => 'sc-domain:example.com',
+						'permissionLevel' => 'siteRestrictedUser',
+					),
+					array(
+						'siteUrl'         => 'https://unverified.example/',
+						'permissionLevel' => 'siteUnverifiedUser',
+					),
+					array( 'siteUrl' => 'not a property' ),
+					'junk',
+				),
+			)
+		);
+	};
+	$sseo_val = Simple_SEO_Search_Console::sites();
+	$sseo_req = $GLOBALS['sseo_gc_requests'][1] ?? array( '', array() );
+	sseo_check( 'the properties the account sees, with its permission; not those it is unverified in', array( 'https://www.example.com/' => 'siteOwner', 'sc-domain:example.com' => 'siteRestrictedUser' ) === $sseo_val && 'https://www.googleapis.com/webmasters/v3/sites' === $sseo_req[0] && 'GET' === ( $sseo_req[1]['method'] ?? '' ) && 'Bearer tok-1' === ( $sseo_req[1]['headers']['Authorization'] ?? '' ), $sseo_val );
+	Simple_SEO_Search_Console::sites();
+	sseo_check( 'the list is kept for some minutes', 2 === count( $GLOBALS['sseo_gc_requests'] ) && Simple_SEO_Search_Console::SITES_TTL <= 900 );
+
+	$sseo_home = static fn(): string => 'https://www.example.com';
+	add_filter( 'pre_option_home', $sseo_home );
+	$sseo_vals = array(
+		Simple_SEO_Search_Console::match( array( 'https://www.example.com/', 'sc-domain:example.com' ) ),
+		Simple_SEO_Search_Console::match( array( 'https://www.example.com/', 'sc-domain:www.example.com' ) ),
+		Simple_SEO_Search_Console::match( array( 'https://other.com/', 'http://example.com/', 'https://www.example.com/blog/' ) ),
+		Simple_SEO_Search_Console::match( array( 'https://example.com/shop/', 'https://example.com/' ) ),
+		Simple_SEO_Search_Console::match( array( 'sc-domain:other.com', 'https://example.co/' ) ),
+	);
+	$sseo_val = Simple_SEO_Search_Console::property();
+	remove_filter( 'pre_option_home', $sseo_home );
+	$sseo_home_blog = static fn(): string => 'https://www.example.com/blog';
+	add_filter( 'pre_option_home', $sseo_home_blog );
+	$sseo_vals[] = Simple_SEO_Search_Console::match( array( 'https://example.com/blog/', 'https://example.com/' ) );
+	remove_filter( 'pre_option_home', $sseo_home_blog );
+	sseo_check( 'the property of the site: its domain first, then its prefix with or without www and https, the longest that holds the home; else none', array( 'sc-domain:example.com', 'sc-domain:www.example.com', 'http://example.com/', 'https://example.com/', '', 'https://example.com/blog/' ) === $sseo_vals && 'sc-domain:example.com' === $sseo_val, array( $sseo_vals, $sseo_val ) );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'https://www.example.com/' ) + $sseo_gc_row );
+	$sseo_val = Simple_SEO_Search_Console::property();
+	update_option( Simple_SEO_Search_Console::OPTION, $sseo_gc_row );
+	$sseo_val2 = Simple_SEO_Search_Console::property();
+	sseo_check( 'the property chosen comes first; none of this site among those seen is an error that names the account', 'https://www.example.com/' === $sseo_val && is_wp_error( $sseo_val2 ) && 'simple_seo_gsc_no_property' === $sseo_val2->get_error_code() && str_contains( $sseo_val2->get_error_message(), $sseo_gc_email ), $sseo_val2 );
+
+	// What an answer that is no data means.
+	$sseo_vals = array();
+	foreach ( array(
+		'off'    => array( 403, array( 'error' => array( 'code' => 403, 'message' => 'Google Search Console API has not been used in project 123 before or it is disabled.' ) ) ),
+		'access' => array( 403, array( 'error' => array( 'code' => 403, 'message' => "User does not have sufficient permission for site 'sc-domain:example.com'." ) ) ),
+		'gone'   => array( 404, array( 'error' => array( 'message' => 'Not found' ) ) ),
+		'busy'   => array( 429, array( 'error' => array( 'message' => 'Quota exceeded' ) ) ),
+		'other'  => array( 500, array( 'error' => array( 'message' => 'Backend <b>Error</b>' ) ) ),
+		'none'   => array( 502, 'Bad gateway' ),
+	) as $sseo_name => $sseo_answer ) {
+		$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok, $sseo_answer ): array {
+			return Simple_SEO_Search_Console::TOKEN_URL === $url ? $sseo_gc_token_ok() : $sseo_gc_reply( $sseo_answer[0], $sseo_answer[1] );
+		};
+		$sseo_val = Simple_SEO_Search_Console::api( 'GET', 'sites/x' );
+		$sseo_vals[ $sseo_name ] = is_wp_error( $sseo_val ) ? array( $sseo_val->get_error_code(), $sseo_val->get_error_message() ) : array( 'data', '' );
+	}
+	sseo_check(
+		'errors: the API off in the project, no access (with the email to add), no property, too many requests, any other with what Google said',
+		'simple_seo_gsc_403' === $sseo_vals['off'][0] && str_contains( $sseo_vals['off'][1], 'turn it on in Google Cloud' )
+		&& str_contains( $sseo_vals['access'][1], $sseo_gc_email ) && ! str_contains( $sseo_vals['access'][1], 'turn it on' )
+		&& 'simple_seo_gsc_404' === $sseo_vals['gone'][0] && str_contains( $sseo_vals['gone'][1], 'no such property' )
+		&& str_contains( $sseo_vals['busy'][1], 'too many requests' )
+		&& 'Search Console answered 500: Backend <b>Error</b>' === $sseo_vals['other'][1] && 'Search Console answered 502: —' === $sseo_vals['none'][1],
+		$sseo_vals
+	);
+	set_transient( Simple_SEO_Search_Console::CACHE . 'token', array( 'for' => 'x' ), 60 );
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok ): array {
+		return Simple_SEO_Search_Console::TOKEN_URL === $url ? $sseo_gc_token_ok() : $sseo_gc_reply( 401, array( 'error' => array( 'message' => 'Invalid Credentials' ) ) );
+	};
+	Simple_SEO_Search_Console::api( 'GET', 'sites/x' );
+	sseo_check( 'a token Google takes back is dropped, so the next request asks for a new one', false === get_transient( Simple_SEO_Search_Console::CACHE . 'token' ) );
+
+	// The data.
+	$sseo_gc_today = new DateTimeImmutable( 'now', new DateTimeZone( 'America/Los_Angeles' ) );
+	$sseo_gc_last  = $sseo_gc_today->modify( '-3 days' );
+	$sseo_gc_days  = array();
+	for ( $sseo_i = 0; $sseo_i < 70; $sseo_i++ ) {
+		$sseo_day = $sseo_gc_last->modify( '-' . $sseo_i . ' days' )->format( 'Y-m-d' );
+		// Day i of the period: 10 clicks, 100 impressions at position 4; before it 5, 100 and 8.
+		$sseo_gc_days[] = array(
+			'keys'        => array( $sseo_day ),
+			'clicks'      => $sseo_i < 28 ? 10 : 5,
+			'impressions' => 100,
+			'ctr'         => 0.1,
+			'position'    => $sseo_i < 28 ? 4.0 : 8.0,
+		);
+	}
+	$GLOBALS['sseo_gc_requests'] = array();
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok, $sseo_gc_days ): array {
+		if ( Simple_SEO_Search_Console::TOKEN_URL === $url ) {
+			return $sseo_gc_token_ok();
+		}
+		$body      = json_decode( (string) ( $args['body'] ?? '' ), true );
+		$dimension = $body['dimensions'][0] ?? '';
+		$filtered  = isset( $body['dimensionFilterGroups'] );
+		if ( 'date' === $dimension ) {
+			// Only the days asked for, in no order, and one day of a bad date.
+			$rows   = array_values( array_filter( $sseo_gc_days, static fn( array $row ): bool => $row['keys'][0] >= $body['startDate'] && $row['keys'][0] <= $body['endDate'] ) );
+			$rows[] = array( 'keys' => array( 'yesterday' ), 'clicks' => 999, 'impressions' => 999, 'position' => 1 );
+			shuffle( $rows );
+		} elseif ( 'query' === $dimension ) {
+			$rows = $filtered
+				? array( array( 'keys' => array( 'запит сторінки' ), 'clicks' => 3, 'impressions' => 30, 'ctr' => 0.1, 'position' => 2.5 ) )
+				: array(
+					array( 'keys' => array( 'simple seo' ), 'clicks' => 120, 'impressions' => 1000, 'ctr' => 0.12, 'position' => 3.24 ),
+					array( 'keys' => array( '<script>alert(1)</script>' ), 'clicks' => 1, 'impressions' => 9, 'ctr' => 0.11, 'position' => 12 ),
+					'junk',
+				);
+		} else {
+			$rows = $filtered
+				? array( array( 'keys' => array( $body['dimensionFilterGroups'][0]['filters'][0]['expression'] ?? '' ), 'clicks' => 7, 'impressions' => 70, 'ctr' => 0.1, 'position' => 5.5 ) )
+				: array( array( 'keys' => array( home_url( '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/?a=1' ) ), 'clicks' => 50, 'impressions' => 400, 'ctr' => 0.125, 'position' => 6.66 ) );
+		}
+
+		return $sseo_gc_reply( 200, array( 'rows' => $rows, 'responseAggregationType' => 'byProperty' ) );
+	};
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) + $sseo_gc_row );
+
+	$sseo_val = Simple_SEO_Search_Console::query( 'sc-domain:example.com', array( 'startDate' => '2026-01-01', 'endDate' => '2026-01-02', 'dimensions' => array( 'query' ), 'rowLimit' => 5 ) );
+	$sseo_req = end( $GLOBALS['sseo_gc_requests'] );
+	sseo_check(
+		'a query: POST to the search analytics of the property (its name encoded) with the body as JSON; rows of keys, clicks, impressions and position',
+		'https://www.googleapis.com/webmasters/v3/sites/sc-domain%3Aexample.com/searchAnalytics/query' === $sseo_req[0] && 'POST' === $sseo_req[1]['method'] && 'application/json' === $sseo_req[1]['headers']['Content-Type']
+		&& array( 'startDate' => '2026-01-01', 'endDate' => '2026-01-02', 'dimensions' => array( 'query' ), 'rowLimit' => 5 ) === json_decode( $sseo_req[1]['body'], true )
+		&& array( 'keys' => array( 'simple seo' ), 'clicks' => 120, 'impressions' => 1000, 'position' => 3.24 ) === ( $sseo_val[0] ?? null ) && 2 === count( $sseo_val ),
+		$sseo_val
+	);
+	$sseo_n = count( $GLOBALS['sseo_gc_requests'] );
+	Simple_SEO_Search_Console::query( 'sc-domain:example.com', array( 'startDate' => '2026-01-01', 'endDate' => '2026-01-02', 'dimensions' => array( 'query' ), 'rowLimit' => 5 ) );
+	Simple_SEO_Search_Console::query( 'sc-domain:example.com', array( 'startDate' => '2026-01-01', 'endDate' => '2026-01-02', 'dimensions' => array( 'page' ), 'rowLimit' => 5 ) );
+	sseo_check( 'an answer is kept for hours; another question is asked', $sseo_n + 1 === count( $GLOBALS['sseo_gc_requests'] ) && 6 * HOUR_IN_SECONDS === Simple_SEO_Search_Console::TTL );
+
+	sseo_check(
+		'periods: 7, 28 or 90 days, 28 for anything else; a period ends on a day, the one before ends the day before it starts',
+		7 === Simple_SEO_Search_Console::period( '7' ) && 90 === Simple_SEO_Search_Console::period( 90 ) && 28 === Simple_SEO_Search_Console::period( '5' ) && 28 === Simple_SEO_Search_Console::period( 'x' ) && 28 === Simple_SEO_Search_Console::period( null )
+		&& array( 'start' => '2026-10-14', 'end' => '2026-11-10', 'previous_start' => '2026-09-16', 'previous_end' => '2026-10-13' ) === Simple_SEO_Search_Console::window( '2026-11-10', 28 )
+		&& array( 'start' => '2026-03-01', 'end' => '2026-03-07', 'previous_start' => '2026-02-22', 'previous_end' => '2026-02-28' ) === Simple_SEO_Search_Console::window( '2026-03-07', 7 )
+	);
+	sseo_check(
+		'totals: clicks and impressions add up, CTR of them, the position weighted by the impressions; nothing is zeros',
+		array( 'clicks' => 30, 'impressions' => 400, 'ctr' => 0.075, 'position' => 3.5 ) === Simple_SEO_Search_Console::totals( array( array( 'clicks' => 10, 'impressions' => 100, 'position' => 2.0 ), array( 'clicks' => 20, 'impressions' => 300, 'position' => 4.0 ) ) )
+		&& array( 'clicks' => 0, 'impressions' => 0, 'ctr' => 0.0, 'position' => 0.0 ) === Simple_SEO_Search_Console::totals( array() )
+	);
+
+	$GLOBALS['sseo_gc_requests'] = array();
+	$sseo_report = Simple_SEO_Search_Console::site_report( 28 );
+	$sseo_bodies = array_map( static fn( array $request ): array => (array) json_decode( (string) ( $request[1]['body'] ?? '' ), true ), array_slice( $GLOBALS['sseo_gc_requests'], 0 ) );
+	$sseo_bodies = array_values( array_filter( $sseo_bodies ) );
+	$sseo_end    = $sseo_gc_last->format( 'Y-m-d' );
+	sseo_check(
+		'the site: the days of two periods and a week asked for (Pacific time); the period ends on the last day with data',
+		is_array( $sseo_report ) && 'sc-domain:example.com' === $sseo_report['property'] && 28 === $sseo_report['days']
+		&& array( 'startDate' => $sseo_gc_today->modify( '-63 days' )->format( 'Y-m-d' ), 'endDate' => $sseo_gc_today->format( 'Y-m-d' ), 'dimensions' => array( 'date' ), 'rowLimit' => 1000 ) === ( $sseo_bodies[0] ?? null )
+		&& Simple_SEO_Search_Console::window( $sseo_end, 28 ) === $sseo_report['window'],
+		array( $sseo_bodies, is_array( $sseo_report ) ? $sseo_report['window'] : $sseo_report )
+	);
+	sseo_check(
+		'the site: the totals of the period and of the one before',
+		is_array( $sseo_report ) && array( 'clicks' => 280, 'impressions' => 2800, 'ctr' => 0.1, 'position' => 4.0 ) === $sseo_report['current'] && array( 'clicks' => 140, 'impressions' => 2800, 'ctr' => 0.05, 'position' => 8.0 ) === $sseo_report['previous'],
+		is_array( $sseo_report ) ? array( $sseo_report['current'], $sseo_report['previous'] ) : $sseo_report
+	);
+	sseo_check(
+		'the site: the top queries and pages of the period',
+		array( 'startDate' => $sseo_report['window']['start'], 'endDate' => $sseo_end, 'dimensions' => array( 'query' ), 'rowLimit' => 25 ) === ( $sseo_bodies[1] ?? null ) && array( 'startDate' => $sseo_report['window']['start'], 'endDate' => $sseo_end, 'dimensions' => array( 'page' ), 'rowLimit' => 25 ) === ( $sseo_bodies[2] ?? null )
+		&& 'simple seo' === $sseo_report['queries'][0]['keys'][0] && 1 === count( $sseo_report['pages'] ) && 3 === count( $sseo_bodies ),
+		$sseo_bodies
+	);
+	$GLOBALS['sseo_gc_requests'] = array();
+	$sseo_val = Simple_SEO_Search_Console::site_report( 7 );
+	$sseo_bodies = array_values( array_filter( array_map( static fn( array $request ): array => (array) json_decode( (string) ( $request[1]['body'] ?? '' ), true ), $GLOBALS['sseo_gc_requests'] ) ) );
+	sseo_check( 'the site, 7 days: three weeks of days asked for', is_array( $sseo_val ) && $sseo_gc_today->modify( '-21 days' )->format( 'Y-m-d' ) === ( $sseo_bodies[0]['startDate'] ?? '' ) && array( 'clicks' => 70, 'impressions' => 700, 'ctr' => 0.1, 'position' => 4.0 ) === $sseo_val['current'], $sseo_bodies[0] ?? null );
+
+	$sseo_gc_saved_answer = $sseo_gc_answer;
+	$sseo_gc_answer       = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok ): array {
+		return Simple_SEO_Search_Console::TOKEN_URL === $url ? $sseo_gc_token_ok() : $sseo_gc_reply( 200, array( 'responseAggregationType' => 'byProperty' ) );
+	};
+	$sseo_val = Simple_SEO_Search_Console::site_report( 90 );
+	sseo_check( 'the site with no data yet: no period, zeros, no lists, nothing more asked', is_array( $sseo_val ) && array() === $sseo_val['window'] && 0 === $sseo_val['current']['impressions'] && array() === $sseo_val['queries'] && array() === $sseo_val['pages'], $sseo_val );
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok, $sseo_gc_saved_answer ): array {
+		$body = json_decode( (string) ( $args['body'] ?? '' ), true );
+		return 'page' === ( $body['dimensions'][0] ?? '' ) ? $sseo_gc_reply( 403, array( 'error' => array( 'message' => 'denied' ) ) ) : $sseo_gc_saved_answer( $url, $args );
+	};
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'https://www.example.com/' ) + $sseo_gc_row );
+	$sseo_val = Simple_SEO_Search_Console::site_report( 28 );
+	sseo_check( 'the site: an error on the way is the answer', is_wp_error( $sseo_val ) && 'simple_seo_gsc_403' === $sseo_val->get_error_code() );
+	$sseo_gc_answer = $sseo_gc_saved_answer;
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) + $sseo_gc_row );
+
+	sseo_check(
+		'changes: a share for clicks, impressions and CTR, up good and down bad; a difference for the position, down good; nothing to compare with nothing',
+		array( 'text' => '+20%', 'rating' => 'good' ) === Simple_SEO_Search_Console::change( 'clicks', array( 'clicks' => 120 ), array( 'clicks' => 100 ) )
+		&& array( 'text' => '−20%', 'rating' => 'bad' ) === Simple_SEO_Search_Console::change( 'impressions', array( 'impressions' => 80 ), array( 'impressions' => 100 ) )
+		&& array( 'text' => '0%', 'rating' => 'same' ) === Simple_SEO_Search_Console::change( 'ctr', array( 'ctr' => 0.1 ), array( 'ctr' => 0.1 ) )
+		&& null === Simple_SEO_Search_Console::change( 'clicks', array( 'clicks' => 5 ), array( 'clicks' => 0 ) )
+		&& array( 'text' => '−0.8', 'rating' => 'good' ) === Simple_SEO_Search_Console::change( 'position', array( 'impressions' => 10, 'position' => 5.2 ), array( 'impressions' => 10, 'position' => 6.0 ) )
+		&& array( 'text' => '+1.5', 'rating' => 'bad' ) === Simple_SEO_Search_Console::change( 'position', array( 'impressions' => 10, 'position' => 7.5 ), array( 'impressions' => 10, 'position' => 6.0 ) )
+		&& null === Simple_SEO_Search_Console::change( 'position', array( 'impressions' => 10, 'position' => 5.0 ), array( 'impressions' => 0, 'position' => 0.0 ) )
+	);
+	$sseo_html = Simple_SEO_Search_Console::render_totals( $sseo_report['current'], $sseo_report['previous'] );
+	sseo_check( 'the totals: clicks, impressions, CTR and position, each with its change', str_contains( $sseo_html, '<dt>Clicks</dt><dd><strong>280</strong> <span class="simple-seo-gsc-change is-good">+100%</span>' ) && str_contains( $sseo_html, '<dt>CTR</dt><dd><strong>10.0%</strong>' ) && str_contains( $sseo_html, '<dt>Average position</dt><dd><strong>4.0</strong> <span class="simple-seo-gsc-change is-good">−4.0</span>' ) && str_contains( $sseo_html, '<dt>Impressions</dt><dd><strong>2,800</strong> <span class="simple-seo-gsc-change is-same">0%</span>' ), $sseo_html );
+	$sseo_html = Simple_SEO_Search_Console::render_table( $sseo_report['queries'], 'Query' );
+	$sseo_html2 = Simple_SEO_Search_Console::render_table( $sseo_report['pages'], 'Page', true );
+	sseo_check(
+		'the tables: a query escaped; a page linked, shown as its path, readable',
+		str_contains( $sseo_html, '<td>simple seo</td><td class="num" data-label="Clicks">120</td><td class="num" data-label="Impressions">1,000</td><td class="num" data-label="CTR">12.0%</td><td class="num" data-label="Position">3.2</td>' ) && str_contains( $sseo_html, '&lt;script&gt;' ) && ! str_contains( $sseo_html, '<script>' )
+		&& str_contains( $sseo_html2, '>/сторінка/?a=1</a></td>' ) && str_contains( $sseo_html2, 'href="' . esc_url( home_url( '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/?a=1' ) ) . '"' ) && ( ! Simple_SEO_WP_Loc::languages() xor str_contains( $sseo_html2, '<th scope="col" class="simple-seo-gsc-language">Language</th>' ) ),
+		$sseo_html2
+	);
+	sseo_check( 'an address of another site stays whole; a day in the format of the site', 'https://other.example/a b' === Simple_SEO_Search_Console::path( 'https://other.example/a%20b' ) && '/' === Simple_SEO_Search_Console::path( home_url() ) && wp_date( get_option( 'date_format' ), strtotime( '2026-03-07 12:00:00 UTC' ), new DateTimeZone( 'UTC' ) ) === Simple_SEO_Search_Console::date( '2026-03-07' ) );
+
+	// A post.
+	$sseo['posts']['gc_pub']   = wp_insert_post( array( 'post_title' => 'GSC post', 'post_status' => 'publish', 'post_author' => $sseo_u['author'] ) );
+	$sseo['posts']['gc_draft'] = wp_insert_post( array( 'post_title' => 'GSC draft', 'post_status' => 'draft', 'post_author' => $sseo_u['author'] ) );
+	$sseo_gc_post  = get_post( $sseo['posts']['gc_pub'] );
+	$sseo_gc_draft = get_post( $sseo['posts']['gc_draft'] );
+	sseo_check( 'the address of a post is its own; none while it is not published', get_permalink( $sseo_gc_post ) === Simple_SEO_Search_Console::post_url( $sseo_gc_post ) && '' === Simple_SEO_Search_Console::post_url( $sseo_gc_draft ) );
+	$GLOBALS['sseo_gc_requests'] = array();
+	$sseo_val    = Simple_SEO_Search_Console::post_report( $sseo_gc_post );
+	$sseo_bodies = array_values( array_filter( array_map( static fn( array $request ): array => (array) json_decode( (string) ( $request[1]['body'] ?? '' ), true ), $GLOBALS['sseo_gc_requests'] ) ) );
+	$sseo_filter = array( array( 'filters' => array( array( 'dimension' => 'page', 'operator' => 'equals', 'expression' => get_permalink( $sseo_gc_post ) ) ) ) );
+	sseo_check(
+		'a post: its address exactly, in the last 28 days with data; its totals and top queries',
+		is_array( $sseo_val ) && get_permalink( $sseo_gc_post ) === $sseo_val['url'] && Simple_SEO_Search_Console::window( $sseo_end, 28 ) === $sseo_val['window'] && array( 'clicks' => 7, 'impressions' => 70, 'ctr' => 0.1, 'position' => 5.5 ) === $sseo_val['totals'] && 'запит сторінки' === $sseo_val['queries'][0]['keys'][0]
+		&& 2 === count( $sseo_bodies ) && $sseo_filter === $sseo_bodies[0]['dimensionFilterGroups'] && array( 'page' ) === $sseo_bodies[0]['dimensions'] && 1 === $sseo_bodies[0]['rowLimit'] && $sseo_filter === $sseo_bodies[1]['dimensionFilterGroups'] && array( 'query' ) === $sseo_bodies[1]['dimensions'] && 10 === $sseo_bodies[1]['rowLimit'],
+		array( $sseo_val, $sseo_bodies )
+	);
+	$sseo_html = Simple_SEO_Search_Console::render_post_report( $sseo_gc_post );
+	$sseo_val  = Simple_SEO_Search_Console::post_report( $sseo_gc_draft );
+	sseo_check( 'a post shown: the days, its totals without changes, its queries; a draft has none', str_contains( $sseo_html, 'Google search, ' ) && str_contains( $sseo_html, '<dt>Clicks</dt><dd><strong>7</strong></dd>' ) && ! str_contains( $sseo_html, 'simple-seo-gsc-change' ) && str_contains( $sseo_html, '<td>запит сторінки</td>' ) && is_wp_error( $sseo_val ) && 'simple_seo_gsc_unpublished' === $sseo_val->get_error_code(), $sseo_html );
+
+	sseo_check( 'who sees the data of a post: who sees the data of Search Console and edits the post', Simple_SEO_Search_Console::can_see_post( $sseo['posts']['gc_pub'] ) === false && ( wp_set_current_user( $sseo_u['editor'] ) && Simple_SEO_Search_Console::can_see_post( $sseo['posts']['gc_pub'] ) ) && ( wp_set_current_user( $sseo_u['author'] ) && ! Simple_SEO_Search_Console::can_see_post( $sseo['posts']['gc_pub'] ) ) && ( wp_set_current_user( $sseo_u['subscriber'] ) && ! Simple_SEO_Search_Console::can_see_post( $sseo['posts']['gc_pub'] ) ) && ! Simple_SEO_Search_Console::can_see_post( 999999 ) );
+	update_option( Simple_SEO_Access::OPTION, array( 'reports' => array( 'author' ) ) + Simple_SEO_Access::defaults() );
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_val = Simple_SEO_Search_Console::can_see_post( $sseo['posts']['gc_pub'] ) && ! Simple_SEO_Search_Console::can_see_post( $sseo['posts']['long'] );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	sseo_check( 'an author let see the data sees those of its own posts only', $sseo_val );
+
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_html = Simple_SEO_Search_Console::meta_box_part( $sseo_gc_post );
+	sseo_check( 'the SEO box: a place filled from the REST route after the editor opens', str_contains( $sseo_html, '<div class="simple-seo-gsc" data-simple-seo-gsc="' ) && str_contains( $sseo_html, esc_attr( wp_json_encode( rest_url( 'simple-seo/v1/search-console/post/' . $sseo['posts']['gc_pub'] ) ) ) ) && str_contains( $sseo_html, 'Loading the data of Search Console' ), $sseo_html );
+	$sseo_val = array( Simple_SEO_Search_Console::meta_box_part( $sseo_gc_draft ) );
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_val[] = Simple_SEO_Search_Console::meta_box_part( $sseo_gc_post );
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) );
+	$sseo_val[] = Simple_SEO_Search_Console::meta_box_part( $sseo_gc_post );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) + $sseo_gc_row );
+	sseo_check( 'the SEO box: nothing for a draft, for who does not see the data, or without a key', array( '', '', '' ) === $sseo_val, $sseo_val );
+	ob_start();
+	Simple_SEO_Editor::render_meta_box( $sseo_gc_post );
+	$sseo_html = (string) ob_get_clean();
+	sseo_check( 'the SEO box has it after the analysis', false !== strpos( $sseo_html, 'data-simple-seo-gsc=' ) && strpos( $sseo_html, 'data-simple-seo-analysis=' ) < strpos( $sseo_html, 'data-simple-seo-gsc=' ) );
+
+	$sseo_request  = new WP_REST_Request( 'GET', '/simple-seo/v1/search-console/post/' . $sseo['posts']['gc_pub'] );
+	$sseo_response = rest_do_request( $sseo_request );
+	$sseo_data     = $sseo_response->get_data();
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_response2 = rest_do_request( new WP_REST_Request( 'GET', '/simple-seo/v1/search-console/post/' . $sseo['posts']['gc_pub'] ) );
+	wp_set_current_user( 0 );
+	$sseo_response3 = rest_do_request( new WP_REST_Request( 'GET', '/simple-seo/v1/search-console/post/' . $sseo['posts']['gc_pub'] ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( 'the REST route gives the part of the box; not to who does not see the data, nor to a visitor', 200 === $sseo_response->get_status() && is_array( $sseo_data ) && str_contains( (string) ( $sseo_data['html'] ?? '' ), '<td>запит сторінки</td>' ) && in_array( $sseo_response2->get_status(), array( 401, 403 ), true ) && in_array( $sseo_response3->get_status(), array( 401, 403 ), true ), array( $sseo_response->get_status(), $sseo_response2->get_status(), $sseo_response3->get_status() ) );
+
+	// The page.
+	$_GET['days'] = '7';
+	$sseo_html    = sseo_capture( array( Simple_SEO_Search_Console::class, 'render_page' ) );
+	unset( $_GET['days'] );
+	sseo_check(
+		'the page: the periods, the one chosen current; the property and days; the totals; the queries and the pages',
+		str_contains( $sseo_html, '<h1>Search Console</h1>' ) && str_contains( $sseo_html, 'class="current" aria-current="page">7 days</a>' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Search_Console::page_url( 90 ) ) . '">90 days</a>' ) && str_contains( $sseo_html, '<code>sc-domain:example.com</code>' )
+		&& str_contains( $sseo_html, 'compared with the 7 days before' ) && str_contains( $sseo_html, '<dt>Clicks</dt><dd><strong>70</strong> <span class="simple-seo-gsc-change' ) && str_contains( $sseo_html, 'Top queries' ) && str_contains( $sseo_html, '<td>simple seo</td>' ) && str_contains( $sseo_html, '>/сторінка/?a=1</a>' ),
+		$sseo_html
+	);
+	sseo_check( 'the address of the page: the period unless it is the default one', admin_url( 'admin.php?page=simple-seo-search-console' ) === Simple_SEO_Search_Console::page_url() && admin_url( 'admin.php?page=simple-seo-search-console&days=7' ) === Simple_SEO_Search_Console::page_url( 7 ) );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'https://www.example.com/' ) + $sseo_gc_row );
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok ): array {
+		return Simple_SEO_Search_Console::TOKEN_URL === $url ? $sseo_gc_token_ok() : $sseo_gc_reply( 500, array( 'error' => array( 'message' => 'denied <b>x</b>' ) ) );
+	};
+	$sseo_html = sseo_capture( array( Simple_SEO_Search_Console::class, 'render_page' ) );
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_html2 = sseo_capture( array( Simple_SEO_Search_Console::class, 'render_page' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) );
+	$sseo_html3 = sseo_capture( array( Simple_SEO_Search_Console::class, 'render_page' ) );
+	sseo_check(
+		"the page: an error with what to do and the way to the settings for whoever changes them; not connected: who connects it",
+		str_contains( $sseo_html, 'notice-error' ) && str_contains( $sseo_html, 'Search Console answered 500: denied &lt;b&gt;x&lt;/b&gt;' ) && ! str_contains( $sseo_html, '<b>x</b>' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Admin::url( 'search-console' ) ) ) && ! str_contains( $sseo_html2, esc_url( Simple_SEO_Admin::url( 'search-console' ) ) ) && str_contains( $sseo_html2, 'notice-error' )
+		&& str_contains( $sseo_html3, 'is not connected to Google Search Console yet' ) && ! str_contains( $sseo_html3, 'notice-error' ),
+		$sseo_html
+	);
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_gc_die = static fn(): callable => static function (): void {
+		throw new RuntimeException( 'wp_die' );
+	};
+	add_filter( 'wp_die_handler', $sseo_gc_die, 99 );
+	try {
+		sseo_capture( array( Simple_SEO_Search_Console::class, 'render_page' ) );
+		$sseo_val = 'shown';
+	} catch ( RuntimeException $sseo_error ) {
+		$sseo_val = $sseo_error->getMessage();
+	}
+	remove_filter( 'wp_die_handler', $sseo_gc_die, 99 );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( 'the page: not for whoever does not see the data', 'wp_die' === $sseo_val, $sseo_val );
+
+	$sseo_saved_menu = array( $GLOBALS['menu'] ?? null, $GLOBALS['submenu'] ?? null );
+	$GLOBALS['menu']    = array();
+	$GLOBALS['submenu'] = array();
+	Simple_SEO_Admin::add_menu();
+	Simple_SEO_Bulk::add_menu();
+	Simple_SEO_Search_Console::add_menu();
+	$sseo_val = array_column( $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ] ?? array(), 2 );
+	$sseo_val2 = $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ][2] ?? array();
+	[ $GLOBALS['menu'], $GLOBALS['submenu'] ] = $sseo_saved_menu;
+	sseo_check( 'the menu: Search Console after the bulk editing, for who sees the data', array( Simple_SEO_Admin::PAGE, Simple_SEO_Bulk::PAGE, Simple_SEO_Search_Console::PAGE ) === $sseo_val && Simple_SEO_Access::CAP_REPORTS === ( $sseo_val2[1] ?? '' ) && 'Search Console' === ( $sseo_val2[0] ?? '' ) && '' !== Simple_SEO_Search_Console::hook(), $sseo_val );
+	set_current_screen( 'dashboard' );
+	wp_dequeue_style( 'simple-seo-admin' );
+	wp_dequeue_script( 'simple-seo-admin' );
+	Simple_SEO_Admin::enqueue( Simple_SEO_Search_Console::hook() );
+	sseo_check( 'the page has the styles of Simple SEO, and no script', wp_style_is( 'simple-seo-admin', 'enqueued' ) && ! wp_script_is( 'simple-seo-admin', 'enqueued' ) );
+	wp_dequeue_style( 'simple-seo-admin' );
+	unset( $GLOBALS['current_screen'] );
+
+	// The tab.
+	$sseo_gc_answer = $sseo_gc_saved_answer;
+	Simple_SEO_Search_Console::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	$_GET['tab'] = 'search-console';
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	$sseo_html_none = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	update_option( Simple_SEO_Search_Console::OPTION, $sseo_gc_row );
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok ): array {
+		if ( Simple_SEO_Search_Console::TOKEN_URL === $url ) {
+			return $sseo_gc_token_ok();
+		}
+
+		return $sseo_gc_reply(
+			200,
+			array(
+				'siteEntry' => array(
+					array(
+						'siteUrl'         => 'sc-domain:example.com',
+						'permissionLevel' => 'siteRestrictedUser',
+					),
+					array(
+						'siteUrl'         => 'https://shop.example.net/',
+						'permissionLevel' => 'siteOwner',
+					),
+				),
+			)
+		);
+	};
+	// The kept lists of properties, so the tab asks Google again.
+	$sseo_gc_forget_sites = static function (): void {
+		foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient\\_simple\\_seo\\_gsc\\_sites\\_%'" ) as $sseo_name ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			delete_transient( substr( (string) $sseo_name, strlen( '_transient_' ) ) );
+		}
+	};
+	$sseo_gc_forget_sites();
+	add_filter( 'pre_option_home', $sseo_home );
+	$sseo_html = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	remove_filter( 'pre_option_home', $sseo_home );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'https://old.example.org/' ) + $sseo_gc_row );
+	$sseo_html2 = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	$sseo_gc_answer = static function ( string $url, array $args ) use ( $sseo_gc_reply, $sseo_gc_token_ok ): array {
+		return Simple_SEO_Search_Console::TOKEN_URL === $url ? $sseo_gc_token_ok() : $sseo_gc_reply( 200, array() );
+	};
+	update_option( Simple_SEO_Search_Console::OPTION, $sseo_gc_row );
+	$sseo_gc_forget_sites();
+	$sseo_html3 = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	$sseo_n     = count( $GLOBALS['sseo_gc_requests'] );
+	Simple_SEO_Search_Console::sites();
+	sseo_check( 'an empty list of properties is not kept: the account is about to be added', $sseo_n + 1 === count( $GLOBALS['sseo_gc_requests'] ) );
+	unset( $_GET['tab'] );
+	sseo_check( 'the Search Console tab sits after Integrations and before Access', strpos( $sseo_html, '>Integrations<' ) < strpos( $sseo_html, '>Search Console<' ) && strpos( $sseo_html, '>Search Console<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check(
+		'the tab without a key: not connected, an empty field for the key, no property, the steps',
+		str_contains( $sseo_html_none, 'Not connected.' ) && str_contains( $sseo_html_none, 'name="simple_seo_search_console[json]"' ) && ! str_contains( $sseo_html_none, '[forget]' ) && ! str_contains( $sseo_html_none, '[property]' ) && str_contains( $sseo_html_none, 'How to connect' ) && str_contains( $sseo_html_none, 'https://console.cloud.google.com/' ),
+		$sseo_html_none
+	);
+	sseo_check(
+		'the tab with a key: the account and project; the key never shown; the box to remove it with its 0; the properties, that of the site found by itself',
+		str_contains( $sseo_html, 'Connected as <code>' . $sseo_gc_email . '</code>, project <code>sseo-test</code>.' ) && preg_match( '#<textarea[^>]*name="simple_seo_search_console\[json\]"[^>]*></textarea>#', $sseo_html )
+		&& ! str_contains( $sseo_html, 'PRIVATE KEY' ) && ! str_contains( $sseo_html, $sseo_gc_row['key']['secret'] ) && str_contains( $sseo_html, 'name="simple_seo_search_console[forget]" value="0"' ) && str_contains( $sseo_html, 'name="simple_seo_search_console[forget]" value="1"' )
+		&& str_contains( $sseo_html, 'The property of this site: example.com (domain)' ) && str_contains( $sseo_html, '<option value="https://shop.example.net/">https://shop.example.net/</option>' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>' ),
+		$sseo_html
+	);
+	sseo_check( 'the tab: a property chosen that the account no longer sees stays chosen', str_contains( $sseo_html2, '<option value="https://old.example.org/" selected=\'selected\'>https://old.example.org/</option>' ) && str_contains( $sseo_html2, 'The property of this site (not found)' ), $sseo_html2 );
+	sseo_check( 'the tab: an account that sees no property yet is told to whom to add it, and has no list', str_contains( $sseo_html3, 'The service account sees no property yet' ) && str_contains( $sseo_html3, '<code>' . $sseo_gc_email . '</code> as a user of the property' ) && ! str_contains( $sseo_html3, '[property]' ), $sseo_html3 );
+	sseo_check( 'the tab saves its row', 'simple-seo-search-console' === ( get_registered_settings()[ Simple_SEO_Search_Console::OPTION ]['group'] ?? '' ) );
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		Simple_SEO_WP_Loc::flush();
+		$sseo_codes = array_keys( Simple_SEO_WP_Loc::languages() );
+		$sseo_d     = Simple_SEO_WP_Loc::default_language();
+		$sseo_o     = (string) current( array_diff( $sseo_codes, array( $sseo_d ) ) );
+		$sseo['posts']['gc_other'] = wp_insert_post( array( 'post_title' => 'GSC other', 'post_name' => 'gsc-other', 'post_status' => 'publish' ) );
+		do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo['posts']['gc_other'], 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_o, 'source_language_code' => null ) );
+		clean_post_cache( $sseo['posts']['gc_other'] );
+		$sseo_other_home = trailingslashit( (string) apply_filters( 'wpml_home_url', '', $sseo_o ) );
+		$sseo_val        = Simple_SEO_Search_Console::post_url( get_post( $sseo['posts']['gc_other'] ) );
+		sseo_check( 'wp-loc: the address of a post in another language is under its home', str_starts_with( $sseo_val, $sseo_other_home ) && str_ends_with( $sseo_val, '/gsc-other/' ) && $sseo_other_home !== trailingslashit( home_url() ), array( $sseo_val, $sseo_other_home ) );
+		sseo_check( 'wp-loc: the language of an address, the longest home first', $sseo_o === Simple_SEO_Search_Console::language_of( $sseo_val ) && $sseo_d === Simple_SEO_Search_Console::language_of( home_url( '/some-page/' ) ) && '' === Simple_SEO_Search_Console::language_of( 'https://other.example/' ) );
+	} else {
+		sseo_check( 'without wp-loc no language of an address', '' === Simple_SEO_Search_Console::language_of( home_url( '/some-page/' ) ) );
+	}
+
+	remove_filter( 'pre_http_request', $sseo_gc_fake, 10 );
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	delete_transient( Simple_SEO_Search_Console::CACHE . 'token' );
+	foreach ( (array) $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient\\_simple\\_seo\\_gsc\\_%'" ) as $sseo_name ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		delete_transient( substr( (string) $sseo_name, strlen( '_transient_' ) ) );
+	}
+	Simple_SEO_Settings::flush();
+	wp_set_current_user( 0 );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );

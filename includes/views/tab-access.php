@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<legend class="screen-reader-text"><?php echo esc_html( $simple_seo_row['label'] ); ?></legend>
 					<?php
 					foreach ( $roles as $simple_seo_role => $simple_seo_role_name ) :
-						$simple_seo_locked  = 'settings' === $simple_seo_key && 'administrator' === $simple_seo_role;
+						$simple_seo_locked  = in_array( $simple_seo_key, array( 'settings', 'reports' ), true ) && 'administrator' === $simple_seo_role;
 						$simple_seo_checked = $simple_seo_locked || in_array( $simple_seo_role, (array) ( $access[ $simple_seo_key ] ?? array() ), true );
 						?>
 						<label style="display:inline-block;margin:0 1.5em .5em 0">

@@ -544,6 +544,44 @@
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-analysis]' ), initAnalysis );
 
 	/*
+	 * Search Console in the SEO box (Simple_SEO_Search_Console): the data of the post come after the
+	 * editor has opened, so Google's answer never holds it up. The server sends them escaped.
+	 */
+	function initSearchConsole( root ) {
+		var data;
+		try {
+			data = JSON.parse( root.getAttribute( 'data-simple-seo-gsc' ) );
+		} catch ( error ) {
+			return;
+		}
+
+		var body = root.querySelector( '.simple-seo-gsc-body' );
+		// _locale=user counts only for a request that asks for JSON: the numbers and dates come in the user's language.
+		window.fetch( data.url + ( -1 === data.url.indexOf( '?' ) ? '?' : '&' ) + '_locale=user', {
+			credentials: 'same-origin',
+			headers: { Accept: 'application/json', 'X-WP-Nonce': data.nonce }
+		} ).then( function ( response ) {
+			if ( ! response.ok ) {
+				throw new Error( String( response.status ) );
+			}
+			return response.json();
+		} ).then( function ( result ) {
+			if ( 'string' !== typeof result.html ) {
+				throw new Error( 'html' );
+			}
+			body.innerHTML = result.html;
+		} ).catch( function () {
+			body.textContent = '';
+			var message = document.createElement( 'p' );
+			message.className   = 'simple-seo-gsc-error';
+			message.textContent = data.failed;
+			body.appendChild( message );
+		} );
+	}
+
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-gsc]' ), initSearchConsole );
+
+	/*
 	 * Bulk editing (Simple_SEO_Bulk): the rows changed are saved together through the REST route,
 	 * without reloading the page; each row then shows what the page has now.
 	 */

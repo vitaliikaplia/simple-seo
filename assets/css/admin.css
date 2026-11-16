@@ -286,3 +286,124 @@
 .simple-seo-schema-types code {
 	word-break: break-all;
 }
+
+/* Search Console: the totals of a period, how each changed, the tables of queries and pages; in the
+   SEO box, the totals and the queries of the post. */
+.simple-seo-gsc-totals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 1em 0;
+}
+
+.simple-seo-gsc-totals > div {
+	flex: 1 1 140px;
+	padding: 10px 14px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+}
+
+.simple-seo-gsc-totals dt {
+	color: #50575e;
+}
+
+.simple-seo-gsc-totals dd {
+	margin: 4px 0 0;
+	font-size: 20px;
+	line-height: 1.4;
+}
+
+.simple-seo-gsc-change {
+	font-size: 13px;
+	white-space: nowrap;
+	color: #50575e;
+}
+
+.simple-seo-gsc-change.is-good {
+	color: #007017;
+}
+
+.simple-seo-gsc-change.is-bad {
+	color: #b32d2e;
+}
+
+.simple-seo-gsc-columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+	gap: 0 24px;
+}
+
+/* A long address breaks anywhere; WordPress gives links break-word, which does not narrow a column. */
+.simple-seo-gsc-table td a {
+	overflow-wrap: anywhere;
+}
+
+.simple-seo-gsc-table .num {
+	width: 5.5em;
+	text-align: right;
+	white-space: nowrap;
+}
+
+.simple-seo-gsc {
+	max-width: 760px;
+	margin: 1.5em 0 0;
+	padding-top: 1em;
+	border-top: 1px solid #dcdcde;
+}
+
+.simple-seo-gsc h4 {
+	margin: 0 0 .5em;
+}
+
+.simple-seo-gsc .simple-seo-gsc-totals dd {
+	font-size: 16px;
+}
+
+.simple-seo-gsc-error {
+	color: #b32d2e;
+}
+
+/* On a phone a row of queries or pages is a block: the query or page, then the numbers, each
+   named, side by side. */
+@media screen and (max-width: 782px) {
+	.simple-seo-gsc-table thead {
+		display: none;
+	}
+
+	.simple-seo-gsc-table,
+	.simple-seo-gsc-table tbody {
+		display: block;
+		width: auto;
+	}
+
+	.simple-seo-gsc-table tr {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 4px 8px;
+		padding: 10px 12px;
+	}
+
+	.simple-seo-gsc-table td,
+	.simple-seo-gsc-table .num {
+		display: block;
+		width: auto;
+		padding: 0;
+		text-align: left;
+	}
+
+	.simple-seo-gsc-table td:first-child,
+	.simple-seo-gsc-table .simple-seo-gsc-language {
+		grid-column: 1 / -1;
+	}
+
+	.simple-seo-gsc-table .simple-seo-gsc-language {
+		color: #50575e;
+	}
+
+	.simple-seo-gsc-table .num::before {
+		content: attr(data-label);
+		display: block;
+		color: #50575e;
+		font-size: 12px;
+	}
+}

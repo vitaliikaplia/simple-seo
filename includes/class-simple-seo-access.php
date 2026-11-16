@@ -23,11 +23,18 @@ final class Simple_SEO_Access {
 	/** Edit the fields that change indexing: robots, canonical and the like. */
 	public const CAP_ADVANCED = 'simple_seo_edit_advanced';
 
+	/** See the data of Google Search Console: its page and the part of the SEO box. */
+	public const CAP_REPORTS = 'simple_seo_view_reports';
+
+	/** What users who can manage_options always have; administrators always keep them in the setting. */
+	private const ALWAYS = array( self::CAP_SETTINGS, self::CAP_REPORTS );
+
 	/** Option key => capability. */
 	private const KEYS = array(
 		'settings' => self::CAP_SETTINGS,
 		'fields'   => self::CAP_FIELDS,
 		'advanced' => self::CAP_ADVANCED,
+		'reports'  => self::CAP_REPORTS,
 	);
 
 	public static function init(): void {
@@ -41,6 +48,7 @@ final class Simple_SEO_Access {
 			'settings' => array( 'administrator' ),
 			'fields'   => array( 'administrator', 'editor', 'author', 'contributor' ),
 			'advanced' => array( 'administrator', 'editor' ),
+			'reports'  => array( 'administrator', 'editor' ),
 		);
 	}
 
@@ -71,8 +79,9 @@ final class Simple_SEO_Access {
 		foreach ( $asked as $cap ) {
 			$key = (string) array_search( $cap, self::KEYS, true );
 
-			if ( self::CAP_SETTINGS === $cap && ! empty( $allcaps['manage_options'] ) ) {
-				// Whoever can manage the site can never be locked out of the plugin settings.
+			if ( in_array( $cap, self::ALWAYS, true ) && ! empty( $allcaps['manage_options'] ) ) {
+				// Whoever can manage the site can never be locked out of the plugin settings, nor
+				// lose sight of how the site does in search.
 				$allcaps[ $cap ] = true;
 				continue;
 			}
@@ -101,8 +110,10 @@ final class Simple_SEO_Access {
 			$clean[ $key ] = array_values( array_intersect( $existing, $roles ) );
 		}
 
-		if ( in_array( 'administrator', $existing, true ) && ! in_array( 'administrator', $clean['settings'], true ) ) {
-			array_unshift( $clean['settings'], 'administrator' );
+		foreach ( array( 'settings', 'reports' ) as $key ) {
+			if ( in_array( 'administrator', $existing, true ) && ! in_array( 'administrator', $clean[ $key ], true ) ) {
+				array_unshift( $clean[ $key ], 'administrator' );
+			}
 		}
 
 		return $clean;
@@ -124,6 +135,10 @@ final class Simple_SEO_Access {
 			'advanced' => array(
 				'label' => __( 'Edit indexing fields', 'simple-seo' ),
 				'help'  => __( 'Fields that decide whether and how search engines index a page: robots, canonical address. A wrong value can take a page out of search.', 'simple-seo' ),
+			),
+			'reports'  => array(
+				'label' => __( 'See Search Console data', 'simple-seo' ),
+				'help'  => __( 'The clicks, impressions and queries of Google Search Console: on its page in the SEO menu, and in the SEO box of the posts the user can edit. Administrators always can.', 'simple-seo' ),
 			),
 		);
 

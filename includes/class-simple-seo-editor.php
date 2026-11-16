@@ -66,6 +66,8 @@ final class Simple_SEO_Editor {
 		}
 		// The checks of the content, under the keyphrases they look for.
 		echo Simple_SEO_Analysis::render( $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+		// How the page does in Google search, loaded after the editor.
+		echo Simple_SEO_Search_Console::meta_box_part( $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 		echo '</div>';
 	}
 
