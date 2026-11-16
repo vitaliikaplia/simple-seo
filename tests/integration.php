@@ -9586,6 +9586,10 @@ try {
 	add_filter( 'simple_seo_audit_max_pages', '__return_zero' );
 	$sseo_val = Simple_SEO_Audit::max_pages();
 	remove_filter( 'simple_seo_audit_max_pages', '__return_zero' );
+	$sseo_db->query( "ALTER TABLE {$sseo_table} DROP COLUMN orphan" );
+	update_option( Simple_SEO_Audit::DB_OPTION, '1', false );
+	Simple_SEO_Audit::install();
+	sseo_check( 'a table of the first version gets the column of the pages no other page links to', (bool) $sseo_db->get_var( "SHOW COLUMNS FROM {$sseo_table} LIKE 'orphan'" ) && '2' === get_option( Simple_SEO_Audit::DB_OPTION ) );
 	sseo_check( 'the hooks: the next step a task of WP-Cron; at most 2000 pages, at least one', 10 === has_action( Simple_SEO_Audit::EVENT, array( Simple_SEO_Audit::class, 'step' ) ) && 2000 === Simple_SEO_Audit::max_pages() && 1 === $sseo_val );
 	sseo_check(
 		'the address of the page: a problem of the report and a page number, nothing else',
@@ -9796,8 +9800,8 @@ try {
 	sseo_check(
 		'the report: the pages with a problem in the order of the sitemap, each with its problems',
 		5 === $sseo_val['total'] && array( 'https://audit.example/a/', 'https://audit.example/b/', 'https://audit.example/c/', 'https://audit.example/moved/', 'https://audit.example/missing/' ) === array_keys( $sseo_rows )
-			&& array( 'same_title', 'same_description', 'many_h1', 'images_alt' ) === $sseo_rows['https://audit.example/a/']['issues'] && array( 'same_title', 'same_description', 'no_h1', 'noindex' ) === $sseo_rows['https://audit.example/b/']['issues']
-			&& array( 'no_title', 'no_description', 'canonical' ) === $sseo_rows['https://audit.example/c/']['issues'] && array( 'failed' ) === $sseo_rows['https://audit.example/moved/']['issues'] && array( 'failed' ) === $sseo_rows['https://audit.example/missing/']['issues']
+			&& array( 'same_title', 'same_description', 'many_h1', 'images_alt', 'orphan' ) === $sseo_rows['https://audit.example/a/']['issues'] && array( 'same_title', 'same_description', 'no_h1', 'noindex' ) === $sseo_rows['https://audit.example/b/']['issues']
+			&& array( 'no_title', 'no_description', 'canonical', 'orphan' ) === $sseo_rows['https://audit.example/c/']['issues'] && array( 'failed' ) === $sseo_rows['https://audit.example/moved/']['issues'] && array( 'failed' ) === $sseo_rows['https://audit.example/missing/']['issues']
 			&& 2 === $sseo_rows['https://audit.example/a/']['same_title'] && array( 'A', 'A2' ) === $sseo_rows['https://audit.example/a/']['h1'] && array( 'https://audit.example/a.jpg' ) === $sseo_rows['https://audit.example/a/']['images'] && 'https://audit.example/new/' === $sseo_rows['https://audit.example/moved/']['error'] && 302 === $sseo_rows['https://audit.example/moved/']['code'],
 		$sseo_val
 	);
@@ -9969,6 +9973,41 @@ try {
 	Simple_SEO_Audit::start();
 	Simple_SEO_Audit::step();
 	sseo_check( 'pages whose only problem is a title they share are pages with a problem', 2 === Simple_SEO_Audit::count( 'problems' ) && 2 === Simple_SEO_Audit::rows()['total'] && 2 === Simple_SEO_Audit::counts()['same_title'] );
+
+	// The pages no other page links to.
+	$sseo_au_list    = array( 'https://audit.example/m1/', 'https://audit.example/m2/', 'https://audit.example/m3/', 'https://audit.example/m4/' );
+	$sseo_au_answers = array(
+		'https://audit.example/m1/' => $sseo_au_ok( $sseo_au_html( '<title>M1</title><meta name="description" content="M1.">', '<h1>M1</h1><a href="/m1/">me</a><a href="https://audit.example/m2">m2</a>' ) ),
+		'https://audit.example/m2/' => $sseo_au_ok( $sseo_au_html( '<title>M2</title><meta name="description" content="M2.">', '<h1>M2</h1>' ) ),
+		'https://audit.example/m3/' => $sseo_au_reply( 404 ),
+		'https://audit.example/m4/' => $sseo_au_ok( $sseo_au_html( '<title>M4</title><meta name="description" content="M4.">', '<h1>M4</h1>' ) ),
+	);
+	Simple_SEO_Audit::start();
+	Simple_SEO_Audit::step();
+	$sseo_vals = array(
+		array_column( Simple_SEO_Audit::rows( 'orphan' )['rows'], 'url' ),
+		Simple_SEO_Audit::count( 'orphan' ),
+		Simple_SEO_Audit::count( 'problems' ),
+		Simple_SEO_Audit::mark_orphans(),
+		Simple_SEO_Audit::rows( 'orphan' )['rows'][0]['issues'] ?? array(),
+		$sseo_au_page( array( 'issue' => 'orphan' ) ),
+		Simple_SEO_Audit::page_url( 'orphan' ),
+	);
+	$sseo_db->query( $sseo_db->prepare( "UPDATE {$sseo_table} SET links = %s WHERE url = 'https://audit.example/m2/'", (string) wp_json_encode( array( 'https://audit.example/m1/' ) ) ) );
+	$sseo_vals[] = Simple_SEO_Audit::mark_orphans();
+	$sseo_vals[] = array_column( Simple_SEO_Audit::rows( 'orphan' )['rows'], 'url' );
+	sseo_check(
+		'the pages no other page links to: a link to itself does not count, an address without its last slash is the same; not a page that did not open; no problem, a page of their own',
+		array( 'https://audit.example/m1/', 'https://audit.example/m4/' ) === $sseo_vals[0] && 2 === $sseo_vals[1] && 1 === $sseo_vals[2] && 2 === $sseo_vals[3] && array( 'orphan' ) === $sseo_vals[4]
+			&& str_contains( $sseo_vals[5], '<strong>No other page links to it <span class="count">(2)</span></strong>' ) && str_contains( $sseo_vals[5], '>/m1/</a>' ) && ! str_contains( $sseo_vals[5], '>/m2/</a>' ) && str_contains( (string) strstr( $sseo_vals[5], '<table' ), 'No other page links to it' )
+			&& admin_url( 'admin.php?page=simple-seo-audit&issue=orphan' ) === $sseo_vals[6] && 1 === $sseo_vals[7] && array( 'https://audit.example/m4/' ) === $sseo_vals[8],
+		$sseo_vals
+	);
+	add_filter( 'simple_seo_audit_max_pages', static fn(): int => 3 );
+	Simple_SEO_Audit::start();
+	Simple_SEO_Audit::step();
+	remove_all_filters( 'simple_seo_audit_max_pages' );
+	sseo_check( 'more pages than the limit, some not read: no page marked as one no page links to', 0 === Simple_SEO_Audit::count( 'orphan' ) && true === Simple_SEO_Audit::run()['capped'] );
 	$sseo_au_list    = array( 'https://audit.example/f/' );
 	$sseo_au_answers = array( 'https://audit.example/f/' => $sseo_au_ok( $sseo_au_html( '<title>F</title><meta name="description" content="F.">', '<h1>F</h1>' ) ) );
 	Simple_SEO_Audit::start();

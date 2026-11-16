@@ -21,7 +21,7 @@ final class Simple_SEO_Audit {
 
 	/** The version of the table made, in a row of its own. */
 	public const DB_OPTION  = 'simple_seo_audit_db';
-	public const DB_VERSION = '1';
+	public const DB_VERSION = '2';
 
 	/** The state of the last run. */
 	public const RUN = 'simple_seo_audit_run';
@@ -58,6 +58,9 @@ final class Simple_SEO_Audit {
 
 	/** The problems the report lists, in its order. */
 	public const ISSUES = array( 'failed', 'no_title', 'same_title', 'no_description', 'same_description', 'no_h1', 'many_h1', 'images_alt', 'canonical', 'noindex' );
+
+	/** What the report shows besides the problems: the pages no other page links to. */
+	public const HINTS = array( 'orphan' );
 
 	private const NONCE = 'simple_seo_audit';
 
@@ -107,6 +110,7 @@ final class Simple_SEO_Audit {
   images text NOT NULL,
   images_missing smallint(5) unsigned NOT NULL DEFAULT 0,
   links mediumtext NOT NULL,
+  orphan tinyint(1) NOT NULL DEFAULT 0,
   checked_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY url_hash (url_hash),
@@ -276,6 +280,10 @@ final class Simple_SEO_Audit {
 			// The pages read: the links on them.
 			if ( 0 === self::count( 'queued' ) ) {
 				if ( ! self::run()['links_queued'] ) {
+					// Not when the sitemap had more pages than were read: those may link to them.
+					if ( ! self::run()['capped'] ) {
+						self::mark_orphans();
+					}
 					$links = Simple_SEO_Links::queue();
 					update_option(
 						self::RUN,
@@ -590,6 +598,44 @@ final class Simple_SEO_Audit {
 		return (string) preg_replace( '/#.*$/s', '', WP_Http::make_absolute_url( $href, $base ) );
 	}
 
+	/**
+	 * Mark the pages that opened and that no other page of the audit links to. A link of a page to
+	 * itself does not count; an address with or without its last slash is the same address.
+	 *
+	 * @return int How many.
+	 */
+	public static function mark_orphans(): int {
+		global $wpdb;
+
+		$table = self::table();
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- the plugin's own table, IDs as integers.
+		$rows   = (array) $wpdb->get_results( "SELECT id, url, code, links FROM {$table} WHERE done = 1", ARRAY_A );
+		$linked = array();
+		foreach ( $rows as $row ) {
+			$self = untrailingslashit( (string) $row['url'] );
+			foreach ( (array) json_decode( (string) $row['links'], true ) as $link ) {
+				$link = untrailingslashit( (string) $link );
+				if ( $link !== $self ) {
+					$linked[ $link ] = true;
+				}
+			}
+		}
+
+		$orphans = array();
+		foreach ( $rows as $row ) {
+			if ( 200 === (int) $row['code'] && ! isset( $linked[ untrailingslashit( (string) $row['url'] ) ] ) ) {
+				$orphans[] = (int) $row['id'];
+			}
+		}
+		$wpdb->query( "UPDATE {$table} SET orphan = 0" );
+		foreach ( array_chunk( $orphans, 500 ) as $chunk ) {
+			$wpdb->query( "UPDATE {$table} SET orphan = 1 WHERE id IN ( " . implode( ', ', array_map( 'intval', $chunk ) ) . ' )' );
+		}
+		// phpcs:enable
+
+		return count( $orphans );
+	}
+
 	/*
 	 * The report.
 	 */
@@ -653,6 +699,8 @@ final class Simple_SEO_Audit {
 				return "{$ok} AND canonical <> '' AND canonical <> url";
 			case 'noindex':
 				return "{$ok} AND noindex = 1";
+			case 'orphan':
+				return "{$ok} AND orphan = 1";
 		}
 
 		// Any problem.
@@ -712,7 +760,7 @@ final class Simple_SEO_Audit {
 		global $wpdb;
 
 		$duplicates = self::duplicates();
-		$issue      = in_array( $issue, self::ISSUES, true ) ? $issue : 'problems';
+		$issue      = in_array( $issue, array_merge( self::ISSUES, self::HINTS ), true ) ? $issue : 'problems';
 		$where      = self::where( $issue, $duplicates );
 		$table      = self::table();
 
@@ -769,6 +817,7 @@ final class Simple_SEO_Audit {
 				'images_alt'       => $page['images_missing'] > 0,
 				'canonical'        => '' !== $page['canonical'] && $page['canonical'] !== $page['url'],
 				'noindex'          => $page['noindex'],
+				'orphan'           => (bool) $row['orphan'],
 			);
 			$issues = array_keys( array_filter( $checks ) );
 		}
@@ -843,7 +892,7 @@ final class Simple_SEO_Audit {
 	/** The address of the page with a problem chosen and a page number. */
 	public static function page_url( string $issue = '', int $paged = 1 ): string {
 		$args = array( 'page' => self::PAGE );
-		if ( in_array( $issue, self::ISSUES, true ) ) {
+		if ( in_array( $issue, array_merge( self::ISSUES, self::HINTS ), true ) ) {
 			$args['issue'] = $issue;
 		}
 		if ( $paged > 1 ) {
@@ -860,14 +909,14 @@ final class Simple_SEO_Audit {
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- navigation and a message only.
 		$issue = isset( $_GET['issue'] ) ? sanitize_key( wp_unslash( $_GET['issue'] ) ) : '';
-		$issue = in_array( $issue, self::ISSUES, true ) ? $issue : '';
+		$issue = in_array( $issue, array_merge( self::ISSUES, self::HINTS ), true ) ? $issue : '';
 		$paged = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
 		$done  = isset( $_GET['simple-seo-done'] ) ? sanitize_key( wp_unslash( $_GET['simple-seo-done'] ) ) : '';
 		// phpcs:enable
 
 		$run         = self::run();
 		$progress    = self::progress();
-		$counts      = self::counts();
+		$counts      = self::counts() + array( 'orphan' => self::count( 'orphan' ) );
 		$problems    = self::count( 'problems' );
 		$found       = self::rows( $issue, $paged );
 		$explanation = self::explanation();

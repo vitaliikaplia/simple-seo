@@ -36,6 +36,7 @@ $simple_seo_labels = array(
 	'images_alt'       => __( 'Images without alt text', 'simple-seo' ),
 	'canonical'        => __( 'The canonical address is another one', 'simple-seo' ),
 	'noindex'          => __( 'Hidden from search results (noindex)', 'simple-seo' ),
+	'orphan'           => __( 'No other page links to it', 'simple-seo' ),
 );
 $simple_seo_notes  = array(
 	'started' => __( 'The audit has started. It goes on in the background; this page shows how far it is.', 'simple-seo' ),
