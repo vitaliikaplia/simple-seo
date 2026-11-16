@@ -7,7 +7,8 @@
  *
  * A run goes in the background, a few pages a step: a task of WP-Cron takes the next step while
  * there is work left, and the open page of the audit takes steps too, so a site without WP-Cron
- * gets its audit as well. One step at a time: a lock in the options table.
+ * gets its audit as well. One step at a time: a lock in the options table. Once the pages are
+ * read, the same run checks the links on them (Simple_SEO_Links).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -123,20 +124,24 @@ final class Simple_SEO_Audit {
 
 	/**
 	 * The state of the last run: idle (never run), running, done or stopped; when it started and
-	 * finished, how many pages it has, whether the sitemap had more than MAX_PAGES.
+	 * finished, how many pages it has, whether the sitemap had more than max_pages(); how many links
+	 * it checks once its pages are read, and whether the pages had more than max_links().
 	 *
-	 * @return array{state: string, started: int, finished: int, total: int, capped: bool}
+	 * @return array{state: string, started: int, finished: int, total: int, capped: bool, links: int, links_queued: bool, links_capped: bool}
 	 */
 	public static function run(): array {
 		$run = get_option( self::RUN );
 		$run = is_array( $run ) ? $run : array();
 
 		return array(
-			'state'    => in_array( $run['state'] ?? '', array( 'running', 'done', 'stopped' ), true ) ? (string) $run['state'] : 'idle',
-			'started'  => (int) ( $run['started'] ?? 0 ),
-			'finished' => (int) ( $run['finished'] ?? 0 ),
-			'total'    => (int) ( $run['total'] ?? 0 ),
-			'capped'   => ! empty( $run['capped'] ),
+			'state'        => in_array( $run['state'] ?? '', array( 'running', 'done', 'stopped' ), true ) ? (string) $run['state'] : 'idle',
+			'started'      => (int) ( $run['started'] ?? 0 ),
+			'finished'     => (int) ( $run['finished'] ?? 0 ),
+			'total'        => (int) ( $run['total'] ?? 0 ),
+			'capped'       => ! empty( $run['capped'] ),
+			'links'        => (int) ( $run['links'] ?? 0 ),
+			'links_queued' => ! empty( $run['links_queued'] ),
+			'links_capped' => ! empty( $run['links_capped'] ),
 		);
 	}
 
@@ -193,6 +198,7 @@ final class Simple_SEO_Audit {
 
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- the plugin's own table, rows prepared one by one.
 		$wpdb->query( "DELETE FROM {$table}" );
+		Simple_SEO_Links::reset();
 		foreach ( array_chunk( $urls, 200 ) as $chunk ) {
 			$values = array();
 			foreach ( $chunk as $url ) {
@@ -206,11 +212,14 @@ final class Simple_SEO_Audit {
 		update_option(
 			self::RUN,
 			array(
-				'state'    => $total ? 'running' : 'done',
-				'started'  => time(),
-				'finished' => $total ? 0 : time(),
-				'total'    => $total,
-				'capped'   => $capped,
+				'state'        => $total ? 'running' : 'done',
+				'started'      => time(),
+				'finished'     => $total ? 0 : time(),
+				'total'        => $total,
+				'capped'       => $capped,
+				'links'        => 0,
+				'links_queued' => false,
+				'links_capped' => false,
 			),
 			false
 		);
@@ -233,15 +242,17 @@ final class Simple_SEO_Audit {
 		}
 
 		$wpdb->query( 'DELETE FROM ' . self::table() . ' WHERE done = 0' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- the plugin's own table.
+		Simple_SEO_Links::stop();
 		update_option( self::RUN, array_merge( $run, array( 'state' => 'stopped', 'finished' => time() ) ), false );
 		wp_clear_scheduled_hook( self::EVENT );
 	}
 
 	/**
-	 * Check the next pages of the queue for up to $budget seconds; the next step is scheduled while
-	 * pages are left, and the run is done when none are.
+	 * Check the next pages of the queue for up to $budget seconds, then the links on them; the next
+	 * step is scheduled while pages or links are left, and the run is done when none are (the links
+	 * that did not answer wait for their check a day later).
 	 *
-	 * @return array{state: string, total: int, done: int}
+	 * @return array{state: string, total: int, done: int, links_total: int, links_done: int}
 	 */
 	public static function step( int $budget = self::BUDGET ): array {
 		global $wpdb;
@@ -261,12 +272,33 @@ final class Simple_SEO_Audit {
 					}
 				}
 			} while ( $rows );
+
+			// The pages read: the links on them.
+			if ( 0 === self::count( 'queued' ) ) {
+				if ( ! self::run()['links_queued'] ) {
+					$links = Simple_SEO_Links::queue();
+					update_option(
+						self::RUN,
+						array_merge(
+							self::run(),
+							array(
+								'links'        => $links['total'],
+								'links_queued' => true,
+								'links_capped' => $links['capped'],
+							)
+						),
+						false
+					);
+				}
+				Simple_SEO_Links::step( $start + $budget );
+			}
 		} finally {
 			self::unlock();
 		}
 
-		if ( 0 === self::count( 'queued' ) ) {
+		if ( 0 === self::count( 'queued' ) && self::run()['links_queued'] && 0 === Simple_SEO_Links::count( 'queued' ) ) {
 			update_option( self::RUN, array_merge( self::run(), array( 'state' => 'done', 'finished' => time() ) ), false );
+			Simple_SEO_Links::schedule_retry();
 		} else {
 			self::schedule();
 		}
@@ -274,14 +306,16 @@ final class Simple_SEO_Audit {
 		return self::progress();
 	}
 
-	/** @return array{state: string, total: int, done: int} */
+	/** @return array{state: string, total: int, done: int, links_total: int, links_done: int} */
 	public static function progress(): array {
 		$run = self::run();
 
 		return array(
-			'state' => $run['state'],
-			'total' => $run['total'],
-			'done'  => self::count( 'done' ),
+			'state'       => $run['state'],
+			'total'       => $run['total'],
+			'done'        => self::count( 'done' ),
+			'links_total' => $run['links'],
+			'links_done'  => $run['links_queued'] ? Simple_SEO_Links::count( 'checked' ) : 0,
 		);
 	}
 
@@ -292,10 +326,11 @@ final class Simple_SEO_Audit {
 	}
 
 	/**
-	 * Take the lock of the steps. add_option() is no lock: it inserts or updates. A lock older than
-	 * a step can last is one of a step that died, and is taken over.
+	 * Take the lock of the steps (and of the checks of links a day later). add_option() is no lock:
+	 * it inserts or updates. A lock older than a step can last is one of a step that died, and is
+	 * taken over.
 	 */
-	private static function lock(): bool {
+	public static function lock(): bool {
 		global $wpdb;
 
 		$now = time();
@@ -839,6 +874,15 @@ final class Simple_SEO_Audit {
 		$hidden      = '0' === (string) get_option( 'blog_public' );
 		$nonce       = self::NONCE;
 
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- navigation only.
+		$link_view   = isset( $_GET['links'] ) ? sanitize_key( wp_unslash( $_GET['links'] ) ) : '';
+		$link_view   = in_array( $link_view, Simple_SEO_Links::VIEWS, true ) ? $link_view : 'broken';
+		$link_paged  = max( 1, (int) ( $_GET['lpaged'] ?? 1 ) );
+		// phpcs:enable
+		$link_counts = Simple_SEO_Links::counts();
+		$link_found  = Simple_SEO_Links::rows( $link_view, $link_paged );
+		$link_total  = Simple_SEO_Links::count( 'checked' );
+
 		require SIMPLE_SEO_DIR . 'includes/views/audit.php';
 	}
 
@@ -879,11 +923,22 @@ final class Simple_SEO_Audit {
 	}
 
 	/**
-	 * "Checked 3 of 10 pages."
+	 * "Checked 3 of 10 pages.", and once the pages are read, the links too.
 	 *
-	 * @param array{state: string, total: int, done: int} $progress
+	 * @param array{state: string, total: int, done: int, links_total?: int, links_done?: int} $progress
 	 */
 	public static function progress_text( array $progress ): string {
+		if ( ! empty( $progress['links_total'] ) ) {
+			return sprintf(
+				/* translators: 1: pages checked, 2: pages of the run, 3: links checked, 4: links of the run. */
+				__( 'Checked %1$s of %2$s pages and %3$s of %4$s links.', 'simple-seo' ),
+				number_format_i18n( $progress['done'] ),
+				number_format_i18n( $progress['total'] ),
+				number_format_i18n( (int) ( $progress['links_done'] ?? 0 ) ),
+				number_format_i18n( (int) $progress['links_total'] )
+			);
+		}
+
 		return sprintf(
 			/* translators: 1: pages checked, 2: pages of the run. */
 			__( 'Checked %1$s of %2$s pages.', 'simple-seo' ),

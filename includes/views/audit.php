@@ -14,6 +14,11 @@
  * @var string                                                                    $explanation Why no page opened.
  * @var bool                                                                      $hidden      Whether the site asks search engines not to index it.
  * @var string                                                                    $nonce       Nonce action of the forms and the steps.
+ * @var string                                                                    $link_view   The view of links chosen: broken, redirects or waiting.
+ * @var int                                                                       $link_paged
+ * @var array<string, int>                                                        $link_counts Links in each view.
+ * @var array{rows: array<int, array<string, mixed>>, total: int}                 $link_found
+ * @var int                                                                       $link_total  Links checked.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -50,13 +55,19 @@ $simple_seo_button = static function ( string $do, string $label, string $class 
 	);
 };
 $simple_seo_pages  = (int) ceil( $found['total'] / Simple_SEO_Audit::PER_PAGE );
+$simple_seo_views  = array(
+	'broken'    => __( 'Broken links', 'simple-seo' ),
+	'redirects' => __( 'Links of this site that redirect', 'simple-seo' ),
+	'waiting'   => __( 'To check again', 'simple-seo' ),
+);
+$simple_seo_path   = static fn( string $url ): string => rawurldecode( (string) preg_replace( '#^https?://[^/]+#i', '', $url ) );
 ?>
 <div class="wrap simple-seo-audit-page">
 	<h1><?php esc_html_e( 'Audit of pages', 'simple-seo' ); ?></h1>
 	<p>
 		<?php
 		/* translators: %s: number of pages. */
-		echo esc_html( sprintf( __( 'The pages of the sitemap of this site, opened as a visitor sees them and read for what search engines read: the title, the meta description, the H1 headings, images without alt text, the canonical address and noindex. Up to %s pages, a few at a time in the background.', 'simple-seo' ), number_format_i18n( Simple_SEO_Audit::max_pages() ) ) );
+		echo esc_html( sprintf( __( 'The pages of the sitemap of this site, opened as a visitor sees them and read for what search engines read: the title, the meta description, the H1 headings, images without alt text, the canonical address and noindex; then the links on them, on this site and elsewhere. Up to %s pages, a few at a time in the background.', 'simple-seo' ), number_format_i18n( Simple_SEO_Audit::max_pages() ) ) );
 		?>
 	</p>
 
@@ -249,6 +260,102 @@ JS
 									'format'  => '',
 									'current' => $paged,
 									'total'   => $simple_seo_pages,
+								)
+							)
+						);
+						?>
+					</div>
+				</div>
+			<?php endif; ?>
+		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ( $link_total > 0 ) : ?>
+		<h2 id="links"><?php esc_html_e( 'Links', 'simple-seo' ); ?></h2>
+		<p>
+			<?php
+			/* translators: %s: number of links. */
+			echo esc_html( sprintf( __( 'The links on the pages checked, on this site and elsewhere: %s checked, each once.', 'simple-seo' ), number_format_i18n( $link_total ) ) );
+			if ( $run['links_capped'] ) {
+				echo ' ';
+				/* translators: %s: number of links. */
+				echo esc_html( sprintf( __( 'The pages link to more addresses: the first %s are checked.', 'simple-seo' ), number_format_i18n( Simple_SEO_Links::max_links() ) ) );
+			}
+			?>
+		</p>
+		<ul class="simple-seo-audit-summary">
+			<?php foreach ( $simple_seo_views as $simple_seo_key => $simple_seo_label ) : ?>
+				<li>
+					<?php if ( $link_view === $simple_seo_key ) : ?>
+						<strong><?php echo esc_html( $simple_seo_label ); ?> <span class="count">(<?php echo esc_html( number_format_i18n( $link_counts[ $simple_seo_key ] ) ); ?>)</span></strong>
+					<?php else : ?>
+						<a href="<?php echo esc_url( Simple_SEO_Links::page_url( $simple_seo_key ) ); ?>"><?php echo esc_html( $simple_seo_label ); ?> <span class="count">(<?php echo esc_html( number_format_i18n( $link_counts[ $simple_seo_key ] ) ); ?>)</span></a>
+					<?php endif; ?>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+
+		<?php if ( ! $link_found['rows'] ) : ?>
+			<p><?php echo esc_html( 'broken' === $link_view ? __( 'No broken link found.', 'simple-seo' ) : ( 'redirects' === $link_view ? __( 'No link of this site redirects.', 'simple-seo' ) : __( 'No link waits for a check.', 'simple-seo' ) ) ); ?></p>
+		<?php else : ?>
+			<table class="widefat striped simple-seo-audit-table simple-seo-links-table">
+				<thead>
+					<tr>
+						<th scope="col"><?php esc_html_e( 'Link', 'simple-seo' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Answer', 'simple-seo' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'On the pages', 'simple-seo' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $link_found['rows'] as $simple_seo_link ) : ?>
+						<tr>
+							<td><a href="<?php echo esc_url( $simple_seo_link['url'] ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $simple_seo_link['internal'] ? $simple_seo_path( $simple_seo_link['url'] ) : rawurldecode( $simple_seo_link['url'] ) ); ?></a></td>
+							<td data-label="<?php esc_attr_e( 'Answer', 'simple-seo' ); ?>">
+								<?php
+								if ( 0 === $simple_seo_link['code'] ) {
+									/* translators: %s: the error of the request. */
+									echo esc_html( sprintf( __( 'No answer: %s', 'simple-seo' ), $simple_seo_link['error'] ) );
+								} elseif ( $simple_seo_link['code'] >= 300 && $simple_seo_link['code'] < 400 && '' !== $simple_seo_link['error'] ) {
+									/* translators: 1: HTTP status code, 2: address. */
+									echo esc_html( sprintf( __( 'Redirects (%1$d) to %2$s', 'simple-seo' ), $simple_seo_link['code'], rawurldecode( $simple_seo_link['error'] ) ) );
+								} else {
+									/* translators: %d: HTTP status code. */
+									echo esc_html( sprintf( __( 'Answers %d', 'simple-seo' ), $simple_seo_link['code'] ) );
+								}
+								if ( $simple_seo_link['waiting'] ) {
+									echo '<br>';
+									/* translators: %s: date and time. */
+									echo esc_html( sprintf( __( 'Checked again on %s.', 'simple-seo' ), $simple_seo_when( $simple_seo_link['next_at'] ) ) );
+								}
+								?>
+							</td>
+							<td data-label="<?php esc_attr_e( 'On the pages', 'simple-seo' ); ?>">
+								<?php
+								foreach ( $simple_seo_link['pages'] as $simple_seo_page ) {
+									printf( '<a href="%1$s" target="_blank" rel="noopener">%2$s</a><br>', esc_url( $simple_seo_page ), esc_html( $simple_seo_path( $simple_seo_page ) ) );
+								}
+								if ( $simple_seo_link['on'] > count( $simple_seo_link['pages'] ) ) {
+									/* translators: %s: number of pages. */
+									echo esc_html( sprintf( __( 'and %s more', 'simple-seo' ), number_format_i18n( $simple_seo_link['on'] - count( $simple_seo_link['pages'] ) ) ) );
+								}
+								?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+			<?php $simple_seo_link_pages = (int) ceil( $link_found['total'] / Simple_SEO_Links::PER_PAGE ); ?>
+			<?php if ( $simple_seo_link_pages > 1 ) : ?>
+				<div class="tablenav bottom">
+					<div class="tablenav-pages">
+						<?php
+						echo wp_kses_post(
+							(string) paginate_links(
+								array(
+									'base'    => str_replace( '999999999', '%#%', Simple_SEO_Links::page_url( $link_view, 999999999 ) ),
+									'format'  => '',
+									'current' => $link_paged,
+									'total'   => $simple_seo_link_pages,
 								)
 							)
 						);

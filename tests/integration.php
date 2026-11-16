@@ -198,6 +198,12 @@ $sseo_saved_audit = array(
 	'rows' => $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Audit::table() ) ) ? $GLOBALS['wpdb']->get_results( 'SELECT * FROM ' . Simple_SEO_Audit::table(), ARRAY_A ) : null,
 );
 
+// The links of the audit as the stand has them: their section and the uninstall replace and drop them.
+$sseo_saved_links = array(
+	'db'   => get_option( Simple_SEO_Links::DB_OPTION ),
+	'rows' => $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Links::table() ) ) ? $GLOBALS['wpdb']->get_results( 'SELECT * FROM ' . Simple_SEO_Links::table(), ARRAY_A ) : null,
+);
+
 // robots.txt, .htaccess and the copy next to it as they were: the Files section changes them.
 require_once ABSPATH . 'wp-admin/includes/file.php';
 $sseo_saved_files = array();
@@ -211,7 +217,7 @@ $sseo_saved_apache = $GLOBALS['is_apache'] ?? false;
 // code under test exits (a served file, or a mutation that makes it serve one), so a broken run
 // never leaves users, posts, options or files behind for the next one.
 $sseo_cleaned = false;
-$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned, $sseo_saved_yoast, $sseo_yoast_options, $sseo_yoast_users, $sseo_saved_404, $sseo_saved_audit ): void {
+$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned, $sseo_saved_yoast, $sseo_yoast_options, $sseo_yoast_users, $sseo_saved_404, $sseo_saved_audit, $sseo_saved_links ): void {
 	if ( $sseo_cleaned ) {
 		return;
 	}
@@ -326,6 +332,18 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	if ( false === $sseo_saved_audit['db'] ) {
 		delete_option( Simple_SEO_Audit::DB_OPTION );
 	}
+	$sseo_db->query( 'DROP TABLE IF EXISTS ' . Simple_SEO_Links::table() );
+	delete_option( Simple_SEO_Links::DB_OPTION );
+	if ( null !== $sseo_saved_links['rows'] ) {
+		Simple_SEO_Links::install();
+		foreach ( $sseo_saved_links['rows'] as $sseo_row ) {
+			$sseo_db->insert( Simple_SEO_Links::table(), $sseo_row );
+		}
+	}
+	if ( false === $sseo_saved_links['db'] ) {
+		delete_option( Simple_SEO_Links::DB_OPTION );
+	}
+	delete_option( Simple_SEO_Links::RECENT );
 	delete_option( Simple_SEO_Audit::RUN );
 	Simple_SEO_Audit::unlock();
 	if ( false !== $sseo_saved_audit['run'] ) {
@@ -9625,7 +9643,7 @@ try {
 	);
 	$sseo_au_ok       = static fn( string $body, array $headers = array() ): array => $sseo_au_reply( 200, $body, $headers + array( 'content-type' => 'text/html; charset=UTF-8' ) );
 	$sseo_au_fake     = static function ( $pre, $args, $url ) use ( &$sseo_au_requests, &$sseo_au_answers, $sseo_au_reply ) {
-		if ( ! str_starts_with( (string) $url, 'https://audit.example/' ) ) {
+		if ( false !== $pre || ! str_starts_with( (string) $url, 'https://audit.example/' ) ) {
 			return $pre;
 		}
 		$sseo_au_requests[] = array( (string) $url, $args );
@@ -9724,13 +9742,13 @@ try {
 	sseo_check(
 		'a run started: the pages in a queue in their order, the report before gone, running, its next step scheduled at once; nothing opened yet',
 		7 === $sseo_vals[0] && 'running' === $sseo_vals[1]['state'] && 7 === $sseo_vals[1]['total'] && false === $sseo_vals[1]['capped'] && abs( $sseo_vals[1]['started'] - time() ) <= 5 && 0 === $sseo_vals[1]['finished']
-			&& $sseo_au_list === $sseo_vals[2] && 7 === $sseo_vals[3] && false !== $sseo_vals[4] && $sseo_vals[4] <= time() && 0 === $sseo_vals[5] && array( 'state' => 'running', 'total' => 7, 'done' => 0 ) === $sseo_vals[6],
+			&& $sseo_au_list === $sseo_vals[2] && 7 === $sseo_vals[3] && false !== $sseo_vals[4] && $sseo_vals[4] <= time() && 0 === $sseo_vals[5] && array( 'state' => 'running', 'total' => 7, 'done' => 0, 'links_total' => 0, 'links_done' => 0 ) === $sseo_vals[6] && 0 === $sseo_vals[1]['links'] && false === $sseo_vals[1]['links_queued'],
 		$sseo_vals
 	);
 	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
 	$sseo_val  = Simple_SEO_Audit::step( 0 );
 	$sseo_vals = array( $sseo_val, wp_next_scheduled( Simple_SEO_Audit::EVENT ), get_option( Simple_SEO_Audit::LOCK ), count( $sseo_au_requests ) );
-	sseo_check( 'a step out of time: one page checked, the next step scheduled, the lock given back', array( 'state' => 'running', 'total' => 7, 'done' => 1 ) === $sseo_vals[0] && false !== $sseo_vals[1] && false === $sseo_vals[2] && 1 === $sseo_vals[3], $sseo_vals );
+	sseo_check( 'a step out of time: one page checked, the next step scheduled, the lock given back', array( 'state' => 'running', 'total' => 7, 'done' => 1, 'links_total' => 0, 'links_done' => 0 ) === $sseo_vals[0] && false !== $sseo_vals[1] && false === $sseo_vals[2] && 1 === $sseo_vals[3], $sseo_vals );
 	$sseo_db->query( $sseo_db->prepare( "INSERT INTO {$sseo_db->options} ( option_name, option_value, autoload ) VALUES ( %s, %s, 'off' )", Simple_SEO_Audit::LOCK, (string) time() ) );
 	$sseo_vals = array( Simple_SEO_Audit::step(), count( $sseo_au_requests ), (string) $sseo_db->get_var( $sseo_db->prepare( "SELECT option_value FROM {$sseo_db->options} WHERE option_name = %s", Simple_SEO_Audit::LOCK ) ) );
 	sseo_check( 'a step while another works: nothing done, the lock of the other left', 1 === $sseo_vals[0]['done'] && 1 === $sseo_vals[1] && '' !== $sseo_vals[2], $sseo_vals );
@@ -9742,7 +9760,7 @@ try {
 	$sseo_vals = array( Simple_SEO_Audit::step(), count( $sseo_au_requests ), get_option( Simple_SEO_Audit::LOCK ), Simple_SEO_Audit::run() );
 	sseo_check(
 		'a lock of a step that died: taken over; the queue done within the time of a step, the run done, the lock given back, no step left scheduled',
-		array( 'state' => 'done', 'total' => 7, 'done' => 7 ) === $sseo_vals[0] && 7 === $sseo_vals[1] && false === $sseo_vals[2] && 'done' === $sseo_vals[3]['state'] && abs( $sseo_vals[3]['finished'] - time() ) <= 5,
+		array( 'state' => 'done', 'total' => 7, 'done' => 7, 'links_total' => 1, 'links_done' => 1 ) === $sseo_vals[0] && 7 === $sseo_vals[1] && false === $sseo_vals[2] && 'done' === $sseo_vals[3]['state'] && abs( $sseo_vals[3]['finished'] - time() ) <= 5,
 		$sseo_vals
 	);
 	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
@@ -9852,7 +9870,7 @@ try {
 	Simple_SEO_Audit::stop();
 	sseo_check(
 		'stopped: the pages not checked leave the queue, those checked stay; no step left; stopping again changes nothing',
-		'stopped' === $sseo_vals[0]['state'] && abs( $sseo_vals[0]['finished'] - time() ) <= 5 && 1 === $sseo_vals[1] && false === $sseo_vals[2] && array( 'state' => 'stopped', 'total' => 7, 'done' => 1 ) === $sseo_vals[3] && $sseo_vals[0] === Simple_SEO_Audit::run(),
+		'stopped' === $sseo_vals[0]['state'] && abs( $sseo_vals[0]['finished'] - time() ) <= 5 && 1 === $sseo_vals[1] && false === $sseo_vals[2] && array( 'state' => 'stopped', 'total' => 7, 'done' => 1, 'links_total' => 0, 'links_done' => 0 ) === $sseo_vals[3] && $sseo_vals[0] === Simple_SEO_Audit::run(),
 		$sseo_vals
 	);
 	$sseo_au_list = array();
@@ -9874,7 +9892,7 @@ try {
 	update_option( Simple_SEO_Audit::RUN, array( 'state' => 'bogus', 'total' => '3' ), false );
 	$sseo_val = Simple_SEO_Audit::run();
 	delete_option( Simple_SEO_Audit::RUN );
-	sseo_check( 'no run yet, or a state of no run: idle', array( 'state' => 'idle', 'started' => 0, 'finished' => 0, 'total' => 3, 'capped' => false ) === $sseo_val && array( 'state' => 'idle', 'started' => 0, 'finished' => 0, 'total' => 0, 'capped' => false ) === Simple_SEO_Audit::run() && 'Checked 2 of 1,234 pages.' === Simple_SEO_Audit::progress_text( array( 'state' => 'running', 'total' => 1234, 'done' => 2 ) ) );
+	sseo_check( 'no run yet, or a state of no run: idle', array( 'state' => 'idle', 'started' => 0, 'finished' => 0, 'total' => 3, 'capped' => false, 'links' => 0, 'links_queued' => false, 'links_capped' => false ) === $sseo_val && array( 'state' => 'idle', 'started' => 0, 'finished' => 0, 'total' => 0, 'capped' => false, 'links' => 0, 'links_queued' => false, 'links_capped' => false ) === Simple_SEO_Audit::run() && 'Checked 2 of 1,234 pages.' === Simple_SEO_Audit::progress_text( array( 'state' => 'running', 'total' => 1234, 'done' => 2 ) ) );
 
 	// The page.
 	wp_set_current_user( $sseo_u['administrator'] );
@@ -10074,7 +10092,7 @@ try {
 	$sseo_val = json_decode( $sseo_vals[0][0], true );
 	sseo_check(
 		'a step from the page: the progress back with its words; no step without the nonce, nor for whoever does not see reports',
-		is_array( $sseo_val ) && true === $sseo_val['success'] && array( 'state' => 'done', 'total' => 7, 'done' => 7, 'text' => 'Checked 7 of 7 pages.' ) === $sseo_val['data']
+		is_array( $sseo_val ) && true === $sseo_val['success'] && array( 'state' => 'done', 'total' => 7, 'done' => 7, 'links_total' => 1, 'links_done' => 1, 'text' => 'Checked 7 of 7 pages and 1 of 1 links.' ) === $sseo_val['data']
 			&& 'wp_die:' === $sseo_vals[1][1] && '' === $sseo_vals[1][0] && str_contains( $sseo_vals[2][0], '"success":false' ) && 'wp_die:' === $sseo_vals[2][1],
 		$sseo_vals
 	);
@@ -10106,6 +10124,299 @@ try {
 	remove_filter( 'simple_seo_audit_pages', $sseo_au_pages );
 	remove_filter( 'pre_http_request', $sseo_au_fake, 10 );
 	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Links of the audit' );
+
+	$sseo_ln_table = Simple_SEO_Links::table();
+	$sseo_ln_has   = static fn(): bool => (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Links::table() ) );
+	$sseo_db->query( "DROP TABLE IF EXISTS {$sseo_ln_table}" );
+	update_option( Simple_SEO_Links::DB_OPTION, Simple_SEO_Links::DB_VERSION, false );
+	Simple_SEO_Links::install();
+	$sseo_vals = array( $sseo_ln_has() );
+	delete_option( Simple_SEO_Links::DB_OPTION );
+	Simple_SEO_Plugin::activate();
+	$sseo_vals[] = $sseo_ln_has();
+	$sseo_vals[] = $sseo_db->get_var( $sseo_db->prepare( 'SELECT autoload FROM ' . $sseo_db->options . ' WHERE option_name = %s', Simple_SEO_Links::DB_OPTION ) );
+	$sseo_vals[] = array_column( (array) $sseo_db->get_results( "SHOW INDEX FROM {$sseo_ln_table}", ARRAY_A ), 'Non_unique', 'Key_name' );
+	add_filter( 'simple_seo_audit_max_links', '__return_zero' );
+	add_filter( 'simple_seo_audit_host_interval', static fn(): float => -3.0 );
+	$sseo_vals[] = array( Simple_SEO_Links::max_links(), Simple_SEO_Links::interval() );
+	remove_all_filters( 'simple_seo_audit_max_links' );
+	remove_all_filters( 'simple_seo_audit_host_interval' );
+	sseo_check(
+		'the table of links: made once for each version of it (activation makes it), the version in a row not autoloaded; one row a link; the check a day later a task of WP-Cron; 5000 links at most, at least one; a second between two requests to one host, none less than nothing',
+		false === $sseo_vals[0] && true === $sseo_vals[1] && ! in_array( $sseo_vals[2], wp_autoload_values_to_autoload(), true ) && array( 'PRIMARY' => '0', 'url_hash' => '0', 'done' => '1' ) == $sseo_vals[3] // phpcs:ignore Universal.Operators.StrictComparisons -- the order of the indexes.
+			&& 10 === has_action( Simple_SEO_Links::RETRY, array( Simple_SEO_Links::class, 'retry' ) ) && 5000 === Simple_SEO_Links::max_links() && 1.0 === Simple_SEO_Links::interval() && array( 1, 0.0 ) === $sseo_vals[4],
+		$sseo_vals
+	);
+
+	// The links of a site: answered here, each request kept with its method and time.
+	$sseo_ln_requests = array();
+	$sseo_ln_answers  = array();
+	$sseo_ln_fake     = static function ( $pre, $args, $url ) use ( &$sseo_ln_requests, &$sseo_ln_answers, $sseo_au_reply ) {
+		$host = (string) wp_parse_url( (string) $url, PHP_URL_HOST );
+		if ( ! in_array( $host, array( 'other.example', 'slow.example' ), true ) && ! ( 'audit.example' === $host && 'HEAD' === ( $args['method'] ?? '' ) ) ) {
+			return $pre;
+		}
+		$sseo_ln_requests[] = array( (string) $url, (string) ( $args['method'] ?? '' ), microtime( true ), $args );
+		$answer             = $sseo_ln_answers[ (string) $url ] ?? $sseo_au_reply( 200 );
+
+		return is_callable( $answer ) ? $answer( (string) ( $args['method'] ?? '' ) ) : $answer;
+	};
+	add_filter( 'pre_http_request', $sseo_ln_fake, 9, 3 );
+	add_filter( 'pre_http_request', $sseo_au_fake, 10, 3 );
+	add_filter( 'simple_seo_audit_pages', $sseo_au_pages );
+	add_filter( 'simple_seo_audit_host_interval', static fn(): float => 0.0 );
+	$sseo_ln_page    = static fn( array $hrefs ): array => $sseo_au_ok( $sseo_au_html( '<title>L</title>', implode( '', array_map( static fn( string $href ): string => '<a href="' . esc_attr( $href ) . '">l</a>', $hrefs ) ) ) );
+	$sseo_au_list    = array( 'https://audit.example/p1/', 'https://audit.example/p2/', 'https://audit.example/p3/' );
+	$sseo_au_answers = array(
+		'https://audit.example/p1/' => $sseo_ln_page( array( '/p2/', '/p3/', '/old/', '/lost/', 'https://other.example/ok', 'https://other.example/gone', 'https://other.example/nohead', 'https://other.example/down', 'https://slow.example/', 'mailto:a@b.example' ) ),
+		'https://audit.example/p2/' => $sseo_ln_page( array( 'https://other.example/ok', '/p1/' ) ),
+		'https://audit.example/p3/' => $sseo_au_reply( 404, $sseo_au_html( '', '<a href="/never/">n</a>' ), array( 'content-type' => 'text/html' ) ),
+	);
+	$sseo_ln_answers = array(
+		'https://audit.example/old/'   => $sseo_au_reply( 301, '', array( 'location' => '/new/' ) ),
+		'https://audit.example/lost/'  => $sseo_au_reply( 404 ),
+		'https://other.example/ok'     => $sseo_au_reply( 200 ),
+		'https://other.example/gone'   => $sseo_au_reply( 404 ),
+		'https://other.example/nohead' => static fn( string $method ): array => $sseo_au_reply( 'HEAD' === $method ? 405 : 200 ),
+		'https://other.example/down'   => $sseo_au_reply( 503 ),
+		'https://slow.example/'        => new WP_Error( 'http_request_failed', 'cURL error 28: Operation timed out' ),
+	);
+	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	$sseo_ln_requests = array();
+	$sseo_val         = Simple_SEO_Audit::step();
+	$sseo_ln_rows     = array_column( (array) $sseo_db->get_results( "SELECT url, internal, done, tries, code, error, next_at, checked_at FROM {$sseo_ln_table} ORDER BY id", ARRAY_A ), null, 'url' );
+	sseo_check(
+		'the run, its pages read, checks the links on them: each once, in their order; those of this site, those elsewhere; a link to a page of the audit has its answer without a request; not those of a page that did not open, nor mailto',
+		array( 'https://audit.example/p2/', 'https://audit.example/p3/', 'https://audit.example/old/', 'https://audit.example/lost/', 'https://other.example/ok', 'https://other.example/gone', 'https://other.example/nohead', 'https://other.example/down', 'https://slow.example/', 'https://audit.example/p1/' ) === array_keys( $sseo_ln_rows )
+			&& '1' === $sseo_ln_rows['https://audit.example/old/']['internal'] && '0' === $sseo_ln_rows['https://other.example/ok']['internal'] && '404' === $sseo_ln_rows['https://audit.example/p3/']['code'] && '200' === $sseo_ln_rows['https://audit.example/p2/']['code']
+			&& array( 'https://audit.example/old/', 'https://audit.example/lost/', 'https://other.example/ok', 'https://other.example/gone', 'https://other.example/nohead', 'https://other.example/nohead', 'https://other.example/down', 'https://slow.example/' ) === array_column( $sseo_ln_requests, 0 )
+			&& array( 'state' => 'done', 'total' => 3, 'done' => 3, 'links_total' => 10, 'links_done' => 10 ) === $sseo_val && 'Checked 3 of 3 pages and 10 of 10 links.' === Simple_SEO_Audit::progress_text( $sseo_val ) && 10 === Simple_SEO_Audit::run()['links'] && false === Simple_SEO_Audit::run()['links_capped'],
+		array( $sseo_ln_rows, array_column( $sseo_ln_requests, 0 ), $sseo_val )
+	);
+	$sseo_ln_args = array_column( $sseo_ln_requests, 3, 0 );
+	$sseo_vals    = array_map( static fn( array $request ): array => array( $request[1], $request[3]['redirection'] ?? null, $request[3]['sslverify'] ?? null, $request[3]['timeout'] ?? null, $request[3]['limit_response_size'] ?? null ), $sseo_ln_requests );
+	sseo_check(
+		'a link asked: HEAD, and GET (64 KB at most) where HEAD is refused; one of this site follows no redirect and has its certificate checked as WordPress checks itself, one elsewhere follows up to five, its certificate checked; 10 seconds each; Simple SEO named',
+		array( 'HEAD', 0, false, 10, null ) === $sseo_vals[0] && array( 'HEAD', 5, true, 10, null ) === $sseo_vals[2] && array( 'HEAD', 5, true, 10, null ) === $sseo_vals[4] && array( 'GET', 5, true, 10, 65536 ) === $sseo_vals[5]
+			&& str_contains( (string) ( $sseo_ln_args['https://other.example/ok']['user-agent'] ?? '' ), 'Simple SEO link check; ' . home_url( '/' ) ),
+		$sseo_vals
+	);
+	sseo_check(
+		'the answers kept: a redirect of this site with where it goes; refused HEAD answered by GET; no answer, or 5xx, waiting to be asked again a day later; asked once each',
+		'301' === $sseo_ln_rows['https://audit.example/old/']['code'] && 'https://audit.example/new/' === $sseo_ln_rows['https://audit.example/old/']['error'] && '200' === $sseo_ln_rows['https://other.example/nohead']['code'] && '1' === $sseo_ln_rows['https://other.example/nohead']['done']
+			&& '2' === $sseo_ln_rows['https://other.example/down']['done'] && '503' === $sseo_ln_rows['https://other.example/down']['code'] && '1' === $sseo_ln_rows['https://other.example/down']['tries'] && abs( strtotime( $sseo_ln_rows['https://other.example/down']['next_at'] . ' UTC' ) - time() - DAY_IN_SECONDS ) <= 5
+			&& '2' === $sseo_ln_rows['https://slow.example/']['done'] && '0' === $sseo_ln_rows['https://slow.example/']['code'] && str_contains( $sseo_ln_rows['https://slow.example/']['error'], 'timed out' ) && null === $sseo_ln_rows['https://other.example/ok']['next_at']
+			&& '1' === $sseo_ln_rows['https://other.example/gone']['done'] && is_string( $sseo_ln_rows['https://other.example/gone']['checked_at'] ) && abs( strtotime( $sseo_ln_rows['https://other.example/gone']['checked_at'] . ' UTC' ) - time() ) <= 5 && null !== $sseo_ln_rows['https://audit.example/p2/']['checked_at'],
+		$sseo_ln_rows
+	);
+	$sseo_vals = array( Simple_SEO_Links::counts(), Simple_SEO_Links::count( 'checked' ), Simple_SEO_Links::count( 'queued' ), wp_next_scheduled( Simple_SEO_Links::RETRY ), Simple_SEO_Audit::run()['state'] );
+	sseo_check(
+		'the report of links: broken (no answer at all on the second time, 4xx — of this site too), the links of this site that redirect, those waiting; the run done, the check a day later scheduled for the first waiting',
+		array( 'broken' => 3, 'redirects' => 1, 'waiting' => 2 ) === $sseo_vals[0] && 10 === $sseo_vals[1] && 0 === $sseo_vals[2] && false !== $sseo_vals[3] && abs( $sseo_vals[3] - time() - DAY_IN_SECONDS ) <= 5 && 'done' === $sseo_vals[4],
+		$sseo_vals
+	);
+	$sseo_vals = array(
+		array_column( Simple_SEO_Links::rows( 'broken' )['rows'], 'url' ),
+		Simple_SEO_Links::rows( 'redirects' )['rows'][0] ?? array(),
+		array_column( Simple_SEO_Links::rows( 'waiting' )['rows'], 'url' ),
+		Simple_SEO_Links::rows( 'bogus' )['total'],
+		Simple_SEO_Links::pages_with( 'https://other.example/ok' ),
+		Simple_SEO_Links::pages_with( 'https://other.example/ok', 1 ),
+		Simple_SEO_Links::pages_with( 'https://other.example/o' ),
+		Simple_SEO_Links::rows( 'broken', 2, 2 ),
+		Simple_SEO_Links::rows( 'waiting' )['rows'][0] ?? array(),
+	);
+	sseo_check(
+		'the links of a view in their order, each with the pages they are on (an address whole, not a part of another), paged; any other word, the broken ones',
+		array( 'https://audit.example/p3/', 'https://audit.example/lost/', 'https://other.example/gone' ) === $sseo_vals[0] && 'https://audit.example/old/' === ( $sseo_vals[1]['url'] ?? '' ) && true === ( $sseo_vals[1]['internal'] ?? null ) && array( 'https://audit.example/p1/' ) === ( $sseo_vals[1]['pages'] ?? null ) && 1 === ( $sseo_vals[1]['on'] ?? null )
+			&& array( 'https://other.example/down', 'https://slow.example/' ) === $sseo_vals[2] && 3 === $sseo_vals[3] && array( 'pages' => array( 'https://audit.example/p1/', 'https://audit.example/p2/' ), 'total' => 2 ) === $sseo_vals[4] && array( 'pages' => array( 'https://audit.example/p1/' ), 'total' => 2 ) === $sseo_vals[5]
+			&& array( 'pages' => array(), 'total' => 0 ) === $sseo_vals[6] && 3 === $sseo_vals[7]['total'] && array( 'https://other.example/gone' ) === array_column( $sseo_vals[7]['rows'], 'url' )
+			&& true === ( $sseo_vals[8]['waiting'] ?? null ) && abs( ( $sseo_vals[8]['next_at'] ?? 0 ) - time() - DAY_IN_SECONDS ) <= 5 && 503 === ( $sseo_vals[8]['code'] ?? null ),
+		$sseo_vals
+	);
+
+	// One host of another site at most once an interval.
+	remove_all_filters( 'simple_seo_audit_host_interval' );
+	add_filter( 'simple_seo_audit_host_interval', static fn(): float => 0.3 );
+	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	$sseo_ln_requests = array();
+	Simple_SEO_Audit::step();
+	$sseo_ln_times = array();
+	foreach ( $sseo_ln_requests as $sseo_request ) {
+		if ( 'HEAD' === $sseo_request[1] ) {
+			$sseo_ln_times[ $sseo_request[0] ] = $sseo_request[2];
+		}
+	}
+	$sseo_vals = array(
+		$sseo_ln_times['https://other.example/gone'] - $sseo_ln_times['https://other.example/ok'],
+		$sseo_ln_times['https://other.example/nohead'] - $sseo_ln_times['https://other.example/gone'],
+		$sseo_ln_times['https://slow.example/'] < $sseo_ln_times['https://other.example/gone'],
+		$sseo_ln_times['https://audit.example/lost/'] - $sseo_ln_times['https://audit.example/old/'],
+		get_option( Simple_SEO_Links::RECENT ),
+	);
+	sseo_check(
+		'a host of another site asked at most once an interval, another host meanwhile; this site without waiting; the hosts asked a moment ago kept for the next step',
+		$sseo_vals[0] >= 0.29 && $sseo_vals[1] >= 0.29 && true === $sseo_vals[2] && $sseo_vals[3] < 0.25 && is_array( $sseo_vals[4] ) && isset( $sseo_vals[4]['other.example'] ) && ! isset( $sseo_vals[4]['audit.example'] ),
+		$sseo_vals
+	);
+	update_option( Simple_SEO_Links::RECENT, array( 'other.example' => microtime( true ) ), false );
+	$sseo_db->query( "UPDATE {$sseo_ln_table} SET done = 0, tries = 0 WHERE url = 'https://other.example/ok'" );
+	$sseo_val = microtime( true );
+	Simple_SEO_Links::step( microtime( true ) + 5 );
+	$sseo_val = ( end( $sseo_ln_requests )[2] ?? 0 ) - $sseo_val;
+	update_option( Simple_SEO_Links::RECENT, array( 'other.example' => microtime( true ) - 5, 'gone.example' => microtime( true ) - 5 ), false );
+	$sseo_db->query( "UPDATE {$sseo_ln_table} SET done = 0, tries = 0 WHERE url = 'https://other.example/ok'" );
+	$sseo_val2 = microtime( true );
+	Simple_SEO_Links::step( microtime( true ) + 5 );
+	$sseo_val2 = ( end( $sseo_ln_requests )[2] ?? 0 ) - $sseo_val2;
+	$sseo_val3 = get_option( Simple_SEO_Links::RECENT );
+	sseo_check( 'the next step keeps its distance from the host the step before asked last; a host asked long ago is forgotten', $sseo_val >= 0.29 && $sseo_val2 < 0.25 && is_array( $sseo_val3 ) && isset( $sseo_val3['other.example'] ) && ! isset( $sseo_val3['gone.example'] ), array( $sseo_val, $sseo_val2, $sseo_val3 ) );
+	remove_all_filters( 'simple_seo_audit_host_interval' );
+	add_filter( 'simple_seo_audit_host_interval', static fn(): float => 0.0 );
+
+	// A day later.
+	$sseo_ln_answers['https://other.example/down'] = $sseo_au_reply( 200 );
+	$sseo_db->query( $sseo_db->prepare( "UPDATE {$sseo_ln_table} SET next_at = %s WHERE done = 2 AND url = 'https://other.example/down'", gmdate( 'Y-m-d H:i:s', time() - 5 ) ) );
+	$sseo_db->query( $sseo_db->prepare( "UPDATE {$sseo_ln_table} SET next_at = %s WHERE done = 2 AND url = 'https://slow.example/'", gmdate( 'Y-m-d H:i:s', time() + 3600 ) ) );
+	$sseo_ln_requests = array();
+	Simple_SEO_Links::retry();
+	$sseo_vals = array( array_column( $sseo_ln_requests, 0 ), Simple_SEO_Links::counts(), wp_next_scheduled( Simple_SEO_Links::RETRY ), get_option( Simple_SEO_Audit::LOCK ) );
+	$sseo_db->query( $sseo_db->prepare( "UPDATE {$sseo_ln_table} SET next_at = %s WHERE done = 2", gmdate( 'Y-m-d H:i:s', time() - 5 ) ) );
+	Simple_SEO_Links::retry();
+	$sseo_ln_rows = array_column( (array) $sseo_db->get_results( "SELECT url, done, tries, code, next_at FROM {$sseo_ln_table}", ARRAY_A ), null, 'url' );
+	$sseo_vals[]  = array( Simple_SEO_Links::counts(), wp_next_scheduled( Simple_SEO_Links::RETRY ), $sseo_ln_rows['https://slow.example/'], $sseo_ln_rows['https://other.example/down'] );
+	sseo_check(
+		'a day later: only the links due asked again; one that answers now is no broken one; one that does not again is broken; the next check scheduled for those still waiting, none when none is; the lock given back',
+		array( 'https://other.example/down' ) === $sseo_vals[0] && array( 'broken' => 3, 'redirects' => 1, 'waiting' => 1 ) === $sseo_vals[1] && false !== $sseo_vals[2] && abs( $sseo_vals[2] - time() - 3600 ) <= 5 && false === $sseo_vals[3]
+			&& array( 'broken' => 4, 'redirects' => 1, 'waiting' => 0 ) === $sseo_vals[4][0] && false === $sseo_vals[4][1] && '1' === $sseo_vals[4][2]['done'] && '2' === $sseo_vals[4][2]['tries'] && null === $sseo_vals[4][2]['next_at'] && '200' === $sseo_vals[4][3]['code'],
+		$sseo_vals
+	);
+	$sseo_db->query( $sseo_db->prepare( "UPDATE {$sseo_ln_table} SET done = 2, next_at = %s WHERE url = 'https://slow.example/'", gmdate( 'Y-m-d H:i:s', time() - 5 ) ) );
+	$sseo_db->query( $sseo_db->prepare( "INSERT INTO {$sseo_db->options} ( option_name, option_value, autoload ) VALUES ( %s, %s, 'off' )", Simple_SEO_Audit::LOCK, (string) time() ) );
+	$sseo_ln_requests = array();
+	Simple_SEO_Links::retry();
+	$sseo_vals = array( count( $sseo_ln_requests ), wp_next_scheduled( Simple_SEO_Links::RETRY ), Simple_SEO_Links::count( 'waiting' ) );
+	Simple_SEO_Audit::unlock();
+	sseo_check( 'a check a day later while a step works: nothing asked, tried again in a minute', 0 === $sseo_vals[0] && false !== $sseo_vals[1] && abs( $sseo_vals[1] - time() - 60 ) <= 5 && 1 === $sseo_vals[2], $sseo_vals );
+	update_option( Simple_SEO_Links::RECENT, array( 'other.example' => microtime( true ) ), false );
+	Simple_SEO_Links::stop();
+	sseo_check(
+		'the links stopped: those waiting leave the report, those checked stay; no check a day later, no host remembered',
+		0 === Simple_SEO_Links::count( 'waiting' ) && 9 === Simple_SEO_Links::count( 'all' ) && false === wp_next_scheduled( Simple_SEO_Links::RETRY ) && false === get_option( Simple_SEO_Links::RECENT )
+	);
+
+	// Stopped, capped, started again.
+	add_filter( 'simple_seo_audit_max_links', static fn(): int => 4 );
+	wp_schedule_single_event( time() + 3600, Simple_SEO_Links::RETRY );
+	update_option( Simple_SEO_Links::RECENT, array( 'other.example' => microtime( true ) ), false );
+	Simple_SEO_Audit::start();
+	$sseo_vals = array( Simple_SEO_Links::count( 'all' ), wp_next_scheduled( Simple_SEO_Links::RETRY ), get_option( Simple_SEO_Links::RECENT ) );
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	Simple_SEO_Audit::step( 0 );
+	Simple_SEO_Audit::step( 0 );
+	Simple_SEO_Audit::step( 0 );
+	$sseo_vals[] = Simple_SEO_Audit::progress();
+	$sseo_vals[] = Simple_SEO_Audit::run();
+	Simple_SEO_Audit::stop();
+	$sseo_vals[] = $sseo_db->get_col( "SELECT url FROM {$sseo_ln_table} ORDER BY id" );
+	remove_all_filters( 'simple_seo_audit_max_links' );
+	sseo_check(
+		'a run started again: no link and no check of the run before; the links of its pages at most the limit, said; one link a step out of time; stopped, the links not checked leave the report',
+		0 === $sseo_vals[0] && false === $sseo_vals[1] && false === $sseo_vals[2] && array( 'state' => 'running', 'total' => 3, 'done' => 3, 'links_total' => 4, 'links_done' => 3 ) === $sseo_vals[3] && true === $sseo_vals[4]['links_capped'] && true === $sseo_vals[4]['links_queued']
+			&& array( 'https://audit.example/p2/', 'https://audit.example/p3/', 'https://audit.example/old/' ) === $sseo_vals[5],
+		$sseo_vals
+	);
+	sseo_check( 'the address of the links of the page: a view and a page number, at the links', admin_url( 'admin.php?page=simple-seo-audit&links=broken' ) . '#links' === Simple_SEO_Links::page_url() && admin_url( 'admin.php?page=simple-seo-audit&links=waiting&lpaged=2' ) . '#links' === Simple_SEO_Links::page_url( 'waiting', 2 ) && Simple_SEO_Links::page_url() === Simple_SEO_Links::page_url( 'bogus', 1 ) );
+
+	// The page.
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_ln_answers['https://other.example/down'] = $sseo_au_reply( 503 );
+	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	Simple_SEO_Audit::step();
+	$sseo_vals = array(
+		$sseo_au_page( array( 'links' => 'bogus' ) ),
+		$sseo_au_page( array( 'links' => 'redirects' ) ),
+		$sseo_au_page( array( 'links' => 'waiting' ) ),
+	);
+	$sseo_html = (string) strstr( $sseo_vals[0], '<h2 id="links">' );
+	sseo_check(
+		'the links on the page: how many were checked; each view with its count, the broken ones first; a link of this site by its path, one elsewhere whole; its answer; the pages it is on',
+		str_contains( $sseo_html, '<h2 id="links">Links</h2>' ) && str_contains( $sseo_html, '10 checked, each once.' ) && str_contains( $sseo_html, '<strong>Broken links <span class="count">(3)</span></strong>' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Links::page_url( 'redirects' ) ) . '">Links of this site that redirect <span class="count">(1)</span></a>' )
+			&& str_contains( $sseo_html, '>To check again <span class="count">(2)</span></a>' ) && str_contains( $sseo_html, '>/lost/</a>' ) && str_contains( $sseo_html, '>https://other.example/gone</a>' ) && str_contains( $sseo_html, 'Answers 404' ) && str_contains( $sseo_html, '<a href="https://audit.example/p1/" target="_blank" rel="noopener">/p1/</a>' )
+			&& ! str_contains( $sseo_html, 'other.example/ok' ) && ! str_contains( $sseo_html, 'more addresses' ),
+		$sseo_html
+	);
+	sseo_check(
+		'the views of links: a redirect of this site with where it goes; those waiting with what they answered and when they are asked again',
+		str_contains( $sseo_vals[1], 'Redirects (301) to https://audit.example/new/' ) && str_contains( $sseo_vals[1], '<strong>Links of this site that redirect' )
+			&& str_contains( $sseo_vals[2], 'Answers 503<br>Checked again on ' . wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) strtotime( (string) $sseo_db->get_var( "SELECT next_at FROM {$sseo_ln_table} WHERE url = 'https://other.example/down'" ) . ' UTC' ) ) . '.' ) && str_contains( $sseo_vals[2], 'No answer: cURL error 28: Operation timed out' ),
+		$sseo_vals
+	);
+	$sseo_au_list    = array();
+	$sseo_au_answers = array();
+	for ( $sseo_i = 1; $sseo_i <= 7; $sseo_i++ ) {
+		$sseo_au_list[]                                                  = 'https://audit.example/q' . $sseo_i . '/';
+		$sseo_au_answers[ 'https://audit.example/q' . $sseo_i . '/' ] = $sseo_ln_page( array_merge( array( 'https://other.example/gone' ), array_map( static fn( int $n ): string => 'https://other.example/x' . $n, range( 1, 8 ) ) ) );
+	}
+	for ( $sseo_i = 1; $sseo_i <= 8; $sseo_i++ ) {
+		$sseo_ln_answers[ 'https://other.example/x' . $sseo_i ] = $sseo_au_reply( 404 );
+	}
+	add_filter( 'simple_seo_audit_max_links', static fn(): int => 8 );
+	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	Simple_SEO_Audit::step();
+	$sseo_vals = array( $sseo_au_page(), $sseo_au_page( array( 'links' => 'redirects' ) ), $sseo_au_page( array( 'links' => 'waiting', 'lpaged' => '-2' ) ) );
+	remove_all_filters( 'simple_seo_audit_max_links' );
+	sseo_check(
+		'a link on many pages: the first five, and how many more; more addresses than the limit, said; no link of a view, said',
+		str_contains( $sseo_vals[0], 'and 2 more' ) && 5 === substr_count( (string) strstr( (string) strstr( $sseo_vals[0], 'other.example/gone</a>' ), '</tr>', true ), 'rel="noopener">/q' ) && str_contains( $sseo_vals[0], 'The pages link to more addresses: the first 8 are checked.' )
+			&& str_contains( $sseo_vals[1], 'No link of this site redirects.' ) && str_contains( $sseo_vals[2], 'No link waits for a check.' ),
+		$sseo_vals
+	);
+	$sseo_au_list    = array();
+	$sseo_au_answers = array();
+	for ( $sseo_i = 1; $sseo_i <= Simple_SEO_Links::PER_PAGE + 1; $sseo_i++ ) {
+		$sseo_ln_answers[ 'https://other.example/y' . $sseo_i ] = $sseo_au_reply( 410 );
+	}
+	$sseo_au_list    = array( 'https://audit.example/r/' );
+	$sseo_au_answers = array( 'https://audit.example/r/' => $sseo_ln_page( array_map( static fn( int $n ): string => 'https://other.example/y' . $n, range( 1, Simple_SEO_Links::PER_PAGE + 1 ) ) ) );
+	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	Simple_SEO_Audit::step();
+	$sseo_vals = array( $sseo_au_page(), $sseo_au_page( array( 'lpaged' => '2', 'links' => 'broken' ) ) );
+	sseo_check(
+		'the broken links paged: 50 a page, the links to the others at the links',
+		50 === substr_count( $sseo_vals[0], 'Answers 410' ) && 1 === substr_count( $sseo_vals[1], 'Answers 410' ) && str_contains( $sseo_vals[1], '<span aria-current="page" class="page-numbers current">2</span>' ) && str_contains( $sseo_vals[0], 'links=broken&amp;lpaged=2#links' ),
+		substr_count( $sseo_vals[0], 'Answers 410' )
+	);
+	$sseo_au_list    = array( 'https://audit.example/p2/' );
+	$sseo_au_answers = array( 'https://audit.example/p2/' => $sseo_ln_page( array( 'https://other.example/ok' ) ) );
+	Simple_SEO_Audit::start();
+	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	Simple_SEO_Audit::step();
+	$sseo_val = $sseo_au_page();
+	sseo_check( 'no broken link, said', str_contains( $sseo_val, 'No broken link found.' ) && str_contains( $sseo_val, '1 checked, each once.' ), (string) strstr( $sseo_val, 'id="links"' ) );
+	$sseo_db->query( "DELETE FROM {$sseo_ln_table}" );
+	$sseo_val = $sseo_au_page();
+	sseo_check( 'no link checked: no links on the page', ! str_contains( $sseo_val, 'id="links"' ) );
+
+	// Deactivation.
+	wp_schedule_single_event( time() + 3600, Simple_SEO_Links::RETRY );
+	Simple_SEO_Plugin::deactivate();
+	sseo_check( 'deactivated: no check of links waiting', false === wp_next_scheduled( Simple_SEO_Links::RETRY ) );
+	flush_rewrite_rules( false );
+	remove_filter( 'pre_http_request', $sseo_ln_fake, 9 );
+	remove_filter( 'pre_http_request', $sseo_au_fake, 10 );
+	remove_filter( 'simple_seo_audit_pages', $sseo_au_pages );
+	remove_all_filters( 'simple_seo_audit_host_interval' );
 	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
 	wp_set_current_user( 0 );
 
@@ -10151,10 +10462,12 @@ try {
 	wp_schedule_single_event( time() + 60, Simple_SEO_IndexNow::EVENT );
 	wp_schedule_event( time() + 60, 'daily', Simple_SEO_Monitor::EVENT );
 	wp_schedule_single_event( time() + 60, Simple_SEO_Audit::EVENT );
+	wp_schedule_single_event( time() + 60, Simple_SEO_Links::RETRY );
 	include SIMPLE_SEO_DIR . 'uninstall.php';
 	sseo_check( 'uninstall drops a batch of IndexNow waiting', false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
 	sseo_check( 'uninstall drops the table of the monitor of 404s and its clean-up', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) && false === wp_next_scheduled( Simple_SEO_Monitor::EVENT ) );
 	sseo_check( 'uninstall drops the report of the audit, its run and a step waiting', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Audit::table() ) ) && false === wp_next_scheduled( Simple_SEO_Audit::EVENT ) && false === get_option( Simple_SEO_Audit::RUN ) );
+	sseo_check( 'uninstall drops the links of the audit and a check of them waiting', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Links::table() ) ) && false === wp_next_scheduled( Simple_SEO_Links::RETRY ) );
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
 	sseo_check( 'uninstall removes the copy of .htaccess', ! is_file( get_home_path() . Simple_SEO_Files::DISK_COPY ) );
@@ -10164,7 +10477,7 @@ try {
 	sseo_check( 'uninstall keeps the SEO fields of terms', 'Saved from the term form' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Plugin::maybe_upgrade();
-	sseo_check( 'the next request installs the rows again, and the table of the monitor', null !== get_option( Simple_SEO_Access::OPTION, null ) && SIMPLE_SEO_VERSION === get_option( Simple_SEO_Plugin::VERSION_OPTION ) && (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) && (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Audit::table() ) ) );
+	sseo_check( 'the next request installs the rows again, and the table of the monitor', null !== get_option( Simple_SEO_Access::OPTION, null ) && SIMPLE_SEO_VERSION === get_option( Simple_SEO_Plugin::VERSION_OPTION ) && (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) && (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Audit::table() ) ) && (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Links::table() ) ) );
 
 	// Last: REST_REQUEST stays defined for the rest of the run.
 	unset( $GLOBALS['current_screen'] );
