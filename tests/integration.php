@@ -10640,7 +10640,20 @@ try {
 		Simple_SEO_AI::sanitize( array( 'variants' => '5' ) ),
 		Simple_SEO_AI::sanitize( array( 'variants' => '1' ) ),
 	);
-	sseo_check( 'the settings: one variant by default, from 1 to 5', array( array( 'variants' => 1 ), array( 'variants' => 1 ), array( 'variants' => 1 ), array( 'variants' => 5 ), array( 'variants' => 3 ), array( 'variants' => 5 ), array( 'variants' => 1 ) ) === $sseo_vals, $sseo_vals );
+	sseo_check(
+		'the settings: one variant by default, from 1 to 5; the alt texts of new images on unless the form sends 0',
+		array(
+			array( 'variants' => 1, 'alt_upload' => true ),
+			array( 'variants' => 1, 'alt_upload' => true ),
+			array( 'variants' => 1, 'alt_upload' => true ),
+			array( 'variants' => 5, 'alt_upload' => true ),
+			array( 'variants' => 3, 'alt_upload' => true ),
+			array( 'variants' => 5, 'alt_upload' => true ),
+			array( 'variants' => 1, 'alt_upload' => true ),
+		) === $sseo_vals
+			&& array( 'variants' => 2, 'alt_upload' => false ) === Simple_SEO_AI::sanitize( array( 'variants' => '2', 'alt_upload' => '0' ) ) && array( 'variants' => 1, 'alt_upload' => true ) === Simple_SEO_AI::sanitize( array( 'alt_upload' => '1' ) ),
+		$sseo_vals
+	);
 	$sseo_vals = array();
 	foreach ( array( 4, 70, -2 ) as $sseo_val ) {
 		$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->options, array( 'option_value' => maybe_serialize( array( 'variants' => $sseo_val ) ) ), array( 'option_name' => Simple_SEO_AI::OPTION ) );
@@ -11151,6 +11164,356 @@ try {
 	$sseo_val = Simple_SEO_AI::lengths( 'title', '[TEXT] ab', str_repeat( 'W', 50 ) );
 	sseo_check( 'the fewest never above the most, even when what the analysis calls short is more', $sseo_val[1] < 28 && $sseo_val[0] === $sseo_val[1], $sseo_val );
 
+	// Words broken by another script: left out, and asked again.
+	$sseo_vals = array( Simple_SEO_AI::broken( 'з темним волcurrent' ), Simple_SEO_AI::broken( 'abcд' ), Simple_SEO_AI::broken( 'Візитки Ecotiki: зелена' ), Simple_SEO_AI::broken( 'Wi-Fi-роутер, iPhone 17' ), Simple_SEO_AI::broken( '' ), Simple_SEO_AI::broken( 'Ελληνικάabc' ) );
+	sseo_check( 'a broken word: a Latin letter right next to a Cyrillic one; words apart are whole', array( true, true, false, false, false, false ) === $sseo_vals, $sseo_vals );
+	$sseo_ai_set( 2 );
+	$sseo_ai_answers = array();
+	$GLOBALS['sseo_ai_answer'] = static function () use ( &$sseo_ai_answers ): string {
+		return (string) array_shift( $sseo_ai_answers );
+	};
+	$sseo_ai_count   = count( $GLOBALS['sseo_ai_prompts'] );
+	$sseo_ai_answers = array( '{"variants":["Темне волcurrent","Whole words"]}' );
+	$sseo_vals       = array( array_column( (array) Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' ), 'value' ), count( $GLOBALS['sseo_ai_prompts'] ) - $sseo_ai_count );
+	$sseo_ai_answers = array( '{"variants":["Темне волcurrent"]}', '{"variants":["Темне волосся"]}' );
+	$sseo_vals[]     = array_column( (array) Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' ), 'value' );
+	$sseo_vals[]     = array( $GLOBALS['sseo_ai_prompts'][ count( $GLOBALS['sseo_ai_prompts'] ) - 2 ]['text'], $sseo_ai_last()['text'] );
+	$sseo_ai_count   = count( $GLOBALS['sseo_ai_prompts'] );
+	$sseo_ai_answers = array( '{"variants":["волcurrent"]}', '{"variants":["волcurrent"]}', '{"variants":["волcurrent"]}', '{"variants":["Ніколи"]}' );
+	$sseo_val        = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' );
+	$sseo_vals[]     = count( $GLOBALS['sseo_ai_prompts'] ) - $sseo_ai_count;
+	$sseo_ai_answers = array( '{"variants":[]}', '{"variants":["Not asked"]}' );
+	$sseo_vals[]     = is_wp_error( Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' ) );
+	sseo_check(
+		'a variant with a broken word is left out; none whole, asked again and told so; three times at most; an empty answer is not asked again',
+		array( 'Whole words' ) === $sseo_vals[0] && 1 === $sseo_vals[1] && array( 'Темне волосся' ) === $sseo_vals[2]
+			&& ! str_contains( $sseo_vals[3][0], 'Your last answer' ) && str_ends_with( $sseo_vals[3][1], "\n\nYour last answer broke a word with letters of another script inside it. Write every word whole, in the letters of its language." ) && str_starts_with( $sseo_vals[3][1], $sseo_vals[3][0] )
+			&& is_wp_error( $sseo_val ) && 'simple_seo_ai_empty' === $sseo_val->get_error_code() && 3 === $sseo_vals[4] && 3 === Simple_SEO_AI::ATTEMPTS && true === $sseo_vals[5] && array( '{"variants":["Not asked"]}' ) === $sseo_ai_answers,
+		$sseo_vals
+	);
+	$sseo_ai_answers = array( '{"variants":["волcurrent"]}', new RuntimeException( 'gone on the second' ) );
+	$GLOBALS['sseo_ai_answer'] = static function () use ( &$sseo_ai_answers ) {
+		return array_shift( $sseo_ai_answers );
+	};
+	$sseo_val = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' );
+	sseo_check( 'an error on asking again: said', is_wp_error( $sseo_val ) && 'The AI could not write it: gone on the second' === $sseo_val->get_error_message(), $sseo_val );
+	$GLOBALS['sseo_ai_configured'] = false;
+	$sseo_val = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' );
+	$GLOBALS['sseo_ai_configured'] = true;
+	sseo_check( 'no model for a text: what the AI Client says, no word of images', is_wp_error( $sseo_val ) && 'simple_seo_ai_failed' === $sseo_val->get_error_code(), $sseo_val );
+
+	// Alt texts of images.
+	$sseo_upload = wp_upload_dir();
+	wp_mkdir_p( $sseo_upload['path'] );
+	$sseo_png = (string) base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' );
+	$sseo_ai_files = array(
+		'full'   => $sseo_upload['path'] . '/aitest-red-sofa.png',
+		'large'  => $sseo_upload['path'] . '/aitest-red-sofa-1024x768.png',
+		'medium' => $sseo_upload['path'] . '/aitest-red-sofa-300x225.png',
+		'avif'   => $sseo_upload['path'] . '/aitest-red-sofa-768x576.avif',
+	);
+	foreach ( $sseo_ai_files as $sseo_name => $sseo_path ) {
+		file_put_contents( $sseo_path, $sseo_png . $sseo_name );
+	}
+	wp_set_current_user( $sseo_au );
+	$sseo_ai_image = (int) wp_insert_attachment( array( 'post_title' => 'aitest-red-sofa', 'post_mime_type' => 'image/png', 'post_status' => 'inherit', 'post_author' => $sseo_au ), $sseo_ai_files['full'], $sseo_ai );
+	$sseo['posts'][] = $sseo_ai_image;
+	$sseo_ai_meta = array(
+		'width'  => 1200,
+		'height' => 900,
+		'file'   => _wp_relative_upload_path( $sseo_ai_files['full'] ),
+		'sizes'  => array(
+			'large'        => array( 'file' => 'aitest-red-sofa-1024x768.png', 'width' => 1024, 'height' => 768, 'mime-type' => 'image/png' ),
+			'medium_large' => array( 'file' => 'aitest-red-sofa-768x576.avif', 'width' => 768, 'height' => 576, 'mime-type' => 'image/avif' ),
+			'medium'       => array( 'file' => 'aitest-red-sofa-300x225.png', 'width' => 300, 'height' => 225, 'mime-type' => 'image/png' ),
+		),
+	);
+	update_post_meta( $sseo_ai_image, '_wp_attachment_metadata', $sseo_ai_meta );
+	$sseo_vals = array( Simple_SEO_AI::image_file( get_post( $sseo_ai_image ) ) );
+	unlink( $sseo_ai_files['large'] );
+	$sseo_vals[] = Simple_SEO_AI::image_file( get_post( $sseo_ai_image ) );
+	$sseo_ai_meta['sizes']['medium']['mime-type'] = 'image/heic';
+	update_post_meta( $sseo_ai_image, '_wp_attachment_metadata', $sseo_ai_meta );
+	$sseo_vals[] = Simple_SEO_AI::image_file( get_post( $sseo_ai_image ) );
+	unset( $sseo_ai_meta['sizes']['medium']['mime-type'] );
+	update_post_meta( $sseo_ai_image, '_wp_attachment_metadata', $sseo_ai_meta );
+	$sseo_vals[] = Simple_SEO_AI::image_file( get_post( $sseo_ai_image ) );
+	file_put_contents( $sseo_ai_files['large'], $sseo_png . 'large' );
+	sseo_check(
+		'the file the AI is shown: the large copy, else the next there is of a kind it reads (the type of the copy, else of the image), else the image itself',
+		array(
+			array( $sseo_ai_files['large'], 'image/png' ),
+			array( $sseo_ai_files['medium'], 'image/png' ),
+			array( $sseo_ai_files['full'], 'image/png' ),
+			array( $sseo_ai_files['medium'], 'image/png' ),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_vals = array();
+	$sseo_ai_other = (int) wp_insert_attachment( array( 'post_title' => 'aitest-logo', 'post_mime_type' => 'image/svg+xml', 'post_status' => 'inherit' ), $sseo_upload['path'] . '/aitest-logo.svg' );
+	$sseo['posts'][] = $sseo_ai_other;
+	file_put_contents( $sseo_upload['path'] . '/aitest-logo.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>' );
+	$sseo_vals[] = Simple_SEO_AI::image_file( get_post( $sseo_ai_other ) );
+	$sseo_ai_gone = (int) wp_insert_attachment( array( 'post_title' => 'aitest-gone', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), $sseo_upload['path'] . '/aitest-gone.png' );
+	$sseo['posts'][] = $sseo_ai_gone;
+	$sseo_vals[] = Simple_SEO_AI::image_file( get_post( $sseo_ai_gone ) );
+	sseo_check( 'no file for the AI: an SVG, a file not on the server', array( null, null ) === $sseo_vals, $sseo_vals );
+
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["{A} red sofa in a bright room.","A second sofa."]}';
+	$sseo_val = Simple_SEO_AI::alt( get_post( $sseo_ai_image ) );
+	$sseo_vals = $sseo_ai_last();
+	sseo_check(
+		'an alt text: the first variant, a sentence with its full stop; the AI is shown the large copy',
+		'A red sofa in a bright room.' === $sseo_val && array( array( 'image/png', $sseo_png . 'large' ) ) === $sseo_vals['files'] && 'application/json' === $sseo_vals['mime'],
+		array( $sseo_val, $sseo_vals['files'] )
+	);
+	sseo_check(
+		'what the AI is told of an image: the site, the post it is on, its name, and how long',
+		implode(
+			"\n",
+			array(
+				'Website: ' . $sseo_site . ' — Garden tips & tools',
+				'The image is on the Post "Aitest garden shears"',
+				'Its file is named: Aitest red sofa',
+				'',
+				'Write the alt text of this image: what it shows, for search engines and for people who do not see it, in one short sentence of at most 125 characters. Do not start with "Image of" or "Picture of".',
+			)
+		) === $sseo_vals['text']
+			&& implode(
+				"\n",
+				array(
+					'You write the alt text of images for a website: what the picture shows, specific and accurate, never invented — say only what you see.',
+					'Write in ' . ( Simple_SEO_WP_Loc::languages() ? Locale::getDisplayLanguage( Simple_SEO_WP_Loc::locale_of( Simple_SEO_WP_Loc::admin_language_code() ), 'en' ) . ' (' . Simple_SEO_WP_Loc::locale_of( Simple_SEO_WP_Loc::admin_language_code() ) . ')' : Locale::getDisplayLanguage( get_locale(), 'en' ) . ' (' . get_locale() . ')' ) . ', whatever language the instructions are in.',
+					'Plain text only: no quotation marks around the text, no emoji, no hashtags, no Markdown.',
+					'Answer with JSON only, 3 different variants: {"variants": ["…"]}',
+				)
+			) === $sseo_vals['system'] && 3 === Simple_SEO_AI::ALT_VARIANTS,
+		$sseo_vals
+	);
+	file_put_contents( $sseo_upload['path'] . '/IMG_1234.png', $sseo_png );
+	$sseo_val = (int) wp_insert_attachment( array( 'post_title' => 'IMG_1234', 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), $sseo_upload['path'] . '/IMG_1234.png' );
+	$sseo['posts'][] = $sseo_val;
+	Simple_SEO_AI::alt( get_post( $sseo_val ) );
+	$sseo_val = $sseo_ai_last()['text'];
+	sseo_check( 'an image on no post, with a name that says nothing: neither said', str_starts_with( $sseo_val, 'Website: ' . $sseo_site . " — Garden tips & tools\n\nWrite the alt text" ), $sseo_val );
+
+	$sseo_vals = array( Simple_SEO_AI::alt( get_post( $sseo_ai_other ) ) );
+	$GLOBALS['sseo_ai_without'] = array( 'inputModalities' );
+	$sseo_ai_count = count( $GLOBALS['sseo_ai_prompts'] );
+	$sseo_vals[] = Simple_SEO_AI::alt( get_post( $sseo_ai_image ) );
+	$sseo_vals[] = count( $GLOBALS['sseo_ai_prompts'] ) - $sseo_ai_count;
+	$GLOBALS['sseo_ai_without'] = array( 'outputSchema', 'outputMimeType' );
+	$GLOBALS['sseo_ai_answer']  = 'Plain alt text.';
+	$sseo_vals[] = Simple_SEO_AI::alt( get_post( $sseo_ai_image ) );
+	$sseo_vals[] = $sseo_ai_last()['mime'];
+	$GLOBALS['sseo_ai_without'] = array();
+	$GLOBALS['sseo_ai_answer']  = new RuntimeException( 'no credits' );
+	$sseo_vals[] = Simple_SEO_AI::alt( get_post( $sseo_ai_image ) );
+	add_filter( 'wp_supports_ai', '__return_false' );
+	$sseo_vals[] = Simple_SEO_AI::alt( get_post( $sseo_ai_image ) );
+	remove_filter( 'wp_supports_ai', '__return_false' );
+	sseo_check(
+		'an alt text the AI cannot write: an SVG; a model that reads no images, not asked; one without JSON answers in text; an error; AI turned off',
+		is_wp_error( $sseo_vals[0] ) && 'simple_seo_ai_image' === $sseo_vals[0]->get_error_code() && 400 === $sseo_vals[0]->get_error_data()['status']
+			&& is_wp_error( $sseo_vals[1] ) && 'simple_seo_ai_blind' === $sseo_vals[1]->get_error_code() && 500 === $sseo_vals[1]->get_error_data()['status'] && 0 === $sseo_vals[2]
+			&& 'Plain alt text.' === $sseo_vals[3] && null === $sseo_vals[4]
+			&& is_wp_error( $sseo_vals[5] ) && 'The AI could not write it: no credits' === $sseo_vals[5]->get_error_message()
+			&& is_wp_error( $sseo_vals[6] ) && 'simple_seo_ai_unavailable' === $sseo_vals[6]->get_error_code(),
+		$sseo_vals
+	);
+
+	// The route of alt texts.
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["A red sofa."]}';
+	$sseo_ai_alt = static function ( $id ): WP_REST_Response {
+		$request = new WP_REST_Request( 'POST', '/simple-seo/v1/ai/alt' );
+		if ( null !== $id ) {
+			$request->set_param( 'id', $id );
+		}
+
+		return rest_do_request( $request );
+	};
+	$sseo_ai_mine = (int) wp_insert_attachment( array( 'post_title' => 'aitest-mine', 'post_mime_type' => 'image/png', 'post_status' => 'inherit', 'post_author' => $sseo_ed ), $sseo_ai_files['medium'] );
+	$sseo['posts'][] = $sseo_ai_mine;
+	$sseo_vals = array();
+	foreach (
+		array(
+			'author, own'     => array( $sseo_au, $sseo_ai_image ),
+			'author, other'   => array( $sseo_au, $sseo_ai_mine ),
+			'subscriber'      => array( $sseo_u['subscriber'], $sseo_ai_image ),
+			'editor, svg'     => array( $sseo_ed, $sseo_ai_other ),
+			'editor, a post'  => array( $sseo_ed, $sseo_ai ),
+			'editor, no post' => array( $sseo_ed, 999999 ),
+			'no id'           => array( $sseo_ed, null ),
+			'logged out'      => array( 0, $sseo_ai_image ),
+		) as $sseo_name => $sseo_args
+	) {
+		wp_set_current_user( $sseo_args[0] );
+		$sseo_response           = $sseo_ai_alt( $sseo_args[1] );
+		$sseo_vals[ $sseo_name ] = 200 === $sseo_response->get_status() ? $sseo_response->get_data() : $sseo_response->get_status();
+	}
+	wp_set_current_user( $sseo_ed );
+	$GLOBALS['sseo_ai_answer'] = '{"variants":[]}';
+	$sseo_vals['empty'] = $sseo_ai_alt( $sseo_ai_image )->get_status();
+	sseo_check(
+		'REST: the alt text of an image for whoever edits the SEO fields and may edit the image; an SVG, which the AI is not shown, and an error answer so',
+		array( 'author, own' => array( 'alt' => 'A red sofa.' ), 'author, other' => 403, 'subscriber' => 403, 'editor, svg' => 400, 'editor, a post' => 403, 'editor, no post' => 403, 'no id' => 400, 'logged out' => 401, 'empty' => 500 ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_val = (int) wp_insert_attachment( array( 'post_title' => 'aitest-paper', 'post_mime_type' => 'application/pdf', 'post_status' => 'inherit' ), $sseo_upload['path'] . '/aitest-paper.pdf' );
+	$sseo['posts'][] = $sseo_val;
+	$sseo_vals = array( Simple_SEO_AI::can_alt( $sseo_ai_mine ), Simple_SEO_AI::can_alt( $sseo_ai_other ), Simple_SEO_AI::can_alt( $sseo_ai ), Simple_SEO_AI::can_alt( 0 ), Simple_SEO_AI::can_alt( $sseo_val ) );
+	update_option( Simple_SEO_Access::OPTION, array_replace( Simple_SEO_Access::defaults(), array( 'fields' => array( 'administrator' ) ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_vals[] = Simple_SEO_AI::can_alt( $sseo_ai_mine );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'can_alt(): an image (an SVG too), not a post nor a PDF, edited, by whoever edits the SEO fields', array( true, true, false, false, false, false ) === $sseo_vals, $sseo_vals );
+
+	// A new image: its alt text in the background.
+	update_option( Simple_SEO_Images::OPTION, array( 'alt' => true, 'title' => true ) );
+	Simple_SEO_Settings::flush();
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["A sofa seen by the AI."]}';
+	wp_unschedule_hook( Simple_SEO_AI::ALT_EVENT );
+	$sseo_ai_new = static function ( string $title ) use ( &$sseo, $sseo_ai_files ): int {
+		$id              = (int) wp_insert_attachment( array( 'post_title' => $title, 'post_mime_type' => 'image/png', 'post_status' => 'inherit' ), $sseo_ai_files['medium'] );
+		$sseo['posts'][] = $id;
+
+		return $id;
+	};
+	$sseo_vals = array();
+	$sseo_val  = $sseo_ai_new( 'aitest-blue-chair' );
+	$sseo_vals['scheduled'] = false !== wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( $sseo_val ) ) && wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( $sseo_val ) ) <= time();
+	$sseo_vals['name alt']  = get_post_meta( $sseo_val, '_wp_attachment_image_alt', true );
+	Simple_SEO_AI::alt_event( $sseo_val );
+	$sseo_vals['replaced']  = get_post_meta( $sseo_val, '_wp_attachment_image_alt', true );
+	update_option( Simple_SEO_AI::OPTION, array( 'variants' => 2, 'alt_upload' => false ) );
+	Simple_SEO_Settings::flush();
+	$sseo_vals['off'] = wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( $sseo_ai_new( 'aitest-off' ) ) );
+	$sseo_ai_set( 2 );
+	$GLOBALS['sseo_ai_configured'] = false;
+	Simple_SEO_AI::flush();
+	$sseo_vals['no model'] = wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( $sseo_ai_new( 'aitest-no-model' ) ) );
+	$GLOBALS['sseo_ai_configured'] = true;
+	Simple_SEO_AI::flush();
+	$sseo_val = (int) wp_insert_attachment( array( 'post_title' => 'aitest-doc', 'post_mime_type' => 'application/pdf', 'post_status' => 'inherit' ), $sseo_upload['path'] . '/aitest-doc.pdf' );
+	$sseo['posts'][] = $sseo_val;
+	$sseo_vals['pdf'] = wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( $sseo_val ) );
+	sseo_check(
+		'a new image: its alt text written in the background at once, replacing the one made from its name; not when switched off, without a model, or for a file that is no image',
+		array( 'scheduled' => true, 'name alt' => 'Aitest blue chair', 'replaced' => 'A sofa seen by the AI.', 'off' => false, 'no model' => false, 'pdf' => false ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_vals = array();
+	foreach ( array( 'empty' => '', 'name' => 'Aitest red sofa', 'written' => 'A sofa someone described' ) as $sseo_name => $sseo_alt ) {
+		update_post_meta( $sseo_ai_image, '_wp_attachment_image_alt', $sseo_alt );
+		// As WP-Cron runs it.
+		do_action( Simple_SEO_AI::ALT_EVENT, $sseo_ai_image );
+		$sseo_vals[ $sseo_name ] = get_post_meta( $sseo_ai_image, '_wp_attachment_image_alt', true );
+	}
+	update_post_meta( $sseo_ai_image, '_wp_attachment_image_alt', '' );
+	$GLOBALS['sseo_ai_answer'] = new RuntimeException( 'down' );
+	Simple_SEO_AI::alt_event( $sseo_ai_image );
+	$sseo_vals['error'] = get_post_meta( $sseo_ai_image, '_wp_attachment_image_alt', true );
+	$GLOBALS['sseo_ai_answer']     = '{"variants":["Not written"]}';
+	$GLOBALS['sseo_ai_configured'] = false;
+	Simple_SEO_AI::flush();
+	Simple_SEO_AI::alt_event( $sseo_ai_image );
+	$sseo_vals['no model'] = get_post_meta( $sseo_ai_image, '_wp_attachment_image_alt', true );
+	$GLOBALS['sseo_ai_configured'] = true;
+	Simple_SEO_AI::flush();
+	Simple_SEO_AI::alt_event( $sseo_ai );
+	$sseo_vals['a post'] = get_post_meta( $sseo_ai, '_wp_attachment_image_alt', true );
+	Simple_SEO_AI::alt_event( 999999 );
+	sseo_check(
+		'the event: an empty alt text and the one made from the name give way, one someone wrote stays; nothing on an error, without a model, or for what is no image',
+		array( 'empty' => 'A sofa seen by the AI.', 'name' => 'A sofa seen by the AI.', 'written' => 'A sofa someone described', 'error' => '', 'no model' => '', 'a post' => '' ) === $sseo_vals,
+		$sseo_vals
+	);
+	wp_unschedule_hook( Simple_SEO_AI::ALT_EVENT );
+
+	// The button of the media library.
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["A red sofa."]}';
+	wp_set_current_user( $sseo_ed );
+	// As the media library asks for the fields of an image.
+	$sseo_vals = apply_filters( 'attachment_fields_to_edit', array( 'align' => array() ), get_post( $sseo_ai_image ) );
+	preg_match( '/data-simple-seo-ai-alt="([^"]*)"/', (string) ( $sseo_vals['simple_seo_ai_alt']['html'] ?? '' ), $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check(
+		'the media library: the button of an image after the other fields, on its screen and in the window, with what the script needs',
+		array( 'align', 'simple_seo_ai_alt' ) === array_keys( $sseo_vals ) && 'AI' === $sseo_vals['simple_seo_ai_alt']['label'] && 'html' === $sseo_vals['simple_seo_ai_alt']['input']
+			&& true === $sseo_vals['simple_seo_ai_alt']['show_in_edit'] && true === $sseo_vals['simple_seo_ai_alt']['show_in_modal'] && 'The AI looks at the picture and writes what it shows into the alt text field.' === $sseo_vals['simple_seo_ai_alt']['helps']
+			&& str_starts_with( $sseo_vals['simple_seo_ai_alt']['html'], '<button type="button" class="button simple-seo-ai-alt" data-simple-seo-ai-alt="' ) && str_ends_with( $sseo_vals['simple_seo_ai_alt']['html'], '">Write the alt text with AI</button> <span class="simple-seo-ai-status" role="status" aria-live="polite"></span>' )
+			&& array( 'url' => rest_url( 'simple-seo/v1/ai/alt' ), 'nonce' => wp_create_nonce( 'wp_rest' ), 'id' => $sseo_ai_image, 'working' => 'Writing…', 'failed' => 'The AI could not write it. Try again.' ) === $sseo_json,
+		$sseo_vals
+	);
+	$sseo_vals = array(
+		array_keys( Simple_SEO_AI::media_field( array(), get_post( $sseo_ai_other ) ) ),
+		array_keys( Simple_SEO_AI::media_field( array(), get_post( $sseo_ai ) ) ),
+		Simple_SEO_AI::media_field( 'x', get_post( $sseo_ai_image ) ),
+		array_keys( Simple_SEO_AI::media_field( array(), null ) ),
+	);
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_vals[] = array_keys( Simple_SEO_AI::media_field( array(), get_post( $sseo_ai_image ) ) );
+	wp_set_current_user( $sseo_ed );
+	$GLOBALS['sseo_ai_configured'] = false;
+	Simple_SEO_AI::flush();
+	$sseo_vals[] = array_keys( Simple_SEO_AI::media_field( array(), get_post( $sseo_ai_image ) ) );
+	$GLOBALS['sseo_ai_configured'] = true;
+	Simple_SEO_AI::flush();
+	sseo_check( 'no button: an SVG, a post, other fields as they come, for whoever may not, without a model', array( array(), array(), 'x', array(), array(), array() ) === $sseo_vals, $sseo_vals );
+	wp_dequeue_script( 'simple-seo-media' );
+	wp_deregister_script( 'simple-seo-media' );
+	Simple_SEO_AI::enqueue_media();
+	$sseo_vals = array( wp_script_is( 'simple-seo-media', 'enqueued' ) ? wp_scripts()->registered['simple-seo-media']->src : false );
+	wp_dequeue_script( 'simple-seo-media' );
+	wp_deregister_script( 'simple-seo-media' );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	do_action( 'wp_enqueue_media' );
+	$sseo_vals[] = wp_script_is( 'simple-seo-media', 'enqueued' );
+	wp_set_current_user( $sseo_ed );
+	set_current_screen( 'attachment' );
+	Simple_SEO_AI::enqueue( 'post.php' );
+	$sseo_vals[] = wp_script_is( 'simple-seo-media', 'enqueued' );
+	wp_dequeue_script( 'simple-seo-media' );
+	set_current_screen( 'edit-post' );
+	Simple_SEO_AI::enqueue( 'post.php' );
+	$sseo_vals[] = wp_script_is( 'simple-seo-media', 'enqueued' );
+	set_current_screen( 'attachment' );
+	Simple_SEO_AI::enqueue( 'index.php' );
+	$sseo_vals[] = wp_script_is( 'simple-seo-media', 'enqueued' );
+	unset( $GLOBALS['current_screen'] );
+	sseo_check(
+		'the script of the button: wherever the media library opens, and on the screen of an image, for whoever edits the SEO fields',
+		array( SIMPLE_SEO_URL . 'assets/js/media.js', false, true, false, false ) === $sseo_vals && has_action( 'wp_enqueue_media', array( Simple_SEO_AI::class, 'enqueue_media' ) ),
+		$sseo_vals
+	);
+
+	// Bulk editing of images.
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_ai_bulk = static function ( string $object ): string {
+		$_GET = array( 'page' => Simple_SEO_Bulk::PAGE, 'object' => $object, 'filter' => 'alt' );
+		$html = sseo_capture( array( Simple_SEO_Bulk::class, 'render_page' ) );
+		$_GET = array();
+
+		return $html;
+	};
+	$sseo_html = $sseo_ai_bulk( Simple_SEO_Bulk::IMAGES );
+	preg_match( '/data-simple-seo-bulk="([^"]*)"/', $sseo_html, $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check(
+		'bulk editing of images: the button of the AI after the names\', with its words for the script',
+		str_contains( $sseo_html, 'Fill the empty alt texts from the names</button>' ) && (bool) preg_match( '/<\/button>\s*<button type="button" class="button simple-seo-bulk-ai">Write the empty alt texts with AI<\/button>/', $sseo_html )
+			&& array( 'url' => rest_url( 'simple-seo/v1/ai/alt' ), 'working' => 'The AI writes %1$s of %2$s…', 'done' => 'The AI wrote %s: look them over and save.', 'none' => 'No empty alt text on this page.', 'failed' => 'The AI could not write it. Try again.' ) === ( $sseo_json['ai'] ?? null ),
+		$sseo_html
+	);
+	$sseo_vals = array( $sseo_ai_bulk( 'post:post' ) );
+	$GLOBALS['sseo_ai_configured'] = false;
+	Simple_SEO_AI::flush();
+	$sseo_vals[] = $sseo_ai_bulk( Simple_SEO_Bulk::IMAGES );
+	$GLOBALS['sseo_ai_configured'] = true;
+	Simple_SEO_AI::flush();
+	sseo_check( 'no AI in bulk editing of posts, nor without a model', ! str_contains( $sseo_vals[0], 'simple-seo-bulk-ai' ) && ! str_contains( $sseo_vals[0], '&quot;ai&quot;' ) && ! str_contains( $sseo_vals[1], 'simple-seo-bulk-ai' ) && ! str_contains( $sseo_vals[1], '&quot;ai&quot;' ) && str_contains( $sseo_vals[1], 'simple-seo-bulk-suggest' ) );
+
 	// The tab.
 	wp_set_current_user( $sseo_u['administrator'] );
 	Simple_SEO_AI::add_admin_tab();
@@ -11166,6 +11529,12 @@ try {
 			&& str_contains( $sseo_html, '<select id="simple-seo-ai-variants" name="simple_seo_ai[variants]">' ) && 5 === substr_count( $sseo_html, '<option value=' ) && (bool) preg_match( '/<option value="2"\s+selected=[\'"]selected[\'"]>2<\/option>/', $sseo_html ) && str_contains( $sseo_html, '<option value="1">1</option>' ) && str_contains( $sseo_html, '<option value="5">5</option>' ),
 		$sseo_html
 	);
+	sseo_check( 'the tab: the alt texts of new images, on', (bool) preg_match( '/<input type="hidden" name="simple_seo_ai\[alt_upload\]" value="0">\s*<label><input type="checkbox" name="simple_seo_ai\[alt_upload\]" value="1"\s+checked=[\'"]checked[\'"]> Write the alt text of a new image with AI after it is uploaded<\/label>/', $sseo_html ), $sseo_html );
+	update_option( Simple_SEO_AI::OPTION, array( 'variants' => 2, 'alt_upload' => false ) );
+	Simple_SEO_Settings::flush();
+	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
+	sseo_check( 'the tab: the alt texts of new images, off', (bool) preg_match( '/<input type="checkbox" name="simple_seo_ai\[alt_upload\]" value="1"> Write the alt text/', $sseo_html ), $sseo_html );
+	$sseo_ai_set( 2 );
 	$GLOBALS['sseo_ai_configured'] = false;
 	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
 	sseo_check( 'the tab: no model can write yet, said, with the link', str_contains( $sseo_html, '<p class="simple-seo-ai-none">No connected AI can write text yet.' ) && str_contains( $sseo_html, 'options-connectors.php' ) && ! str_contains( $sseo_html, 'simple-seo-ai-ready' ) && false === ( get_transient( Simple_SEO_AI::READY )['ready'] ?? null ), $sseo_html );
@@ -11211,6 +11580,7 @@ try {
 	sseo_check( 'readability and the column of scores are translated', 'Читабельність: %s зі 100' === __( 'Readability: %s of 100', 'simple-seo' ) && 'Читабельність: %s' === __( 'Readability: %s', 'simple-seo' ) && 'Речення поспіль починаються з різних слів.' === __( 'Sentences in a row start with different words.', 'simple-seo' ) );
 	sseo_check( 'bulk editing is translated', 'Масове редагування' === __( 'Bulk edit', 'simple-seo' ) && 'Без власного SEO-заголовка' === __( 'Without an SEO title of their own', 'simple-seo' ) && 'Збережено: %s.' === __( 'Saved: %s.', 'simple-seo' ) );
 	sseo_check( 'AI is translated', 'Написати з AI' === __( 'Write with AI', 'simple-seo' ) && 'Варіанти' === __( 'Variants', 'simple-seo' ) && 'AI не зміг це написати: %s' === __( 'The AI could not write it: %s', 'simple-seo' ) && 'Оберіть варіант:' === __( 'Choose one:', 'simple-seo' ) );
+	sseo_check( 'the alt texts by AI are translated', 'Написати alt-текст з AI' === __( 'Write the alt text with AI', 'simple-seo' ) && 'AI пише %1$s з %2$s…' === __( 'The AI writes %1$s of %2$s…', 'simple-seo' ) && 'Alt-текст зображень' === __( 'Alt text of images', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 
@@ -11231,10 +11601,12 @@ try {
 	wp_schedule_event( time() + 60, 'daily', Simple_SEO_Monitor::EVENT );
 	wp_schedule_single_event( time() + 60, Simple_SEO_Audit::EVENT );
 	wp_schedule_single_event( time() + 60, Simple_SEO_Links::RETRY );
+	wp_schedule_single_event( time() + 60, Simple_SEO_AI::ALT_EVENT, array( 123 ) );
 	include SIMPLE_SEO_DIR . 'uninstall.php';
 	sseo_check( 'uninstall drops a batch of IndexNow waiting', false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
 	sseo_check( 'uninstall drops the table of the monitor of 404s and its clean-up', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) && false === wp_next_scheduled( Simple_SEO_Monitor::EVENT ) );
 	sseo_check( 'uninstall drops the report of the audit, its run and a step waiting', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Audit::table() ) ) && false === wp_next_scheduled( Simple_SEO_Audit::EVENT ) && false === get_option( Simple_SEO_Audit::RUN ) );
+	sseo_check( 'uninstall drops the alt texts of new images the AI has yet to write', false === wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( 123 ) ) );
 	sseo_check( 'uninstall drops the links of the audit and a check of them waiting', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Links::table() ) ) && false === wp_next_scheduled( Simple_SEO_Links::RETRY ) );
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );

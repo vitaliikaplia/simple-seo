@@ -4,7 +4,7 @@
  * says so, with one model that takes every option but those in $GLOBALS['sseo_ai_without'] and answers
  * what $GLOBALS['sseo_ai_answer'] gives for the prompt (a string, a callable that makes one, or a
  * Throwable to throw). Each prompt is kept in $GLOBALS['sseo_ai_prompts'] with the model's
- * configuration, so the tests see what was asked.
+ * configuration and the files it was shown (type and bytes), so the tests see what was asked.
  */
 
 use WordPress\AiClient\Messages\DTO\MessagePart;
@@ -87,14 +87,19 @@ final class Simple_SEO_Test_AI_Model implements ModelInterface, TextGenerationMo
 	}
 
 	public function generateTextResult( array $prompt ): GenerativeAiResult {
-		$text = '';
+		$text  = '';
+		$files = array();
 		foreach ( $prompt as $message ) {
 			foreach ( $message->getParts() as $part ) {
 				$text .= (string) $part->getText();
+				if ( null !== $part->getFile() ) {
+					$files[] = array( $part->getFile()->getMimeType(), (string) base64_decode( (string) $part->getFile()->getBase64Data() ) );
+				}
 			}
 		}
 		$GLOBALS['sseo_ai_prompts'][] = array(
 			'text'   => $text,
+			'files'  => $files,
 			'system' => (string) $this->config->getSystemInstruction(),
 			'schema' => $this->config->getOutputSchema(),
 			'mime'   => $this->config->getOutputMimeType(),

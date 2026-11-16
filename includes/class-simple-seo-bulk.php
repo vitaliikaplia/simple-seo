@@ -305,6 +305,19 @@ final class Simple_SEO_Bulk {
 			'none'    => __( 'Now: none from Simple SEO.', 'simple-seo' ),
 			'unsaved' => __( 'Changes not saved yet:', 'simple-seo' ),
 		);
+		$ai       = self::IMAGES === $object && Simple_SEO_AI::ready();
+		if ( $ai ) {
+			// The empty alt texts written by the AI, one image after another (Simple_SEO_AI).
+			$data['ai'] = array(
+				'url'     => rest_url( Simple_SEO_Analysis::NAMESPACE . '/ai/alt' ),
+				/* translators: 1: number of the image, 2: of how many. */
+				'working' => __( 'The AI writes %1$s of %2$s…', 'simple-seo' ),
+				/* translators: %s: number of alt texts. */
+				'done'    => __( 'The AI wrote %s: look them over and save.', 'simple-seo' ),
+				'none'    => __( 'No empty alt text on this page.', 'simple-seo' ),
+				'failed'  => __( 'The AI could not write it. Try again.', 'simple-seo' ),
+			);
+		}
 		$language = 0 === strpos( $object, 'post:' ) && Simple_SEO_WP_Loc::translatable_post_type( substr( $object, 5 ) )
 			|| 0 === strpos( $object, 'term:' ) && Simple_SEO_WP_Loc::translatable_taxonomy( substr( $object, 5 ) )
 			|| self::IMAGES === $object

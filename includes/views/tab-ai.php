@@ -1,10 +1,11 @@
 <?php
 /**
- * The AI tab: whether a connected AI can write, and how many variants it writes at a time.
+ * The AI tab: whether a connected AI can write, the alt texts of new images, and how many variants
+ * it writes at a time.
  *
- * @var array{variants: int} $settings
- * @var string               $status   ready, none (no model can write text) or off (this site
- *                                     turned AI off).
+ * @var array{variants: int, alt_upload: bool} $settings
+ * @var string                                 $status   ready, none (no model can write text) or off
+ *                                                       (this site turned AI off).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,6 +28,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<p><a href="<?php echo esc_url( admin_url( 'options-connectors.php' ) ); ?>"><?php esc_html_e( 'Open Connectors', 'simple-seo' ); ?></a></p>
 				<?php endif; ?>
 				<p class="description"><?php esc_html_e( 'The AI writes from the text of the page, in the language of the post or term (or of the site). In the SEO title and the meta description it writes only the words in place of {title} or {excerpt} of the template; the other variables stay. Whoever may edit the SEO fields may use it.', 'simple-seo' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Alt text of images', 'simple-seo' ); ?></th>
+			<td>
+				<input type="hidden" name="<?php echo esc_attr( Simple_SEO_AI::OPTION . '[alt_upload]' ); ?>" value="0">
+				<label><input type="checkbox" name="<?php echo esc_attr( Simple_SEO_AI::OPTION . '[alt_upload]' ); ?>" value="1"<?php checked( $settings['alt_upload'] ); ?>> <?php esc_html_e( 'Write the alt text of a new image with AI after it is uploaded', 'simple-seo' ); ?></label>
+				<p class="description"><?php esc_html_e( 'In the background, a moment after the upload: the AI looks at the picture and describes it, in the language of the image. Each new image is one request to the AI. An alt text someone wrote stays; one made from the name of the file gives way. In the media library each image has the button too, and bulk editing writes the empty alt texts of the images listed.', 'simple-seo' ); ?></p>
 			</td>
 		</tr>
 		<tr>

@@ -858,6 +858,60 @@
 				} );
 			} );
 		}
+		// Images: the empty alt texts written by the AI, one image after another, changed but not
+		// saved yet.
+		var ai = root.querySelector( '.simple-seo-bulk-ai' );
+		if ( ai && data.ai ) {
+			ai.addEventListener( 'click', function () {
+				var fields = Array.prototype.filter.call( root.querySelectorAll( 'input[data-field="alt"]:not([disabled])' ), function ( field ) {
+					return '' === field.value.trim();
+				} );
+				var done = 0;
+
+				function next( index ) {
+					if ( index >= fields.length ) {
+						ai.disabled        = false;
+						status.textContent = fields.length ? data.ai.done.replace( '%s', String( done ) ) : data.ai.none;
+						return;
+					}
+					var field = fields[ index ];
+					var row   = field.closest( 'tr[data-id]' );
+					var error = row.querySelector( '.simple-seo-bulk-error' );
+					status.textContent = data.ai.working.replace( '%1$s', String( index + 1 ) ).replace( '%2$s', String( fields.length ) );
+					window.fetch( data.ai.url + ( -1 === data.ai.url.indexOf( '?' ) ? '?' : '&' ) + '_locale=user', {
+						method: 'POST',
+						credentials: 'same-origin',
+						headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': data.nonce },
+						body: JSON.stringify( { id: parseInt( row.getAttribute( 'data-id' ), 10 ) } )
+					} ).then( function ( response ) {
+						return response.json().catch( function () {
+							return null;
+						} ).then( function ( result ) {
+							if ( ! response.ok || ! result || 'string' !== typeof result.alt ) {
+								throw { text: result && 'string' === typeof result.message ? result.message : data.ai.failed };
+							}
+							return result.alt;
+						} );
+					} ).then( function ( alt ) {
+						error.hidden = true;
+						// Typed into meanwhile: what was typed stays.
+						if ( '' === field.value.trim() ) {
+							field.value = alt;
+							field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+							done++;
+						}
+					} ).catch( function ( problem ) {
+						error.hidden      = false;
+						error.textContent = problem && problem.text ? problem.text : data.ai.failed;
+					} ).then( function () {
+						next( index + 1 );
+					} );
+				}
+
+				ai.disabled = true;
+				next( 0 );
+			} );
+		}
 		// Leaving with changes not saved asks first.
 		window.addEventListener( 'beforeunload', function ( event ) {
 			if ( Object.keys( changed ).length ) {

@@ -10,9 +10,10 @@
  * @var int                                                       $page
  * @var int                                                       $per_page
  * @var array{items: array<int, WP_Post|WP_Term>, total: int}     $result
- * @var array<string, string>                                     $data     For assets/js/admin.js.
+ * @var array<string, mixed>                                      $data     For assets/js/admin.js.
  * @var string                                                    $language With wp-loc: the language listed.
  * @var bool                                                      $images   Whether the images are listed.
+ * @var bool                                                      $ai       Whether the AI writes their alt texts.
  * @var string[]                                                  $columns  Names of the three columns.
  */
 
@@ -71,6 +72,9 @@ $simple_seo_links = paginate_links(
 			<button type="button" class="button button-primary simple-seo-bulk-save" disabled><?php esc_html_e( 'Save changes', 'simple-seo' ); ?></button>
 			<?php if ( $images ) : ?>
 				<button type="button" class="button simple-seo-bulk-suggest"><?php esc_html_e( 'Fill the empty alt texts from the names', 'simple-seo' ); ?></button>
+				<?php if ( $ai ) : ?>
+					<button type="button" class="button simple-seo-bulk-ai"><?php esc_html_e( 'Write the empty alt texts with AI', 'simple-seo' ); ?></button>
+				<?php endif; ?>
 			<?php endif; ?>
 			<span class="simple-seo-bulk-status" role="status" aria-live="polite"></span>
 			<?php /* translators: %s: number of posts or terms. */ ?>
