@@ -36,6 +36,8 @@ final class Simple_SEO_WooCommerce {
 		add_filter( 'simple_seo_breadcrumb_taxonomy', array( self::class, 'breadcrumb_taxonomy' ), 10, 2 );
 		add_filter( 'simple_seo_noindex', array( self::class, 'noindex' ), 10, 2 );
 		add_filter( 'simple_seo_sitemap_exclude', array( self::class, 'sitemap_exclude' ), 10, 3 );
+		add_filter( 'simple_seo_markdown_meta', array( self::class, 'markdown_meta' ), 10, 2 );
+		add_filter( 'simple_seo_markdown_content', array( self::class, 'markdown_content' ), 10, 2 );
 	}
 
 	/**
@@ -285,6 +287,79 @@ final class Simple_SEO_WooCommerce {
 		}
 
 		return $tags;
+	}
+
+	/**
+	 * The details of a product in its Markdown version: the price as the shop shows it (from the
+	 * lowest to the highest of the variations; the regular one beside a sale), the stock, the SKU
+	 * and the attributes shown on the product page.
+	 *
+	 * @param mixed $details
+	 * @return mixed
+	 */
+	public static function markdown_meta( $details, Simple_SEO_Context $context ) {
+		$product = is_array( $details ) ? self::product( $context ) : null;
+		if ( null === $product ) {
+			return $details;
+		}
+
+		$price = '';
+		if ( $product->is_type( 'variable' ) ) {
+			$low   = (string) $product->get_variation_price( 'min', true );
+			$high  = (string) $product->get_variation_price( 'max', true );
+			$price = '' === $low ? '' : ( $low === $high ? self::money( $low ) : self::money( $low ) . ' – ' . self::money( $high ) );
+		} elseif ( '' !== (string) $product->get_price() ) {
+			$price = self::money( wc_get_price_to_display( $product ) );
+			if ( $product->is_on_sale() && '' !== (string) $product->get_regular_price() ) {
+				/* translators: %s: the regular price. */
+				$price .= ' (' . sprintf( __( 'regular price %s', 'simple-seo' ), self::money( wc_get_price_to_display( $product, array( 'price' => $product->get_regular_price() ) ) ) ) . ')';
+			}
+		}
+		// Empty values — no price, no SKU — are left out of the list.
+		$details[ __( 'Price', 'simple-seo' ) ] = Simple_SEO_HTML_Markdown::escape( $price );
+
+		$details[ __( 'Availability', 'simple-seo' ) ] = match ( self::availability( $product ) ) {
+			'out of stock'        => __( 'Out of stock', 'simple-seo' ),
+			'available for order' => __( 'Available for order', 'simple-seo' ),
+			default               => __( 'In stock', 'simple-seo' ),
+		};
+
+		$details[ __( 'SKU', 'simple-seo' ) ] = Simple_SEO_HTML_Markdown::escape( trim( (string) $product->get_sku() ) );
+
+		foreach ( $product->get_attributes() as $attribute ) {
+			if ( ! $attribute instanceof WC_Product_Attribute || ! $attribute->get_visible() ) {
+				continue;
+			}
+			// The names of the terms of a global attribute, the values of a custom one.
+			$values = $attribute->is_taxonomy() ? wc_get_product_terms( $product->get_id(), $attribute->get_name(), array( 'fields' => 'names' ) ) : $attribute->get_options();
+			$value  = implode( ', ', array_filter( array_map( static fn( $value ): string => Simple_SEO_Variables::plain( (string) $value ), (array) $values ) ) );
+
+			$details[ Simple_SEO_Variables::plain( wc_attribute_label( $attribute->get_name(), $product ) ) ] = Simple_SEO_HTML_Markdown::escape( $value );
+		}
+
+		return $details;
+	}
+
+	/**
+	 * The short description of a product above its description, as on the product page.
+	 *
+	 * @param mixed $markdown
+	 * @return mixed
+	 */
+	public static function markdown_content( $markdown, WP_Post $post ) {
+		if ( ! is_string( $markdown ) || 'product' !== $post->post_type || ! self::active() ) {
+			return $markdown;
+		}
+
+		// Without a short description, nothing comes before the text.
+		$short = Simple_SEO_HTML_Markdown::convert( wpautop( strip_shortcodes( trim( (string) $post->post_excerpt ) ) ), (string) get_permalink( $post ) );
+
+		return trim( $short . "\n\n" . $markdown );
+	}
+
+	/** An amount as the shop writes it: its currency, separators and decimals. */
+	private static function money( $amount ): string {
+		return Simple_SEO_Variables::plain( wc_price( (float) $amount ) );
 	}
 
 	/**

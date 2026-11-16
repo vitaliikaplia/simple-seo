@@ -65,18 +65,24 @@ final class Simple_SEO_Content {
 		return (array) Simple_SEO_WP_Loc::in_object_language( $post, static fn(): array => self::parse( self::render( $post, $content ) ) );
 	}
 
-	/** The HTML the content gives on the site, without the blocks that are not its text. */
-	public static function render( WP_Post $post, string $content ): string {
+	/**
+	 * The HTML the content gives on the site, without the blocks that are not its text.
+	 *
+	 * @param string[]|null $skip Blocks to leave out; null — those of the analysis.
+	 */
+	public static function render( WP_Post $post, string $content, ?array $skip = null ): string {
 		if ( '' === trim( $content ) ) {
 			return '';
 		}
 
-		/**
-		 * Blocks left out of the text of a page: code, lists of other posts, menus, forms and the like.
-		 *
-		 * @param string[] $blocks Block names.
-		 */
-		$skip = (array) apply_filters( 'simple_seo_content_skip_blocks', self::SKIP_BLOCKS );
+		if ( null === $skip ) {
+			/**
+			 * Blocks left out of the text of a page: code, lists of other posts, menus, forms and the like.
+			 *
+			 * @param string[] $blocks Block names.
+			 */
+			$skip = (array) apply_filters( 'simple_seo_content_skip_blocks', self::SKIP_BLOCKS );
+		}
 		$gate = static fn( $pre, array $block ) => in_array( $block['blockName'] ?? '', $skip, true ) ? '' : $pre;
 
 		// Render callbacks read the post being shown: get_the_ID(), get_field() of ACF.

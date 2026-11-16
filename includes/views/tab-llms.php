@@ -1,7 +1,8 @@
 <?php
 /**
  * llms.txt tab: the switch, the summary and details (per language with wp-loc), which post types
- * and taxonomies get a section, how many links each, and the file as the site serves it.
+ * and taxonomies get a section, how many links each, the Markdown versions of pages, and the file
+ * as the site serves it.
  *
  * @var array<string, mixed> $settings
  * @var array<string, mixed> $text
@@ -125,6 +126,8 @@ require __DIR__ . '/language-notice.php';
 		</tr>
 	</tbody>
 </table>
+
+<?php Simple_SEO_Markdown::render_section(); ?>
 
 <?php if ( '' !== $preview ) : ?>
 	<h2><?php esc_html_e( 'What the site serves', 'simple-seo' ); ?></h2>

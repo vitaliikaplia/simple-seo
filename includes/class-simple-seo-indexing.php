@@ -237,7 +237,8 @@ final class Simple_SEO_Indexing {
 
 		remove_action( 'wp_head', 'rel_canonical' );
 
-		if ( is_attachment() ) {
+		// The Markdown version of an attachment page is none (404), not the file.
+		if ( is_attachment() && ! Simple_SEO_Markdown::requested() ) {
 			$attachment = get_queried_object();
 			$target     = $attachment instanceof WP_Post ? self::attachment_redirect( $attachment ) : '';
 			if ( '' !== $target ) {

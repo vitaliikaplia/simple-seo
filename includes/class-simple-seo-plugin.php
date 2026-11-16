@@ -41,6 +41,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Files::init();
 		Simple_SEO_Cleanup::init();
 		Simple_SEO_Llms::init();
+		Simple_SEO_Markdown::init();
 		Simple_SEO_Analysis::init();
 		Simple_SEO_Scores::init();
 		Simple_SEO_Bulk::init();

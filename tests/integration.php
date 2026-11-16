@@ -6066,7 +6066,7 @@ try {
 	Simple_SEO_Llms::add_admin_tab();
 	Simple_SEO_Admin::register_settings();
 	$sseo_tabs = Simple_SEO_Admin::tabs();
-	sseo_check( 'the llms.txt tab saves both rows', isset( $sseo_tabs['llms'] ) && array( Simple_SEO_Llms::OPTION, Simple_SEO_Llms::TEXT ) === $sseo_tabs['llms']['options'] && 35 === $sseo_tabs['llms']['order'] );
+	sseo_check( 'the llms.txt tab saves its rows and the Markdown versions', isset( $sseo_tabs['llms'] ) && array( Simple_SEO_Llms::OPTION, Simple_SEO_Llms::TEXT, Simple_SEO_Markdown::OPTION ) === $sseo_tabs['llms']['options'] && 35 === $sseo_tabs['llms']['order'] );
 	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'post:post' => 'optional' ) ) );
 	update_option( Simple_SEO_Llms::TEXT, array( 'summary' => 'Sites & shops', 'details' => '' ) );
 	Simple_SEO_Settings::flush();
@@ -6102,6 +6102,552 @@ try {
 	} else {
 		echo "  skip  llms.txt with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
 	}
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Markdown versions' );
+
+	$sseo_md_on = static function ( array $values = array() ): void {
+		update_option( Simple_SEO_Markdown::OPTION, array_replace( array( 'enabled' => true ), $values ) );
+		Simple_SEO_Settings::flush();
+	};
+	$sseo_md_off = static function (): void {
+		delete_option( Simple_SEO_Markdown::OPTION );
+		Simple_SEO_Settings::flush();
+	};
+	$sseo_md_requested = new ReflectionProperty( Simple_SEO_Markdown::class, 'requested' );
+	$sseo_md_ctx       = static fn( int $id ): Simple_SEO_Context => Simple_SEO_Context::for_post( get_post( $id ) );
+	$sseo_md_about     = (string) get_permalink( $sseo_lp['about'] );
+	$sseo_md_server    = array(
+		'REQUEST_URI' => $_SERVER['REQUEST_URI'] ?? null,
+		'PATH_INFO'   => $_SERVER['PATH_INFO'] ?? null,
+	);
+	$sseo_md_query = $GLOBALS['wp_query'];
+	$sseo_md_off();
+	Simple_SEO_Llms::flush();
+
+	// Off until it is switched on.
+	$_SERVER['REQUEST_URI'] = '/llms-about/index.md';
+	$sseo_vals              = array( Simple_SEO_Markdown::parse( true ), $_SERVER['REQUEST_URI'], Simple_SEO_Markdown::requested() );
+	sseo_check(
+		'off out of the box: no Markdown versions, no links in the head, an address ending in index.md is left to WordPress, llms.txt links to the pages',
+		! Simple_SEO_Markdown::enabled() && ! Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) ) && array() === Simple_SEO_Markdown::head_tags( $sseo_md_ctx( $sseo_lp['about'] ) )
+			&& array( true, '/llms-about/index.md', false ) === $sseo_vals && str_contains( Simple_SEO_Llms::build( '' ), '](' . $sseo_md_about . ')' ),
+		$sseo_vals
+	);
+	$sseo_md_on();
+	update_option( 'blog_public', '0' );
+	$sseo_vals = array( Simple_SEO_Markdown::enabled() );
+	update_option( 'blog_public', '1' );
+	add_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	$sseo_vals[] = Simple_SEO_Markdown::enabled();
+	remove_filter( 'simple_seo_conflicting_plugin', $sseo_conflict );
+	$sseo_vals[] = Simple_SEO_Markdown::enabled();
+	sseo_check( 'switched on, for a public site without another SEO plugin only', array( false, false, true ) === $sseo_vals, $sseo_vals );
+
+	// The field of a post or a term, while switched on.
+	$sseo_md_fields = new ReflectionProperty( Simple_SEO_Fields::class, 'fields' );
+	$sseo_md_all    = $sseo_md_fields->getValue();
+	unset( $sseo_md_all['markdown'] );
+	$sseo_md_fields->setValue( null, $sseo_md_all );
+	$sseo_md_off();
+	Simple_SEO_Markdown::register_fields();
+	$sseo_vals = array( null === Simple_SEO_Fields::get( 'markdown' ) );
+	$sseo_md_on();
+	Simple_SEO_Markdown::register_fields();
+	$sseo_field  = (array) Simple_SEO_Fields::get( 'markdown' );
+	$sseo_vals[] = array( $sseo_field['type'] ?? '', $sseo_field['level'] ?? '', $sseo_field['group'] ?? '', array_keys( (array) ( $sseo_field['options'] ?? array() ) ), $sseo_field['objects'] ?? array() );
+	$sseo_vals[] = call_user_func( $sseo_field['preview'], 'post', get_post( $sseo_lp['about'] ) );
+	$sseo_vals[] = call_user_func( $sseo_field['preview'], 'post', get_post( $sseo_lp['hidden'] ) );
+	sseo_check(
+		'the field of a post or a term only while switched on: as set for the type, serve one or not; advanced, in the indexing group; it shows the address',
+		array( true, array( 'select', 'advanced', 'indexing', array( '', 'on', 'off' ), array( 'post', 'term' ) ), $sseo_md_about . 'index.md', 'none' ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Addresses.
+	$sseo_vals = array_map( array( Simple_SEO_Markdown::class, 'page_address' ), array( '/about/index.md', '/index.md', '/about.md', '/about.html.md', '/en/about/index.md?x=1', '/about/', '/a/.md', '/x.md', '/index.html.md', '/.md', '/about/?f=index.md' ) );
+	sseo_check( 'the page behind a Markdown version: index.md, index.html.md or .md away, the query kept; other addresses none', array( '/about/', '/', '/about', '/about.html', '/en/about/?x=1', null, null, '/x', '/', null, null ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array_map( array( Simple_SEO_Markdown::class, 'address' ), array( 'https://s.test/', 'https://s.test', 'https://s.test/about/', 'https://s.test/about', 'https://s.test/a.html', 'http://s.test:8080/x/?q=1', '', '/relative/' ) );
+	add_filter( 'pre_option_permalink_structure', '__return_empty_string' );
+	$sseo_vals[] = Simple_SEO_Markdown::address( 'https://s.test/?p=5' );
+	$sseo_vals[] = Simple_SEO_Markdown::address( '' );
+	remove_filter( 'pre_option_permalink_structure', '__return_empty_string' );
+	sseo_check(
+		'the address of a Markdown version: index.md after a folder, .md after a file name; the port and the query kept; a query argument without pretty permalinks',
+		array( 'https://s.test/index.md', 'https://s.test/index.md', 'https://s.test/about/index.md', 'https://s.test/about/index.md', 'https://s.test/a.html.md', 'http://s.test:8080/x/index.md?q=1', '', '', 'https://s.test/?p=5&simple_seo_markdown=1', '' ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// A request for one: WordPress parses the page's address, then the request's is back.
+	$_SERVER['REQUEST_URI'] = '/llms-about/index.md?x=1';
+	$_SERVER['PATH_INFO']   = '/llms-about/index.md';
+	$sseo_vals              = array( Simple_SEO_Markdown::parse( true ), $_SERVER['REQUEST_URI'], $_SERVER['PATH_INFO'], Simple_SEO_Markdown::requested() );
+	Simple_SEO_Markdown::restore();
+	array_push( $sseo_vals, $_SERVER['REQUEST_URI'], $_SERVER['PATH_INFO'] );
+	$sseo_md_requested->setValue( null, false );
+	$_SERVER['REQUEST_URI'] = '/llms-about/';
+	$_SERVER['PATH_INFO']   = '/llms-about/index.md';
+	array_push( $sseo_vals, Simple_SEO_Markdown::parse( true ), $_SERVER['REQUEST_URI'], $_SERVER['PATH_INFO'], Simple_SEO_Markdown::requested() );
+	$_SERVER['REQUEST_URI'] = '/x/index.md';
+	$sseo_vals[]            = Simple_SEO_Markdown::parse( false );
+	set_current_screen( 'edit-post' );
+	$sseo_vals[] = Simple_SEO_Markdown::parse( true );
+	unset( $GLOBALS['current_screen'] );
+	$sseo_vals[] = $_SERVER['REQUEST_URI'];
+	unset( $_SERVER['PATH_INFO'] );
+	$sseo_vals[] = Simple_SEO_Markdown::parse( true );
+	$sseo_vals[] = $_SERVER['REQUEST_URI'];
+	Simple_SEO_Markdown::restore();
+	$sseo_vals[] = $_SERVER['REQUEST_URI'];
+	$sseo_vals[] = isset( $_SERVER['PATH_INFO'] );
+	$sseo_md_requested->setValue( null, false );
+	$GLOBALS['wp_query'] = new WP_Query();
+	$GLOBALS['wp_query']->set( Simple_SEO_Markdown::QUERY_VAR, '1' );
+	$sseo_vals[]         = Simple_SEO_Markdown::requested();
+	$GLOBALS['wp_query'] = $sseo_md_query;
+	sseo_check(
+		'a request for a Markdown version: WordPress parses the address of the page (REQUEST_URI, and PATH_INFO when the server gives it), then the request\'s is back; other requests and the admin as they are; the argument of plain permalinks asks too',
+		array( true, '/llms-about/?x=1', '/llms-about/', true, '/llms-about/index.md?x=1', '/llms-about/index.md', true, '/llms-about/', '/llms-about/index.md', false, false, true, '/x/index.md', true, '/x/', '/x/index.md', false, true ) === $sseo_vals
+			&& in_array( Simple_SEO_Markdown::QUERY_VAR, apply_filters( 'query_vars', array() ), true ) && 1 === has_filter( 'do_parse_request', array( Simple_SEO_Markdown::class, 'parse' ) ),
+		$sseo_vals
+	);
+	foreach ( $sseo_md_server as $sseo_name => $sseo_val ) {
+		if ( null === $sseo_val ) {
+			unset( $_SERVER[ $sseo_name ] );
+		} else {
+			$_SERVER[ $sseo_name ] = $sseo_val;
+		}
+	}
+
+	// The slots.
+	$sseo_md_slots = Simple_SEO_Markdown::slots();
+	sseo_check(
+		'the slots: post types (pages first), the latest posts and the archives of types that have one, taxonomies; no attachments',
+		'post:page' === array_key_first( $sseo_md_slots ) && isset( $sseo_md_slots['post:post'], $sseo_md_slots['post:sseo_book'], $sseo_md_slots['archive:sseo_book'], $sseo_md_slots['term:category'], $sseo_md_slots['term:sseo_genre'] )
+			&& ! isset( $sseo_md_slots['post:attachment'] ) && ! isset( $sseo_md_slots['archive:page'] ) && 'Latest posts' === $sseo_md_slots['archive:post'] && 'Archive of Books' === $sseo_md_slots['archive:sseo_book'] && 'Pages' === $sseo_md_slots['post:page'] && 'Categories' === $sseo_md_slots['term:category'],
+		array_keys( $sseo_md_slots )
+	);
+	$sseo_md_front = array( get_option( 'show_on_front' ), get_option( 'page_on_front' ), get_option( 'page_for_posts' ) );
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_on_front', $sseo_lp['contacts'] );
+	update_option( 'page_for_posts', 0 );
+	$sseo_vals = array( Simple_SEO_Markdown::known_slot( 'archive:post' ), isset( Simple_SEO_Markdown::slots()['archive:post'] ) );
+	update_option( 'page_for_posts', $sseo_lp['about'] );
+	array_push( $sseo_vals, Simple_SEO_Markdown::known_slot( 'archive:post' ), Simple_SEO_Markdown::slot_of( $sseo_md_ctx( $sseo_lp['about'] ) ), Simple_SEO_Markdown::slot_of( $sseo_md_ctx( $sseo_lp['contacts'] ) ) );
+	update_option( 'show_on_front', 'posts' );
+	update_option( 'page_for_posts', 0 );
+	$sseo_vals[] = Simple_SEO_Markdown::known_slot( 'archive:post' );
+	update_option( 'show_on_front', $sseo_md_front[0] );
+	update_option( 'page_on_front', $sseo_md_front[1] );
+	update_option( 'page_for_posts', $sseo_md_front[2] );
+	$sseo_md_many = get_term( (int) $sseo_many['term_id'], 'category' );
+	$sseo_md_tagc          = new Simple_SEO_Context();
+	$sseo_md_tagc->kind    = Simple_SEO_Context::TERM;
+	$sseo_md_tagc->subtype = 'post_tag';
+	array_push(
+		$sseo_vals,
+		Simple_SEO_Markdown::known_slot( 'archive:page' ),
+		Simple_SEO_Markdown::known_slot( 'post:attachment' ),
+		Simple_SEO_Markdown::known_slot( 'term:nope' ),
+		Simple_SEO_Markdown::known_slot( 'nope' ),
+		Simple_SEO_Markdown::slot_of( Simple_SEO_Context::for_home() ),
+		Simple_SEO_Markdown::slot_of( Simple_SEO_Context::for_term( $sseo_md_many ) ),
+		Simple_SEO_Markdown::slot_of( Simple_SEO_Context::for_post_type_archive( 'sseo_book' ) ),
+		Simple_SEO_Markdown::slot_of( Simple_SEO_Context::for_author( get_userdata( $sseo_u['author'] ) ) ),
+		Simple_SEO_Markdown::slot_of( $sseo_md_tagc )
+	);
+	sseo_check(
+		'the latest posts are a slot where the site lists them, on the home page or on the posts page; the slot of each kind of page; none for others',
+		array( false, false, true, 'archive:post', 'post:page', true, false, false, false, false, 'archive:post', 'term:category', 'archive:sseo_book', '', 'term:post_tag' ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Which pages have one.
+	$sseo_md_draft = (int) wp_insert_post( array( 'post_type' => 'page', 'post_title' => 'Md draft', 'post_status' => 'draft' ) );
+	$sseo_md_cover = (int) wp_insert_attachment( array( 'post_title' => 'Md cover', 'post_mime_type' => 'image/jpeg', 'post_status' => 'inherit' ), 'md-cover.jpg' );
+	array_push( $sseo['posts'], $sseo_md_draft, $sseo_md_cover );
+	update_post_meta( $sseo_md_cover, '_wp_attachment_metadata', array( 'width' => 800, 'height' => 600, 'file' => 'md-cover.jpg' ) );
+	update_post_meta( $sseo_md_cover, '_wp_attachment_image_alt', 'Cover *alt*' );
+	$sseo_md_second       = $sseo_md_ctx( $sseo_lp['about'] );
+	$sseo_md_second->page = 2;
+	$sseo_md_search       = new Simple_SEO_Context();
+	$sseo_md_search->kind = Simple_SEO_Context::SEARCH;
+	$sseo_vals            = array(
+		'about'       => Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) ),
+		'noindex'     => Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['hidden'] ) ),
+		'password'    => Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['locked'] ) ),
+		'draft'       => Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_md_draft ) ),
+		'elsewhere'   => Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['away'] ) ),
+		'attachment'  => Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_md_cover ) ),
+		'second page' => Simple_SEO_Markdown::available( $sseo_md_second ),
+		'term'        => Simple_SEO_Markdown::available( Simple_SEO_Context::for_term( $sseo_md_many ) ),
+		'home'        => Simple_SEO_Markdown::available( Simple_SEO_Context::for_home() ),
+		'archive'     => Simple_SEO_Markdown::available( Simple_SEO_Context::for_post_type_archive( 'sseo_book' ) ),
+		'private'     => Simple_SEO_Markdown::available( Simple_SEO_Context::for_post_type_archive( 'sseo_private' ) ),
+		'search'      => Simple_SEO_Markdown::available( $sseo_md_search ),
+	);
+	$sseo_md_nobook = static fn( array $types ): array => array_values( array_diff( $types, array( 'sseo_book' ) ) );
+	add_filter( 'simple_seo_post_types', $sseo_md_nobook );
+	Simple_SEO_Fields::flush_types();
+	$sseo_md_novel                 = (int) wp_insert_post( array( 'post_type' => 'sseo_book', 'post_status' => 'publish', 'post_title' => 'Md other novel' ) );
+	$sseo['posts'][]               = $sseo_md_novel;
+	$sseo_vals['type without SEO'] = array( Simple_SEO_Markdown::known_slot( 'archive:sseo_book' ), Simple_SEO_Markdown::available( Simple_SEO_Context::for_post_type_archive( 'sseo_book' ) ), Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_md_novel ) ) );
+	remove_filter( 'simple_seo_post_types', $sseo_md_nobook );
+	Simple_SEO_Fields::flush_types();
+	update_post_meta( $sseo_lp['about'], Simple_SEO_Fields::meta_key( 'canonical' ), $sseo_md_about );
+	$sseo_vals['own canonical'] = Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) );
+	delete_post_meta( $sseo_lp['about'], Simple_SEO_Fields::meta_key( 'canonical' ) );
+	sseo_check(
+		'pages search engines may show have one: published, without a password, not hidden, not repeating another page, the first page of a post; posts, terms, the home page, archives; no attachments, no private types, no search',
+		array( 'about' => true, 'noindex' => false, 'password' => false, 'draft' => false, 'elsewhere' => false, 'attachment' => false, 'second page' => false, 'term' => true, 'home' => true, 'archive' => true, 'private' => false, 'search' => false, 'type without SEO' => array( false, false, false ), 'own canonical' => true ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_md_on( array( 'slots' => array( 'post:page' => array( 'on' => false ) ) ) );
+	$sseo_vals = array( Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) ) );
+	update_post_meta( $sseo_lp['about'], Simple_SEO_Fields::meta_key( 'markdown' ), 'on' );
+	$sseo_vals[] = Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) );
+	$sseo_md_on();
+	update_post_meta( $sseo_lp['about'], Simple_SEO_Fields::meta_key( 'markdown' ), 'off' );
+	$sseo_vals[] = Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) );
+	update_post_meta( $sseo_lp['hidden'], Simple_SEO_Fields::meta_key( 'markdown' ), 'on' );
+	$sseo_vals[] = Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['hidden'] ) );
+	delete_post_meta( $sseo_lp['about'], Simple_SEO_Fields::meta_key( 'markdown' ) );
+	delete_post_meta( $sseo_lp['hidden'], Simple_SEO_Fields::meta_key( 'markdown' ) );
+	update_term_meta( $sseo_md_many->term_id, Simple_SEO_Fields::meta_key( 'markdown' ), 'off' );
+	$sseo_vals[] = Simple_SEO_Markdown::available( Simple_SEO_Context::for_term( $sseo_md_many ) );
+	delete_term_meta( $sseo_md_many->term_id, Simple_SEO_Fields::meta_key( 'markdown' ) );
+	$sseo_md_on( array( 'slots' => array( 'term:category' => array( 'on' => false ) ) ) );
+	$sseo_vals[] = Simple_SEO_Markdown::available( Simple_SEO_Context::for_term( $sseo_md_many ) );
+	$sseo_md_on();
+	add_filter( 'simple_seo_markdown_available', '__return_false' );
+	$sseo_vals[] = Simple_SEO_Markdown::available( $sseo_md_ctx( $sseo_lp['about'] ) );
+	remove_filter( 'simple_seo_markdown_available', '__return_false' );
+	sseo_check(
+		'a kind of page switched off has none unless the post says so; a post or a term may switch itself off; a hidden page never; the filter has the last word',
+		array( false, true, false, false, false, false, false ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Links to them.
+	$sseo_md_term = (string) get_term_link( $sseo_md_many );
+	$sseo_vals    = array(
+		Simple_SEO_Markdown::url( $sseo_md_ctx( $sseo_lp['about'] ) ),
+		Simple_SEO_Markdown::url( $sseo_md_ctx( $sseo_lp['hidden'] ) ),
+		Simple_SEO_Markdown::link_for_post( get_post( $sseo_lp['about'] ) ),
+		Simple_SEO_Markdown::link_for_post( get_post( $sseo_lp['hidden'] ) ),
+		Simple_SEO_Markdown::link_for_term( $sseo_md_many ),
+		Simple_SEO_Markdown::url( Simple_SEO_Context::for_home() ),
+	);
+	$sseo_md_on( array( 'slots' => array( 'term:category' => array( 'on' => false ) ) ) );
+	$sseo_vals[] = Simple_SEO_Markdown::link_for_term( $sseo_md_many );
+	$sseo_md_on();
+	sseo_check(
+		'links go to the Markdown version, or to the page itself when it has none',
+		array( $sseo_md_about . 'index.md', '', $sseo_md_about . 'index.md', (string) get_permalink( $sseo_lp['hidden'] ), $sseo_md_term . 'index.md', home_url( '/' ) . 'index.md', $sseo_md_term ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// The head of the HTML page and the Link header.
+	$sseo_md_llms = Simple_SEO_Llms::url( Simple_SEO_WP_Loc::current_language() );
+	$sseo_md_tags = Simple_SEO_Markdown::head_tags( $sseo_md_ctx( $sseo_lp['about'] ) );
+	$sseo_vals    = array(
+		Simple_SEO_Markdown::head_tags( $sseo_md_ctx( $sseo_lp['hidden'] ) ),
+		Simple_SEO_Markdown::head_tags( $sseo_md_search ) + Simple_SEO_Markdown::head_tags( new Simple_SEO_Context() ),
+		Simple_SEO_Markdown::link_value( $sseo_md_tags ),
+		isset( Simple_SEO_Head::tags( $sseo_md_ctx( $sseo_lp['about'] ) )['markdown_alternate'] ),
+		Simple_SEO_Head::render( $sseo_md_tags ),
+	);
+	$sseo_md_on( array( 'slots' => array( 'post:page' => array( 'on' => false ) ) ) );
+	$sseo_vals[] = array_keys( Simple_SEO_Markdown::head_tags( $sseo_md_ctx( $sseo_lp['about'] ) ) );
+	$sseo_md_on();
+	update_option( Simple_SEO_Llms::OPTION, array( 'enabled' => false ) );
+	Simple_SEO_Settings::flush();
+	$sseo_vals[] = array_keys( Simple_SEO_Markdown::head_tags( $sseo_md_ctx( $sseo_lp['about'] ) ) );
+	delete_option( Simple_SEO_Llms::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_md_off();
+	$sseo_vals[] = Simple_SEO_Markdown::head_tags( $sseo_md_ctx( $sseo_lp['about'] ) );
+	$sseo_md_on();
+	sseo_check(
+		'the head names the Markdown version and the llms.txt that covers the page, the Link header the same; none on hidden pages and search results; the llms.txt without a Markdown version, the Markdown version without llms.txt; nothing while switched off',
+		array(
+			'markdown_alternate' => array( 'tag' => 'link', 'attributes' => array( 'rel' => 'alternate', 'type' => 'text/markdown', 'href' => $sseo_md_about . 'index.md' ) ),
+			'llms_describedby'   => array( 'tag' => 'link', 'attributes' => array( 'rel' => 'describedby', 'href' => $sseo_md_llms ) ),
+		) === $sseo_md_tags
+			&& array() === $sseo_vals[0] && array() === $sseo_vals[1]
+			&& '<' . $sseo_md_about . 'index.md>; rel="alternate"; type="text/markdown", <' . $sseo_md_llms . '>; rel="describedby"' === $sseo_vals[2]
+			&& true === $sseo_vals[3] && str_contains( $sseo_vals[4], '<link rel="alternate" type="text/markdown" href="' . $sseo_md_about . 'index.md" />' ) && str_contains( $sseo_vals[4], '<link rel="describedby" href="' . $sseo_md_llms . '" />' )
+			&& array( 'llms_describedby' ) === $sseo_vals[5] && array( 'markdown_alternate' ) === $sseo_vals[6] && array() === $sseo_vals[7]
+			&& 11 === has_action( 'template_redirect', array( Simple_SEO_Markdown::class, 'link_header' ) ) && 2 === has_action( 'template_redirect', array( Simple_SEO_Markdown::class, 'serve' ) ),
+		$sseo_vals
+	);
+
+	// The headers of a Markdown version.
+	$sseo_md_post = get_post( $sseo_lp['about'] );
+	$sseo_vals    = array( Simple_SEO_Markdown::headers( $sseo_md_ctx( $sseo_lp['about'] ) ), Simple_SEO_Markdown::headers( Simple_SEO_Context::for_term( $sseo_md_many ) ) );
+	update_option( Simple_SEO_Llms::OPTION, array( 'enabled' => false ) );
+	Simple_SEO_Settings::flush();
+	$sseo_vals[] = Simple_SEO_Markdown::headers( Simple_SEO_Context::for_term( $sseo_md_many ) );
+	delete_option( Simple_SEO_Llms::OPTION );
+	Simple_SEO_Settings::flush();
+	update_option( 'show_on_front', 'page' );
+	update_option( 'page_for_posts', $sseo_lp['about'] );
+	$sseo_vals[] = (bool) preg_grep( '/^Last-Modified/', Simple_SEO_Markdown::headers( $sseo_md_ctx( $sseo_lp['about'] ) ) );
+	update_option( 'show_on_front', $sseo_md_front[0] );
+	update_option( 'page_for_posts', $sseo_md_front[2] );
+	Simple_SEO_Settings::flush();
+	sseo_check(
+		'a Markdown version is text/markdown, not for search results, with the page as its canonical address, the llms.txt that covers it and, for a post, when it changed',
+		array(
+			array( 'Content-Type: text/markdown; charset=UTF-8', 'X-Robots-Tag: noindex, follow', 'Link: <' . $sseo_md_about . '>; rel="canonical", <' . $sseo_md_llms . '>; rel="describedby"', 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', strtotime( $sseo_md_post->post_modified_gmt . ' UTC' ) ) . ' GMT' ),
+			array( 'Content-Type: text/markdown; charset=UTF-8', 'X-Robots-Tag: noindex, follow', 'Link: <' . $sseo_md_term . '>; rel="canonical", <' . $sseo_md_llms . '>; rel="describedby"' ),
+			array( 'Content-Type: text/markdown; charset=UTF-8', 'X-Robots-Tag: noindex, follow', 'Link: <' . $sseo_md_term . '>; rel="canonical"' ),
+			false,
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// HTML to Markdown.
+	$sseo_md = static fn( string $html ): string => Simple_SEO_HTML_Markdown::convert( $html, 'https://site.test/blog/post/' );
+	sseo_check(
+		'Markdown: headings, emphasis, strikethrough, links made absolute, code',
+		"## Title of #part \\#\n\nText with **bold** and *em*, ~~old~~, a [link (x)](https://site.test/about/) and ``a`b``." === $sseo_md( '<h2>Title  of #part #</h2><p>Text with <strong>bold </strong>and <em>em</em>, <del>old</del>, a <a href="/about/">link (x)</a> and <code>a`b</code>.</p>' ),
+		$sseo_md( '<h2>Title  of #part #</h2><p>Text with <strong>bold </strong>and <em>em</em>, <del>old</del>, a <a href="/about/">link (x)</a> and <code>a`b</code>.</p>' )
+	);
+	$sseo_val = $sseo_md( "<p>5 * 3 = snake_case _x_ [y] &lt;b&gt; a \\ b \\* c `t`</p><p>1. one<br>- two<br># three<br>&gt; four<br>+ five<br>2) six<br>===<br>1234567890. ten</p>" );
+	sseo_check(
+		'Markdown: text escaped where Markdown would read it otherwise, underscores inside words as they are; lines that would start a block escaped; the source\'s line breaks are spaces, <br> breaks a line',
+		<<<'MD'
+5 \* 3 = snake_case \_x\_ \[y\] \<b> a \ b \\\* c \`t\`
+
+1\. one
+\- two
+\# three
+\> four
+\+ five
+2\) six
+\===
+1234567890. ten
+MD === $sseo_val,
+		$sseo_val
+	);
+	$sseo_val = $sseo_md( "<ul>\n<li>One</li>\n<li>Two<ul><li>Two a</li></ul></li><li><p>Three</p><p>More</p></li><li> </li></ul><ol start=\"3\"><li>Third</li><li>Fourth</li></ol><ol><li>First</li></ol>" );
+	sseo_check( 'Markdown: lists, nested ones indented and tight, numbered ones from their start, empty items left out', "- One\n- Two\n  - Two a\n- Three\n\n  More\n\n3. Third\n4. Fourth\n\n1. First" === $sseo_val, $sseo_val );
+	$sseo_val = $sseo_md( '<blockquote><p>Quote</p><p>Second</p></blockquote><pre class="wp-block-code"><code class="language-php">echo "```";</code></pre><pre><code> </code></pre><table><caption>Prices</caption><thead><tr><th>A</th><th>B|C</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr><tr><td>3</td></tr></tbody></table><table><tr><td>Bare</td></tr></table><hr>' );
+	sseo_check( 'Markdown: quotes, fenced code longer than its backticks with its language, tables with their caption, rules', "> Quote\n>\n> Second\n\n````php\necho \"```\";\n````\n\n*Prices*\n\n| A | B\\|C |\n| --- | --- |\n| 1 | 2 |\n| 3 |  |\n\n| Bare |\n| --- |\n\n---" === $sseo_val, $sseo_val );
+	$sseo_val = $sseo_md( '<figure><img src="data:image/gif;base64,R0" data-src="/img/a b(1).jpg" alt="Alt [1]"><figcaption>Caption</figcaption></figure><img src="//cdn.test/x.png" alt=""><img alt="none"><nav>Menu</nav><script>alert(1)</script><style>p{}</style><form><p>Form</p></form><span aria-hidden="true">*</span><div hidden>secret</div><p><a href="#top">Anchor</a> <a href="javascript:void(0)">JS</a> <a href="mailto:a@b.test">Mail</a> <a href="https://x.test/"><img src="https://x.test/i.png" alt="Logo"></a> <a href="https://x.test/e"> </a> <a href="page2/">Rel</a> <a href="?q=1">Query</a> <a href="/x">[a]</a></p><a href="https://x.test/"><div><h3>Card</h3><p>Body</p></div></a><dl><dt>Term</dt><dd>Definition</dd></dl><details><summary>More</summary><p>Inside</p></details><h2> </h2><p>a<br>b <code>`x</code></p>' );
+	sseo_check(
+		'Markdown: images (lazy ones too) and their captions; menus, scripts, styles, forms and what is hidden left out; anchors and scripts are text, empty links none; relative addresses from the page; cards as one link; terms, summaries',
+		"![Alt \\[1\\]](https://site.test/img/a%20b%281%29.jpg)\n\n*Caption*\n\n![](https://cdn.test/x.png)\n\nAnchor JS [Mail](mailto:a@b.test) [![Logo](https://x.test/i.png)](https://x.test/) [Rel](https://site.test/blog/post/page2/) [Query](https://site.test/blog/post/?q=1) [\\[a\\]](https://site.test/x)\n\n[Card Body](https://x.test/)\n\n**Term**\n\nDefinition\n\n**More**\n\nInside\n\na\nb `` `x ``" === $sseo_val,
+		$sseo_val
+	);
+	$sseo_vals = array(
+		$sseo_md( '<h3>Three</h3><h4>Four</h4><p><a href="/a b(1)/">x</a></p>' ),
+		Simple_SEO_HTML_Markdown::convert( '<a href="/x">x</a>' ),
+		Simple_SEO_HTML_Markdown::convert( '<a href="?q=1">Q</a> <a href="next">N</a>', 'https://site.test/blog/post' ),
+		$sseo_md( "<p>one\ntwo  three</p><pre><code>a\n\n\nb</code></pre><ul><li>One</li><div>Stray</div></ul>" ),
+	);
+	sseo_check(
+		'Markdown: headings of every level, addresses encoded, links from the home page without a base and from a page without a slash, line breaks of the source as spaces, blank lines in code kept, text outside the items of a list kept',
+		array( "### Three\n\n#### Four\n\n[x](https://site.test/a%20b%281%29/)", '[x](' . home_url( '/x' ) . ')', '[Q](https://site.test/blog/post?q=1) [N](https://site.test/blog/next)', "one two three\n\n```\na\n\n\nb\n```\n\n- One\n- Stray" ) === $sseo_vals,
+		$sseo_vals
+	);
+	sseo_check( 'Markdown: nothing from nothing', '' === $sseo_md( '' ) && '' === $sseo_md( '<p> </p><div><span></span></div>' ) && '[x](https://site.test/x)' === Simple_SEO_HTML_Markdown::convert( '<a href="x">x</a>', 'https://site.test' ) );
+
+	// The Markdown version of a post.
+	$sseo_md_cat  = wp_insert_term( 'Md Kind', 'category', array( 'description' => 'The kinds of <em>guides</em>.' ) );
+	$sseo_md_tag  = wp_insert_term( 'Md tag', 'post_tag' );
+	$sseo['terms'][] = array( (int) $sseo_md_cat['term_id'], 'category' );
+	$sseo['terms'][] = array( (int) $sseo_md_tag['term_id'], 'post_tag' );
+	kses_remove_filters();
+	$sseo_md_guide = (int) wp_insert_post(
+		array(
+			'post_type'     => 'post',
+			'post_status'   => 'publish',
+			'post_title'    => 'Md [guide] #',
+			'post_author'   => $sseo_u['author'],
+			'post_date'     => '2025-03-04 10:00:00',
+			'post_category' => array( (int) $sseo_md_cat['term_id'] ),
+			'tags_input'    => array( 'Md tag' ),
+			'post_content'  => "<!-- wp:paragraph -->\n<p>First words of the <strong>text</strong> with a <a href=\"/llms-about/\">link</a>.</p>\n<!-- /wp:paragraph -->\n\n<!-- wp:heading -->\n<h2 class=\"wp-block-heading\">Part two</h2>\n<!-- /wp:heading -->\n\n<!-- wp:list -->\n<ul class=\"wp-block-list\"><!-- wp:list-item -->\n<li>One</li>\n<!-- /wp:list-item -->\n\n<!-- wp:list-item -->\n<li>Two</li>\n<!-- /wp:list-item --></ul>\n<!-- /wp:list -->\n\n<!-- wp:code -->\n<pre class=\"wp-block-code\"><code>x = 1</code></pre>\n<!-- /wp:code -->\n\n<!-- wp:latest-posts /-->",
+		)
+	);
+	kses_init();
+	$sseo['posts'][] = $sseo_md_guide;
+	$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, array( 'post_modified' => '2026-01-02 03:04:05', 'post_modified_gmt' => '2026-01-02 03:04:05' ), array( 'ID' => $sseo_md_guide ) );
+	clean_post_cache( $sseo_md_guide );
+	set_post_thumbnail( $sseo_md_guide, $sseo_md_cover );
+	update_post_meta( $sseo_md_guide, Simple_SEO_Fields::meta_key( 'description' ), 'All about the *guide*.' );
+	$sseo_md_gpost  = get_post( $sseo_md_guide );
+	$sseo_md_glink  = (string) get_permalink( $sseo_md_gpost );
+	$sseo_md_clink  = (string) get_term_link( (int) $sseo_md_cat['term_id'], 'category' );
+	$sseo_md_tlink  = (string) get_term_link( (int) $sseo_md_tag['term_id'], 'post_tag' );
+	$sseo_md_sep    = Simple_SEO_Breadcrumbs::separator();
+	$sseo_md_expect = '[' . Simple_SEO_Breadcrumbs::home_label() . '](' . home_url( '/' ) . ") {$sseo_md_sep} [Md Kind](" . $sseo_md_clink . ") {$sseo_md_sep} Md \\[guide\\] #\n\n"
+		. "# Md \\[guide\\] \\#\n\n"
+		. "> All about the \\*guide\\*.\n\n"
+		. '- Address: ' . $sseo_md_glink . "\n"
+		. "- Published: 2025-03-04\n"
+		. "- Updated: 2026-01-02\n"
+		. '- Author: ' . Simple_SEO_HTML_Markdown::escape( get_userdata( $sseo_u['author'] )->display_name ) . "\n"
+		. '- Categories: [Md Kind](' . $sseo_md_clink . "index.md)\n"
+		. '- Tags: [Md tag](' . $sseo_md_tlink . "index.md)\n\n"
+		. '![Cover \\*alt\\*](' . wp_get_attachment_image_url( $sseo_md_cover, 'large' ) . ")\n\n"
+		. 'First words of the **text** with a [link](' . home_url( '/llms-about/' ) . ").\n\n"
+		. "## Part two\n\n- One\n- Two\n\n```\nx = 1\n```\n";
+	$sseo_val = Simple_SEO_Markdown::build( Simple_SEO_Context::for_post( $sseo_md_gpost ) );
+	sseo_check( 'a post: its trail, title, description, details (address, dates, author, terms with links to their Markdown versions), image, then its text with the code and without lists of other posts; one line break at the end', $sseo_md_expect === $sseo_val, $sseo_val );
+	$sseo_md_on( array( 'slots' => array( 'post:post' => array( 'breadcrumbs' => false, 'description' => false, 'meta' => false, 'image' => false ) ) ) );
+	$sseo_val = Simple_SEO_Markdown::build( Simple_SEO_Context::for_post( $sseo_md_gpost ) );
+	$sseo_md_on();
+	sseo_check( 'the parts a kind of page leaves out', "# Md \\[guide\\] \\#\n\nFirst words of the **text** with a [link](" . home_url( '/llms-about/' ) . ").\n\n## Part two\n\n- One\n- Two\n\n```\nx = 1\n```\n" === $sseo_val, $sseo_val );
+	$sseo_vals = array();
+	foreach ( array( 'First words of the text…', 'First words of the', 'Other words' ) as $sseo_name ) {
+		update_post_meta( $sseo_md_guide, Simple_SEO_Fields::meta_key( 'description' ), $sseo_name );
+		$sseo_vals[] = str_contains( Simple_SEO_Markdown::build( Simple_SEO_Context::for_post( $sseo_md_gpost ) ), "\n> " );
+	}
+	update_post_meta( $sseo_md_guide, Simple_SEO_Fields::meta_key( 'description' ), 'All about the *guide*.' );
+	$sseo_vals[] = Simple_SEO_Markdown::repeats( '…', '<p>x</p>' );
+	sseo_check( 'a description made of the first words of the text is left out', array( false, false, true, false ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array(
+		str_contains( Simple_SEO_Markdown::html( $sseo_md_gpost ), 'x = 1' ),
+		str_contains( Simple_SEO_Content::render( $sseo_md_gpost, $sseo_md_gpost->post_content ), 'x = 1' ),
+	);
+	$sseo_md_filters = array(
+		'simple_seo_markdown'             => static fn( string $text ): string => $text . "- end\n",
+		'simple_seo_markdown_meta'        => static fn( array $details ): array => $details + array( 'Extra' => 'yes', 'Blank' => ' ' ),
+		'simple_seo_markdown_content'     => static fn( string $text ): string => 'Before. ' . $text,
+		'simple_seo_markdown_skip_blocks' => static fn( array $blocks ): array => array_merge( $blocks, array( 'core/heading' ) ),
+	);
+	foreach ( $sseo_md_filters as $sseo_name => $sseo_val ) {
+		add_filter( $sseo_name, $sseo_val );
+	}
+	$sseo_val = Simple_SEO_Markdown::build( Simple_SEO_Context::for_post( $sseo_md_gpost ) );
+	foreach ( $sseo_md_filters as $sseo_name => $sseo_filter ) {
+		remove_filter( $sseo_name, $sseo_filter );
+	}
+	$sseo_vals[] = str_ends_with( $sseo_val, "```\n- end\n" ) && str_contains( $sseo_val, "index.md)\n- Extra: yes\n\n" ) && str_contains( $sseo_val, "\n\nBefore. First words" ) && ! str_contains( $sseo_val, 'Part two' ) && ! str_contains( $sseo_val, 'Blank' );
+	sseo_check( 'the Markdown version keeps the blocks of code the analysis leaves out; filters: the text, the details, the text of a post, the blocks left out', array( true, false, true ) === $sseo_vals, $sseo_vals );
+
+	$sseo_val = Simple_SEO_Markdown::build( $sseo_md_ctx( $sseo_lp['about'] ) );
+	sseo_check( 'a page: no author, and no date of an update made the day it was published', str_contains( $sseo_val, "\n- Published: " ) && ! str_contains( $sseo_val, '- Author:' ) && ! str_contains( $sseo_val, '- Updated:' ), $sseo_val );
+
+	// Archives.
+	$sseo_md_kind        = get_term( (int) $sseo_md_cat['term_id'], 'category' );
+	$GLOBALS['wp_query'] = sseo_query( array( 'cat' => (int) $sseo_md_cat['term_id'] ) );
+	$sseo_val            = Simple_SEO_Markdown::build( Simple_SEO_Context::for_term( $sseo_md_kind ) );
+	$GLOBALS['wp_query'] = $sseo_md_query;
+	sseo_check( 'an archive lists the posts of the main query', str_contains( $sseo_val, "## Posts\n\n- [Md \\[guide\\] #](" . $sseo_md_glink . 'index.md)' ), $sseo_val );
+	$sseo_md_arch        = Simple_SEO_Context::for_term( $sseo_md_kind );
+	$sseo_md_arch->page  = 2;
+	$sseo_md_arch->pages = 3;
+	$sseo_val            = Simple_SEO_Markdown::build( $sseo_md_arch, array( $sseo_md_gpost, 'junk', get_post( $sseo_lp['hidden'] ) ) );
+	sseo_check(
+		'a term: its trail, title and description (its text, not repeated as a quote), the posts of that page with their descriptions, and the pages next to it',
+		'[' . Simple_SEO_Breadcrumbs::home_label() . '](' . home_url( '/' ) . ") {$sseo_md_sep} [Md Kind](" . $sseo_md_clink . ") {$sseo_md_sep} Page 2\n\n# Md Kind\n\nThe kinds of *guides*.\n\n## Posts\n\n- [Md \\[guide\\] #](" . $sseo_md_glink . 'index.md): All about the \\*guide\\*.' . "\n- [Llms Hidden](" . get_permalink( $sseo_lp['hidden'] ) . ")\n\nPage 2 of 3 · [Previous page](" . $sseo_md_clink . 'index.md) · [Next page](' . $sseo_md_clink . "page/3/index.md)\n" === $sseo_val,
+		$sseo_val
+	);
+	$sseo_md_book = (int) wp_insert_post( array( 'post_type' => 'sseo_book', 'post_status' => 'publish', 'post_title' => 'Md novel' ) );
+	$sseo['posts'][] = $sseo_md_book;
+	$sseo_md_desc = get_post_type_object( 'sseo_book' )->description;
+	get_post_type_object( 'sseo_book' )->description = 'All the books & more.';
+	$sseo_md_books                                   = Simple_SEO_Context::for_post_type_archive( 'sseo_book' );
+	$sseo_vals                                       = array( Simple_SEO_Markdown::build( $sseo_md_books, array( get_post( $sseo_md_book ) ) ) );
+	get_post_type_object( 'sseo_book' )->description = $sseo_md_desc;
+	$sseo_vals[]                                     = Simple_SEO_Markdown::build( Simple_SEO_Context::for_post_type_archive( 'sseo_book' ), array() );
+	$sseo_vals[] = Simple_SEO_Markdown::build( Simple_SEO_Context::for_home(), array() );
+	sseo_check(
+		'an archive of a type: its description and its posts under the type\'s name; with no posts, no list; the home page with the latest posts',
+		str_contains( $sseo_vals[0], "# Books\n\nAll the books & more.\n\n## Books\n\n- [Md novel](" . get_permalink( $sseo_md_book ) . "index.md)\n" ) && str_ends_with( $sseo_vals[1], "# Books\n" ) && str_starts_with( $sseo_vals[2], '# ' . Simple_SEO_HTML_Markdown::escape( get_bloginfo( 'name' ) ) ),
+		$sseo_vals
+	);
+
+	// llms.txt.
+	update_option( Simple_SEO_Llms::OPTION, array( 'sections' => array( 'term:category' => 'main' ), 'limit' => 500 ) );
+	Simple_SEO_Settings::flush();
+	$sseo_md_txt = Simple_SEO_Llms::build( '' );
+	$sseo_md_on( array( 'slots' => array( 'post:page' => array( 'on' => false ) ) ) );
+	$sseo_val = Simple_SEO_Llms::build( '' );
+	$sseo_md_on();
+	delete_option( Simple_SEO_Llms::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check(
+		'llms.txt links to the Markdown versions of pages, posts and terms, and to the pages that have none',
+		str_contains( $sseo_md_txt, '](' . $sseo_md_about . 'index.md)' ) && str_contains( $sseo_md_txt, '[Md \\[guide\\] #](' . $sseo_md_glink . 'index.md)' ) && str_contains( $sseo_md_txt, '[Llms Many](' . $sseo_md_term . 'index.md)' )
+			&& str_contains( $sseo_val, '](' . $sseo_md_about . ')' ) && str_contains( $sseo_val, '](' . $sseo_md_glink . 'index.md)' ),
+		$sseo_md_txt
+	);
+
+	// serve(): what it leaves alone returns (a Markdown version is sent and exits).
+	$sseo_md_requested->setValue( null, true );
+	$sseo_md_off();
+	$sseo_val = sseo_capture( array( Simple_SEO_Markdown::class, 'serve' ) );
+	$sseo_md_on();
+	$sseo_md_requested->setValue( null, false );
+	$sseo_val .= sseo_capture( array( Simple_SEO_Markdown::class, 'serve' ) );
+	sseo_check( 'serve(): a request for a page, or for a Markdown version while switched off, is left to the site', '' === $sseo_val, $sseo_val );
+
+	// The settings.
+	$sseo_clean = Simple_SEO_Markdown::sanitize( array( 'enabled' => '1', 'slots' => array( 'post:page' => array( 'on' => '0', 'image' => '0' ), 'post:nope' => array( 'on' => '1' ), 'term:category' => 'x' ) ) );
+	$sseo_vals  = array(
+		$sseo_clean['enabled'],
+		array_keys( $sseo_clean['slots'] ) === array_keys( Simple_SEO_Markdown::slots() ),
+		$sseo_clean['slots']['post:page'],
+		$sseo_clean['slots']['term:category'],
+		Simple_SEO_Markdown::sanitize( array() )['enabled'],
+		Simple_SEO_Markdown::sanitize( array( 'enabled' => 'yes' ) )['enabled'],
+	);
+	sseo_check(
+		'the sanitizer: on only when ticked; every slot the site has, on with all its parts unless a part came unticked; unknown slots dropped',
+		array( true, true, array( 'on' => false, 'breadcrumbs' => true, 'description' => true, 'meta' => true, 'image' => false ), array( 'on' => true, 'breadcrumbs' => true, 'description' => true, 'meta' => true, 'image' => true ), false, false ) === $sseo_vals,
+		$sseo_vals
+	);
+	update_option( Simple_SEO_Markdown::OPTION, $sseo_clean );
+	Simple_SEO_Settings::flush();
+	$sseo_vals = array( Simple_SEO_Markdown::slot_on( 'post:page' ), Simple_SEO_Markdown::part_on( 'post:page', 'image' ), Simple_SEO_Markdown::part_on( 'post:page', 'meta' ), Simple_SEO_Markdown::part_on( 'term:category', 'meta' ), Simple_SEO_Markdown::part_on( 'term:category', 'image' ), Simple_SEO_Markdown::part_on( 'term:category', 'breadcrumbs' ), Simple_SEO_Markdown::slot_on( 'post:new_type' ), Simple_SEO_Markdown::part_on( 'post:new_type', 'image' ) );
+	sseo_check( 'a slot and its parts as saved; archives have neither details nor an image; a slot not saved yet is on with its parts', array( false, false, true, false, false, true, true, true ) === $sseo_vals, $sseo_vals );
+	$_GET['tab'] = 'llms';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check(
+		'the section on the llms.txt tab: the switch, each kind of page with its parts as saved (details and image for posts only), the home page\'s Markdown version',
+		(bool) preg_match( '/name="simple_seo_markdown\[enabled\]" value="1"\s+checked/', $sseo_html ) && (bool) preg_match( '/name="simple_seo_markdown\[slots\]\[post:page\]\[on\]" value="1"\s*>/', $sseo_html )
+			&& (bool) preg_match( '/name="simple_seo_markdown\[slots\]\[post:post\]\[on\]" value="1"\s+checked/', $sseo_html ) && (bool) preg_match( '/name="simple_seo_markdown\[slots\]\[post:page\]\[image\]" value="1"\s*>/', $sseo_html )
+			&& str_contains( $sseo_html, 'name="simple_seo_markdown[slots][post:page][meta]"' ) && str_contains( $sseo_html, 'name="simple_seo_markdown[slots][term:category][description]"' ) && ! str_contains( $sseo_html, 'name="simple_seo_markdown[slots][term:category][meta]"' )
+			&& str_contains( $sseo_html, esc_url( home_url( '/' ) . 'index.md' ) ) && str_contains( $sseo_html, 'id="simple-seo-markdown"' ),
+		substr( (string) strstr( $sseo_html, 'simple-seo-markdown' ), 0, 600 )
+	);
+	$sseo_md_off();
+	$_GET['tab'] = 'llms';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check( 'switched off: the switch unticked, no address of the home page', (bool) preg_match( '/name="simple_seo_markdown\[enabled\]" value="1"\s*>/', $sseo_html ) && ! str_contains( $sseo_html, esc_url( home_url( '/' ) . 'index.md' ) ) );
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_md_on();
+		$sseo_d      = Simple_SEO_WP_Loc::default_language();
+		$sseo_o      = (string) current( array_diff( Simple_SEO_WP_Loc::codes(), array( $sseo_d ) ) );
+		$sseo_prefix = '/' . WP_LOC_DB::from_db_language_code( $sseo_o ) . '/';
+		$sseo_lo     = (string) Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => get_permalink( $sseo['posts']['ml_o'] ) );
+		$sseo_vals   = array(
+			Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Markdown::link_for_post( get_post( $sseo['posts']['ml_o'] ) ) ),
+			Simple_SEO_WP_Loc::in_language( $sseo_o, static fn() => Simple_SEO_Markdown::head_tags( Simple_SEO_Context::for_post( get_post( $sseo['posts']['ml_o'] ) ) )['llms_describedby']['attributes']['href'] ?? '' ),
+			Simple_SEO_Markdown::page_address( $sseo_prefix . 'about/index.md' ),
+		);
+		Simple_SEO_Llms::flush();
+		$sseo_vals[] = str_contains( Simple_SEO_Llms::get( $sseo_o ), '(' . $sseo_lo . 'index.md)' );
+		Simple_SEO_Llms::flush();
+		sseo_check(
+			'wp-loc: the Markdown version of a post of another language under its prefix, the llms.txt of that language in its head and its llms.txt linking to it',
+			array( $sseo_lo . 'index.md', Simple_SEO_Llms::url( $sseo_o ), $sseo_prefix . 'about/', true ) === $sseo_vals && str_contains( $sseo_lo, $sseo_prefix ),
+			$sseo_vals
+		);
+	} else {
+		echo "  skip  Markdown versions with wp-loc (tools/wp-loc-it.sh runs these checks)\n";
+	}
+
+	$sseo_md_off();
+	Simple_SEO_Llms::flush();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Yoast compatibility' );
@@ -11667,7 +12213,8 @@ try {
 		sseo_check(
 			'without WooCommerce: no product, no policy, the graph and the tags as they are',
 			array( array( 'webpage' => array( '@id' => 'x' ) ), array( 'og:type' => array( 'tag' => 'meta', 'attributes' => array( 'property' => 'og:type', 'content' => 'article' ) ) ), null, '' ) === $sseo_vals
-				&& array() === Simple_SEO_WooCommerce::pages() && array( 5 ) === Simple_SEO_WooCommerce::sitemap_exclude( array( 5 ), 'post', 'page' ) && 7 === Simple_SEO_WooCommerce::archive_page( 7, 'product' ) && false === Simple_SEO_WooCommerce::noindex( false, Simple_SEO_Context::current() ),
+				&& array() === Simple_SEO_WooCommerce::pages() && array( 5 ) === Simple_SEO_WooCommerce::sitemap_exclude( array( 5 ), 'post', 'page' ) && 7 === Simple_SEO_WooCommerce::archive_page( 7, 'product' ) && false === Simple_SEO_WooCommerce::noindex( false, Simple_SEO_Context::current() )
+				&& array( 'A' => 'b' ) === Simple_SEO_WooCommerce::markdown_meta( array( 'A' => 'b' ), $sseo_ctx ) && 'Text' === Simple_SEO_WooCommerce::markdown_content( 'Text', get_post( $sseo_p['author_post'] ) ),
 			$sseo_vals
 		);
 	} else {
@@ -11816,6 +12363,85 @@ try {
 				&& array( 'og:type' => 'product', 'product:price:amount' => '10.00', 'product:price:currency' => get_woocommerce_currency(), 'product:availability' => 'in stock' ) === $sseo_vals[3]
 				&& array( 'og:type' => 'product', 'product:availability' => 'in stock' ) === $sseo_vals[4]
 				&& 'article' === ( $sseo_vals[5]['og:type'] ?? null ) && isset( $sseo_vals[5]['article:published_time'] ),
+			$sseo_vals
+		);
+
+		// The Markdown version of a product: its price, stock, SKU, attributes and short description.
+		$sseo_wc_md = get_option( Simple_SEO_Markdown::OPTION );
+		update_option( Simple_SEO_Markdown::OPTION, array( 'enabled' => true ) );
+		Simple_SEO_Settings::flush();
+		$sseo_product = wc_get_product( $sseo_wc_table );
+		$sseo_attr    = new WC_Product_Attribute();
+		$sseo_attr->set_name( 'Material' );
+		$sseo_attr->set_options( array( 'Oak', 'Ash' ) );
+		$sseo_attr->set_visible( true );
+		$sseo_hidden_attr = new WC_Product_Attribute();
+		$sseo_hidden_attr->set_name( 'Secret' );
+		$sseo_hidden_attr->set_options( array( 'Inside' ) );
+		$sseo_hidden_attr->set_visible( false );
+		$sseo_product->set_attributes( array( $sseo_attr, $sseo_hidden_attr ) );
+		$sseo_product->set_stock_status( 'instock' );
+		$sseo_product->set_description( 'Made of <em>oak</em>.' );
+		$sseo_product->save();
+		$sseo_money = static fn( $amount ): string => Simple_SEO_Variables::plain( wc_price( (float) $amount ) );
+		$sseo_md    = Simple_SEO_Markdown::build( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) );
+		$sseo_vals  = array(
+			str_contains( $sseo_md, '- Price: ' . $sseo_money( 80 ) . ' (regular price ' . $sseo_money( 100 ) . ")\n- Availability: In stock\n- SKU: OAK-1\n- Material: Oak, Ash\n" ),
+			! str_contains( $sseo_md, 'Secret' ),
+			str_ends_with( $sseo_md, "\n\nA solid **oak** table.\n\nMade of *oak*.\n" ),
+		);
+		foreach ( array( 'outofstock' => 'Out of stock', 'onbackorder' => 'Available for order' ) as $sseo_name => $sseo_val ) {
+			$sseo_product = wc_get_product( $sseo_wc_table );
+			$sseo_product->set_stock_status( $sseo_name );
+			$sseo_product->save();
+			$sseo_vals[] = str_contains( Simple_SEO_Markdown::build( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) ), "- Availability: {$sseo_val}\n" );
+		}
+		$sseo_md     = Simple_SEO_Markdown::build( $sseo_wc_show( array( 'p' => $sseo_wc_bare, 'post_type' => 'product' ) ) );
+		$sseo_vals[] = ! str_contains( $sseo_md, '- Price:' ) && ! str_contains( $sseo_md, '- SKU:' ) && str_contains( $sseo_md, "- Availability: In stock\n" );
+		$sseo_var    = new WC_Product_Variable();
+		$sseo_var->set_name( 'Wootest variable chair' );
+		$sseo_var->set_status( 'publish' );
+		$sseo_size = new WC_Product_Attribute();
+		$sseo_size->set_name( 'Size' );
+		$sseo_size->set_options( array( 'S', 'L' ) );
+		$sseo_size->set_visible( false );
+		$sseo_size->set_variation( true );
+		$sseo_var->set_attributes( array( $sseo_size ) );
+		$sseo_var_id     = (int) $sseo_var->save();
+		$sseo['posts'][] = $sseo_var_id;
+		foreach ( array( 'S' => '10', 'L' => '20' ) as $sseo_name => $sseo_val ) {
+			$sseo_variation = new WC_Product_Variation();
+			$sseo_variation->set_parent_id( $sseo_var_id );
+			$sseo_variation->set_attributes( array( 'size' => $sseo_name ) );
+			$sseo_variation->set_regular_price( $sseo_val );
+			$sseo_variation->set_status( 'publish' );
+			$sseo['posts'][] = (int) $sseo_variation->save();
+		}
+		WC_Product_Variable::sync( $sseo_var_id );
+		wc_delete_product_transients( $sseo_var_id );
+		$sseo_md     = Simple_SEO_Markdown::build( $sseo_wc_show( array( 'p' => $sseo_var_id, 'post_type' => 'product' ) ) );
+		$sseo_vals[] = str_contains( $sseo_md, '- Price: ' . $sseo_money( 10 ) . ' – ' . $sseo_money( 20 ) . "\n" ) && ! str_contains( $sseo_md, '- Size:' );
+		foreach ( wc_get_product( $sseo_var_id )->get_children() as $sseo_child ) {
+			$sseo_variation = wc_get_product( $sseo_child );
+			$sseo_variation->set_regular_price( '10' );
+			$sseo_variation->save();
+		}
+		WC_Product_Variable::sync( $sseo_var_id );
+		wc_delete_product_transients( $sseo_var_id );
+		$sseo_vals[] = str_contains( Simple_SEO_Markdown::build( $sseo_wc_show( array( 'p' => $sseo_var_id, 'post_type' => 'product' ) ) ), '- Price: ' . $sseo_money( 10 ) . "\n" );
+		$sseo_vals[] = 'Text' === Simple_SEO_WooCommerce::markdown_content( 'Text', get_post( $sseo_p['author_post'] ) ) && 'Text' === Simple_SEO_WooCommerce::markdown_content( 'Text', get_post( $sseo_wc_bare ) );
+		$sseo_vals[] = array( 'A' => 'b' ) === Simple_SEO_WooCommerce::markdown_meta( array( 'A' => 'b' ), $sseo_wc_show( array( 'p' => $sseo_p['author_post'] ) ) );
+		$sseo_vals[] = Simple_SEO_Markdown::known_slot( 'archive:product' ) && Simple_SEO_Markdown::available( $sseo_wc_show( array( 'post_type' => 'product' ) ) );
+		$sseo_product = wc_get_product( $sseo_wc_table );
+		$sseo_product->set_attributes( array() );
+		$sseo_product->set_description( '' );
+		$sseo_product->set_stock_status( 'onbackorder' );
+		$sseo_product->save();
+		update_option( Simple_SEO_Markdown::OPTION, $sseo_wc_md );
+		Simple_SEO_Settings::flush();
+		sseo_check(
+			'the Markdown version of a product: its price as the shop shows it with the regular one beside a sale, the stock, the SKU and the attributes shown; the short description above the text; a range for variations, one price when they cost the same; nothing of a product elsewhere; the shop has one',
+			array( true, true, true, true, true, true, true, true, true, true, true ) === $sseo_vals,
 			$sseo_vals
 		);
 

@@ -78,7 +78,7 @@ final class Simple_SEO_Llms {
 	}
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'llms', 'llms.txt', array( self::OPTION, self::TEXT ), array( self::class, 'render_tab' ), 35 );
+		Simple_SEO_Admin::add_tab( 'llms', 'llms.txt', array( self::OPTION, self::TEXT, Simple_SEO_Markdown::OPTION ), array( self::class, 'render_tab' ), 35 );
 	}
 
 	/** Whether Simple SEO serves llms.txt: switched on, a public site, no other SEO plugin. */
@@ -409,12 +409,11 @@ final class Simple_SEO_Llms {
 		$items = array();
 		if ( 'post' === $kind ) {
 			foreach ( Simple_SEO_Sitemaps::posts( $name, $code, $limit ) as $post ) {
-				$items[] = self::item( get_the_title( $post ), (string) get_permalink( $post ), Simple_SEO_Titles::description( Simple_SEO_Context::for_post( $post ) ) );
+				$items[] = self::item( get_the_title( $post ), Simple_SEO_Markdown::link_for_post( $post ), Simple_SEO_Titles::description( Simple_SEO_Context::for_post( $post ) ) );
 			}
 		} else {
 			foreach ( Simple_SEO_Sitemaps::terms( $name, $code, $limit ) as $term ) {
-				$link    = get_term_link( $term );
-				$items[] = self::item( $term->name, is_string( $link ) ? $link : '', Simple_SEO_Titles::description( Simple_SEO_Context::for_term( $term ) ) );
+				$items[] = self::item( $term->name, Simple_SEO_Markdown::link_for_term( $term ), Simple_SEO_Titles::description( Simple_SEO_Context::for_term( $term ) ) );
 			}
 		}
 
