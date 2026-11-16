@@ -182,6 +182,14 @@ foreach ( (array) $GLOBALS['wpdb']->get_col( $GLOBALS['wpdb']->prepare( 'SHOW TA
 	);
 }
 
+// The table of the monitor of 404s and its rows as the stand has them: its section and the uninstall
+// empty and drop it.
+$sseo_saved_404 = array(
+	'db'     => get_option( Simple_SEO_Monitor::DB_OPTION ),
+	'option' => get_option( Simple_SEO_Monitor::OPTION ),
+	'rows'   => $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) ? $GLOBALS['wpdb']->get_results( 'SELECT * FROM ' . Simple_SEO_Monitor::table(), ARRAY_A ) : null,
+);
+
 // robots.txt, .htaccess and the copy next to it as they were: the Files section changes them.
 require_once ABSPATH . 'wp-admin/includes/file.php';
 $sseo_saved_files = array();
@@ -195,7 +203,7 @@ $sseo_saved_apache = $GLOBALS['is_apache'] ?? false;
 // code under test exits (a served file, or a mutation that makes it serve one), so a broken run
 // never leaves users, posts, options or files behind for the next one.
 $sseo_cleaned = false;
-$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned, $sseo_saved_yoast, $sseo_yoast_options, $sseo_yoast_users ): void {
+$sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_saved_files, $sseo_saved_apache, &$sseo_cleaned, $sseo_saved_yoast, $sseo_yoast_options, $sseo_yoast_users, $sseo_saved_404 ): void {
 	if ( $sseo_cleaned ) {
 		return;
 	}
@@ -281,6 +289,23 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	$sseo_db->query( "DELETE FROM {$sseo_db->usermeta} WHERE {$sseo_yoast_users}" );
 	foreach ( $sseo_saved_yoast['usermeta'] as $sseo_row ) {
 		$sseo_db->insert( $sseo_db->usermeta, $sseo_row );
+	}
+	$sseo_db->query( 'DROP TABLE IF EXISTS ' . Simple_SEO_Monitor::table() );
+	delete_option( Simple_SEO_Monitor::DB_OPTION );
+	if ( null !== $sseo_saved_404['rows'] ) {
+		Simple_SEO_Monitor::install();
+		foreach ( $sseo_saved_404['rows'] as $sseo_row ) {
+			$sseo_db->insert( Simple_SEO_Monitor::table(), $sseo_row );
+		}
+	}
+	if ( false === $sseo_saved_404['db'] ) {
+		delete_option( Simple_SEO_Monitor::DB_OPTION );
+	}
+	// An empty row (as an update makes it) is the defaults: through the sanitizer of the tab it would
+	// come back as the switch off.
+	delete_option( Simple_SEO_Monitor::OPTION );
+	if ( is_array( $sseo_saved_404['option'] ) && $sseo_saved_404['option'] ) {
+		add_option( Simple_SEO_Monitor::OPTION, $sseo_saved_404['option'], '', false );
 	}
 	wp_cache_flush();
 	update_option( 'cron', $sseo_saved_yoast['cron'] );
@@ -9100,6 +9125,402 @@ try {
 	update_option( Simple_SEO_Access::OPTION, $sseo_access );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Pages not found' );
+
+	$sseo_db    = $GLOBALS['wpdb'];
+	$sseo_table = Simple_SEO_Monitor::table();
+	$sseo_has   = static fn(): bool => (bool) $sseo_db->get_var( $sseo_db->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) );
+	$sseo_db->query( "DROP TABLE IF EXISTS {$sseo_table}" );
+	update_option( Simple_SEO_Monitor::DB_OPTION, Simple_SEO_Monitor::DB_VERSION, false );
+	Simple_SEO_Monitor::install();
+	$sseo_vals = array( $sseo_has() );
+	delete_option( Simple_SEO_Monitor::DB_OPTION );
+	Simple_SEO_Monitor::install();
+	$sseo_vals[] = $sseo_has();
+	$sseo_vals[] = get_option( Simple_SEO_Monitor::DB_OPTION );
+	$sseo_vals[] = $sseo_db->get_var( $sseo_db->prepare( 'SELECT autoload FROM ' . $sseo_db->options . ' WHERE option_name = %s', Simple_SEO_Monitor::DB_OPTION ) );
+	$sseo_vals[] = array_column( (array) $sseo_db->get_results( "SHOW INDEX FROM {$sseo_table}", ARRAY_A ), 'Non_unique', 'Key_name' );
+	sseo_check(
+		'the table: made once for each version of it, the version in a row read only then; one row an address, by the hash of it',
+		array( false, true, Simple_SEO_Monitor::DB_VERSION ) === array_slice( $sseo_vals, 0, 3 ) && ! in_array( $sseo_vals[3], wp_autoload_values_to_autoload(), true ) && array( 'PRIMARY' => '0', 'url_hash' => '0', 'last_seen' => '1', 'hits' => '1' ) == $sseo_vals[4], // phpcs:ignore Universal.Operators.StrictComparisons -- the order of the indexes.
+		$sseo_vals
+	);
+	$sseo_db->query( "DROP TABLE {$sseo_table}" );
+	delete_option( Simple_SEO_Monitor::DB_OPTION );
+	Simple_SEO_Plugin::activate();
+	sseo_check( 'activation makes the table', $sseo_has() && Simple_SEO_Monitor::DB_VERSION === get_option( Simple_SEO_Monitor::DB_OPTION ) );
+	sseo_check(
+		'the hooks: counted after the redirects of the theme and of WordPress; the daily clean-up; the switch on, its row read only on a 404',
+		PHP_INT_MAX === has_action( 'template_redirect', array( Simple_SEO_Monitor::class, 'record' ) ) && 10 === has_action( Simple_SEO_Monitor::EVENT, array( Simple_SEO_Monitor::class, 'cleanup' ) )
+			&& array( 'enabled' => true ) === Simple_SEO_Settings::defaults( Simple_SEO_Monitor::OPTION ) && false === Simple_SEO_Settings::registered()[ Simple_SEO_Monitor::OPTION ]['autoload']
+			&& array( 'enabled' => false ) === Simple_SEO_Monitor::sanitize( array() ) && array( 'enabled' => true ) === Simple_SEO_Monitor::sanitize( array( 'enabled' => '1' ) ) && array( 'enabled' => false ) === Simple_SEO_Monitor::sanitize( array( 'enabled' => '0' ) )
+	);
+
+	// The addresses kept.
+	$sseo_vals = array(
+		Simple_SEO_Monitor::clean_url( '/old/?utm_source=x&b=2&fbclid=y&UTM_Medium=z&gclid=1&c' ),
+		Simple_SEO_Monitor::clean_url( '/old/?utm_campaign=x' ),
+		Simple_SEO_Monitor::clean_url( "/o\x01l\x7Fd/" ),
+		Simple_SEO_Monitor::clean_url( '//evil.example/x' ),
+		Simple_SEO_Monitor::clean_url( 'http://evil.example/x' ),
+		Simple_SEO_Monitor::clean_url( '' ),
+		mb_strlen( Simple_SEO_Monitor::clean_url( '/' . str_repeat( 'я', 3000 ) ) ),
+		Simple_SEO_Monitor::clean_url( '/a?&&b=1&' ),
+		Simple_SEO_Monitor::clean_referrer( ' https://ref.example/p?q=1 ' ),
+		Simple_SEO_Monitor::clean_referrer( 'javascript:alert(1)' ) . Simple_SEO_Monitor::clean_referrer( 'ftp://ref.example/' ),
+		Simple_SEO_Monitor::clean_referrer( '' ),
+		mb_strlen( Simple_SEO_Monitor::clean_referrer( 'https://ref.example/' . str_repeat( 'a', 3000 ) ) ),
+	);
+	sseo_check(
+		'an address kept: its path and query without the arguments of trackers or control characters, cut to 2048 characters; nothing for what is not a path of the site; a referrer only as an address',
+		array( '/old/?b=2&c', '/old/', '/old/', '', '', '', 2048, '/a?b=1', 'https://ref.example/p?q=1', '', '', 2048 ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Counting.
+	$sseo_404_request = static function ( string $uri, string $referrer = '', string $method = 'GET', bool $missing = true ): void {
+		$query = new WP_Query();
+		if ( $missing ) {
+			$query->set_404();
+		}
+		$GLOBALS['wp_query']           = $query;
+		$_SERVER['REQUEST_URI']        = $uri;
+		$_SERVER['REQUEST_METHOD']     = $method;
+		$_SERVER['HTTP_REFERER']       = $referrer;
+		Simple_SEO_Monitor::record();
+	};
+	$sseo_404_rows = static fn(): array => (array) $GLOBALS['wpdb']->get_results( 'SELECT url, hits, hidden, first_seen, last_seen, referrer FROM ' . Simple_SEO_Monitor::table() . ' ORDER BY id', ARRAY_A );
+	$sseo_kept_query = $GLOBALS['wp_query'];
+	$sseo_kept_uri   = $_SERVER['REQUEST_URI'] ?? null;
+	wp_clear_scheduled_hook( Simple_SEO_Monitor::EVENT );
+	delete_option( Simple_SEO_Monitor::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_404_request( '/missing-page/?utm_source=news', 'https://ref.example/a' );
+	$sseo_404_request( '/missing-page/', '' );
+	$sseo_404_request( '/missing-page/', 'https://ref.example/b' );
+	$sseo_404_request( '/post-only/', 'https://ref.example/', 'POST' );
+	$sseo_404_request( '/head-only/', '', 'HEAD' );
+	$sseo_404_request( '/found/', '', 'GET', false );
+	$sseo_404_request( '//evil.example/', '' );
+	$sseo_vals = $sseo_404_rows();
+	$sseo_next = wp_next_scheduled( Simple_SEO_Monitor::EVENT );
+	update_option( Simple_SEO_Monitor::OPTION, array( 'enabled' => false ) );
+	$sseo_404_request( '/while-off/', '' );
+	update_option( Simple_SEO_Monitor::OPTION, array( 'enabled' => true ) );
+	$GLOBALS['wp_query'] = $sseo_kept_query;
+	$_SERVER['REQUEST_URI'] = $sseo_kept_uri;
+	unset( $_SERVER['REQUEST_METHOD'], $_SERVER['HTTP_REFERER'] );
+	sseo_check(
+		'a GET that answers 404: one row an address with its count and the last referrer (none keeps the one before); not a POST, a HEAD, a page found, what is not an address of the site, nor anything while the monitor is off',
+		1 === count( $sseo_vals ) && '/missing-page/' === $sseo_vals[0]['url'] && '3' === $sseo_vals[0]['hits'] && 'https://ref.example/b' === $sseo_vals[0]['referrer'] && '0' === $sseo_vals[0]['hidden'] && 1 === count( $sseo_404_rows() ),
+		$sseo_vals
+	);
+	sseo_check( 'the daily clean-up is scheduled with the first address', false !== $sseo_next && abs( $sseo_next - ( time() + DAY_IN_SECONDS ) ) <= 5 && 'daily' === wp_get_schedule( Simple_SEO_Monitor::EVENT ), $sseo_next );
+	$sseo_db->query( "DELETE FROM {$sseo_table}" );
+	Simple_SEO_Monitor::hit( '/timed/', 'https://ref.example/1', strtotime( '2026-01-01 10:00:00 UTC' ) );
+	Simple_SEO_Monitor::hit( '/timed/', '', strtotime( '2026-01-05 12:30:00 UTC' ) );
+	$sseo_val = $sseo_404_rows()[0] ?? array();
+	sseo_check( 'the first time stays, the last time moves (in UTC)', '2026-01-01 10:00:00' === ( $sseo_val['first_seen'] ?? '' ) && '2026-01-05 12:30:00' === ( $sseo_val['last_seen'] ?? '' ) && '2' === ( $sseo_val['hits'] ?? '' ) && 'https://ref.example/1' === ( $sseo_val['referrer'] ?? '' ), $sseo_val );
+	$sseo_db->query( "DROP TABLE {$sseo_table}" );
+	$sseo_db->show_errors();
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Monitor::hit( '/no-table/' ) );
+	$sseo_db->hide_errors();
+	Simple_SEO_Monitor::install();
+	delete_option( Simple_SEO_Monitor::DB_OPTION );
+	Simple_SEO_Monitor::install();
+	sseo_check( 'no table yet: no database error on the page of a visitor', '' === $sseo_html, $sseo_html );
+
+	// Forgetting.
+	$sseo_now  = time();
+	$sseo_rows = array();
+	foreach ( array( 'old' => 91, 'kept' => 89 ) as $sseo_name => $sseo_days ) {
+		Simple_SEO_Monitor::hit( '/' . $sseo_name . '/', '', $sseo_now - $sseo_days * DAY_IN_SECONDS );
+	}
+	Simple_SEO_Monitor::cleanup();
+	sseo_check( 'forgotten 90 days after it was last asked for', array( '/kept/' ) === array_column( $sseo_404_rows(), 'url' ), $sseo_404_rows() );
+	$sseo_db->query( "DELETE FROM {$sseo_table}" );
+	$sseo_values = array();
+	for ( $sseo_i = 0; $sseo_i < Simple_SEO_Monitor::MAX_ROWS + 3; $sseo_i++ ) {
+		$sseo_values[] = $sseo_db->prepare( '( %s, %s, 1, %s, %s, %s )', md5( '/n' . $sseo_i ), '/n' . $sseo_i, gmdate( 'Y-m-d H:i:s', $sseo_now - 1000 ), gmdate( 'Y-m-d H:i:s', $sseo_now - 100000 + ( Simple_SEO_Monitor::MAX_ROWS + 2 === $sseo_i ? -5000 : ( $sseo_i < 5 ? 0 : $sseo_i ) ) ), '' );
+	}
+	$sseo_db->query( "INSERT INTO {$sseo_table} ( url_hash, url, hits, first_seen, last_seen, referrer ) VALUES " . implode( ',', $sseo_values ) );
+	Simple_SEO_Monitor::cleanup();
+	$sseo_vals = array( (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_table}" ), $sseo_db->get_col( $sseo_db->prepare( "SELECT url FROM {$sseo_table} WHERE url IN ( '/n0', '/n1', '/n2', '/n3', '/n4', '/n5', %s ) ORDER BY url", '/n' . ( Simple_SEO_Monitor::MAX_ROWS + 2 ) ) ) );
+	sseo_check( 'a flood: the newest 10,000 stay, the oldest go first (whatever their order), then by their order where their times are the same', 10000 === $sseo_vals[0] && array( '/n2', '/n3', '/n4', '/n5' ) === $sseo_vals[1], $sseo_vals );
+	$sseo_db->query( "DELETE FROM {$sseo_table}" );
+
+	// The list.
+	foreach ( array(
+		array( '/many/', 5, '2026-02-01 00:00:00' ),
+		array( '/latest/', 2, '2026-03-01 00:00:00' ),
+		array( '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/', 1, '2026-01-15 00:00:00' ),
+		array( '/bot.env', 9, '2026-01-10 00:00:00' ),
+	) as $sseo_row ) {
+		for ( $sseo_i = 0; $sseo_i < $sseo_row[1]; $sseo_i++ ) {
+			Simple_SEO_Monitor::hit( $sseo_row[0], 'https://ref.example' . $sseo_row[0], (int) strtotime( $sseo_row[2] . ' UTC' ) );
+		}
+	}
+	$sseo_bot = (int) $sseo_db->get_var( "SELECT id FROM {$sseo_table} WHERE url = '/bot.env'" );
+	sseo_check( 'hide an address: hidden, still counted', 'hidden' === Simple_SEO_Monitor::act( 'hide', $sseo_bot ) && 1 === Simple_SEO_Monitor::hidden_count() );
+	$sseo_vals = array(
+		array_column( Simple_SEO_Monitor::rows()['rows'], 'url' ),
+		array_column( Simple_SEO_Monitor::rows( '', false, 'last' )['rows'], 'url' ),
+		array_column( Simple_SEO_Monitor::rows( '', true )['rows'], 'url' ),
+		array_column( Simple_SEO_Monitor::rows( 'сторінка' )['rows'], 'url' ),
+		array_column( Simple_SEO_Monitor::rows( 'MAN' )['rows'], 'url' ),
+		Simple_SEO_Monitor::rows( '', false, 'hits', 2, 2 ),
+		Simple_SEO_Monitor::rows()['rows'][0] ?? array(),
+		array_column( Simple_SEO_Monitor::rows( '%' )['rows'], 'url' ),
+	);
+	sseo_check(
+		'the list: asked for most first, or last first; the hidden apart; found by a word as typed or as browsers encode it; paged',
+		array( '/many/', '/latest/', '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' ) === $sseo_vals[0] && array( '/latest/', '/many/', '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' ) === $sseo_vals[1] && array( '/bot.env' ) === $sseo_vals[2]
+			&& array( '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' ) === $sseo_vals[3] && array( '/many/' ) === $sseo_vals[4] && 3 === $sseo_vals[5]['total'] && array( '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' ) === array_column( $sseo_vals[5]['rows'], 'url' )
+			&& array( 'id', 'url', 'hits', 'hidden', 'first_seen', 'last_seen', 'referrer' ) === array_keys( $sseo_vals[6] ) && 5 === $sseo_vals[6]['hits'] && false === $sseo_vals[6]['hidden'] && is_int( $sseo_vals[6]['id'] ) && 'https://ref.example/many/' === $sseo_vals[6]['referrer'] && array( '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' ) === $sseo_vals[7],
+		$sseo_vals
+	);
+	$sseo_many = (int) $sseo_db->get_var( "SELECT id FROM {$sseo_table} WHERE url = '/many/'" );
+	$sseo_vals = array( Simple_SEO_Monitor::act( 'show', $sseo_bot ), Simple_SEO_Monitor::hidden_count(), Simple_SEO_Monitor::act( 'delete', $sseo_many ), Simple_SEO_Monitor::row( $sseo_many ), Simple_SEO_Monitor::act( 'hide', PHP_INT_MAX ), Simple_SEO_Monitor::act( 'delete', 0 ), Simple_SEO_Monitor::act( 'bogus', $sseo_bot ), Simple_SEO_Monitor::act( 'redirect', $sseo_bot ) );
+	if ( is_int( $sseo_vals[7] ) ) {
+		$sseo['posts'][] = $sseo_vals[7];
+	}
+	sseo_check( 'show again, delete; nothing for no such address or action, nor a redirect without the redirect rules of WP Base', array( 'shown', 0, 'deleted', null, 'nothing', 'nothing', 'nothing', 'nothing' ) === $sseo_vals, $sseo_vals );
+	sseo_check(
+		'the address of the page keeps the view',
+		admin_url( 'admin.php?page=simple-seo-404' ) === Simple_SEO_Monitor::page_url() && admin_url( 'admin.php?page=simple-seo-404&s=%D0%B0%20b&hidden=1&order=last&paged=3' ) === Simple_SEO_Monitor::page_url( array( 's' => 'а b', 'hidden' => true, 'order' => 'last', 'paged' => 3 ) )
+			&& admin_url( 'admin.php?page=simple-seo-404' ) === Simple_SEO_Monitor::page_url( array( 's' => '', 'hidden' => false, 'order' => 'hits', 'paged' => 1 ) )
+			&& array( 's' => 'x', 'hidden' => true, 'order' => 'last', 'paged' => 2 ) === Simple_SEO_Monitor::view( array( 's' => ' <b>x</b> ', 'hidden' => '1', 'order' => 'last', 'paged' => '2' ) ) && array( 's' => '', 'hidden' => false, 'order' => 'hits', 'paged' => 1 ) === Simple_SEO_Monitor::view( array( 'order' => 'other', 'paged' => '-4' ) ) && 1 === Simple_SEO_Monitor::view( array( 'paged' => 'two' ) )['paged']
+	);
+
+	// The redirect rules of WP Base.
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_vals = array( Simple_SEO_Monitor::rules_available() );
+	register_post_type( Simple_SEO_Monitor::RULES, array( 'public' => false, 'show_ui' => true, 'capability_type' => 'post', 'map_meta_cap' => true, 'label' => 'Redirect rules' ) );
+	$sseo_vals[] = Simple_SEO_Monitor::rules_available();
+	if ( ! function_exists( 'validate_redirect_rule' ) ) {
+		// The functions of the theme the monitor looks for; their work is the theme's.
+		eval( 'function validate_redirect_rule( $old_url, $new_url, $code, $post_id = 0 ) { return array(); } function redirect_rules_protocol() { return "https"; }' ); // phpcs:ignore Squiz.PHP.Eval.Discouraged -- stands for the theme.
+	}
+	$sseo_vals[] = Simple_SEO_Monitor::rules_available();
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_vals[] = Simple_SEO_Monitor::rules_available();
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_home = static fn(): string => 'http://www.example.com:8080/blog';
+	add_filter( 'pre_option_home', $sseo_home );
+	$sseo_vals[] = Simple_SEO_Monitor::rule_url( '/blog/old/?a=1' );
+	remove_filter( 'pre_option_home', $sseo_home );
+	sseo_check( 'the redirect rules of WP Base: with the theme\'s post type and functions, for who may add one; an address as its rule holds it, the protocol of the theme', array( false, false, true, false, 'https://www.example.com:8080/blog/old/?a=1' ) === $sseo_vals, $sseo_vals );
+	$sseo_url   = '/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/';
+	$sseo_id404 = (int) $sseo_db->get_var( $sseo_db->prepare( "SELECT id FROM {$sseo_table} WHERE url = %s", $sseo_url ) );
+	$sseo_latest = (int) $sseo_db->get_var( "SELECT id FROM {$sseo_table} WHERE url = '/latest/'" );
+	add_filter( 'wp_insert_post_empty_content', '__return_true' );
+	$sseo_val = Simple_SEO_Monitor::act( 'redirect', $sseo_latest );
+	remove_filter( 'wp_insert_post_empty_content', '__return_true' );
+	if ( is_int( $sseo_val ) ) {
+		$sseo['posts'][] = $sseo_val;
+	}
+	sseo_check( 'a rule WordPress does not save: said so', 'rule-failed' === $sseo_val && array() === Simple_SEO_Monitor::rules_for( array( '/latest/' ) ), $sseo_val );
+	$sseo_rule  = Simple_SEO_Monitor::act( 'redirect', $sseo_id404 );
+	$sseo['posts'][] = $sseo_rule;
+	$sseo_post  = is_int( $sseo_rule ) ? get_post( $sseo_rule ) : null;
+	$sseo_vals  = array(
+		$sseo_post instanceof WP_Post ? array( $sseo_post->post_type, $sseo_post->post_status, $sseo_post->post_title ) : null,
+		get_post_meta( (int) $sseo_rule, 'old_url', true ),
+		get_post_meta( (int) $sseo_rule, 'code', true ),
+		Simple_SEO_Monitor::act( 'redirect', $sseo_id404 ),
+		Simple_SEO_Monitor::rules_for( array( $sseo_url, '/latest/' ) ),
+		count( get_posts( array( 'post_type' => Simple_SEO_Monitor::RULES, 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ) ) ),
+		Simple_SEO_Monitor::rules_for( array() ),
+	);
+	sseo_check(
+		'make a redirect: a draft rule of WP Base with the address and 301, for the person to finish; asked again, the same rule',
+		array( Simple_SEO_Monitor::RULES, 'draft', '/сторінка/' ) === $sseo_vals[0] && Simple_SEO_Monitor::rule_url( $sseo_url ) === $sseo_vals[1] && '301' === $sseo_vals[2] && $sseo_rule === $sseo_vals[3]
+			&& array( Simple_SEO_Monitor::rule_url( $sseo_url ) => $sseo_rule ) === $sseo_vals[4] && 1 === $sseo_vals[5] && array() === $sseo_vals[6],
+		$sseo_vals
+	);
+
+	// The page.
+	$sseo_404_die = static fn(): callable => static function (): void {
+		throw new RuntimeException( 'wp_die' );
+	};
+	Simple_SEO_Monitor::hit( '/latest/', '' );
+	$sseo_latest_last = (string) $sseo_db->get_var( "SELECT last_seen FROM {$sseo_table} WHERE url = '/latest/'" );
+	Simple_SEO_Monitor::act( 'hide', $sseo_bot );
+	update_option( Simple_SEO_Monitor::OPTION, array( 'enabled' => false ) );
+	$_GET['simple-seo-done'] = 'hidden';
+	$sseo_html = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	update_option( Simple_SEO_Monitor::OPTION, array( 'enabled' => true ) );
+	$_GET = array( 'hidden' => '1', 'simple-seo-done' => 'rule-failed' );
+	$sseo_html2 = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array( 's' => 'nothing-like-it' );
+	$sseo_html3 = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array( 'order' => 'last' );
+	$sseo_html4 = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array();
+	sseo_check(
+		'the page: the addresses readable with their counts, the times in the site\'s format, where they came from; a draft rule to finish, a redirect to make, hide, delete; the monitor off said, with the way to switch it on; what a form did',
+		str_contains( $sseo_html, '>/сторінка/</a>' ) && str_contains( $sseo_html, 'href="' . esc_url( home_url( $sseo_url ) ) . '"' ) && str_contains( $sseo_html, 'Finish its redirect' ) && str_contains( $sseo_html, esc_url( (string) get_edit_post_link( $sseo_rule ) ) )
+			&& 1 === substr_count( $sseo_html, 'value="redirect"' ) && 2 === substr_count( $sseo_html, 'value="hide"' ) && 2 === substr_count( $sseo_html, 'value="delete"' ) && str_contains( $sseo_html, 'name="_wpnonce"' ) && str_contains( $sseo_html, 'value="simple_seo_404"' )
+			&& str_contains( $sseo_html, (string) wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) strtotime( '2026-01-15 00:00:00 UTC' ) ) ) && str_contains( $sseo_html, '>https://ref.example/сторінка/</a>' )
+			&& str_contains( $sseo_html, 'The monitor is off' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Admin::url( 'monitor' ) ) ) && str_contains( $sseo_html, 'The address is hidden: it is still counted' ) && str_contains( $sseo_html, 'value="clear"' ) && str_contains( $sseo_html, '<button onclick="return window.confirm(' )
+			&& ! str_contains( $sseo_html, 'Simple SEO makes no redirects' ) && strpos( $sseo_html, '>/latest/<' ) < strpos( $sseo_html, '>/сторінка/<' ) && str_contains( $sseo_html, 'data-label="Times">3</td>' )
+			&& str_contains( $sseo_html, 'data-label="First">' . wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) strtotime( '2026-03-01 00:00:00 UTC' ) ) . '</td>' ) && str_contains( $sseo_html, 'data-label="Last">' . wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), (int) strtotime( $sseo_latest_last . ' UTC' ) ) . '</td>' ),
+		$sseo_html
+	);
+	sseo_check(
+		'the page: the hidden, to show again; a rule that could not be made; nothing found for words',
+		str_contains( $sseo_html2, '>/bot.env</a>' ) && str_contains( $sseo_html2, 'value="show"' ) && str_contains( $sseo_html2, '<span class="count">(1)</span>' ) && ! str_contains( $sseo_html2, '/latest/' ) && str_contains( $sseo_html2, 'notice-error' ) && str_contains( $sseo_html2, 'could not be made' ) && ! str_contains( $sseo_html2, 'The monitor is off' )
+			&& str_contains( $sseo_html3, 'No address has these words.' ) && str_contains( $sseo_html3, 'id="simple-seo-404-s" name="s" value="nothing-like-it"' ),
+		array( $sseo_html2, $sseo_html3 )
+	);
+	sseo_check(
+		'the forms and links keep the view: hidden, the order, the words',
+		5 === substr_count( $sseo_html2, '<input type="hidden" name="hidden" value="1">' ) && str_contains( $sseo_html2, 'hidden=1" class="current" aria-current="page"' ) && ! str_contains( $sseo_html2, 'simple-seo-404" class="current"' )
+			&& str_contains( $sseo_html4, '<strong>asked for last</strong>' ) && str_contains( $sseo_html4, '<a href="' . esc_url( Simple_SEO_Monitor::page_url() ) . '">asked for most</a>' ) && 7 === substr_count( $sseo_html4, '<input type="hidden" name="order" value="last">' )
+			&& str_contains( $sseo_html, '<strong>asked for most</strong>' ) && str_contains( $sseo_html3, esc_url( Simple_SEO_Monitor::page_url( array( 's' => 'nothing-like-it', 'order' => 'last' ) ) ) ),
+		array( substr_count( $sseo_html2, '<input type="hidden" name="hidden" value="1">' ), substr_count( $sseo_html4, '<input type="hidden" name="order" value="last">' ), $sseo_html4 )
+	);
+
+	// The forms: what they did, back to the same view; to the rule made.
+	$sseo_404_go = static function ( string $location ): string {
+		throw new RuntimeException( 'redirect: ' . $location );
+	};
+	$sseo_404_post = static function ( array $post, bool $nonce = true ): string {
+		$_POST    = $post + array( 'action' => 'simple_seo_404' );
+		$_REQUEST = $_POST + ( $nonce ? array( '_wpnonce' => wp_create_nonce( 'simple_seo_404' ) ) : array() );
+		try {
+			Simple_SEO_Monitor::handle();
+			$result = 'handled';
+		} catch ( RuntimeException $error ) {
+			$result = $error->getMessage();
+		}
+		$_POST    = array();
+		$_REQUEST = array();
+
+		return $result;
+	};
+	add_filter( 'wp_die_handler', $sseo_404_die, 99 );
+	add_filter( 'wp_redirect', $sseo_404_go, 1 );
+	$sseo_vals = array(
+		$sseo_404_post( array( 'do' => 'show', 'id' => (string) $sseo_bot, 's' => 'bot', 'hidden' => '1', 'order' => 'last', 'paged' => '2' ) ),
+		Simple_SEO_Monitor::hidden_count(),
+		$sseo_404_post( array( 'do' => 'redirect', 'id' => (string) $sseo_id404 ) ),
+		$sseo_404_post( array( 'do' => 'hide', 'id' => (string) $sseo_bot ), false ),
+		Simple_SEO_Monitor::hidden_count(),
+	);
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_vals[] = $sseo_404_post( array( 'do' => 'clear' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	remove_filter( 'wp_redirect', $sseo_404_go, 1 );
+	remove_filter( 'wp_die_handler', $sseo_404_die, 99 );
+	sseo_check(
+		'a form: done, then the page with the same view and what was done; a redirect made opens its rule; no form without its nonce, nor from whoever does not see reports',
+		array( 'redirect: ' . add_query_arg( 'simple-seo-done', 'shown', Simple_SEO_Monitor::page_url( array( 's' => 'bot', 'hidden' => true, 'order' => 'last', 'paged' => 2 ) ) ), 0, 'redirect: ' . get_edit_post_link( $sseo_rule, 'raw' ), 'wp_die', 0, 'wp_die' ) === $sseo_vals
+			&& 0 < (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_table}" ),
+		$sseo_vals
+	);
+	Simple_SEO_Monitor::act( 'hide', $sseo_bot );
+	wp_update_post( array( 'ID' => $sseo_rule, 'post_status' => 'publish' ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	sseo_check( 'a rule published: to open', str_contains( $sseo_html, 'Open its redirect' ) && ! str_contains( $sseo_html, 'Finish its redirect' ) );
+	$sseo_db->query( "DELETE FROM {$sseo_table} WHERE hidden = 0" );
+	$sseo_html = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	sseo_check( 'every address hidden: said so, and the list can still be cleared', str_contains( $sseo_html, 'Every address is hidden.' ) && str_contains( $sseo_html, 'value="clear"' ), $sseo_html );
+	Simple_SEO_Monitor::hit( '/latest/' );
+	unregister_post_type( Simple_SEO_Monitor::RULES );
+	$sseo_warnings = array();
+	set_error_handler( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- the warnings of one call.
+		static function ( int $errno, string $errstr ) use ( &$sseo_warnings ): bool {
+			$sseo_warnings[] = $errstr;
+			return true;
+		}
+	);
+	$sseo_val = Simple_SEO_Monitor::rules_available();
+	restore_error_handler();
+	sseo_check( 'no rules without the post type of the theme, even with its functions there', array() === Simple_SEO_Monitor::rules_for( array( $sseo_url ) ) && false === $sseo_val && array() === $sseo_warnings, $sseo_warnings );
+	$sseo_html = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$sseo_db->query( "DELETE FROM {$sseo_table}" );
+	$sseo_html2 = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array( 'hidden' => '1' );
+	$sseo_html3 = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array();
+	sseo_check(
+		'without the redirect rules of WP Base: no button, a word on where redirects are made; nothing counted yet, and nothing to clear',
+		! str_contains( $sseo_html, 'value="redirect"' ) && str_contains( $sseo_html, 'Simple SEO makes no redirects' ) && str_contains( $sseo_html2, 'No page of this site has answered 404 yet.' ) && ! str_contains( $sseo_html2, 'value="clear"' ) && str_contains( $sseo_html3, 'No address is hidden.' ),
+		$sseo_html
+	);
+	for ( $sseo_i = 0; $sseo_i <= Simple_SEO_Monitor::PER_PAGE; $sseo_i++ ) {
+		Simple_SEO_Monitor::hit( '/p' . $sseo_i . '/' );
+	}
+	$sseo_html = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array( 'paged' => '2', 'order' => 'last' );
+	$sseo_html2 = sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+	$_GET = array();
+	sseo_check(
+		'paged: 50 on a page, the links to the others; no visitor came from elsewhere, a dash',
+		50 === substr_count( $sseo_html, 'value="delete"' ) && str_contains( $sseo_html, 'page-numbers' ) && str_contains( $sseo_html, 'paged=2' ) && 1 === substr_count( $sseo_html2, 'value="delete"' ) && str_contains( $sseo_html2, '<span aria-current="page" class="page-numbers current">2</span>' )
+			&& 3 === substr_count( $sseo_html2, '<input type="hidden" name="paged" value="2">' ) && str_contains( $sseo_html2, 'order=last&amp;paged=1' ) && str_contains( $sseo_html, '—' ) && ! str_contains( $sseo_html, 'href=""' ),
+		array( substr_count( $sseo_html, 'value="delete"' ), $sseo_html2 )
+	);
+	sseo_check( 'clear the list', 'cleared' === Simple_SEO_Monitor::act( 'clear', 0 ) && 0 === (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_table}" ) );
+	wp_set_current_user( $sseo_u['author'] );
+	add_filter( 'wp_die_handler', $sseo_404_die, 99 );
+	try {
+		sseo_capture( array( Simple_SEO_Monitor::class, 'render_page' ) );
+		$sseo_val = 'shown';
+	} catch ( RuntimeException $sseo_error ) {
+		$sseo_val = $sseo_error->getMessage();
+	}
+	try {
+		Simple_SEO_Monitor::handle();
+		$sseo_val2 = 'handled';
+	} catch ( RuntimeException $sseo_error ) {
+		$sseo_val2 = $sseo_error->getMessage();
+	}
+	remove_filter( 'wp_die_handler', $sseo_404_die, 99 );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check( 'the page and its forms: not for whoever does not see reports', 'wp_die' === $sseo_val && 'wp_die' === $sseo_val2, array( $sseo_val, $sseo_val2 ) );
+
+	// The menu, the styles, the tab.
+	$sseo_saved_menu    = array( $GLOBALS['menu'] ?? null, $GLOBALS['submenu'] ?? null );
+	$GLOBALS['menu']    = array();
+	$GLOBALS['submenu'] = array();
+	Simple_SEO_Admin::add_menu();
+	Simple_SEO_Search_Console::add_menu();
+	Simple_SEO_Monitor::add_menu();
+	$sseo_val  = array_column( $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ] ?? array(), 2 );
+	$sseo_val2 = end( $GLOBALS['submenu'][ Simple_SEO_Admin::PAGE ] );
+	[ $GLOBALS['menu'], $GLOBALS['submenu'] ] = $sseo_saved_menu;
+	sseo_check( 'the menu: 404 after Search Console, for who sees reports', array( Simple_SEO_Admin::PAGE, Simple_SEO_Search_Console::PAGE, Simple_SEO_Monitor::PAGE ) === $sseo_val && Simple_SEO_Access::CAP_REPORTS === ( $sseo_val2[1] ?? '' ) && '404' === ( $sseo_val2[0] ?? '' ) && 'Pages not found' === ( $sseo_val2[3] ?? '' ) && '' !== Simple_SEO_Monitor::hook(), array( $sseo_val, $sseo_val2 ) );
+	set_current_screen( 'dashboard' );
+	wp_dequeue_style( 'simple-seo-admin' );
+	Simple_SEO_Admin::enqueue( Simple_SEO_Monitor::hook() );
+	sseo_check( 'the page has the styles of Simple SEO, and no script', wp_style_is( 'simple-seo-admin', 'enqueued' ) && ! wp_script_is( 'simple-seo-admin', 'enqueued' ) );
+	wp_dequeue_style( 'simple-seo-admin' );
+	unset( $GLOBALS['current_screen'] );
+	Simple_SEO_Monitor::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	$_GET['tab'] = 'monitor';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	unset( $_GET['tab'] );
+	sseo_check(
+		'the 404 tab: after IndexNow, the switch on with its 0, what is kept and for how long, the way to the list; it saves its row',
+		strpos( $sseo_html, '>IndexNow<' ) < strpos( $sseo_html, '>404<' ) && str_contains( $sseo_html, 'name="simple_seo_404_monitor[enabled]" value="0"' ) && str_contains( $sseo_html, 'name="simple_seo_404_monitor[enabled]" value="1" checked=\'checked\'' )
+			&& str_contains( $sseo_html, 'forgotten 90 days after' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Monitor::page_url() ) ) && 'simple-seo-monitor' === ( get_registered_settings()[ Simple_SEO_Monitor::OPTION ]['group'] ?? '' ),
+		$sseo_html
+	);
+
+	// Deactivation.
+	Simple_SEO_Monitor::hit( '/d/' );
+	$sseo_val = false !== wp_next_scheduled( Simple_SEO_Monitor::EVENT );
+	Simple_SEO_Plugin::deactivate();
+	sseo_check( 'deactivated: no clean-up scheduled; the addresses stay', $sseo_val && false === wp_next_scheduled( Simple_SEO_Monitor::EVENT ) && 1 === (int) $sseo_db->get_var( "SELECT COUNT(*) FROM {$sseo_table}" ) );
+	flush_rewrite_rules( false );
+	Simple_SEO_Monitor::hit( '/d/' );
+	delete_option( Simple_SEO_Monitor::OPTION );
+	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -9139,8 +9560,10 @@ try {
 		define( 'WP_UNINSTALL_PLUGIN', 'simple-seo/simple-seo.php' );
 	}
 	wp_schedule_single_event( time() + 60, Simple_SEO_IndexNow::EVENT );
+	wp_schedule_event( time() + 60, 'daily', Simple_SEO_Monitor::EVENT );
 	include SIMPLE_SEO_DIR . 'uninstall.php';
 	sseo_check( 'uninstall drops a batch of IndexNow waiting', false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
+	sseo_check( 'uninstall drops the table of the monitor of 404s and its clean-up', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) && false === wp_next_scheduled( Simple_SEO_Monitor::EVENT ) );
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
 	sseo_check( 'uninstall removes the copy of .htaccess', ! is_file( get_home_path() . Simple_SEO_Files::DISK_COPY ) );
@@ -9150,7 +9573,7 @@ try {
 	sseo_check( 'uninstall keeps the SEO fields of terms', 'Saved from the term form' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
 	Simple_SEO_Settings::flush();
 	Simple_SEO_Plugin::maybe_upgrade();
-	sseo_check( 'the next request installs the rows again', null !== get_option( Simple_SEO_Access::OPTION, null ) && SIMPLE_SEO_VERSION === get_option( Simple_SEO_Plugin::VERSION_OPTION ) );
+	sseo_check( 'the next request installs the rows again, and the table of the monitor', null !== get_option( Simple_SEO_Access::OPTION, null ) && SIMPLE_SEO_VERSION === get_option( Simple_SEO_Plugin::VERSION_OPTION ) && (bool) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) );
 
 	// Last: REST_REQUEST stays defined for the rest of the run.
 	unset( $GLOBALS['current_screen'] );

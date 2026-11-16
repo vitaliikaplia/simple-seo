@@ -418,3 +418,69 @@
 .simple-seo-indexnow-log .simple-seo-indexnow-failed {
 	color: #b32d2e;
 }
+
+/* Pages not found: the addresses break anywhere; a row's actions in a line; on a phone a row is a
+   block, as on the Search Console page. */
+.simple-seo-404-table td a {
+	overflow-wrap: anywhere;
+}
+
+.simple-seo-404-table .num {
+	width: 5em;
+	text-align: right;
+	white-space: nowrap;
+}
+
+.simple-seo-404-actions {
+	white-space: nowrap;
+}
+
+.simple-seo-404-action {
+	display: inline;
+	margin-right: .75em;
+}
+
+.simple-seo-404-order {
+	clear: both;
+}
+
+@media screen and (max-width: 782px) {
+	.simple-seo-404-table thead {
+		display: none;
+	}
+
+	.simple-seo-404-table,
+	.simple-seo-404-table tbody {
+		display: block;
+		width: auto;
+	}
+
+	.simple-seo-404-table tr {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 4px 8px;
+		padding: 10px 12px;
+	}
+
+	.simple-seo-404-table td,
+	.simple-seo-404-table .num {
+		display: block;
+		width: auto;
+		padding: 0;
+		text-align: left;
+		white-space: normal;
+	}
+
+	.simple-seo-404-table td:first-child,
+	.simple-seo-404-table td:nth-child(5),
+	.simple-seo-404-table .simple-seo-404-actions {
+		grid-column: 1 / -1;
+	}
+
+	.simple-seo-404-table td[data-label]::before {
+		content: attr(data-label);
+		display: block;
+		color: #50575e;
+		font-size: 12px;
+	}
+}
