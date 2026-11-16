@@ -124,42 +124,17 @@ final class Simple_SEO_CLI {
 			WP_CLI::error( __( 'There is no such post with SEO fields.', 'simple-seo' ) );
 		}
 
-		$result  = Simple_SEO_Analysis::run( $post );
-		$context = Simple_SEO_Context::for_post( $post );
-		$summary = array(
-			'url'                => (string) get_permalink( $post ),
-			'title'              => Simple_SEO_Titles::title( $context ),
-			'description'        => Simple_SEO_Titles::description( $context ),
-			'words'              => (int) $result['words'],
-			'score'              => (int) $result['score'],
-			'rating'             => (string) $result['rating'],
-			'readability_score'  => (int) $result['readability']['score'],
-			'readability_rating' => (string) $result['readability']['rating'],
-		);
-		$checks  = array();
-		foreach ( array(
-			'seo'         => $result['checks'],
-			'readability' => $result['readability']['checks'],
-		) as $area => $list ) {
-			foreach ( $list as $check ) {
-				$checks[] = array(
-					'area'   => $area,
-					'id'     => (string) $check['id'],
-					'status' => (string) $check['status'],
-					'text'   => (string) $check['text'],
-				);
-			}
-		}
-
+		$report = Simple_SEO_Analysis::report( $post );
 		$format = (string) ( $assoc_args['format'] ?? 'table' );
 		if ( 'table' !== $format ) {
-			WP_CLI::print_value( $summary + array( 'checks' => $checks ), array( 'format' => $format ) );
+			WP_CLI::print_value( $report, array( 'format' => $format ) );
 			return;
 		}
 
+		$summary   = array_diff_key( $report, array( 'checks' => true ) );
 		$formatter = new WP_CLI\Formatter( $assoc_args, array_keys( $summary ) );
 		$formatter->display_item( $summary );
-		WP_CLI\Utils\format_items( 'table', $checks, array( 'area', 'status', 'text' ) );
+		WP_CLI\Utils\format_items( 'table', $report['checks'], array( 'area', 'status', 'text' ) );
 	}
 
 	/**

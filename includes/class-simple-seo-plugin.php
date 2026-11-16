@@ -47,6 +47,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Search_Console::init();
 		Simple_SEO_IndexNow::init();
 		Simple_SEO_REST::init();
+		Simple_SEO_Abilities::init();
 		Simple_SEO_Yoast_Compat::init();
 
 		if ( is_admin() ) {

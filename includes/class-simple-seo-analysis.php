@@ -138,6 +138,43 @@ final class Simple_SEO_Analysis {
 	}
 
 	/**
+	 * The analysis of a post as saved, for WP-CLI and the abilities: its address, the title and the
+	 * description its page shows, the scores, and every check with its area (seo, readability).
+	 *
+	 * @return array{url: string, title: string, description: string, words: int, score: int, rating: string, readability_score: int, readability_rating: string, checks: array<int, array{area: string, id: string, status: string, text: string}>}
+	 */
+	public static function report( WP_Post $post ): array {
+		$result = self::run( $post );
+		$shown  = Simple_SEO_Bulk::now( $post );
+		$checks = array();
+		foreach ( array(
+			'seo'         => $result['checks'],
+			'readability' => $result['readability']['checks'],
+		) as $area => $list ) {
+			foreach ( $list as $check ) {
+				$checks[] = array(
+					'area'   => $area,
+					'id'     => (string) $check['id'],
+					'status' => (string) $check['status'],
+					'text'   => (string) $check['text'],
+				);
+			}
+		}
+
+		return array(
+			'url'                => (string) get_permalink( $post ),
+			'title'              => (string) $shown['title'],
+			'description'        => (string) $shown['description'],
+			'words'              => (int) $result['words'],
+			'score'              => (int) $result['score'],
+			'rating'             => (string) $result['rating'],
+			'readability_score'  => (int) $result['readability']['score'],
+			'readability_rating' => (string) $result['readability']['rating'],
+			'checks'             => $checks,
+		);
+	}
+
+	/**
 	 * The score of checks out of 100 and its rating; rating none where no check counts.
 	 *
 	 * @param array<int, array{status: string}> $checks

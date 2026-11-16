@@ -35,27 +35,10 @@ final class Simple_SEO_CLI_IndexNow {
 	 * @param array<string, mixed> $assoc_args
 	 */
 	public function status( array $args, array $assoc_args ): void {
-		$key     = Simple_SEO_IndexNow::key();
-		$next    = wp_next_scheduled( Simple_SEO_IndexNow::EVENT );
-		$summary = array(
-			'enabled'  => (bool) Simple_SEO_Settings::value( Simple_SEO_IndexNow::OPTION, 'enabled' ),
-			'key'      => $key,
-			'key_file' => '' !== $key ? Simple_SEO_IndexNow::key_location() : '',
-			'waiting'  => count( Simple_SEO_IndexNow::queue()['urls'] ),
-			'next'     => false !== $next ? (string) wp_date( 'Y-m-d H:i:s P', (int) $next ) : '',
-		);
-		$blockers = array_values( Simple_SEO_IndexNow::blockers() );
-		$answers  = array_map(
-			static fn( array $entry ): array => array(
-				'time'    => (string) wp_date( 'Y-m-d H:i:s P', (int) ( $entry['time'] ?? 0 ) ),
-				'count'   => (int) ( $entry['count'] ?? 0 ),
-				'url'     => rawurldecode( (string) ( $entry['url'] ?? '' ) ),
-				'code'    => (int) ( $entry['code'] ?? 0 ),
-				'ok'      => ! empty( $entry['ok'] ),
-				'message' => (string) ( $entry['message'] ?? '' ),
-			),
-			Simple_SEO_IndexNow::entries()
-		);
+		$status   = Simple_SEO_IndexNow::status();
+		$summary  = array_intersect_key( $status, array_flip( array( 'enabled', 'key', 'key_file', 'waiting', 'next' ) ) );
+		$blockers = $status['blockers'];
+		$answers  = $status['answers'];
 
 		$format = (string) ( $assoc_args['format'] ?? 'table' );
 		if ( 'table' !== $format ) {
@@ -101,25 +84,11 @@ final class Simple_SEO_CLI_IndexNow {
 	public function submit( array $args ): void {
 		self::stop_if_blocked();
 
-		$urls = array();
-		foreach ( $args as $target ) {
-			if ( ctype_digit( $target ) ) {
-				$post = Simple_SEO_Fields::object( 'post', (int) $target );
-				$url  = $post instanceof WP_Post && Simple_SEO_IndexNow::watched( $post ) ? Simple_SEO_IndexNow::post_address( $post ) : '';
-				if ( '' === $url ) {
-					/* translators: %s: ID of a post. */
-					WP_CLI::warning( sprintf( __( 'Post %s is not a page search engines may show: left out.', 'simple-seo' ), $target ) );
-					continue;
-				}
-			} elseif ( Simple_SEO_IndexNow::own( $target ) ) {
-				$url = $target;
-			} else {
-				/* translators: %s: an address. */
-				WP_CLI::warning( sprintf( __( 'Not an address of this site: %s', 'simple-seo' ), $target ) );
-				continue;
-			}
-			$urls[] = $url;
+		$found = Simple_SEO_IndexNow::resolve( $args );
+		foreach ( $found['left'] as $why ) {
+			WP_CLI::warning( $why );
 		}
+		$urls = $found['urls'];
 		if ( ! $urls ) {
 			WP_CLI::error( __( 'Nothing to send.', 'simple-seo' ) );
 		}
@@ -153,12 +122,9 @@ final class Simple_SEO_CLI_IndexNow {
 		}
 	}
 
-	/** Send the batch, the scheduled sending of it dropped; an error unless Bing took it all. */
+	/** Send the batch now; an error unless Bing took it all. */
 	private static function send_now(): void {
-		// A sending scheduled within ten minutes would stop the one a retry schedules.
-		wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
-
-		$answers = Simple_SEO_IndexNow::send();
+		$answers = Simple_SEO_IndexNow::send_now();
 		$taken   = 0;
 		foreach ( $answers as $answer ) {
 			$where = $answer['count'] > 1

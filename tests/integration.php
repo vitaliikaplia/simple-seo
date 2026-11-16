@@ -4692,6 +4692,41 @@ try {
 	wp_set_current_user( $sseo_u['administrator'] );
 	sseo_check( 'the REST route gives the part of the box; not to who does not see the data, nor to a visitor', 200 === $sseo_response->get_status() && is_array( $sseo_data ) && str_contains( (string) ( $sseo_data['html'] ?? '' ), '<td>запит сторінки</td>' ) && in_array( $sseo_response2->get_status(), array( 401, 403 ), true ) && in_array( $sseo_response3->get_status(), array( 401, 403 ), true ), array( $sseo_response->get_status(), $sseo_response2->get_status(), $sseo_response3->get_status() ) );
 
+	// The ability.
+	$sseo_ab   = static fn( array $input ) => wp_get_ability( 'simple-seo/search-console' )->execute( $input );
+	$sseo_code = static fn( $value ): string => is_wp_error( $value ) ? $value->get_error_code() : 'no error';
+	$sseo_vals = array(
+		$sseo_ab( array() ),
+		$sseo_ab( array( 'days' => 7 ) ),
+		$sseo_ab( array( 'id' => $sseo['posts']['gc_pub'] ) ),
+		$sseo_code( $sseo_ab( array( 'id' => $sseo['posts']['gc_draft'] ) ) ),
+		$sseo_code( $sseo_ab( array( 'id' => PHP_INT_MAX ) ) ),
+		$sseo_code( $sseo_ab( array( 'days' => 5 ) ) ),
+	);
+	sseo_check(
+		'the ability: the site for the days asked (28 by default), a published post; a draft, no such post, a period there is not',
+		Simple_SEO_Search_Console::site_report( 28 ) === $sseo_vals[0] && Simple_SEO_Search_Console::site_report( 7 ) === $sseo_vals[1] && Simple_SEO_Search_Console::post_report( $sseo_gc_post ) === $sseo_vals[2]
+			&& array( 'simple_seo_gsc_unpublished', 'simple_seo_no_object', 'ability_invalid_input' ) === array_slice( $sseo_vals, 3 ),
+		array_slice( $sseo_vals, 3 )
+	);
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_vals = array( $sseo_code( $sseo_ab( array( 'id' => $sseo['posts']['gc_pub'] ) ) ) );
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_vals[] = $sseo_code( $sseo_ab( array() ) );
+	update_option( Simple_SEO_Access::OPTION, array( 'reports' => array( 'author' ) ) + Simple_SEO_Access::defaults() );
+	$sseo_vals[] = $sseo_code( $sseo_ab( array( 'id' => $sseo['posts']['gc_pub'] ) ) );
+	$sseo_vals[] = $sseo_code( $sseo_ab( array( 'id' => $sseo['posts']['long'] ) ) );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) );
+	$sseo_val = $sseo_ab( array() );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com' ) + $sseo_gc_row );
+	sseo_check(
+		'who sees the data: the editor; not the author, unless let, and then of own posts only; without a key, an error that says what to do',
+		array( 'no error', 'ability_invalid_permissions', 'no error', 'ability_invalid_permissions' ) === $sseo_vals && 'simple_seo_gsc_not_connected' === $sseo_code( $sseo_val ) && str_contains( $sseo_val->get_error_message(), 'Search Console tab' ),
+		$sseo_vals
+	);
+
 	// The page.
 	$_GET['days'] = '7';
 	$sseo_html    = sseo_capture( array( Simple_SEO_Search_Console::class, 'render_page' ) );
@@ -5224,6 +5259,49 @@ try {
 	);
 	$sseo_ix_reset();
 	delete_option( Simple_SEO_IndexNow::LOG );
+
+	// The abilities of IndexNow.
+	$sseo_ab   = static fn( string $name, $input = null ) => wp_get_ability( $name )->execute( $input );
+	$sseo_code = static fn( $value ): string => is_wp_error( $value ) ? $value->get_error_code() : 'no error';
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_ix_reset();
+	delete_option( Simple_SEO_IndexNow::LOG );
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 200 );
+	$sseo_vals      = array(
+		$sseo_ab( 'simple-seo/indexnow-status' ),
+		Simple_SEO_IndexNow::status(),
+		$sseo_ab( 'simple-seo/indexnow-submit', array( 'ids' => array( $sseo['posts']['ix_cli'], $sseo['posts']['ix_draft'] ), 'urls' => array( 'https://www.example.com/by-ability/', 'https://other.example.org/' ) ) ),
+		Simple_SEO_IndexNow::queue()['urls'],
+		$sseo_ab( 'simple-seo/indexnow-submit', array( 'urls' => array( 'https://www.example.com/only/' ) ) ),
+	);
+	sseo_check(
+		'the abilities: the status as IndexNow gives it; addresses sent at once, the answers, what was left out with why; nothing left out is an object',
+		$sseo_vals[1] === $sseo_vals[0] && true === $sseo_vals[2]['ok'] && array( array( 'url' => get_permalink( $sseo['posts']['ix_cli'] ), 'count' => 2, 'code' => 200, 'ok' => true, 'message' => Simple_SEO_IndexNow::entries()[1]['message'] ) ) === $sseo_vals[2]['answers']
+			&& array( (string) $sseo['posts']['ix_draft'] => 'Post ' . $sseo['posts']['ix_draft'] . ' is not a page search engines may show: left out.', 'https://other.example.org/' => 'Not an address of this site: https://other.example.org/' ) === $sseo_vals[2]['left_out'] && array() === $sseo_vals[3]
+			&& '{}' === wp_json_encode( $sseo_vals[4]['left_out'] ) && 'https://www.example.com/only/' === $sseo_vals[4]['answers'][0]['url'],
+		$sseo_vals
+	);
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 403 );
+	$sseo_vals      = array( $sseo_ab( 'simple-seo/indexnow-submit', array( 'urls' => array( 'https://www.example.com/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' ) ) ), $sseo_ab( 'simple-seo/indexnow-submit', array( 'ids' => array( $sseo['posts']['ix_draft'] ) ) ), $sseo_ab( 'simple-seo/indexnow-submit', array() ) );
+	update_option( 'blog_public', '0' );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/indexnow-submit', array( 'urls' => array( 'https://www.example.com/x/' ) ) );
+	$sseo_why    = Simple_SEO_IndexNow::blockers();
+	update_option( 'blog_public', '1' );
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/indexnow-status' );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/indexnow-submit', array( 'urls' => array( 'https://www.example.com/x/' ) ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check(
+		'refused by Bing: not ok, the address readable; nothing of the site, nothing given, IndexNow blocked: errors that say why; for who does not manage the settings, nothing',
+		false === $sseo_vals[0]['ok'] && false === $sseo_vals[0]['answers'][0]['ok'] && 403 === $sseo_vals[0]['answers'][0]['code'] && 'https://www.example.com/сторінка/' === $sseo_vals[0]['answers'][0]['url']
+			&& 'simple_seo_indexnow_nothing' === $sseo_code( $sseo_vals[1] ) && 'Nothing to send. Post ' . $sseo['posts']['ix_draft'] . ' is not a page search engines may show: left out.' === $sseo_vals[1]->get_error_message()
+			&& 'ability_invalid_input' === $sseo_code( $sseo_vals[2] ) && 'simple_seo_indexnow_blocked' === $sseo_code( $sseo_vals[3] ) && 'Nothing is sent: ' . implode( ' ', $sseo_why ) === $sseo_vals[3]->get_error_message()
+			&& 'ability_invalid_permissions' === $sseo_code( $sseo_vals[4] ) && 'ability_invalid_permissions' === $sseo_code( $sseo_vals[5] ),
+		array_map( static fn( $v ) => is_wp_error( $v ) ? $v->get_error_code() . ': ' . $v->get_error_message() : $v, $sseo_vals )
+	);
+	$sseo_ix_reset();
+	delete_option( Simple_SEO_IndexNow::LOG );
+	wp_set_current_user( 0 );
 
 	// The tab.
 	Simple_SEO_IndexNow::add_admin_tab();
@@ -8829,6 +8907,197 @@ try {
 	}
 	Simple_SEO_Settings::install();
 	Simple_SEO_Settings::flush();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Abilities' );
+
+	// Earlier sections leave the access row empty: the rights by default for this one.
+	$sseo_access = get_option( Simple_SEO_Access::OPTION );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	$sseo_ab    = static fn( string $name, $input = null ) => wp_get_ability( $name )->execute( $input );
+	$sseo_code  = static fn( $value ): string => is_wp_error( $value ) ? $value->get_error_code() : 'no error';
+	$sseo_names = array( 'simple-seo/get-fields', 'simple-seo/update-fields', 'simple-seo/find', 'simple-seo/analyze', 'simple-seo/search-console', 'simple-seo/settings', 'simple-seo/indexnow-status', 'simple-seo/indexnow-submit' );
+	$sseo_found = array_values( array_filter( array_map( static fn( WP_Ability $ability ): string => $ability->get_name(), wp_get_abilities() ), static fn( string $name ): bool => str_starts_with( $name, 'simple-seo/' ) ) );
+	$sseo_notes = array();
+	foreach ( $sseo_names as $sseo_name ) {
+		$sseo_a     = wp_get_ability( $sseo_name );
+		$sseo_ann   = (array) ( $sseo_a ? $sseo_a->get_meta()['annotations'] : array() );
+		$sseo_props = $sseo_a ? (array) ( $sseo_a->get_input_schema()['properties'] ?? array() ) : array();
+		$sseo_notes[ $sseo_name ] = $sseo_a ? array(
+			$sseo_a->get_category(),
+			true === ( $sseo_a->get_meta()['mcp']['public'] ?? null ),
+			( ! empty( $sseo_ann['readonly'] ) ? 'r' : '-' ) . ( ! empty( $sseo_ann['destructive'] ) ? 'd' : '-' ) . ( ! empty( $sseo_ann['idempotent'] ) ? 'i' : '-' ),
+			'' !== $sseo_a->get_label() && mb_strlen( $sseo_a->get_description() ) <= 2048,
+			array() === array_filter( $sseo_props, static fn( array $prop ): bool => '' === (string) ( $prop['description'] ?? '' ) ),
+			false === ( $sseo_a->get_input_schema()['additionalProperties'] ?? null ),
+		) : 'missing';
+	}
+	sseo_check(
+		'eight abilities in the category Simple SEO, each for MCP, with a label, a description an MCP server keeps whole, every argument described and no other taken; which read, overwrite, repeat',
+		$sseo_names === $sseo_found && wp_get_ability_category( Simple_SEO_Abilities::CATEGORY ) instanceof WP_Ability_Category && 'Simple SEO' === wp_get_ability_category( Simple_SEO_Abilities::CATEGORY )->get_label()
+			&& array(
+				'simple-seo/get-fields'      => array( 'simple-seo', true, 'r-i', true, true, true ),
+				'simple-seo/update-fields'   => array( 'simple-seo', true, '-di', true, true, true ),
+				'simple-seo/find'            => array( 'simple-seo', true, 'r-i', true, true, true ),
+				'simple-seo/analyze'         => array( 'simple-seo', true, 'r-i', true, true, true ),
+				'simple-seo/search-console'  => array( 'simple-seo', true, 'r-i', true, true, true ),
+				'simple-seo/settings'        => array( 'simple-seo', true, 'r-i', true, true, true ),
+				'simple-seo/indexnow-status' => array( 'simple-seo', true, 'r-i', true, true, true ),
+				'simple-seo/indexnow-submit' => array( 'simple-seo', true, '---', true, true, true ),
+			) === $sseo_notes,
+		array( $sseo_found, $sseo_notes )
+	);
+	$sseo_val = wp_get_ability( 'simple-seo/update-fields' )->get_description();
+	sseo_check(
+		'update-fields names the variables and every field with its type, level, where it is and its choices',
+		str_contains( $sseo_val, '{title}, {site}, ' ) && str_contains( $sseo_val, 'The fields: title (text), description (textarea), ' ) && str_contains( $sseo_val, ' primary_category (select; post types: post), ' ) && str_contains( $sseo_val, ' index (select; advanced; one of: index noindex), ' )
+			&& str_contains( $sseo_val, ' nofollow (checkbox; advanced), ' ) && str_contains( $sseo_val, ' keyphrase (text; posts only), ' ) && str_contains( $sseo_val, ' test_choice (select; posts only; one of: a).' ),
+		$sseo_val
+	);
+
+	// The fields of a post or term.
+	$sseo['posts']['ab_own']   = wp_insert_post( array( 'post_title' => 'Ability own', 'post_status' => 'publish', 'post_author' => $sseo_u['author'] ) );
+	$sseo['posts']['ab_other'] = wp_insert_post( array( 'post_title' => 'Ability other', 'post_status' => 'publish', 'post_author' => $sseo_u['editor'] ) );
+	$sseo_own                  = (int) $sseo['posts']['ab_own'];
+	$sseo_other                = (int) $sseo['posts']['ab_other'];
+	Simple_SEO_Fields::write( 'post', $sseo_own, array( 'title' => 'Own {sep} {site}', 'nofollow' => true ) );
+	Simple_SEO_Fields::write( 'post', $sseo_other, array( 'index' => 'noindex' ) );
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_val = $sseo_ab( 'simple-seo/get-fields', array( 'id' => $sseo_own ) );
+	$sseo_ctx = Simple_SEO_Context::for_post( get_post( $sseo_own ) );
+	sseo_check(
+		'get-fields: the post, its fields the user may edit (an author: no advanced ones), what its page shows',
+		is_array( $sseo_val ) && array( 'object', 'id', 'type', 'name', 'status', 'url', 'fields', 'shown' ) === array_keys( $sseo_val ) && 'post' === $sseo_val['object'] && $sseo_own === $sseo_val['id'] && 'post' === $sseo_val['type'] && 'Ability own' === $sseo_val['name'] && 'publish' === $sseo_val['status'] && get_permalink( $sseo_own ) === $sseo_val['url']
+			&& Simple_SEO_Fields::values( 'post', $sseo_own, $sseo_u['author'] ) === $sseo_val['fields'] && 'Own {sep} {site}' === $sseo_val['fields']['title'] && ! isset( $sseo_val['fields']['nofollow'] )
+			&& array( 'title' => Simple_SEO_Titles::title( $sseo_ctx ), 'description' => Simple_SEO_Titles::description( $sseo_ctx ), 'canonical' => get_permalink( $sseo_own ), 'noindex' => false ) === $sseo_val['shown'] && str_starts_with( $sseo_val['shown']['title'], 'Own ' ),
+		$sseo_val
+	);
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_vals = array( $sseo_ab( 'simple-seo/get-fields', array( 'object' => 'post', 'id' => $sseo_other ) ), $sseo_ab( 'simple-seo/get-fields', array( 'object' => 'term', 'id' => $sseo_cat_id ) ) );
+	sseo_check(
+		'a page hidden from search engines: noindex and no canonical, the editor sees the advanced field; a term: its taxonomy, name and address, no status, no keyphrase',
+		true === $sseo_vals[0]['shown']['noindex'] && '' === $sseo_vals[0]['shown']['canonical'] && 'noindex' === $sseo_vals[0]['fields']['index']
+			&& array( 'object', 'id', 'type', 'name', 'url', 'fields', 'shown' ) === array_keys( $sseo_vals[1] ) && 'term' === $sseo_vals[1]['object'] && $sseo_cat_id === $sseo_vals[1]['id'] && 'category' === $sseo_vals[1]['type'] && get_term( $sseo_cat_id )->name === $sseo_vals[1]['name'] && get_term_link( $sseo_cat_id ) === $sseo_vals[1]['url']
+			&& Simple_SEO_Fields::values( 'term', $sseo_cat_id, $sseo_u['editor'] ) === $sseo_vals[1]['fields'] && ! isset( $sseo_vals[1]['fields']['keyphrase'] )
+			&& '' !== $sseo_vals[1]['shown']['description'] && Simple_SEO_Titles::description( Simple_SEO_Context::for_term( get_term( $sseo_cat_id ) ) ) === $sseo_vals[1]['shown']['description'],
+		$sseo_vals
+	);
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_vals = array(
+		$sseo_ab( 'simple-seo/get-fields', array( 'id' => $sseo_other ) ),
+		$sseo_ab( 'simple-seo/get-fields', array( 'id' => PHP_INT_MAX ) ),
+		$sseo_ab( 'simple-seo/get-fields', array( 'object' => 'term', 'id' => PHP_INT_MAX ) ),
+		$sseo_ab( 'simple-seo/get-fields', array( 'object' => 'term', 'id' => $sseo_cat_id ) ),
+		$sseo_ab( 'simple-seo/get-fields', array() ),
+		$sseo_ab( 'simple-seo/get-fields', array( 'id' => $sseo_own, 'x' => 1 ) ),
+		$sseo_ab( 'simple-seo/get-fields', array( 'id' => $sseo['posts']['hidden_type'] ) ),
+	);
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/get-fields', array( 'id' => PHP_INT_MAX ) );
+	sseo_check(
+		"get-fields refused: another's post, a term an author may not edit, a subscriber; no such post or term, or one without SEO fields, said so; arguments missing or unknown",
+		array( 'ability_invalid_permissions', 'simple_seo_no_object', 'simple_seo_no_object', 'ability_invalid_permissions', 'ability_invalid_input', 'ability_invalid_input', 'simple_seo_no_object', 'ability_invalid_permissions' ) === array_map( $sseo_code, $sseo_vals )
+			&& 'There is no such post with SEO fields.' === $sseo_vals[1]->get_error_message() && 'There is no such term with SEO fields.' === $sseo_vals[2]->get_error_message(),
+		array_map( $sseo_code, $sseo_vals )
+	);
+
+	wp_set_current_user( $sseo_u['author'] );
+	delete_post_meta( $sseo_own, Simple_SEO_Scores::META );
+	$sseo_val = $sseo_ab( 'simple-seo/update-fields', array( 'id' => $sseo_own, 'fields' => array( 'title' => 'New {title}', 'description' => '' ) ) );
+	sseo_check(
+		'update-fields: the keys saved, the fields and what the page shows afterwards; the scores of the post kept',
+		is_array( $sseo_val ) && array( 'saved', 'object', 'id', 'type', 'name', 'status', 'url', 'fields', 'shown' ) === array_keys( $sseo_val ) && array( 'title', 'description' ) === $sseo_val['saved'] && 'New {title}' === $sseo_val['fields']['title']
+			&& 'New {title}' === Simple_SEO_Fields::post_value( $sseo_own, 'title' ) && str_starts_with( $sseo_val['shown']['title'], 'New Ability own' ) && null !== Simple_SEO_Scores::get( get_post( $sseo_own ) ),
+		$sseo_val
+	);
+	$sseo_vals = array(
+		$sseo_ab( 'simple-seo/update-fields', array( 'id' => $sseo_own, 'fields' => array( 'title' => 'Never', 'nofollow' => false ) ) ),
+		$sseo_ab( 'simple-seo/update-fields', array( 'id' => $sseo_own, 'fields' => array( 'title' => 'Never', 'og_image' => 'abc' ) ) ),
+		$sseo_ab( 'simple-seo/update-fields', array( 'id' => $sseo_own, 'fields' => array() ) ),
+		$sseo_ab( 'simple-seo/update-fields', array( 'id' => $sseo_own ) ),
+		$sseo_ab( 'simple-seo/update-fields', array( 'id' => $sseo_other, 'fields' => array( 'title' => 'Never' ) ) ),
+		$sseo_ab( 'simple-seo/update-fields', array( 'id' => PHP_INT_MAX, 'fields' => array( 'title' => 'Never' ) ) ),
+	);
+	sseo_check(
+		'update-fields refused: a field the user may not edit, a value a field cannot hold (nothing written), no field, no fields, a post of another, no such post',
+		array( 'simple_seo_cannot_edit', 'simple_seo_invalid_value', 'ability_invalid_input', 'ability_invalid_input', 'ability_invalid_permissions', 'simple_seo_no_object' ) === array_map( $sseo_code, $sseo_vals ) && 'New {title}' === Simple_SEO_Fields::post_value( $sseo_own, 'title' ),
+		array_map( $sseo_code, $sseo_vals )
+	);
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_kept = Simple_SEO_Fields::term_value( $sseo_cat_id, 'og_title' );
+	$sseo_val  = $sseo_ab( 'simple-seo/update-fields', array( 'object' => 'term', 'id' => $sseo_cat_id, 'fields' => array( 'og_title' => 'Shared category' ) ) );
+	$sseo_vals = array( $sseo_val['saved'] ?? null, Simple_SEO_Fields::term_value( $sseo_cat_id, 'og_title' ) );
+	Simple_SEO_Fields::write( 'term', $sseo_cat_id, array( 'og_title' => $sseo_kept ) );
+	sseo_check( 'update-fields of a term', array( array( 'og_title' ), 'Shared category' ) === $sseo_vals, $sseo_vals );
+
+	// Lists.
+	$sseo['posts']['ab_find1'] = wp_insert_post( array( 'post_type' => 'page', 'post_title' => 'Abfind One', 'post_status' => 'publish', 'post_date' => '2001-02-01 10:00:00' ) );
+	$sseo['posts']['ab_find2'] = wp_insert_post( array( 'post_type' => 'page', 'post_title' => 'Abfind Two', 'post_status' => 'publish', 'post_date' => '2001-02-02 10:00:00' ) );
+	Simple_SEO_Fields::write( 'post', $sseo['posts']['ab_find1'], array( 'description' => 'Own description' ) );
+	$sseo_vals = array(
+		$sseo_ab( 'simple-seo/find', array( 'type' => 'page', 'search' => 'Abfind' ) ),
+		$sseo_ab( 'simple-seo/find', array( 'type' => 'page', 'search' => 'Abfind', 'missing' => 'description' ) ),
+		$sseo_ab( 'simple-seo/find', array( 'type' => 'page', 'search' => 'Abfind', 'per_page' => 1, 'page' => 2 ) ),
+		$sseo_ab( 'simple-seo/find', array( 'object' => 'term', 'type' => 'post_tag', 'search' => 'SSEO REST tag' ) ),
+		$sseo_ab( 'simple-seo/find', array( 'object' => 'term', 'search' => get_term( $sseo_cat_id )->name ) ),
+		$sseo_ab( 'simple-seo/find', array() ),
+	);
+	$sseo_one  = get_post( $sseo['posts']['ab_find1'] );
+	sseo_check(
+		'find: a post type, newest first, with their own title and description and what the pages show; those without a description of their own; paged; terms, of categories by default; posts by default',
+		'page' === ( $sseo_vals[0]['type'] ?? '' ) && 'post' === $sseo_vals[0]['object'] && 2 === $sseo_vals[0]['total'] && 1 === $sseo_vals[0]['pages'] && 1 === $sseo_vals[0]['page'] && array( 'Abfind Two', 'Abfind One' ) === array_column( $sseo_vals[0]['items'], 'name' )
+			&& array( 'id' => (int) $sseo_one->ID, 'name' => 'Abfind One', 'status' => 'publish', 'url' => get_permalink( $sseo_one ), 'own' => array( 'title' => '', 'description' => 'Own description' ), 'shown' => Simple_SEO_Bulk::now( $sseo_one ) ) === $sseo_vals[0]['items'][1]
+			&& 1 === $sseo_vals[1]['total'] && array( 'Abfind Two' ) === array_column( $sseo_vals[1]['items'], 'name' ) && 2 === $sseo_vals[2]['pages'] && 2 === $sseo_vals[2]['page'] && array( 'Abfind One' ) === array_column( $sseo_vals[2]['items'], 'name' )
+			&& 'post_tag' === $sseo_vals[3]['type'] && 'SSEO REST tag' === ( $sseo_vals[3]['items'][0]['name'] ?? '' ) && array( 'id', 'name', 'url', 'own', 'shown' ) === array_keys( $sseo_vals[3]['items'][0] ) && get_term_link( get_term( (int) $sseo_vals[3]['items'][0]['id'] ) ) === $sseo_vals[3]['items'][0]['url'] && 'post_tag' === get_term( (int) $sseo_vals[3]['items'][0]['id'] )->taxonomy
+			&& 'category' === $sseo_vals[4]['type'] && in_array( $sseo_cat_id, array_column( $sseo_vals[4]['items'], 'id' ), true ) && Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) === $sseo_vals[4]['items'][ array_search( $sseo_cat_id, array_column( $sseo_vals[4]['items'], 'id' ), true ) ]['own']['title']
+			&& 'post' === $sseo_vals[5]['object'] && 'post' === $sseo_vals[5]['type'],
+		$sseo_vals
+	);
+	$sseo_vals = array( $sseo_ab( 'simple-seo/find', array( 'type' => 'nope' ) ), $sseo_ab( 'simple-seo/find', array( 'per_page' => 101 ) ) );
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/find', array( 'type' => 'page' ) );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/find', array( 'object' => 'term' ) );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/find', array( 'type' => 'post', 'search' => 'Ability' ) );
+	update_option( Simple_SEO_Access::OPTION, array( 'fields' => array( 'administrator', 'editor' ) ) + Simple_SEO_Access::defaults() );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/find', array() );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_vals[] = $sseo_ab( 'simple-seo/find', array() );
+	sseo_check(
+		'find refused: a type without SEO fields (named, with those there are), too many on a page; an author: not pages, not terms, only own posts, and nothing without the right to SEO fields; a subscriber: nothing',
+		array( 'simple_seo_no_type', 'ability_invalid_input', 'ability_invalid_permissions', 'ability_invalid_permissions', 'no error', 'ability_invalid_permissions', 'ability_invalid_permissions' ) === array_map( $sseo_code, $sseo_vals )
+			&& str_starts_with( $sseo_vals[0]->get_error_message(), 'No SEO fields for nope. There are: post, page, ' ) && array( 'Ability own' ) === array_column( $sseo_vals[4]['items'], 'name' ),
+		array_map( $sseo_code, $sseo_vals )
+	);
+
+	// The analysis.
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_vals = array( $sseo_ab( 'simple-seo/analyze', array( 'id' => $sseo_own ) ), $sseo_code( $sseo_ab( 'simple-seo/analyze', array( 'id' => $sseo_other ) ) ), $sseo_code( $sseo_ab( 'simple-seo/analyze', array( 'id' => PHP_INT_MAX ) ) ), $sseo_code( $sseo_ab( 'simple-seo/analyze', array( 'id' => $sseo['posts']['hidden_type'] ) ) ) );
+	sseo_check(
+		'analyze: the report of the post with its ID; not of a post of another; no such post, or one without SEO fields',
+		array( 'id' => $sseo_own ) + Simple_SEO_Analysis::report( get_post( $sseo_own ) ) === $sseo_vals[0] && array( 'ability_invalid_permissions', 'simple_seo_no_object', 'simple_seo_no_object' ) === array_slice( $sseo_vals, 1 ),
+		array_slice( $sseo_vals, 1 )
+	);
+
+	// The settings.
+	wp_set_current_user( $sseo_u['administrator'] );
+	update_option( Simple_SEO_Search_Console::OPTION, array( 'property' => 'sc-domain:example.com', 'key' => array( 'email' => 'seo@example-project.iam.gserviceaccount.com', 'project' => 'example-project', 'id' => 'key-id-1', 'secret' => 'secret-text-1' ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_val = $sseo_ab( 'simple-seo/settings' );
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_vals = array( $sseo_ab( 'simple-seo/settings' ) );
+	wp_set_current_user( $sseo_u['editor'] );
+	$sseo_vals[] = $sseo_code( $sseo_ab( 'simple-seo/settings' ) );
+	wp_set_current_user( 0 );
+	sseo_check(
+		'settings: every row with its defaults; of the key of Search Console only whose it is; none without a key; not for who does not manage the settings',
+		is_array( $sseo_val ) && array_keys( Simple_SEO_Settings::registered() ) === array_keys( $sseo_val ) && Simple_SEO_Settings::get( Simple_SEO_Titles::OPTION ) === $sseo_val[ Simple_SEO_Titles::OPTION ] && 'sc-domain:example.com' === $sseo_val[ Simple_SEO_Search_Console::OPTION ]['property']
+			&& array( 'email' => 'seo@example-project.iam.gserviceaccount.com', 'project' => 'example-project' ) === $sseo_val[ Simple_SEO_Search_Console::OPTION ]['key'] && ! str_contains( (string) wp_json_encode( $sseo_val ), 'secret-text-1' ) && ! str_contains( (string) wp_json_encode( $sseo_val ), 'key-id-1' )
+			&& array() === $sseo_vals[0][ Simple_SEO_Search_Console::OPTION ]['key'] && 'ability_invalid_permissions' === $sseo_vals[1],
+		$sseo_val[ Simple_SEO_Search_Console::OPTION ] ?? $sseo_val
+	);
+	update_option( Simple_SEO_Access::OPTION, $sseo_access );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );

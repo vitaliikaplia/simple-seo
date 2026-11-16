@@ -362,6 +362,84 @@ final class Simple_SEO_IndexNow {
 	}
 
 	/**
+	 * The addresses of targets: of a post by its ID, when search engines may show it (as the
+	 * sitemap lists it), or an address of this site; the rest left out, each with why.
+	 *
+	 * @param array<int, int|string> $targets IDs of posts or addresses.
+	 * @return array{urls: string[], left: array<string, string>} left: target => why.
+	 */
+	public static function resolve( array $targets ): array {
+		$urls = array();
+		$left = array();
+		foreach ( $targets as $target ) {
+			$target = (string) $target;
+			if ( ctype_digit( $target ) ) {
+				$post = Simple_SEO_Fields::object( 'post', (int) $target );
+				$url  = $post instanceof WP_Post && self::watched( $post ) ? self::post_address( $post ) : '';
+				if ( '' === $url ) {
+					/* translators: %s: ID of a post. */
+					$left[ $target ] = sprintf( __( 'Post %s is not a page search engines may show: left out.', 'simple-seo' ), $target );
+					continue;
+				}
+				$urls[] = $url;
+			} elseif ( self::own( $target ) ) {
+				$urls[] = $target;
+			} else {
+				/* translators: %s: an address. */
+				$left[ $target ] = sprintf( __( 'Not an address of this site: %s', 'simple-seo' ), $target );
+			}
+		}
+
+		return array(
+			'urls' => $urls,
+			'left' => $left,
+		);
+	}
+
+	/**
+	 * Send the batch now, the scheduled sending of it dropped: one scheduled within ten minutes
+	 * would keep a retry from being scheduled.
+	 *
+	 * @return array<int, array{time: int, count: int, url: string, code: int, ok: bool, message: string}> The answers.
+	 */
+	public static function send_now(): array {
+		wp_clear_scheduled_hook( self::EVENT );
+
+		return self::send();
+	}
+
+	/**
+	 * Whether IndexNow sends, its key, the batch waiting and the last answers, for WP-CLI and the
+	 * abilities: times in the site's time zone, addresses readable.
+	 *
+	 * @return array{enabled: bool, key: string, key_file: string, waiting: int, next: string, blockers: string[], answers: array<int, array<string, mixed>>}
+	 */
+	public static function status(): array {
+		$key  = self::key();
+		$next = wp_next_scheduled( self::EVENT );
+
+		return array(
+			'enabled'  => (bool) Simple_SEO_Settings::value( self::OPTION, 'enabled' ),
+			'key'      => $key,
+			'key_file' => '' !== $key ? self::key_location() : '',
+			'waiting'  => count( self::queue()['urls'] ),
+			'next'     => false !== $next ? (string) wp_date( 'Y-m-d H:i:s P', (int) $next ) : '',
+			'blockers' => array_values( self::blockers() ),
+			'answers'  => array_map(
+				static fn( array $entry ): array => array(
+					'time'    => (string) wp_date( 'Y-m-d H:i:s P', (int) ( $entry['time'] ?? 0 ) ),
+					'count'   => (int) ( $entry['count'] ?? 0 ),
+					'url'     => rawurldecode( (string) ( $entry['url'] ?? '' ) ),
+					'code'    => (int) ( $entry['code'] ?? 0 ),
+					'ok'      => ! empty( $entry['ok'] ),
+					'message' => (string) ( $entry['message'] ?? '' ),
+				),
+				self::entries()
+			),
+		);
+	}
+
+	/**
 	 * One request: the addresses of a host with the key and where its file is.
 	 *
 	 * @param string[] $urls
