@@ -35,6 +35,10 @@ wp_clear_scheduled_hook( 'simple_seo_indexnow_send' );
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}simple_seo_404" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
 wp_clear_scheduled_hook( 'simple_seo_404_cleanup' );
 
+// The report of the audit of pages and a step of it waiting (Simple_SEO_Audit).
+$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}simple_seo_audit" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
+wp_clear_scheduled_hook( 'simple_seo_audit_step' );
+
 // The copy of the previous .htaccess kept next to it (Simple_SEO_Files::DISK_COPY).
 require_once ABSPATH . 'wp-admin/includes/file.php';
 $simple_seo_copy = get_home_path() . '.htaccess.simple-seo-backup';

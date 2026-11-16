@@ -47,6 +47,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Search_Console::init();
 		Simple_SEO_IndexNow::init();
 		Simple_SEO_Monitor::init();
+		Simple_SEO_Audit::init();
 		Simple_SEO_REST::init();
 		Simple_SEO_Abilities::init();
 		Simple_SEO_Yoast_Compat::init();
@@ -128,6 +129,7 @@ final class Simple_SEO_Plugin {
 
 		Simple_SEO_Settings::install();
 		Simple_SEO_Monitor::install();
+		Simple_SEO_Audit::install();
 		// New versions may bring new addresses (the sitemaps in 0.7.0); the rules are registered on init by now.
 		flush_rewrite_rules( false );
 		update_option( self::VERSION_OPTION, SIMPLE_SEO_VERSION, true );
@@ -135,6 +137,7 @@ final class Simple_SEO_Plugin {
 
 	public static function activate( bool $network_wide = false ): void {
 		Simple_SEO_Monitor::install();
+		Simple_SEO_Audit::install();
 		Simple_SEO_Sitemaps::register_rewrites();
 		Simple_SEO_Llms::register_rewrites();
 		flush_rewrite_rules( false );
@@ -142,12 +145,15 @@ final class Simple_SEO_Plugin {
 
 	/**
 	 * WordPress builds the rewrite rules again on the next request, without the sitemap and llms.txt
-	 * addresses; a batch of IndexNow waiting is not sent, and the monitor of 404s forgets nothing
-	 * while the plugin is off (its addresses stay until it is deleted).
+	 * addresses; a batch of IndexNow waiting is not sent, the monitor of 404s forgets nothing
+	 * while the plugin is off (its addresses stay until it is deleted), and an audit running takes
+	 * no more steps (its report stays; run it again once the plugin is back).
 	 */
 	public static function deactivate( bool $network_wide = false ): void {
 		delete_option( 'rewrite_rules' );
 		wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
 		wp_clear_scheduled_hook( Simple_SEO_Monitor::EVENT );
+		wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+		Simple_SEO_Audit::unlock();
 	}
 }

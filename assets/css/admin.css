@@ -484,3 +484,65 @@
 		font-size: 12px;
 	}
 }
+
+/* The audit of pages: the run, the problems in a line, the pages with their problems; on a phone a
+   row is a block. */
+.simple-seo-audit-run {
+	margin: 1em 0;
+}
+
+.simple-seo-audit-progress progress {
+	width: 100%;
+	max-width: 480px;
+	height: 1.25em;
+}
+
+.simple-seo-audit-form {
+	display: inline;
+}
+
+.simple-seo-audit-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 1.25em;
+	margin: 0 0 1em;
+}
+
+.simple-seo-audit-table td a {
+	overflow-wrap: anywhere;
+}
+
+.simple-seo-audit-title {
+	display: block;
+	color: #50575e;
+}
+
+.simple-seo-audit-problems {
+	margin: 0;
+}
+
+.simple-seo-audit-problems li {
+	margin: 0 0 4px;
+	overflow-wrap: anywhere;
+}
+
+@media screen and (max-width: 782px) {
+	.simple-seo-audit-table thead {
+		display: none;
+	}
+
+	.simple-seo-audit-table,
+	.simple-seo-audit-table tbody,
+	.simple-seo-audit-table tr,
+	.simple-seo-audit-table td {
+		display: block;
+		width: auto;
+	}
+
+	.simple-seo-audit-table td[data-label]::before {
+		content: attr(data-label);
+		display: block;
+		color: #50575e;
+		font-size: 12px;
+	}
+}
