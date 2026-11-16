@@ -63,6 +63,9 @@ final class Simple_SEO_Import {
 
 	/** Once per plugin, on the first admin request: whether there is anything of its to offer. */
 	public static function detect(): void {
+		// Not autoloaded (they hold the reports): one query for all of them on each admin screen.
+		wp_prime_option_caches( array_map( static fn( string $class ): string => $class::STATE, array_values( self::SOURCES ) ) );
+
 		foreach ( self::SOURCES as $source => $class ) {
 			if ( ! array_key_exists( 'status', self::state( $source ) ) ) {
 				self::store( $source, array( 'status' => $class::found() ? 'pending' : 'none' ) );

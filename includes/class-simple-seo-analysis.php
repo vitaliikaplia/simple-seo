@@ -599,6 +599,8 @@ final class Simple_SEO_Analysis {
 				)
 			)
 		);
+		// Their types and titles: one query for all of them.
+		_prime_post_caches( $ids, false, false );
 		if ( $ids && Simple_SEO_WP_Loc::languages() ) {
 			$language  = Simple_SEO_WP_Loc::element_languages( array( (int) $post->ID ), 'post_' . $post->post_type )[ (int) $post->ID ] ?? '';
 			$languages = array();

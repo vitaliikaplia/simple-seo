@@ -52,7 +52,8 @@ final class Simple_SEO_Monitor {
 	private static string $hook = '';
 
 	public static function init(): void {
-		Simple_SEO_Settings::register( self::OPTION, array( 'enabled' => true ), array( self::class, 'sanitize' ), false );
+		// Autoloaded: every 404 reads it.
+		Simple_SEO_Settings::register( self::OPTION, array( 'enabled' => true ), array( self::class, 'sanitize' ), true );
 
 		// After the redirects of the theme (10) and of WordPress (redirect_canonical, 10): they exit.
 		add_action( 'template_redirect', array( self::class, 'record' ), PHP_INT_MAX );

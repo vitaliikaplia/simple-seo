@@ -94,16 +94,26 @@ final class Simple_SEO_Settings {
 	}
 
 	/**
-	 * Create the rows that do not exist yet, empty, with the right autoload flag.
+	 * Create the rows that do not exist yet, empty, with the right autoload flag, and put the flag
+	 * of the existing ones right.
 	 *
 	 * A missing option costs a database query on every request that reads it; an empty
-	 * autoloaded row costs nothing. Admin-only rows are created with autoload off.
+	 * autoloaded row costs nothing. Admin-only rows are created with autoload off. A row that came
+	 * to be with another flag (written before it was registered, an import of the database) would
+	 * cost a query on every page that reads it, or weigh on every page that does not.
 	 */
 	public static function install(): void {
+		$autoload = array();
 		foreach ( self::$options as $name => $option ) {
 			if ( null === get_option( $name, null ) ) {
 				add_option( $name, array(), '', $option['autoload'] );
+			} else {
+				$autoload[ $name ] = $option['autoload'];
 			}
+		}
+
+		if ( $autoload ) {
+			wp_set_option_autoload_values( $autoload );
 		}
 	}
 

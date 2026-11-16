@@ -422,6 +422,16 @@ try {
 	sseo_check( 'deleting the row empties the cache too', Simple_SEO_Access::defaults() === Simple_SEO_Settings::get( Simple_SEO_Access::OPTION ) );
 	Simple_SEO_Settings::install();
 	update_option( Simple_SEO_Access::OPTION, array() );
+	$sseo_flag = static fn( string $name ): string => (string) $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( "SELECT autoload FROM {$GLOBALS['wpdb']->options} WHERE option_name = %s", $name ) );
+	$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->options, array( 'autoload' => 'off' ), array( 'option_name' => Simple_SEO_Access::OPTION ) );
+	$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->options, array( 'autoload' => 'on' ), array( 'option_name' => Simple_SEO_Llms::TEXT ) );
+	wp_cache_delete( 'alloptions', 'options' );
+	$sseo_vals = array( $sseo_flag( Simple_SEO_Access::OPTION ), $sseo_flag( Simple_SEO_Llms::TEXT ) );
+	Simple_SEO_Settings::install();
+	array_push( $sseo_vals, $sseo_flag( Simple_SEO_Access::OPTION ), $sseo_flag( Simple_SEO_Llms::TEXT ), array() === get_option( Simple_SEO_Access::OPTION ) );
+	sseo_check( 'install() puts the autoload flag of an existing row right, and leaves its value', array( 'off', 'on', 'on', 'off', true ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array_map( static fn( string $name ): bool => Simple_SEO_Settings::registered()[ $name ]['autoload'], array( Simple_SEO_Llms::OPTION, Simple_SEO_Monitor::OPTION, Simple_SEO_Markdown::OPTION, Simple_SEO_Cleanup::OPTION, Simple_SEO_Llms::TEXT, Simple_SEO_Search_Console::OPTION ) );
+	sseo_check( 'rows read on the site are autoloaded (llms.txt with the Markdown versions on, the monitor on each 404), the others not', array( true, true, true, true, false, false ) === $sseo_vals, $sseo_vals );
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Access' );
@@ -2194,6 +2204,18 @@ try {
 	update_post_meta( $sseo_an_trash, '_simple_seo_keyphrase', 'ключова фраза' );
 	$sseo_an = Simple_SEO_Analysis::run( get_post( $sseo_an_post ), $sseo_an_good );
 	sseo_check( 'the same focus keyphrase on another page, whatever its case; a trashed page does not count', 'ok' === $sseo_an_status( $sseo_an, 'keyphrase_used' ) && str_contains( $sseo_an_text( $sseo_an, 'keyphrase_used' ), '"Other page on the phrase"' ) && ! str_contains( $sseo_an_text( $sseo_an, 'keyphrase_used' ), 'Trashed' ), $sseo_an_text( $sseo_an, 'keyphrase_used' ) );
+	$sseo_an_more_ids = array();
+	foreach ( array( 'Second page on the phrase', 'Third page on the phrase' ) as $sseo_name ) {
+		$sseo_an_more_ids[] = (int) wp_insert_post( array( 'post_title' => $sseo_name, 'post_status' => 'publish', 'meta_input' => array( '_simple_seo_keyphrase' => 'ключова фраза' ) ) );
+	}
+	array_push( $sseo['posts'], ...$sseo_an_more_ids );
+	clean_post_cache( $sseo_an_other );
+	array_map( 'clean_post_cache', $sseo_an_more_ids );
+	$sseo_val  = $GLOBALS['wpdb']->num_queries;
+	$sseo_vals = ( new ReflectionMethod( Simple_SEO_Analysis::class, 'used_elsewhere' ) )->invoke( null, get_post( $sseo_an_post ), 'ключова фраза' );
+	$sseo_val  = $GLOBALS['wpdb']->num_queries - $sseo_val;
+	sseo_check( 'the other pages on the keyphrase: their titles with one query for all of them', array( '"Other page on the phrase"', '"Second page on the phrase"', '"Third page on the phrase"' ) === $sseo_vals && ( 2 === $sseo_val || Simple_SEO_WP_Loc::languages() ), array( $sseo_vals, $sseo_val ) );
+	array_map( static fn( int $id ) => delete_post_meta( $id, '_simple_seo_keyphrase' ), $sseo_an_more_ids );
 	delete_post_meta( $sseo_an_other, '_simple_seo_keyphrase' );
 
 	sseo_check( 'words: lower case, apostrophes alike', array( "мар'яна", "п'є", 'seo-аналіз' ) === Simple_SEO_Analysis::words( 'Мар’яна пʼє SEO-аналіз!' ) );
@@ -7386,6 +7408,12 @@ MD === $sseo_val,
 	sseo_check( 'no data of Yoast: nothing found, nothing to import', ! Simple_SEO_Yoast_Import::found() && array( 'settings' => false, 'posts' => 0, 'terms' => 0 ) === Simple_SEO_Yoast_Import::summary() );
 	Simple_SEO_Import::detect();
 	sseo_check( 'the first admin request finds nothing to offer', 'none' === Simple_SEO_Import::state( 'yoast' )['status'] );
+	foreach ( Simple_SEO_Import::SOURCES as $sseo_class ) {
+		wp_cache_delete( $sseo_class::STATE, 'options' );
+	}
+	$sseo_val = $GLOBALS['wpdb']->num_queries;
+	Simple_SEO_Import::detect();
+	sseo_check( 'later admin requests read the states of all sources with one query', 1 === $GLOBALS['wpdb']->num_queries - $sseo_val, $GLOBALS['wpdb']->num_queries - $sseo_val );
 	delete_option( Simple_SEO_Yoast_Import::STATE );
 	update_option( 'wpseo_taxonomy_meta', array( 'category' => array( $sseo_news => array( 'wpseo_title' => 'x' ) ) ) );
 	$sseo_yi_by     = array( Simple_SEO_Yoast_Import::found() );
@@ -9753,9 +9781,9 @@ MD === $sseo_val,
 	Simple_SEO_Plugin::activate();
 	sseo_check( 'activation makes the table', $sseo_has() && Simple_SEO_Monitor::DB_VERSION === get_option( Simple_SEO_Monitor::DB_OPTION ) );
 	sseo_check(
-		'the hooks: counted after the redirects of the theme and of WordPress; the daily clean-up; the switch on, its row read only on a 404',
+		'the hooks: counted after the redirects of the theme and of WordPress; the daily clean-up; the switch on, its tiny row autoloaded (404s are many, bots make them)',
 		PHP_INT_MAX === has_action( 'template_redirect', array( Simple_SEO_Monitor::class, 'record' ) ) && 10 === has_action( Simple_SEO_Monitor::EVENT, array( Simple_SEO_Monitor::class, 'cleanup' ) )
-			&& array( 'enabled' => true ) === Simple_SEO_Settings::defaults( Simple_SEO_Monitor::OPTION ) && false === Simple_SEO_Settings::registered()[ Simple_SEO_Monitor::OPTION ]['autoload']
+			&& array( 'enabled' => true ) === Simple_SEO_Settings::defaults( Simple_SEO_Monitor::OPTION ) && true === Simple_SEO_Settings::registered()[ Simple_SEO_Monitor::OPTION ]['autoload']
 			&& array( 'enabled' => false ) === Simple_SEO_Monitor::sanitize( array() ) && array( 'enabled' => true ) === Simple_SEO_Monitor::sanitize( array( 'enabled' => '1' ) ) && array( 'enabled' => false ) === Simple_SEO_Monitor::sanitize( array( 'enabled' => '0' ) )
 	);
 

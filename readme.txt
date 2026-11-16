@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.45.0
+Stable tag: 0.46.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.46.0 =
+* Fewer queries to the database. On an update Simple SEO puts right the autoload flag of each of its rows, so a row that came to be with another flag no longer costs a query on every page. The rows read on the site are autoloaded: llms.txt's (every page names it while the Markdown versions are on) and the monitor's (every 404 read it). Pages of the site now cost no query of Simple SEO's own; a 404 one, the count of its address.
+* The admin: the states of the imports from other SEO plugins are read with one query on each screen instead of three; the analysis in the editor reads the other pages on the same keyphrase with one query.
 
 = 0.45.0 =
 * Markdown versions of pages (llmstxt.org, version 2), off until switched on in the llms.txt tab: each page search engines may show is also served as clean Markdown at its own address with index.md added (/about/ → /about/index.md, the home page → /index.md; /about.md works too) — its title and text without menus, scripts and styles, for AI assistants and agents. Posts of every type, the home page, the latest posts, terms and post type archives (the shop too), each kind on or off with its parts: the breadcrumbs, the description, the details (address, dates, author, terms; price, stock, SKU and attributes of products) and the featured image. A post or a term can say otherwise in its SEO fields.

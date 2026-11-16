@@ -15,7 +15,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Simple_SEO_Llms {
-	/** Switch, sections and the number of links in each: common to all languages. */
+	/**
+	 * Switch, sections and the number of links in each: common to all languages. Autoloaded: with the
+	 * Markdown versions on, every page names its llms.txt.
+	 */
 	public const OPTION = 'simple_seo_llms';
 
 	/** The summary and the details: kept per language with wp-loc. */
@@ -40,7 +43,7 @@ final class Simple_SEO_Llms {
 				'limit'    => 50,
 			),
 			array( self::class, 'sanitize' ),
-			false
+			true
 		);
 		Simple_SEO_Settings::register(
 			self::TEXT,
