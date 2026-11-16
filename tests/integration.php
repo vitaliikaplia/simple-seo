@@ -2226,7 +2226,7 @@ try {
 		'the panel: SEO and then readability, each with the score of the saved post and a line for each check',
 		str_contains( $sseo_html, '<div class="simple-seo-analysis-part" data-part="seo"><p class="simple-seo-analysis-score is-' . $sseo_an['rating'] . '"><strong>SEO score: ' . $sseo_an['score'] . ' of 100</strong>' )
 			&& str_contains( $sseo_html, '<div class="simple-seo-analysis-part" data-part="readability"><p class="simple-seo-analysis-score is-' . $sseo_an['readability']['rating'] . '"><strong>Readability: ' . $sseo_an['readability']['score'] . ' of 100</strong>' )
-			&& count( $sseo_an['checks'] ) + count( $sseo_an['readability']['checks'] ) === substr_count( $sseo_html, '<li class="is-' )
+			&& count( $sseo_an['checks'] ) + count( $sseo_an['readability']['checks'] ) === substr_count( $sseo_html, '<li class="is-' ) - substr_count( $sseo_html, '<li class="is-none">' )
 			&& strpos( $sseo_html, 'data-part="seo"' ) < strpos( $sseo_html, 'data-part="readability"' )
 			&& 'Readability: %s of 100' === $sseo_json['readability'] && 'Readability' === $sseo_json['unscored'],
 		$sseo_html
@@ -10457,6 +10457,151 @@ try {
 	remove_filter( 'simple_seo_audit_pages', $sseo_au_pages );
 	remove_all_filters( 'simple_seo_audit_host_interval' );
 	wp_clear_scheduled_hook( Simple_SEO_Audit::EVENT );
+	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Suggestions of internal links' );
+
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_sg_post = static function ( string $title, string $keyphrase = '', string $more = '', string $status = 'publish', string $content = '' ) use ( &$sseo ): int {
+		$id              = (int) wp_insert_post( array( 'post_title' => $title, 'post_status' => $status, 'post_content' => $content ) );
+		$sseo['posts'][] = $id;
+		if ( '' !== $keyphrase ) {
+			update_post_meta( $id, Simple_SEO_Fields::meta_key( 'keyphrase' ), $keyphrase );
+		}
+		if ( '' !== $more ) {
+			update_post_meta( $id, Simple_SEO_Fields::meta_key( 'keyphrases' ), $more );
+		}
+
+		return $id;
+	};
+	$sseo_sg = array(
+		'a'     => $sseo_sg_post( 'Sgtest garden tools guide', 'Pruning shears', "Garden hose\r\ncompost bin" ),
+		'b'     => $sseo_sg_post( 'Sgcontacts' ),
+		'c'     => $sseo_sg_post( 'Sgwinter tyres review' ),
+		'draft' => $sseo_sg_post( 'Sgdraft about shears', 'pruning shears', '', 'draft' ),
+		'e'     => $sseo_sg_post( 'Sglinked page', 'linked words' ),
+		'f'     => $sseo_sg_post( 'Sgai page', 'ai tools' ),
+	);
+	$sseo_sg['x'] = $sseo_sg_post( 'Sgthe post written', 'sharp' );
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		// wp-loc gives a post its language when it is saved: the post written here is in the default one.
+		do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo_sg['x'], 'element_type' => 'post_post', 'trid' => null, 'language_code' => Simple_SEO_WP_Loc::default_language(), 'source_language_code' => null ) );
+	}
+	$sseo_sg_text = static fn( string $text, array $links = array() ): array => Simple_SEO_Content::parse( '<p>' . $text . '</p>' . implode( '', array_map( static fn( string $url ): string => '<p><a href="' . esc_url( $url ) . '">l</a></p>', $links ) ) );
+	Simple_SEO_Suggestions::flush();
+	$sseo_val  = Simple_SEO_Suggestions::phrases();
+	$sseo_vals = array(
+		isset( $sseo_val[ $sseo_sg['a'] ] ) ? array_column( $sseo_val[ $sseo_sg['a'] ]['phrases'], 'text' ) : null,
+		isset( $sseo_val[ $sseo_sg['b'] ] ),
+		isset( $sseo_val[ $sseo_sg['c'] ] ) ? array_column( $sseo_val[ $sseo_sg['c'] ]['phrases'], 'stems' ) : null,
+		isset( $sseo_val[ $sseo_sg['draft'] ] ),
+		is_array( get_transient( Simple_SEO_Suggestions::CACHE ) ),
+		$sseo_val[ $sseo_sg['a'] ]['title'] ?? null,
+	);
+	sseo_check(
+		'the phrases of the pages: the focus keyphrase, the more keyphrases one on a line, the title of two words or more, each with the starts of its words; not a title of one word, nor a draft; kept',
+		array( 'Pruning shears', 'Garden hose', 'compost bin', 'Sgtest garden tools guide' ) === $sseo_vals[0] && false === $sseo_vals[1] && array( array( 'sgwint', 'tyre', 'revi' ) ) === $sseo_vals[2] && false === $sseo_vals[3] && true === $sseo_vals[4] && 'Sgtest garden tools guide' === $sseo_vals[5],
+		$sseo_vals
+	);
+
+	$sseo_val = Simple_SEO_Suggestions::for_post(
+		get_post( $sseo_sg['x'] ),
+		$sseo_sg_text( 'The pruning shears are sharp, and pruning shear blades too. A garden hose. The sgwinter tyre reviews. Linked words here. AI tools. Sharp.', array( get_permalink( $sseo_sg['e'] ) ) )
+	);
+	sseo_check(
+		'the suggestions: the pages the text mentions most first, by the phrase it mentions most of each; not itself, nor a page it links to; a phrase of short words too',
+		array( $sseo_sg['a'], $sseo_sg['f'], $sseo_sg['c'] ) === array_column( $sseo_val, 'id' ) && 'Pruning shears' === $sseo_val[0]['phrase'] && 2 === $sseo_val[0]['count'] && get_permalink( $sseo_sg['a'] ) === $sseo_val[0]['url'] && 'Sgtest garden tools guide' === $sseo_val[0]['title']
+			&& 'ai tools' === $sseo_val[1]['phrase'] && 'Sgwinter tyres review' === $sseo_val[2]['phrase'],
+		$sseo_val
+	);
+	$sseo_vals = array(
+		Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( 'Nothing of theirs at all.' ) ),
+		Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( '' ) ),
+		array_column( Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( 'Pruning shears.', array( '/?p=' . $sseo_sg['a'] ) ) ), 'id' ),
+		array_column( Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( 'Pruning, then shears.' ) ), 'id' ),
+	);
+	sseo_check( 'no suggestion for a text that names no page, nor for no text; a link by ?p= is a link; the words of a phrase one after another', array() === $sseo_vals[0] && array() === $sseo_vals[1] && array() === $sseo_vals[2] && array() === $sseo_vals[3], $sseo_vals );
+
+	for ( $sseo_i = 1; $sseo_i <= 12; $sseo_i++ ) {
+		$sseo_sg_post( sprintf( 'Sgmany %02d', $sseo_i ), 'sgquince marmalade' );
+	}
+	$sseo_val = Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( 'Sgquince marmalade.' ) );
+	sseo_check( 'at most ten, as many times each: by their titles', 10 === count( $sseo_val ) && 'Sgmany 01' === $sseo_val[0]['title'] && 'Sgmany 10' === $sseo_val[9]['title'], array_column( $sseo_val, 'title' ) );
+
+	// Made again.
+	$sseo_vals = array( is_array( get_transient( Simple_SEO_Suggestions::CACHE ) ) );
+	update_post_meta( $sseo_sg['c'], Simple_SEO_Fields::meta_key( 'keyphrase' ), 'snow chains' );
+	$sseo_vals[] = get_transient( Simple_SEO_Suggestions::CACHE );
+	Simple_SEO_Suggestions::phrases();
+	update_post_meta( $sseo_sg['b'], 'unrelated_key', 'x' );
+	$sseo_vals[] = is_array( get_transient( Simple_SEO_Suggestions::CACHE ) );
+	wp_update_post( array( 'ID' => $sseo_sg['b'], 'post_title' => 'Sgcontacts sgbook' ) );
+	$sseo_vals[] = get_transient( Simple_SEO_Suggestions::CACHE );
+	$sseo_val = $sseo_sg_post( 'Sgdel post here' );
+	Simple_SEO_Suggestions::phrases();
+	wp_delete_post( $sseo_val, true );
+	$sseo_vals[] = get_transient( Simple_SEO_Suggestions::CACHE );
+	Simple_SEO_Suggestions::phrases();
+	wp_delete_post( $sseo_sg['f'], true );
+	Simple_SEO_Suggestions::phrases();
+	delete_post_meta( $sseo_sg['c'], Simple_SEO_Fields::meta_key( 'keyphrase' ) );
+	$sseo_vals[] = get_transient( Simple_SEO_Suggestions::CACHE );
+	$sseo_vals[] = array_column( Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( 'Snow chains. Sgcontacts sgbook. AI tools.' ) ), 'id' );
+	sseo_check(
+		'the phrases made again after a keyphrase or a post changes, or a post is deleted; not after other meta',
+		true === $sseo_vals[0] && false === $sseo_vals[1] && true === $sseo_vals[2] && false === $sseo_vals[3] && false === $sseo_vals[4] && false === $sseo_vals[5] && array( $sseo_sg['b'] ) === $sseo_vals[6],
+		$sseo_vals
+	);
+
+	// In the SEO block.
+	$sseo_request = new WP_REST_Request( 'POST', '/simple-seo/v1/analysis/' . $sseo_sg['x'] );
+	$sseo_request->set_url_params( array( 'id' => (string) $sseo_sg['x'] ) );
+	$sseo_request->set_param( 'content', '<p>Pruning shears, sgwinter tyre reviews.</p>' );
+	$sseo_val = Simple_SEO_Analysis::rest( $sseo_request );
+	sseo_check( 'the analysis through its route has the suggestions of the text sent', array( $sseo_sg['a'], $sseo_sg['c'] ) === array_column( (array) ( $sseo_val['links'] ?? array() ), 'id' ) && isset( $sseo_val['checks'], $sseo_val['readability'] ), $sseo_val['links'] ?? null );
+	wp_update_post( array( 'ID' => $sseo_sg['x'], 'post_content' => '<p>Pruning shears & <b>more</b>.</p>' ) );
+	wp_update_post( array( 'ID' => $sseo_sg['a'], 'post_title' => 'Sgtest garden & tools guide' ) );
+	$sseo_html = Simple_SEO_Analysis::render( get_post( $sseo_sg['x'] ) );
+	preg_match( '/data-simple-seo-analysis="([^"]*)"/', $sseo_html, $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check(
+		'the panel: after readability, the pages to link with the words that name them; the words for the script',
+		str_contains( $sseo_html, '<div class="simple-seo-analysis-part" data-part="links"><p class="simple-seo-analysis-score"><strong>Internal links</strong></p>' ) && strpos( $sseo_html, 'data-part="readability"' ) < strpos( $sseo_html, 'data-part="links"' )
+			&& str_contains( $sseo_html, '<li><a href="' . esc_url( get_permalink( $sseo_sg['a'] ) ) . '" target="_blank" rel="noopener">Sgtest garden &amp; tools guide</a> <span class="description">“Pruning shears”</span></li>' )
+			&& is_array( $sseo_json ) && '“%s”' === $sseo_json['quote'] && str_starts_with( (string) $sseo_json['noLinks'], 'No page to suggest' ),
+		$sseo_html
+	);
+	wp_update_post( array( 'ID' => $sseo_sg['x'], 'post_content' => '<p>Nothing to suggest.</p>' ) );
+	$sseo_html = Simple_SEO_Analysis::render( get_post( $sseo_sg['x'] ) );
+	sseo_check( 'the panel with nothing to suggest, said', str_contains( $sseo_html, '<ul class="simple-seo-analysis-links"><li class="is-none">No page to suggest' ) );
+
+	// With wp-loc: the pages of the post's language only.
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_codes = array_keys( Simple_SEO_WP_Loc::languages() );
+		$sseo_sg_lang = array();
+		foreach ( $sseo_codes as $sseo_code ) {
+			$sseo_sg_lang[ $sseo_code ] = $sseo_sg_post( 'Sglang ' . $sseo_code, 'sgolive grove' );
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo_sg_lang[ $sseo_code ], 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_code, 'source_language_code' => null ) );
+		}
+		Simple_SEO_Suggestions::flush();
+		$sseo_vals = array();
+		foreach ( $sseo_codes as $sseo_code ) {
+			$sseo_writer = $sseo_sg_post( 'Sgwriter ' . $sseo_code );
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo_writer, 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_code, 'source_language_code' => null ) );
+			$sseo_vals[ $sseo_code ] = array_column( Simple_SEO_Suggestions::for_post( get_post( $sseo_writer ), $sseo_sg_text( 'Sgolive grove.' ) ), 'id' );
+		}
+		$sseo_writer = $sseo_sg_post( 'Sgwriter without' );
+		$sseo_sorted = $sseo_sg_lang;
+		ksort( $sseo_sorted );
+		$sseo_vals[] = array_column( Simple_SEO_Suggestions::for_post( get_post( $sseo_writer ), $sseo_sg_text( 'Sgolive grove.' ) ), 'id' );
+		sseo_check(
+			'with wp-loc: only the pages in the language of the post, and those without a language yet; a post without one, all',
+			array_merge( array_values( array_map( static fn( int $id ): array => array( $id ), $sseo_sg_lang ) ), array( array_values( $sseo_sorted ) ) ) === array_values( $sseo_vals ) && in_array( $sseo_sg['a'], array_column( Simple_SEO_Suggestions::for_post( get_post( $sseo_sg['x'] ), $sseo_sg_text( 'Pruning shears.' ) ), 'id' ), true ),
+			$sseo_vals
+		);
+	}
+	Simple_SEO_Suggestions::flush();
 	wp_set_current_user( 0 );
 
 	// ------------------------------------------------------------------------------------------

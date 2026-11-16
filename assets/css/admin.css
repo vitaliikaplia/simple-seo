@@ -146,6 +146,20 @@
 	margin: 0;
 }
 
+/* The suggestions of internal links: a heading without a dot, the pages in a list. */
+.simple-seo-analysis-part[data-part="links"] .simple-seo-analysis-score::before {
+	display: none;
+}
+
+.simple-seo-analysis-links {
+	margin: 0;
+}
+
+.simple-seo-analysis-links li {
+	margin: 0 0 6px;
+	overflow-wrap: anywhere;
+}
+
 .simple-seo-analysis-checks li {
 	margin: 0 0 6px;
 	padding-left: 18px;

@@ -100,7 +100,11 @@ final class Simple_SEO_Analysis {
 			}
 		}
 
-		return self::run( get_post( (int) $request['id'] ), $input );
+		$post                 = get_post( (int) $request['id'] );
+		[ $result, $content ] = self::analyse( $post, $input );
+		$result['links']      = Simple_SEO_Suggestions::for_post( $post, $content );
+
+		return $result;
 	}
 
 	/**
@@ -111,6 +115,16 @@ final class Simple_SEO_Analysis {
 	 * @return array{score: int, rating: string, words: int, checks: array<int, array{id: string, status: string, text: string}>, readability: array{score: int, rating: string, checks: array<int, array{id: string, status: string, text: string}>}}
 	 */
 	public static function run( WP_Post $post, array $input = array() ): array {
+		return self::analyse( $post, $input )[0];
+	}
+
+	/**
+	 * The analysis of run(), and the text it read (for the suggestions of links).
+	 *
+	 * @param array<string, string> $input
+	 * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+	 */
+	private static function analyse( WP_Post $post, array $input ): array {
 		$context = Simple_SEO_Context::for_post( $post );
 		$title   = isset( $input['title'] ) ? Simple_SEO_Variables::plain( $input['title'] ) : Simple_SEO_Titles::title( $context );
 		$summary = isset( $input['description'] ) ? Simple_SEO_Variables::plain( $input['description'] ) : Simple_SEO_Titles::description( $context );
@@ -130,10 +144,13 @@ final class Simple_SEO_Analysis {
 		}
 		$checks = array_values( array_merge( $checks, self::page_checks( $title, $summary, $content ) ) );
 
-		return self::score( $checks ) + array(
-			'words'       => (int) $content['words'],
-			'checks'      => $checks,
-			'readability' => Simple_SEO_Readability::run( $content ),
+		return array(
+			self::score( $checks ) + array(
+				'words'       => (int) $content['words'],
+				'checks'      => $checks,
+				'readability' => Simple_SEO_Readability::run( $content ),
+			),
+			$content,
 		);
 	}
 
@@ -207,7 +224,7 @@ final class Simple_SEO_Analysis {
 	 * redoes them through the REST route while the post is edited.
 	 */
 	public static function render( WP_Post $post ): string {
-		$result = self::run( $post );
+		[ $result, $content ] = self::analyse( $post, array() );
 		// The list of posts shows the scores of the post as saved: these are they.
 		Simple_SEO_Scores::remember( $post, $result );
 
@@ -220,14 +237,43 @@ final class Simple_SEO_Analysis {
 			'readability' => __( 'Readability: %s of 100', 'simple-seo' ),
 			'unscored'    => __( 'Readability', 'simple-seo' ),
 			'failed'      => __( 'The analysis could not be updated; it shows the page as it was.', 'simple-seo' ),
+			'noLinks'     => __( 'No page to suggest: the text mentions no keyphrase or title of another page of this site that it does not link to yet.', 'simple-seo' ),
+			/* translators: %s: words of the text. */
+			'quote'       => __( '“%s”', 'simple-seo' ),
 		);
 
 		return sprintf(
-			'<div class="simple-seo-analysis" data-simple-seo-analysis="%1$s">%2$s%3$s<p class="simple-seo-analysis-error description" hidden>%4$s</p></div>',
+			'<div class="simple-seo-analysis" data-simple-seo-analysis="%1$s">%2$s%3$s%4$s<p class="simple-seo-analysis-error description" hidden>%5$s</p></div>',
 			esc_attr( (string) wp_json_encode( $data ) ),
 			self::part( 'seo', $result, sprintf( $data['score'], number_format_i18n( $result['score'] ) ) ),
 			self::part( 'readability', $result['readability'], 'none' === $result['readability']['rating'] ? $data['unscored'] : sprintf( $data['readability'], number_format_i18n( $result['readability']['score'] ) ) ),
+			self::links_part( Simple_SEO_Suggestions::for_post( $post, $content ), $data ),
 			esc_html( $data['failed'] )
+		);
+	}
+
+	/**
+	 * The part of the suggestions of internal links (Simple_SEO_Suggestions).
+	 *
+	 * @param array<int, array{title: string, url: string, phrase: string}> $links
+	 * @param array<string, string>                                         $data
+	 */
+	private static function links_part( array $links, array $data ): string {
+		$items = '';
+		foreach ( $links as $link ) {
+			$items .= sprintf(
+				'<li><a href="%1$s" target="_blank" rel="noopener">%2$s</a> <span class="description">%3$s</span></li>',
+				esc_url( $link['url'] ),
+				esc_html( $link['title'] ),
+				esc_html( sprintf( $data['quote'], $link['phrase'] ) )
+			);
+		}
+
+		return sprintf(
+			'<div class="simple-seo-analysis-part" data-part="links"><p class="simple-seo-analysis-score"><strong>%1$s</strong></p><p class="description">%2$s</p><ul class="simple-seo-analysis-links">%3$s</ul></div>',
+			esc_html__( 'Internal links', 'simple-seo' ),
+			esc_html__( 'Other pages of this site that this text mentions by their keyphrase or title, without a link to them yet: link them where it reads well.', 'simple-seo' ),
+			'' !== $items ? $items : sprintf( '<li class="is-none">%s</li>', esc_html( $data['noLinks'] ) )
 		);
 	}
 

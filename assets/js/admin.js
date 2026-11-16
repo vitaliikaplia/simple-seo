@@ -445,6 +445,7 @@
 
 		var seo     = root.querySelector( '[data-part="seo"]' );
 		var reading = root.querySelector( '[data-part="readability"]' );
+		var links   = root.querySelector( '[data-part="links"]' );
 		var failed  = root.querySelector( '.simple-seo-analysis-error' );
 		var sent    = null;
 		var timer   = null;
@@ -486,9 +487,41 @@
 			} );
 		}
 
+		// The suggestions of internal links: a page, and the words of the text that name it.
+		function drawLinks( items ) {
+			if ( ! links || ! Array.isArray( items ) ) {
+				return;
+			}
+			var list = links.querySelector( '.simple-seo-analysis-links' );
+			list.textContent = '';
+			if ( ! items.length ) {
+				var none = document.createElement( 'li' );
+				none.className   = 'is-none';
+				none.textContent = data.noLinks;
+				list.appendChild( none );
+				return;
+			}
+			items.forEach( function ( item ) {
+				var row  = document.createElement( 'li' );
+				var link = document.createElement( 'a' );
+				var note = document.createElement( 'span' );
+				link.href        = item.url;
+				link.target      = '_blank';
+				link.rel         = 'noopener';
+				link.textContent = item.title;
+				note.className   = 'description';
+				note.textContent = data.quote.replace( '%s', item.phrase );
+				row.appendChild( link );
+				row.appendChild( document.createTextNode( ' ' ) );
+				row.appendChild( note );
+				list.appendChild( row );
+			} );
+		}
+
 		function draw( result ) {
 			drawPart( seo, result, data.score.replace( '%s', String( result.score ) ) );
 			drawPart( reading, result.readability, 'none' === result.readability.rating ? data.unscored : data.readability.replace( '%s', String( result.readability.score ) ) );
+			drawLinks( result.links );
 		}
 
 		function send() {
