@@ -40,6 +40,12 @@ final class Simple_SEO_Fields {
 		// Late enough for post types and taxonomies that themes register on init. The parts of the
 		// plugin register their fields earlier on init (labels are translated, so not before init).
 		add_action( 'init', array( self::class, 'register_all_meta' ), 99 );
+
+		// An empty value is never stored, however it comes: the REST API, update_post_meta().
+		add_filter( 'update_post_metadata', array( self::class, 'no_empty_post' ), 10, 4 );
+		add_filter( 'add_post_metadata', array( self::class, 'no_empty_post' ), 10, 4 );
+		add_filter( 'update_term_metadata', array( self::class, 'no_empty_term' ), 10, 4 );
+		add_filter( 'add_term_metadata', array( self::class, 'no_empty_term' ), 10, 4 );
 	}
 
 	/**
@@ -305,5 +311,255 @@ final class Simple_SEO_Fields {
 		}
 
 		return $changed;
+	}
+
+	// ----------------------------------------------------------------------------------------
+	// The fields of one post or term, for the REST API, WP-CLI and the abilities.
+
+	/**
+	 * A post or term that has SEO fields: of a post type or taxonomy that gets them; null otherwise.
+	 *
+	 * @param string $object_type post or term.
+	 * @return WP_Post|WP_Term|null
+	 */
+	public static function object( string $object_type, int $object_id ) {
+		if ( 'term' === $object_type ) {
+			$term = get_term( $object_id );
+
+			return $term instanceof WP_Term && in_array( $term->taxonomy, self::taxonomies(), true ) ? $term : null;
+		}
+
+		// get_post( 0 ) is the post of the loop.
+		$post = $object_id > 0 ? get_post( $object_id ) : null;
+
+		return $post instanceof WP_Post && in_array( $post->post_type, self::post_types(), true ) ? $post : null;
+	}
+
+	/**
+	 * The fields of terms, or of posts of a type ('' — of any type), in editor order.
+	 *
+	 * @param string $object_type post or term.
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function available( string $object_type, string $post_type = '' ): array {
+		return array_filter(
+			self::all( $object_type ),
+			static fn( array $field ): bool => '' === $post_type || ! $field['post_types'] || in_array( $post_type, (array) $field['post_types'], true )
+		);
+	}
+
+	/**
+	 * The values of the fields of a post or term, as their types hold them: a checkbox true or false,
+	 * an image its attachment ID (0 for none), the rest text ('' for none). With a user, only the
+	 * fields that user may edit; [] for a post or term without SEO fields.
+	 *
+	 * @param string $object_type post or term.
+	 * @return array<string, string|bool|int>
+	 */
+	public static function values( string $object_type, int $object_id, ?int $user_id = null ): array {
+		$object = self::object( $object_type, $object_id );
+		if ( null === $object ) {
+			return array();
+		}
+
+		$values = array();
+		foreach ( self::available( $object_type, $object instanceof WP_Post ? $object->post_type : '' ) as $key => $field ) {
+			if ( null !== $user_id && ! self::user_can_edit( $user_id, $object_type, $object_id, $key ) ) {
+				continue;
+			}
+
+			$stored = 'term' === $object_type ? self::term_value( $object_id, $key ) : self::post_value( $object_id, $key );
+			switch ( $field['type'] ) {
+				case 'checkbox':
+					$values[ $key ] = (bool) $stored;
+					break;
+				case 'image':
+					$values[ $key ] = (int) $stored;
+					break;
+				default:
+					$values[ $key ] = $stored;
+			}
+		}
+
+		return $values;
+	}
+
+	/**
+	 * Write the fields given of a post or term, all of them or none: a field it does not have, one
+	 * the user may not edit, or a value a field cannot hold stops the write before anything is
+	 * stored. An empty value ('', null, false; 0 for an image) deletes the row. Without a user only
+	 * the values are checked (WP-CLI: whoever runs it runs the site).
+	 *
+	 * @param string               $object_type post or term.
+	 * @param array<string, mixed> $input       Field key => value, unslashed.
+	 * @return string[]|WP_Error The keys written or deleted.
+	 */
+	public static function write( string $object_type, int $object_id, array $input, ?int $user_id = null ) {
+		$object = self::object( $object_type, $object_id );
+		if ( null === $object ) {
+			return new WP_Error(
+				'simple_seo_no_object',
+				'term' === $object_type ? __( 'There is no such term with SEO fields.', 'simple-seo' ) : __( 'There is no such post with SEO fields.', 'simple-seo' ),
+				array( 'status' => 404 )
+			);
+		}
+
+		$fields = self::available( $object_type, $object instanceof WP_Post ? $object->post_type : '' );
+		$values = array();
+		foreach ( $input as $key => $raw ) {
+			$key = (string) $key;
+			if ( ! isset( $fields[ $key ] ) ) {
+				return new WP_Error(
+					'simple_seo_unknown_field',
+					/* translators: %s: key of a field, e.g. title. */
+					sprintf( __( 'There is no SEO field %s here.', 'simple-seo' ), $key ),
+					array(
+						'status' => 400,
+						'field'  => $key,
+					)
+				);
+			}
+			if ( null !== $user_id && ! self::user_can_edit( $user_id, $object_type, $object_id, $key ) ) {
+				return new WP_Error(
+					'simple_seo_cannot_edit',
+					/* translators: %s: key of a field, e.g. title. */
+					sprintf( __( 'You may not edit the SEO field %s.', 'simple-seo' ), $key ),
+					array(
+						'status' => 403,
+						'field'  => $key,
+					)
+				);
+			}
+
+			$value = self::input_value( $key, $fields[ $key ], $raw );
+			if ( null === $value ) {
+				return new WP_Error(
+					'simple_seo_invalid_value',
+					self::invalid( $key, $fields[ $key ], $object_type, $object ),
+					array(
+						'status' => 400,
+						'field'  => $key,
+					)
+				);
+			}
+			$values[ $key ] = $value;
+		}
+
+		foreach ( $values as $key => $value ) {
+			if ( '' === $value ) {
+				delete_metadata( $object_type, $object_id, self::meta_key( $key ) );
+			} else {
+				// update_metadata() expects slashed data and unslashes it itself.
+				update_metadata( $object_type, $object_id, self::meta_key( $key ), wp_slash( $value ) );
+			}
+		}
+
+		return array_keys( $values );
+	}
+
+	/**
+	 * What a value given means for a field: '' to delete the row, the value to store, or null for a
+	 * value the field cannot hold (one that cleaning leaves empty: a URL that is none, an unknown choice).
+	 *
+	 * @param array<string, mixed> $field
+	 * @param mixed                $raw
+	 * @return mixed
+	 */
+	private static function input_value( string $key, array $field, $raw ) {
+		if ( 'checkbox' === $field['type'] ) {
+			// true, false, 1, 0, '1', '0', 'yes', 'no', 'on', 'off', 'true', 'false' or ''.
+			$on = is_scalar( $raw ) ? filter_var( $raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) : null;
+
+			return null === $on ? null : ( $on ? true : '' );
+		}
+		if ( null !== $raw && ! is_scalar( $raw ) ) {
+			return null;
+		}
+
+		$text = trim( (string) $raw );
+		if ( '' === $text || ( 'image' === $field['type'] && '0' === $text ) ) {
+			return '';
+		}
+
+		$value = self::sanitize_value( $key, $raw );
+
+		return '' === $value ? null : $value;
+	}
+
+	/**
+	 * Why a field cannot hold a value, with what it takes.
+	 *
+	 * @param array<string, mixed> $field
+	 * @param WP_Post|WP_Term      $object
+	 */
+	private static function invalid( string $key, array $field, string $object_type, $object ): string {
+		switch ( $field['type'] ) {
+			case 'checkbox':
+				/* translators: %s: key of a field, e.g. nofollow. */
+				return sprintf( __( 'The SEO field %s takes yes or no (1 or 0, true or false).', 'simple-seo' ), $key );
+			case 'image':
+				/* translators: %s: key of a field, e.g. og_image. */
+				return sprintf( __( 'The SEO field %s takes the ID of an image in the media library.', 'simple-seo' ), $key );
+			case 'url':
+				/* translators: %s: key of a field, e.g. canonical. */
+				return sprintf( __( 'The SEO field %s takes a full address that starts with https:// or http://.', 'simple-seo' ), $key );
+			case 'select':
+				$options = is_callable( $field['options'] ) ? call_user_func( $field['options'], $object_type, $object ) : $field['options'];
+				$allowed = array_values( array_filter( array_map( 'strval', array_keys( (array) $options ) ), 'strlen' ) );
+				if ( $allowed && count( $allowed ) <= 30 ) {
+					/* translators: 1: key of a field, e.g. schema_page_type; 2: the values it takes. */
+					return sprintf( __( 'The SEO field %1$s takes one of: %2$s.', 'simple-seo' ), $key, implode( ', ', $allowed ) );
+				}
+		}
+
+		/* translators: %s: key of a field, e.g. title. */
+		return sprintf( __( 'The SEO field %s cannot hold this value.', 'simple-seo' ), $key );
+	}
+
+	/**
+	 * update_post_meta() or add_post_meta() of a field with an empty value: the row goes, none comes.
+	 *
+	 * @param mixed $check
+	 * @param mixed $meta_key
+	 * @param mixed $meta_value Sanitized by now.
+	 * @return mixed
+	 */
+	public static function no_empty_post( $check, $object_id, $meta_key, $meta_value ) {
+		return self::no_empty( 'post', $check, $object_id, $meta_key, $meta_value );
+	}
+
+	/**
+	 * The same for terms.
+	 *
+	 * @param mixed $check
+	 * @param mixed $meta_key
+	 * @param mixed $meta_value
+	 * @return mixed
+	 */
+	public static function no_empty_term( $check, $object_id, $meta_key, $meta_value ) {
+		return self::no_empty( 'term', $check, $object_id, $meta_key, $meta_value );
+	}
+
+	/**
+	 * @param mixed $check
+	 * @param mixed $meta_key
+	 * @param mixed $meta_value
+	 * @return mixed
+	 */
+	private static function no_empty( string $type, $check, $object_id, $meta_key, $meta_value ) {
+		if ( null !== $check || ! is_string( $meta_key ) || ! str_starts_with( $meta_key, self::META_PREFIX ) || ! isset( self::$fields[ substr( $meta_key, strlen( self::META_PREFIX ) ) ] ) ) {
+			return $check;
+		}
+		if ( '' !== $meta_value && false !== $meta_value ) {
+			return $check;
+		}
+
+		// Adding nothing adds no row; updating to nothing deletes the row there was.
+		if ( str_starts_with( (string) current_filter(), 'add_' ) ) {
+			return false;
+		}
+		delete_metadata( $type, (int) $object_id, $meta_key );
+
+		return true;
 	}
 }

@@ -46,28 +46,40 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Bulk::init();
 		Simple_SEO_Search_Console::init();
 		Simple_SEO_IndexNow::init();
+		Simple_SEO_REST::init();
 		Simple_SEO_Yoast_Compat::init();
 
 		if ( is_admin() ) {
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-admin.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-editor.php';
 			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-snippet.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import-source.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-import.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-aioseo-import.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-source-cleanup.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-cleanup.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-cleanup.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-aioseo-cleanup.php';
-			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
+			self::load_import();
 
 			Simple_SEO_Admin::init();
 			Simple_SEO_Editor::init();
 			Simple_SEO_Import::init();
 		}
 
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			self::load_import();
+			require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-cli.php';
+			Simple_SEO_CLI::register();
+		}
+
 		new Simple_SEO_GitHub_Updater();
+	}
+
+	/** The imports from other SEO plugins and the removal of their data: for the admin and WP-CLI. */
+	public static function load_import(): void {
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import-source.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-import.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-import.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-aioseo-import.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-source-cleanup.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-yoast-cleanup.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-rank-math-cleanup.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-aioseo-cleanup.php';
+		require_once SIMPLE_SEO_DIR . 'includes/class-simple-seo-import.php';
 	}
 
 	/**

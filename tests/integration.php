@@ -64,6 +64,50 @@ function sseo_capture( callable $callback ): string {
 	return $html;
 }
 
+/**
+ * Run a command of WP-CLI in this process: its output (stdout, stderr) and return code. As a string
+ * it is split the way WP-CLI splits one (quotes stay in a value); as words and named values, a
+ * value may hold spaces or be empty, as a shell hands it over.
+ *
+ * @param string|string[]      $command
+ * @param array<string, mixed> $assoc_args
+ */
+function sseo_cli( $command, array $assoc_args = array() ): object {
+	if ( is_string( $command ) ) {
+		return WP_CLI::runcommand(
+			$command,
+			array(
+				'launch'     => false,
+				'return'     => 'all',
+				'exit_error' => false,
+			)
+		);
+	}
+
+	$logger    = WP_CLI::get_logger();
+	$execution = new WP_CLI\Loggers\Execution();
+	$capture   = new ReflectionProperty( WP_CLI::class, 'capture_exit' );
+	WP_CLI::set_logger( $execution );
+	$execution->ob_start();
+	$capture->setValue( null, true );
+	try {
+		WP_CLI::get_runner()->run_command( $command, $assoc_args, array( 'back_compat_conversions' => true ) );
+		$code = 0;
+	} catch ( WP_CLI\ExitException $e ) {
+		$code = $e->getCode();
+	} finally {
+		$capture->setValue( null, false );
+		$execution->ob_end();
+		WP_CLI::set_logger( $logger );
+	}
+
+	return (object) array(
+		'stdout'      => trim( $execution->stdout ),
+		'stderr'      => trim( $execution->stderr ),
+		'return_code' => $code,
+	);
+}
+
 /** Submit the editor form fields the way PHP hands them to WordPress (slashed). */
 function sseo_post_form( int $post_id, array $fields, bool $nonce = true ): void {
 	$_POST = wp_slash(
@@ -518,6 +562,133 @@ try {
 	Simple_SEO_Fields::save( 'term', $sseo_cat_id, array( 'title' => 'Author term' ) );
 	sseo_check( 'author cannot edit term fields (no edit_term)', 'Category title' === Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ) );
 
+	// One post or term at a time: the REST API, WP-CLI and the abilities read and write through these.
+	$sseo['posts']['hidden_type'] = wp_insert_post( array( 'post_type' => 'sseo_private', 'post_title' => 'Hidden', 'post_status' => 'publish' ) );
+	$sseo_format                  = wp_insert_term( 'post-format-aside', 'post_format' );
+	$sseo['terms'][]              = array( (int) $sseo_format['term_id'], 'post_format' );
+	$GLOBALS['post']              = get_post( $sseo_p['author_post'] );
+	sseo_check(
+		'object(): a post or term of a type with SEO fields; none for another type, a post format, nothing, or ID 0 in the loop of a post',
+		Simple_SEO_Fields::object( 'post', $sseo_p['author_post'] ) instanceof WP_Post && Simple_SEO_Fields::object( 'term', $sseo_cat_id ) instanceof WP_Term
+			&& null === Simple_SEO_Fields::object( 'post', $sseo['posts']['hidden_type'] ) && null === Simple_SEO_Fields::object( 'term', (int) $sseo_format['term_id'] )
+			&& null === Simple_SEO_Fields::object( 'post', 0 ) && null === Simple_SEO_Fields::object( 'term', 0 ) && null === Simple_SEO_Fields::object( 'post', PHP_INT_MAX ) && null === Simple_SEO_Fields::object( 'term', PHP_INT_MAX )
+	);
+	unset( $GLOBALS['post'] );
+	sseo_check(
+		'available(): the primary category on posts, not on pages; every post field without a type; no keyphrase on terms',
+		isset( Simple_SEO_Fields::available( 'post', 'post' )['primary_category'] ) && ! isset( Simple_SEO_Fields::available( 'post', 'page' )['primary_category'] ) && isset( Simple_SEO_Fields::available( 'post', 'page' )['title'] )
+			&& isset( Simple_SEO_Fields::available( 'post' )['primary_category'] ) && ! isset( Simple_SEO_Fields::available( 'term' )['keyphrase'] ) && isset( Simple_SEO_Fields::available( 'term' )['title'] )
+			&& array_keys( Simple_SEO_Fields::all( 'post' ) ) === array_keys( Simple_SEO_Fields::available( 'post' ) )
+	);
+
+	wp_set_current_user( $sseo_au );
+	$sseo_saved = Simple_SEO_Fields::write( 'post', $sseo_p['editor_post'], array( 'title' => 'Written', 'description' => "Two\nlines", 'test_advanced' => 'yes', 'og_image' => '0', 'test_choice' => 'a' ) );
+	$sseo_vals  = Simple_SEO_Fields::values( 'post', $sseo_p['editor_post'] );
+	sseo_check(
+		'write() without a user (WP-CLI): every field, an advanced one too, whoever is logged in; the keys written',
+		array( 'title', 'description', 'test_advanced', 'og_image', 'test_choice' ) === $sseo_saved && 'Written' === Simple_SEO_Fields::post_value( $sseo_p['editor_post'], 'title' ) && '1' === get_post_meta( $sseo_p['editor_post'], '_simple_seo_test_advanced', true ) && ! metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_og_image' ),
+		$sseo_saved
+	);
+	sseo_check(
+		'values(): every field of the post, as its type holds it',
+		'Written' === $sseo_vals['title'] && "Two\nlines" === $sseo_vals['description'] && true === $sseo_vals['test_advanced'] && 0 === $sseo_vals['og_image'] && 'a' === $sseo_vals['test_choice'] && '' === $sseo_vals['canonical'] && false === $sseo_vals['nofollow'] && array_keys( Simple_SEO_Fields::available( 'post', 'post' ) ) === array_keys( $sseo_vals ),
+		$sseo_vals
+	);
+	$sseo_vals = array(
+		array_keys( Simple_SEO_Fields::values( 'post', $sseo_p['author_post'], $sseo_au ) ),
+		Simple_SEO_Fields::values( 'post', $sseo_p['editor_post'], $sseo_au ),
+		array_keys( Simple_SEO_Fields::values( 'term', $sseo_cat_id ) ),
+		Simple_SEO_Fields::values( 'post', $sseo['posts']['hidden_type'] ),
+	);
+	sseo_check(
+		"values() for a user: what that user may edit — an author, the basic fields of own post and nothing of another's; a term has no keyphrase; a post without SEO fields has none",
+		in_array( 'title', $sseo_vals[0], true ) && ! in_array( 'test_advanced', $sseo_vals[0], true ) && ! in_array( 'index', $sseo_vals[0], true ) && array() === $sseo_vals[1]
+			&& in_array( 'title', $sseo_vals[2], true ) && ! in_array( 'keyphrase', $sseo_vals[2], true ) && array() === $sseo_vals[3],
+		$sseo_vals
+	);
+
+	$sseo_errs = array(
+		Simple_SEO_Fields::write( 'post', PHP_INT_MAX, array( 'title' => 'x' ) ),
+		Simple_SEO_Fields::write( 'term', PHP_INT_MAX, array( 'title' => 'x' ) ),
+		Simple_SEO_Fields::write( 'term', $sseo_cat_id, array( 'keyphrase' => 'x' ) ),
+		Simple_SEO_Fields::write( 'post', $sseo_p['editor_post'], array( 'title' => 'x' ), $sseo_au ),
+		Simple_SEO_Fields::write( 'post', $sseo_p['author_post'], array( 'title' => 'Mine', 'test_advanced' => '0' ), $sseo_au ),
+	);
+	sseo_check(
+		'write(): no such post or term (404), a field it has not (400), a field the user may not edit (403) — and then nothing at all is written',
+		array( 'simple_seo_no_object', 'simple_seo_no_object', 'simple_seo_unknown_field', 'simple_seo_cannot_edit', 'simple_seo_cannot_edit' ) === array_map( static fn( $err ): string => is_wp_error( $err ) ? $err->get_error_code() : 'no error', $sseo_errs )
+			&& array( 'There is no such post with SEO fields.', 'There is no such term with SEO fields.', 'There is no SEO field keyphrase here.', 'You may not edit the SEO field title.', 'You may not edit the SEO field test_advanced.' ) === array_map( static fn( WP_Error $err ): string => $err->get_error_message(), $sseo_errs )
+			&& array( array( 'status' => 404 ), array( 'status' => 404 ), array( 'status' => 400, 'field' => 'keyphrase' ), array( 'status' => 403, 'field' => 'title' ), array( 'status' => 403, 'field' => 'test_advanced' ) ) === array_map( static fn( WP_Error $err ) => $err->get_error_data(), $sseo_errs )
+			&& 'By author' === Simple_SEO_Fields::post_value( $sseo_p['author_post'], 'title' ) && 'Written' === Simple_SEO_Fields::post_value( $sseo_p['editor_post'], 'title' ),
+		$sseo_errs
+	);
+	$sseo_bad  = static fn( array $input ) => Simple_SEO_Fields::write( 'post', $sseo_p['editor_post'], $input );
+	$sseo_errs = array(
+		$sseo_bad( array( 'title' => 'Never', 'test_advanced' => 'maybe' ) ),
+		$sseo_bad( array( 'test_advanced' => array( '1' ) ) ),
+		$sseo_bad( array( 'og_image' => 'abc' ) ),
+		$sseo_bad( array( 'og_image' => $sseo_p['author_post'] ) ),
+		$sseo_bad( array( 'canonical' => 'ftp://example.com/' ) ),
+		$sseo_bad( array( 'test_choice' => 'zzz' ) ),
+		$sseo_bad( array( 'index' => 'bogus' ) ),
+		$sseo_bad( array( 'title' => '<b></b>' ) ),
+		$sseo_bad( array( 'title' => array( 'x' ) ) ),
+	);
+	$sseo_msgs = array_map( static fn( $err ): string => is_wp_error( $err ) ? $err->get_error_code() . ' ' . $err->get_error_data()['status'] . ' ' . $err->get_error_data()['field'] . ': ' . $err->get_error_message() : 'no error', $sseo_errs );
+	sseo_check(
+		'write(): a value a field cannot hold stops it all (400), with what the field takes',
+		array(
+			'simple_seo_invalid_value 400 test_advanced: The SEO field test_advanced takes yes or no (1 or 0, true or false).',
+			'simple_seo_invalid_value 400 test_advanced: The SEO field test_advanced takes yes or no (1 or 0, true or false).',
+			'simple_seo_invalid_value 400 og_image: The SEO field og_image takes the ID of an image in the media library.',
+			'simple_seo_invalid_value 400 og_image: The SEO field og_image takes the ID of an image in the media library.',
+			'simple_seo_invalid_value 400 canonical: The SEO field canonical takes a full address that starts with https:// or http://.',
+			'simple_seo_invalid_value 400 test_choice: The SEO field test_choice takes one of: a.',
+			'simple_seo_invalid_value 400 index: The SEO field index takes one of: index, noindex.',
+			'simple_seo_invalid_value 400 title: The SEO field title cannot hold this value.',
+			'simple_seo_invalid_value 400 title: The SEO field title cannot hold this value.',
+		) === $sseo_msgs && 'Written' === Simple_SEO_Fields::post_value( $sseo_p['editor_post'], 'title' ) && '1' === get_post_meta( $sseo_p['editor_post'], '_simple_seo_test_advanced', true ),
+		$sseo_msgs
+	);
+	$sseo_val = $sseo_bad( array( 'schema_page_type' => 'Nope' ) );
+	sseo_check( 'choices that depend on the post are listed too, without the default', is_wp_error( $sseo_val ) && str_starts_with( $sseo_val->get_error_message(), 'The SEO field schema_page_type takes one of: WebPage, AboutPage, ' ), $sseo_val );
+	// A field with 30 choices names them, one with 31 does not.
+	$sseo_ref  = new ReflectionProperty( Simple_SEO_Fields::class, 'fields' );
+	$sseo_kept = $sseo_ref->getValue();
+	$sseo_vals = array();
+	foreach ( array( 30, 31, 0 ) as $sseo_i ) {
+		Simple_SEO_Fields::register( 'test_many', array( 'type' => 'select', 'objects' => array( 'post' ), 'options' => array( '' => 'Default' ) + ( $sseo_i ? array_fill_keys( array_map( static fn( int $n ): string => 'v' . $n, range( 1, $sseo_i ) ), 'V' ) : array() ) ) );
+		$sseo_val    = $sseo_bad( array( 'test_many' => 'zzz' ) );
+		$sseo_vals[] = is_wp_error( $sseo_val ) ? $sseo_val->get_error_message() : 'no error';
+	}
+	$sseo_ref->setValue( null, $sseo_kept );
+	unregister_meta_key( 'post', '_simple_seo_test_many' );
+	sseo_check( 'up to 30 choices are named; more, or none but the default, are not', str_ends_with( $sseo_vals[0], ': v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30.' ) && 'The SEO field test_many cannot hold this value.' === $sseo_vals[1] && 'The SEO field test_many cannot hold this value.' === $sseo_vals[2], $sseo_vals );
+
+	$sseo_vals = array(
+		$sseo_bad( array( 'title' => null, 'description' => "  \n ", 'test_advanced' => 'off', 'test_choice' => '', 'og_image' => 0 ) ),
+		metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_title' ) || metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_description' ) || metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_test_advanced' ) || metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_test_choice' ),
+		$sseo_bad( array( 'title' => '0', 'test_advanced' => true ) ),
+		Simple_SEO_Fields::values( 'post', $sseo_p['editor_post'] )['title'],
+		get_post_meta( $sseo_p['editor_post'], '_simple_seo_test_advanced', true ),
+		$sseo_bad( array( 'test_advanced' => 0 ) ),
+		metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_test_advanced' ),
+		$sseo_bad( array( 'test_advanced' => 'ON', 'title' => '' ) ),
+		get_post_meta( $sseo_p['editor_post'], '_simple_seo_test_advanced', true ),
+		$sseo_bad( array( 'test_advanced' => false ) ),
+		metadata_exists( 'post', $sseo_p['editor_post'], '_simple_seo_test_advanced' ),
+	);
+	sseo_check(
+		'write(): an empty value deletes the row — empty text, null, false, off, 0; a text 0 and a checkbox on (true, ON) are kept',
+		array( array( 'title', 'description', 'test_advanced', 'test_choice', 'og_image' ), false, array( 'title', 'test_advanced' ), '0', '1', array( 'test_advanced' ), false, array( 'test_advanced', 'title' ), '1', array( 'test_advanced' ), false ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_bad( array( 'title' => "O'Reilly \\ \"quoted\"" ) );
+	sseo_check( 'write(): quotes and backslashes survive', "O'Reilly \\ \"quoted\"" === Simple_SEO_Fields::post_value( $sseo_p['editor_post'], 'title' ), Simple_SEO_Fields::post_value( $sseo_p['editor_post'], 'title' ) );
+	$sseo_bad( array( 'title' => '' ) );
+	wp_set_current_user( $sseo_ed );
+	sseo_check( 'write() with a user: what that user may edit', array( 'test_advanced' ) === Simple_SEO_Fields::write( 'post', $sseo_p['author_post'], array( 'test_advanced' => '1' ), $sseo_ed ) && array( 'title' ) === Simple_SEO_Fields::write( 'term', $sseo_cat_id, array( 'title' => 'Category title' ), $sseo_ed ) );
+
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'REST' );
 
@@ -534,6 +705,144 @@ try {
 	$sseo_request->set_param( 'context', 'edit' );
 	$sseo_data = rest_do_request( $sseo_request )->get_data();
 	sseo_check( 'the field is readable in the edit context', 'Via REST' === ( $sseo_data['meta']['_simple_seo_title'] ?? null ) );
+
+	// An empty value is never stored, however it comes.
+	wp_set_current_user( $sseo_ed );
+	$sseo_request = new WP_REST_Request( 'POST', '/wp/v2/posts/' . $sseo_p['author_post'] );
+	$sseo_request->set_body_params( array( 'meta' => array( '_simple_seo_title' => '', '_simple_seo_test_advanced' => false ) ) );
+	$sseo_status = rest_do_request( $sseo_request )->get_status();
+	sseo_check( 'meta through REST: an empty text and an unticked box delete their rows', 200 === $sseo_status && ! metadata_exists( 'post', $sseo_p['author_post'], '_simple_seo_title' ) && ! metadata_exists( 'post', $sseo_p['author_post'], '_simple_seo_test_advanced' ), $sseo_status );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_title', 'Again' );
+	$sseo_vals = array(
+		update_post_meta( $sseo_p['author_post'], '_simple_seo_title', '' ),
+		metadata_exists( 'post', $sseo_p['author_post'], '_simple_seo_title' ),
+		add_post_meta( $sseo_p['author_post'], '_simple_seo_description', '   ' ),
+		get_post_meta( $sseo_p['author_post'], '_simple_seo_description' ),
+		update_term_meta( $sseo_cat_id, '_simple_seo_title', '' ),
+		metadata_exists( 'term', $sseo_cat_id, '_simple_seo_title' ),
+		add_term_meta( $sseo_cat_id, '_simple_seo_description', '' ),
+		metadata_exists( 'term', $sseo_cat_id, '_simple_seo_description' ),
+		(bool) update_post_meta( $sseo_p['author_post'], '_simple_seo_scores', '' ),
+		metadata_exists( 'post', $sseo_p['author_post'], '_simple_seo_scores' ),
+		(bool) update_post_meta( $sseo_p['author_post'], 'sseo_plain__title', '' ),
+		metadata_exists( 'post', $sseo_p['author_post'], 'sseo_plain__title' ),
+	);
+	delete_post_meta( $sseo_p['author_post'], '_simple_seo_scores' );
+	delete_post_meta( $sseo_p['author_post'], 'sseo_plain__title' );
+	$sseo_veto = static fn( $check, $id, $key ) => '_simple_seo_keyphrase' === $key ? false : $check;
+	add_filter( 'update_post_metadata', $sseo_veto, 5, 3 );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_keyphrase', 'kept' );
+	remove_filter( 'update_post_metadata', $sseo_veto, 5 );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_keyphrase', 'kept' );
+	add_filter( 'update_post_metadata', $sseo_veto, 5, 3 );
+	$sseo_vals[] = update_post_meta( $sseo_p['author_post'], '_simple_seo_keyphrase', '' );
+	$sseo_vals[] = get_post_meta( $sseo_p['author_post'], '_simple_seo_keyphrase', true );
+	remove_filter( 'update_post_metadata', $sseo_veto, 5 );
+	delete_post_meta( $sseo_p['author_post'], '_simple_seo_keyphrase' );
+	sseo_check(
+		"update_*_meta() of a field to nothing deletes its row, add_*_meta() adds none; other rows, and a write another filter answered first, are not touched",
+		array( true, false, false, array( "Line 1\nLine 2" ), true, false, false, false, true, true, true, true, false, 'kept' ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// The field simple_seo: on every type with SEO fields in the REST API, custom fields or not.
+	register_post_type(
+		'sseo_doc',
+		array(
+			'public'       => true,
+			'show_in_rest' => true,
+			'label'        => 'Docs',
+			'supports'     => array( 'title', 'editor', 'author' ),
+		)
+	);
+	Simple_SEO_Fields::flush_types();
+	$GLOBALS['wp_rest_server'] = null;
+	$sseo['posts']['doc']       = wp_insert_post( array( 'post_type' => 'sseo_doc', 'post_title' => 'Doc', 'post_status' => 'publish', 'post_author' => $sseo_au ) );
+	$sseo_tag                   = wp_insert_term( 'SSEO REST tag', 'post_tag' );
+	$sseo['terms'][]            = array( (int) $sseo_tag['term_id'], 'post_tag' );
+	$sseo_rest                  = static function ( string $method, string $route, array $params = array() ): WP_REST_Response {
+		$request = new WP_REST_Request( $method, $route );
+		foreach ( $params as $name => $value ) {
+			$request->set_param( $name, $value );
+		}
+
+		return rest_do_request( $request );
+	};
+	$sseo_doc = '/wp/v2/sseo_doc/' . $sseo['posts']['doc'];
+
+	$sseo_schema = $sseo_rest( 'OPTIONS', '/wp/v2/sseo_doc' )->get_data()['schema']['properties'] ?? array();
+	$sseo_field  = $sseo_schema[ Simple_SEO_REST::FIELD ] ?? array();
+	$sseo_posts  = $sseo_rest( 'OPTIONS', '/wp/v2/posts' )->get_data()['schema']['properties'][ Simple_SEO_REST::FIELD ]['properties'] ?? array();
+	sseo_check(
+		'schema: an object of the edit context, the fields of the type with their types, nothing else; the primary category only where it is',
+		'object' === ( $sseo_field['type'] ?? '' ) && array( 'edit' ) === ( $sseo_field['context'] ?? null ) && false === ( $sseo_field['additionalProperties'] ?? null )
+			&& array_keys( Simple_SEO_Fields::available( 'post', 'sseo_doc' ) ) === array_keys( $sseo_field['properties'] ?? array() ) && ! isset( $sseo_field['properties']['primary_category'] ) && isset( $sseo_posts['primary_category'] )
+			&& 'string' === $sseo_field['properties']['title']['type'] && 'boolean' === $sseo_field['properties']['nofollow']['type'] && 'integer' === $sseo_field['properties']['og_image']['type'] && array( 'edit' ) === $sseo_field['properties']['title']['context'] && 'SEO title' === $sseo_field['properties']['title']['description']
+			&& ! isset( $sseo_schema['meta'] ),
+		$sseo_field
+	);
+	$sseo_data  = $sseo_rest( 'GET', $sseo_doc, array( 'context' => 'edit' ) )->get_data();
+	$sseo_view  = $sseo_rest( 'GET', $sseo_doc )->get_data();
+	sseo_check(
+		'read in the edit context, as the types hold the values; not in the view context',
+		isset( $sseo_data[ Simple_SEO_REST::FIELD ] ) && Simple_SEO_Fields::values( 'post', $sseo['posts']['doc'] ) === $sseo_data[ Simple_SEO_REST::FIELD ] && false === $sseo_data[ Simple_SEO_REST::FIELD ]['nofollow'] && 0 === $sseo_data[ Simple_SEO_REST::FIELD ]['og_image']
+			&& ! array_key_exists( Simple_SEO_REST::FIELD, $sseo_view ) && ! isset( $sseo_data['meta']['_simple_seo_title'] ),
+		$sseo_data[ Simple_SEO_REST::FIELD ] ?? $sseo_data
+	);
+	$sseo_response = $sseo_rest( 'POST', $sseo_doc, array( Simple_SEO_REST::FIELD => array( 'title' => 'Doc title', 'nofollow' => true, 'canonical' => 'https://example.com/doc/' ) ) );
+	$sseo_data     = $sseo_response->get_data()[ Simple_SEO_REST::FIELD ] ?? array();
+	sseo_check(
+		'written through REST by an editor, on a type without custom fields; the answer has the values',
+		200 === $sseo_response->get_status() && 'Doc title' === Simple_SEO_Fields::post_value( $sseo['posts']['doc'], 'title' ) && '1' === get_post_meta( $sseo['posts']['doc'], '_simple_seo_nofollow', true ) && 'Doc title' === $sseo_data['title'] && true === $sseo_data['nofollow'] && 'https://example.com/doc/' === $sseo_data['canonical'],
+		array( $sseo_response->get_status(), $sseo_data )
+	);
+	$sseo_vals = array(
+		$sseo_rest( 'POST', $sseo_doc, array( Simple_SEO_REST::FIELD => array( 'title' => '', 'nofollow' => false ) ) )->get_status(),
+		metadata_exists( 'post', $sseo['posts']['doc'], '_simple_seo_title' ) || metadata_exists( 'post', $sseo['posts']['doc'], '_simple_seo_nofollow' ),
+		$sseo_rest( 'POST', $sseo_doc, array( Simple_SEO_REST::FIELD => array( 'nope' => 'x' ) ) )->get_data()['code'] ?? '',
+		$sseo_rest( 'POST', $sseo_doc, array( Simple_SEO_REST::FIELD => array( 'title' => 'Never', 'index' => 'bogus' ) ) ),
+		Simple_SEO_Fields::post_value( $sseo['posts']['doc'], 'title' ),
+	);
+	sseo_check(
+		'an empty value deletes the row; an unknown field is refused by the schema; a value a field cannot hold stops it all, with why',
+		200 === $sseo_vals[0] && false === $sseo_vals[1] && 'rest_invalid_param' === $sseo_vals[2] && 400 === $sseo_vals[3]->get_status() && 'simple_seo_invalid_value' === ( $sseo_vals[3]->get_data()['code'] ?? '' )
+			&& 'The SEO field index takes one of: index, noindex.' === ( $sseo_vals[3]->get_data()['message'] ?? '' ) && '' === $sseo_vals[4],
+		$sseo_vals
+	);
+	wp_set_current_user( $sseo_au );
+	$sseo_data = $sseo_rest( 'GET', $sseo_doc, array( 'context' => 'edit' ) )->get_data()[ Simple_SEO_REST::FIELD ] ?? array();
+	$sseo_vals = array(
+		$sseo_rest( 'POST', $sseo_doc, array( Simple_SEO_REST::FIELD => array( 'title' => 'By author', 'nofollow' => true ) ) ),
+		Simple_SEO_Fields::post_value( $sseo['posts']['doc'], 'title' ),
+		$sseo_rest( 'POST', $sseo_doc, array( Simple_SEO_REST::FIELD => array( 'title' => 'By author' ) ) )->get_status(),
+		Simple_SEO_Fields::post_value( $sseo['posts']['doc'], 'title' ),
+	);
+	sseo_check(
+		'an author reads and writes the basic fields of own post; an advanced one is refused (403) and nothing is written',
+		isset( $sseo_data['title'] ) && ! isset( $sseo_data['nofollow'] ) && ! isset( $sseo_data['index'] ) && 403 === $sseo_vals[0]->get_status() && 'simple_seo_cannot_edit' === ( $sseo_vals[0]->get_data()['code'] ?? '' ) && '' === $sseo_vals[1] && 200 === $sseo_vals[2] && 'By author' === $sseo_vals[3],
+		array( $sseo_data, $sseo_vals )
+	);
+	wp_set_current_user( $sseo_ed );
+	$sseo_vals = array(
+		$sseo_rest( 'POST', '/wp/v2/categories/' . $sseo_cat_id, array( Simple_SEO_REST::FIELD => array( 'description' => 'Category via REST' ) ) )->get_status(),
+		Simple_SEO_Fields::term_value( $sseo_cat_id, 'description' ),
+		$sseo_rest( 'GET', '/wp/v2/tags/' . (int) $sseo_tag['term_id'], array( 'context' => 'edit' ) )->get_data()[ Simple_SEO_REST::FIELD ] ?? null,
+	);
+	sseo_check(
+		'terms: a category written, a tag read (the REST API calls tags "tag"); no keyphrase on terms',
+		200 === $sseo_vals[0] && 'Category via REST' === $sseo_vals[1] && is_array( $sseo_vals[2] ) && array_keys( Simple_SEO_Fields::available( 'term' ) ) === array_keys( $sseo_vals[2] ) && ! isset( $sseo_vals[2]['keyphrase'] ),
+		$sseo_vals
+	);
+	wp_set_current_user( 0 );
+	sseo_check( 'nothing to show is an empty object, not a list', new stdClass() == Simple_SEO_REST::get( 'post', $sseo['posts']['doc'] ) && '{}' === wp_json_encode( Simple_SEO_REST::get( 'post', $sseo['posts']['doc'] ) ) ); // phpcs:ignore Universal.Operators.StrictComparisons -- two empty objects.
+	// The fields as the next sections expect them.
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_title', 'Via REST' );
+	update_post_meta( $sseo_p['author_post'], '_simple_seo_test_advanced', '1' );
+	update_term_meta( $sseo_cat_id, '_simple_seo_title', 'Category title' );
+	delete_term_meta( $sseo_cat_id, '_simple_seo_description' );
+	unregister_post_type( 'sseo_doc' );
+	Simple_SEO_Fields::flush_types();
+	$GLOBALS['wp_rest_server'] = null;
 	// Core's posts controller leaves a post_password_required filter behind for the rest of this
 	// process: for anyone who may edit a post it says no password is needed. A front-end request
 	// never runs a REST request first, so the later checks of protected posts would be lying.
@@ -4820,6 +5129,102 @@ try {
 	sseo_check( 'the log keeps the last 20 answers', 20 === count( $sseo_log ) && 'https://www.example.com/log24/' === $sseo_log[0]['url'] && 'https://www.example.com/log5/' === $sseo_log[19]['url'] );
 	$sseo_ix_reset();
 
+	// WP-CLI: wp simple-seo indexnow.
+	sseo_check(
+		"the site's hosts and its own addresses: http or https, on one of them, whatever the case",
+		array( 'www.example.com' ) === Simple_SEO_IndexNow::hosts() && Simple_SEO_IndexNow::own( 'https://www.example.com/a/' ) && Simple_SEO_IndexNow::own( 'HTTP://WWW.EXAMPLE.COM/a/' )
+			&& ! Simple_SEO_IndexNow::own( 'https://example.com/a/' ) && ! Simple_SEO_IndexNow::own( 'ftp://www.example.com/a/' ) && ! Simple_SEO_IndexNow::own( '/a/' ),
+		Simple_SEO_IndexNow::hosts()
+	);
+	$sseo_upper = static fn(): string => 'https://WWW.Example.com';
+	add_filter( 'pre_option_home', $sseo_upper, 11 );
+	$sseo_val = Simple_SEO_IndexNow::hosts();
+	remove_filter( 'pre_option_home', $sseo_upper, 11 );
+	sseo_check( 'the hosts in lower case', array( 'www.example.com' ) === $sseo_val, $sseo_val );
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_o         = (string) current( array_diff( array_keys( Simple_SEO_WP_Loc::languages() ), array( Simple_SEO_WP_Loc::default_language() ) ) );
+		$sseo_lang_home = static fn( $url, $code ) => $sseo_o === $code ? 'https://en.example.net/' : $url;
+		add_filter( 'wpml_home_url', $sseo_lang_home, 99, 2 );
+		$sseo_val = Simple_SEO_IndexNow::hosts();
+		remove_filter( 'wpml_home_url', $sseo_lang_home, 99 );
+		sseo_check( 'wp-loc: the hosts of the languages are the site\'s too', array( 'www.example.com', 'en.example.net' ) === $sseo_val, $sseo_val );
+	}
+	$sseo_ix_reset();
+	delete_option( Simple_SEO_IndexNow::LOG );
+	$sseo_out = sseo_cli( 'simple-seo indexnow status --format=json' );
+	sseo_check(
+		'status: on, the key and its file, nothing waiting, no reason not to send, no answers',
+		0 === $sseo_out->return_code && array( 'enabled' => true, 'key' => $sseo_ix_key, 'key_file' => 'https://www.example.com/' . $sseo_ix_key . '.txt', 'waiting' => 0, 'next' => '', 'blockers' => array(), 'answers' => array() ) === json_decode( $sseo_out->stdout, true ),
+		$sseo_out
+	);
+	$sseo_out = sseo_cli( 'simple-seo indexnow status' );
+	sseo_check( 'status as a table: the fields, and nothing sent yet', str_starts_with( $sseo_out->stdout, "Field\tValue\nenabled\ttrue\nkey\t" . $sseo_ix_key . "\nkey_file\thttps://www.example.com/" ) && str_ends_with( $sseo_out->stdout, "\nNothing has been sent yet." ) && '' === $sseo_out->stderr, $sseo_out );
+
+	$sseo['posts']['ix_cli']   = wp_insert_post( array( 'post_title' => 'IndexNow CLI', 'post_name' => 'ix-cli', 'post_status' => 'publish' ) );
+	$sseo['posts']['ix_draft'] = wp_insert_post( array( 'post_title' => 'IndexNow draft', 'post_status' => 'draft' ) );
+	$sseo['posts']['ix_pass']  = wp_insert_post( array( 'post_title' => 'IndexNow password', 'post_status' => 'publish', 'post_password' => 'secret' ) );
+	$sseo_ix_reset();
+	$GLOBALS['sseo_ix_requests'] = array();
+	$sseo_ix_answer              = static fn( string $url, array $args ): array => $sseo_ix_reply( 200 );
+	$sseo_out                    = sseo_cli( 'simple-seo indexnow submit ' . $sseo['posts']['ix_cli'] . ' ' . $sseo['posts']['ix_draft'] . ' ' . $sseo['posts']['hidden_type'] . ' ' . $sseo['posts']['ix_pass'] . ' https://www.example.com/by-hand/ https://other.example.org/x/' );
+	$sseo_body                   = json_decode( (string) ( $GLOBALS['sseo_ix_requests'][0][1]['body'] ?? '' ), true );
+	sseo_check(
+		'submit: a post by its ID and an address of the site go at once, in one request; a draft, a post without SEO fields or with a password and an address of another site are left out, with why',
+		0 === $sseo_out->return_code && 1 === count( $GLOBALS['sseo_ix_requests'] ) && array( get_permalink( $sseo['posts']['ix_cli'] ), 'https://www.example.com/by-hand/' ) === ( $sseo_body['urlList'] ?? null )
+			&& 'Warning: Post ' . $sseo['posts']['ix_draft'] . " is not a page search engines may show: left out.\nWarning: Post " . $sseo['posts']['hidden_type'] . " is not a page search engines may show: left out.\nWarning: Post " . $sseo['posts']['ix_pass'] . " is not a page search engines may show: left out.\nWarning: Not an address of this site: https://other.example.org/x/" === $sseo_out->stderr
+			&& str_starts_with( $sseo_out->stdout, get_permalink( $sseo['posts']['ix_cli'] ) . ' and 1 more: ' ) && str_ends_with( $sseo_out->stdout, "\nSuccess: Addresses Bing took: 2." ) && array() === Simple_SEO_IndexNow::queue()['urls'] && false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ),
+		$sseo_out
+	);
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 403 );
+	$sseo_out       = sseo_cli( 'simple-seo indexnow submit https://www.example.com/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/' );
+	sseo_check( 'refused by Bing: the answer, the address readable, and an error', 1 === $sseo_out->return_code && 'Warning: https://www.example.com/сторінка/: ' . Simple_SEO_IndexNow::entries()[0]['message'] . "\nError: Bing did not take all the addresses." === $sseo_out->stderr, $sseo_out );
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 503 );
+	$sseo_out       = sseo_cli( 'simple-seo indexnow submit https://www.example.com/later/' );
+	$sseo_next      = (int) wp_next_scheduled( Simple_SEO_IndexNow::EVENT );
+	sseo_check( 'Bing failing: tried again in ten minutes, not when the minute of the batch is over', 1 === $sseo_out->return_code && str_contains( $sseo_out->stderr, 'It will be tried again in ten minutes.' ) && abs( $sseo_next - ( time() + 600 ) ) <= 2 && array( 'https://www.example.com/later/' ) === array_keys( Simple_SEO_IndexNow::queue()['urls'] ), array( $sseo_out, $sseo_next - time() ) );
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 200 );
+	$sseo_vals      = array( sseo_cli( 'simple-seo indexnow send' ), Simple_SEO_IndexNow::queue()['urls'], wp_next_scheduled( Simple_SEO_IndexNow::EVENT ), sseo_cli( 'simple-seo indexnow send' ), sseo_cli( 'simple-seo indexnow submit ' . $sseo['posts']['ix_draft'] . ' https://other.example.org/' ) );
+	sseo_check(
+		'send: the batch waiting goes now; with nothing waiting, nothing; nothing of the site to submit is an error',
+		0 === $sseo_vals[0]->return_code && 'https://www.example.com/later/: ' . Simple_SEO_IndexNow::entries()[0]['message'] . "\nSuccess: Addresses Bing took: 1." === $sseo_vals[0]->stdout && array() === $sseo_vals[1] && false === $sseo_vals[2]
+			&& 0 === $sseo_vals[3]->return_code && 'Success: Nothing is waiting to be sent.' === $sseo_vals[3]->stdout && 1 === $sseo_vals[4]->return_code && str_ends_with( $sseo_vals[4]->stderr, "\nError: Nothing to send." ),
+		$sseo_vals
+	);
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/api/' ) );
+	wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
+	$sseo_vals = array( Simple_SEO_IndexNow::send(), Simple_SEO_IndexNow::send() );
+	sseo_check( 'send() gives the answers it logged; none with nothing waiting', 1 === count( $sseo_vals[0] ) && array_slice( Simple_SEO_IndexNow::entries(), 0, 1 ) === $sseo_vals[0] && 'https://www.example.com/api/' === $sseo_vals[0][0]['url'] && array() === $sseo_vals[1], $sseo_vals );
+	update_option( Simple_SEO_IndexNow::QUEUE, array( 'urls' => array( 'https://www.example.com/q/' => true ), 'attempts' => 0 ), false );
+	update_option( 'blog_public', '0' );
+	$sseo_why  = Simple_SEO_IndexNow::blockers();
+	$sseo_vals = array( sseo_cli( 'simple-seo indexnow submit https://www.example.com/x/' ), sseo_cli( 'simple-seo indexnow send' ), json_decode( sseo_cli( 'simple-seo indexnow status --format=json' )->stdout, true ), sseo_cli( 'simple-seo indexnow status' ) );
+	update_option( 'blog_public', '1' );
+	sseo_check(
+		'blocked: submit and send stop and say why, the batch is kept; status names why',
+		1 === $sseo_vals[0]->return_code && 'Error: Nothing is sent: ' . implode( ' ', $sseo_why ) === $sseo_vals[0]->stderr && 1 === $sseo_vals[1]->return_code && 'Error: Nothing is sent: ' . implode( ' ', $sseo_why ) === $sseo_vals[1]->stderr
+			&& array( 'https://www.example.com/q/' ) === array_keys( Simple_SEO_IndexNow::queue()['urls'] ) && array_values( $sseo_why ) === $sseo_vals[2]['blockers'] && 1 === $sseo_vals[2]['waiting'] && 'Warning: ' . implode( "\nWarning: ", $sseo_why ) === $sseo_vals[3]->stderr,
+		$sseo_vals
+	);
+	$sseo_ix_reset();
+	update_option( Simple_SEO_IndexNow::LOG, array( array( 'time' => 1767225600, 'count' => 3, 'url' => 'https://www.example.com/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/', 'code' => 403, 'ok' => false, 'message' => 'Bad key' ) ), false );
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/w1/' ) );
+	$sseo_vals = array( json_decode( sseo_cli( 'simple-seo indexnow status --format=json' )->stdout, true ), sseo_cli( 'simple-seo indexnow status' )->stdout, (int) wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
+	$sseo_off  = static fn(): array => array( 'enabled' => false, 'key' => '' );
+	add_filter( 'pre_option_' . Simple_SEO_IndexNow::OPTION, $sseo_off );
+	Simple_SEO_Settings::flush();
+	$sseo_vals[] = json_decode( sseo_cli( 'simple-seo indexnow status --format=json' )->stdout, true );
+	remove_filter( 'pre_option_' . Simple_SEO_IndexNow::OPTION, $sseo_off );
+	Simple_SEO_Settings::flush();
+	sseo_check(
+		'status: the batch waiting and when it goes, the answers with the address readable; off and without a key, no key file',
+		1 === $sseo_vals[0]['waiting'] && wp_date( 'Y-m-d H:i:s P', $sseo_vals[2] ) === $sseo_vals[0]['next'] && array( array( 'time' => wp_date( 'Y-m-d H:i:s P', 1767225600 ), 'count' => 3, 'url' => 'https://www.example.com/сторінка/', 'code' => 403, 'ok' => false, 'message' => 'Bad key' ) ) === $sseo_vals[0]['answers']
+			&& str_contains( $sseo_vals[1], "\nwaiting\t1\n" ) && str_ends_with( $sseo_vals[1], "\ntime\tcount\turl\tcode\tmessage\n" . wp_date( 'Y-m-d H:i:s P', 1767225600 ) . "\t3\thttps://www.example.com/сторінка/\t403\tBad key" )
+			&& false === $sseo_vals[3]['enabled'] && '' === $sseo_vals[3]['key'] && '' === $sseo_vals[3]['key_file'] && 'IndexNow is off.' === $sseo_vals[3]['blockers'][0],
+		$sseo_vals
+	);
+	$sseo_ix_reset();
+	delete_option( Simple_SEO_IndexNow::LOG );
+
 	// The tab.
 	Simple_SEO_IndexNow::add_admin_tab();
 	Simple_SEO_Admin::register_settings();
@@ -8183,6 +8588,247 @@ try {
 	unregister_taxonomy( 'sseo_ai_room' );
 	unregister_post_type( 'sseo_ai_book' );
 	Simple_SEO_Fields::flush_types();
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'WP-CLI' );
+
+	$sseo_vals = array();
+	foreach ( array( 'fields', 'analyze', 'import', 'cleanup', 'post get', 'post update', 'term get', 'term update', 'indexnow status', 'indexnow submit', 'indexnow send' ) as $sseo_name ) {
+		$sseo_vals[ $sseo_name ] = is_array( WP_CLI::get_runner()->find_command_to_run( array_merge( array( 'simple-seo' ), explode( ' ', $sseo_name ) ) ) );
+	}
+	sseo_check( 'the commands of wp simple-seo', ! in_array( false, $sseo_vals, true ), $sseo_vals );
+
+	// The fields there are.
+	$sseo_out  = sseo_cli( 'simple-seo fields --format=json' );
+	$sseo_rows = array_column( (array) json_decode( $sseo_out->stdout, true ), null, 'field' );
+	sseo_check(
+		'fields: every field with where it is, its type, level, post types and label',
+		0 === $sseo_out->return_code && array_keys( Simple_SEO_Fields::all() ) === array_keys( $sseo_rows )
+			&& array( 'field' => 'nofollow', 'objects' => 'post, term', 'type' => 'checkbox', 'level' => 'advanced', 'post_types' => '', 'label' => Simple_SEO_Fields::get( 'nofollow' )['label'] ) === $sseo_rows['nofollow']
+			&& 'post' === $sseo_rows['primary_category']['post_types'] && 'post' === $sseo_rows['keyphrase']['objects'],
+		$sseo_out
+	);
+	$sseo_out = sseo_cli( 'simple-seo fields --object=term' );
+	sseo_check( 'fields of terms, as a table', 0 === $sseo_out->return_code && str_starts_with( $sseo_out->stdout, "field\tobjects\ttype\tlevel\tpost_types\tlabel\ntitle\tpost, term\ttext\tbasic\t\tSEO title\n" ) && ! str_contains( $sseo_out->stdout, 'keyphrase' ), $sseo_out );
+
+	// The fields of a post or term.
+	$sseo['posts']['cli'] = wp_insert_post( array( 'post_title' => 'CLI post', 'post_content' => 'The words of the CLI post. They are few.', 'post_status' => 'publish' ) );
+	$sseo_id              = (int) $sseo['posts']['cli'];
+	delete_post_meta( $sseo_id, Simple_SEO_Scores::META );
+	$sseo_val = Simple_SEO_Scores::get( get_post( $sseo_id ) );
+	$sseo_out = sseo_cli( array( 'simple-seo', 'post', 'update', (string) $sseo_id ), array( 'title' => 'CLI {title}', 'nofollow' => true, 'og_image' => '0' ) );
+	sseo_check(
+		'post update: the fields given, a flag a ticked box; the scores of the post kept for its list',
+		0 === $sseo_out->return_code && 'Success: Fields saved: title, nofollow, og_image.' === $sseo_out->stdout && 'CLI {title}' === Simple_SEO_Fields::post_value( $sseo_id, 'title' ) && '1' === get_post_meta( $sseo_id, '_simple_seo_nofollow', true )
+			&& null === $sseo_val && null !== Simple_SEO_Scores::get( get_post( $sseo_id ) ),
+		$sseo_out
+	);
+	$sseo_vals = array(
+		json_decode( sseo_cli( 'simple-seo post get ' . $sseo_id . ' --format=json' )->stdout, true ),
+		sseo_cli( 'simple-seo post get ' . $sseo_id . ' --field=title' )->stdout,
+		sseo_cli( 'simple-seo post get ' . $sseo_id )->stdout,
+	);
+	sseo_check( 'post get: the fields as their types hold them; one field; a table', Simple_SEO_Fields::values( 'post', $sseo_id ) === $sseo_vals[0] && true === $sseo_vals[0]['nofollow'] && 'CLI {title}' === $sseo_vals[1] && str_starts_with( $sseo_vals[2], "Field\tValue\ntitle\tCLI {title}\n" ), $sseo_vals );
+	$sseo_vals = array_map(
+		static function ( string $command ): string {
+			$out = sseo_cli( $command );
+
+			return $out->return_code . ' ' . $out->stderr;
+		},
+		array(
+			'simple-seo post update ' . $sseo_id . ' --title=Never --index=bogus',
+			'simple-seo post update ' . $sseo_id,
+			'simple-seo post update ' . PHP_INT_MAX . ' --title=x',
+			'simple-seo post get ' . $sseo['posts']['hidden_type'],
+			'simple-seo term update ' . $sseo_cat_id . ' --keyphrase=x',
+			'simple-seo term get ' . PHP_INT_MAX,
+		)
+	);
+	sseo_check(
+		'errors: a value a field cannot hold (and nothing written), no field named, no such post or term, a field terms do not have',
+		array(
+			'1 Error: The SEO field index takes one of: index, noindex.',
+			'1 Error: Name the fields to change, for example --title="…".',
+			'1 Error: There is no such post with SEO fields.',
+			'1 Error: There is no such post with SEO fields.',
+			'1 Error: There is no SEO field keyphrase here.',
+			'1 Error: There is no such term with SEO fields.',
+		) === $sseo_vals && 'CLI {title}' === Simple_SEO_Fields::post_value( $sseo_id, 'title' ),
+		$sseo_vals
+	);
+	$sseo_out = sseo_cli( array( 'simple-seo', 'post', 'update', (string) $sseo_id ), array( 'title' => '', 'nofollow' => '0' ) );
+	sseo_check( 'post update: empty values clear', 0 === $sseo_out->return_code && ! metadata_exists( 'post', $sseo_id, '_simple_seo_title' ) && ! metadata_exists( 'post', $sseo_id, '_simple_seo_nofollow' ), $sseo_out );
+	$sseo_kept = array( Simple_SEO_Fields::term_value( $sseo_cat_id, 'title' ), Simple_SEO_Fields::term_value( $sseo_cat_id, 'description' ) );
+	$sseo_out  = sseo_cli( array( 'simple-seo', 'term', 'update', (string) $sseo_cat_id ), array( 'description' => 'Term via CLI', 'title' => '' ) );
+	$sseo_val = json_decode( sseo_cli( 'simple-seo term get ' . $sseo_cat_id . ' --format=json' )->stdout, true );
+	sseo_check( 'term update and get: the fields of terms, an empty value clears', 0 === $sseo_out->return_code && 'Success: Fields saved: description, title.' === $sseo_out->stdout && 'Term via CLI' === $sseo_val['description'] && '' === $sseo_val['title'] && ! metadata_exists( 'term', $sseo_cat_id, '_simple_seo_title' ) && array_keys( Simple_SEO_Fields::available( 'term' ) ) === array_keys( $sseo_val ), $sseo_val );
+	Simple_SEO_Fields::write( 'term', $sseo_cat_id, array( 'title' => $sseo_kept[0], 'description' => $sseo_kept[1] ) );
+
+	// The analysis.
+	update_post_meta( $sseo_id, '_simple_seo_keyphrase', 'CLI post' );
+	delete_post_meta( $sseo_id, Simple_SEO_Scores::META );
+	$sseo_post   = get_post( $sseo_id );
+	$sseo_result = Simple_SEO_Analysis::run( $sseo_post );
+	$sseo_ctx    = Simple_SEO_Context::for_post( $sseo_post );
+	$sseo_val    = json_decode( sseo_cli( 'simple-seo analyze ' . $sseo_id . ' --format=json' )->stdout, true );
+	sseo_check(
+		'analyze: the page as it shows, the scores and every check of both kinds; nothing kept',
+		get_permalink( $sseo_post ) === $sseo_val['url'] && Simple_SEO_Titles::title( $sseo_ctx ) === $sseo_val['title'] && Simple_SEO_Titles::description( $sseo_ctx ) === $sseo_val['description'] && $sseo_result['words'] === $sseo_val['words']
+			&& $sseo_result['score'] === $sseo_val['score'] && $sseo_result['rating'] === $sseo_val['rating'] && $sseo_result['readability']['score'] === $sseo_val['readability_score'] && $sseo_result['readability']['rating'] === $sseo_val['readability_rating']
+			&& count( $sseo_result['checks'] ) + count( $sseo_result['readability']['checks'] ) === count( $sseo_val['checks'] ) && array( 'area' => 'seo' ) + $sseo_result['checks'][0] === $sseo_val['checks'][0]
+			&& array( 'area' => 'readability' ) + end( $sseo_result['readability']['checks'] ) === end( $sseo_val['checks'] ) && null === Simple_SEO_Scores::get( $sseo_post ),
+		$sseo_val
+	);
+	$sseo_vals = array( sseo_cli( 'simple-seo analyze ' . $sseo_id ), sseo_cli( 'simple-seo analyze ' . $sseo_id . ' --format=yaml' ), sseo_cli( 'simple-seo analyze ' . $sseo['posts']['hidden_type'] ) );
+	sseo_check(
+		'analyze as tables, as YAML; only posts with SEO fields',
+		str_starts_with( $sseo_vals[0]->stdout, "Field\tValue\nurl\t" ) && str_contains( $sseo_vals[0]->stdout, "\nscore\t" . $sseo_result['score'] . "\n" ) && str_contains( $sseo_vals[0]->stdout, "\narea\tstatus\ttext\nseo\t" ) && str_contains( $sseo_vals[0]->stdout, "\nreadability\t" )
+			&& str_contains( $sseo_vals[1]->stdout, 'readability_rating: ' ) && 1 === $sseo_vals[2]->return_code && 'Error: There is no such post with SEO fields.' === $sseo_vals[2]->stderr,
+		$sseo_vals
+	);
+
+	// The import.
+	$sseo_ref   = new ReflectionMethod( Simple_SEO_CLI::class, 'import_report' );
+	$sseo_lines = $sseo_ref->invoke(
+		null,
+		'Simple_SEO_Rank_Math_Import',
+		array(
+			'settings'  => array(
+				'separator' => 1,
+				'templates' => 12,
+			),
+			'languages' => array( 'en', 'de' ),
+			'post'      => array( 'seen' => 1200, 'changed' => 5, 'fields' => 9, 'kept' => 2, 'refused' => 1 ),
+			'term'      => array( 'seen' => 4, 'changed' => 3, 'fields' => 6, 'kept' => 1, 'refused' => 0 ),
+			'dropped'   => array( 'wc_price' => 3 ),
+			'left'      => array(
+				'bctitle'   => 2,
+				'url_bases' => 1,
+			),
+		)
+	);
+	sseo_check(
+		'the report of an import, as the tab gives it',
+		array(
+			'Settings taken: the separator, templates: 12.',
+			'Also the home and 404 pages, the breadcrumb labels and the Schema names of the languages: en, de.',
+			'Posts with SEO fields: 1,200, 5 of them changed. Fields filled: 9; kept as Simple SEO had them: 2; not taken, as Simple SEO cannot hold the value: 1.',
+			'Terms with SEO fields: 4, 3 of them changed. Fields filled: 6; kept as Simple SEO had them: 1; not taken, as Simple SEO cannot hold the value: 0.',
+			'Left out of the texts, as Simple SEO has no such variable: %wc_price% (3).',
+			'Not taken, as Simple SEO has nothing for it yet:',
+			'- titles for breadcrumbs (posts: 2)',
+			'- addresses without the category base: with the plugin off, the addresses of categories get it back',
+		) === $sseo_lines,
+		$sseo_lines
+	);
+	$sseo_lines = $sseo_ref->invoke( null, 'Simple_SEO_Rank_Math_Import', array() );
+	sseo_check( 'an empty report', 3 === count( $sseo_lines ) && 'Settings: nothing to take, Simple SEO has its own.' === $sseo_lines[0], $sseo_lines );
+
+	foreach ( array( Simple_SEO_Rank_Math_Import::STATE, Simple_SEO_Rank_Math_Cleanup::OPTION, Simple_SEO_Aioseo_Import::STATE ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	$sseo['posts']['cli_rm'] = wp_insert_post( array( 'post_title' => 'Rank Math CLI', 'post_status' => 'publish' ) );
+	$sseo_rm                 = (int) $sseo['posts']['cli_rm'];
+	update_post_meta( $sseo_rm, 'rank_math_title', '%title% %wc_price% %sep% Shop' );
+	update_post_meta( $sseo_rm, 'rank_math_breadcrumb_title', 'Crumb' );
+	$sseo_out = sseo_cli( 'simple-seo import rank-math' );
+	sseo_check(
+		'import: run to the end, with the progress and the report; the field taken',
+		0 === $sseo_out->return_code && str_starts_with( $sseo_out->stdout, "Posts: 1, terms: 0.\n" ) && str_contains( $sseo_out->stdout, "\nPosts with SEO fields: 1, 1 of them changed. Fields filled: 1;" ) && str_contains( $sseo_out->stdout, "\nLeft out of the texts, as Simple SEO has no such variable: %wc_price% (1).\n" )
+			&& str_contains( $sseo_out->stdout, "\n- titles for breadcrumbs (posts: 1)\n" ) && str_ends_with( $sseo_out->stdout, "\nSuccess: The import from Rank Math is done." ) && '{title} {sep} Shop' === Simple_SEO_Fields::post_value( $sseo_rm, 'title' ) && 'done' === Simple_SEO_Import::state( 'rank_math' )['status'],
+		$sseo_out
+	);
+	$sseo_broken = array(
+		'status' => 'running',
+		'phase'  => 'terms',
+		'cursor' => 0,
+		'report' => array( 'post' => array( 'seen' => 7 ) ),
+	);
+	update_option( Simple_SEO_Rank_Math_Import::STATE, $sseo_broken, false );
+	$sseo_vals = array( sseo_cli( 'simple-seo import rank-math' ) );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, $sseo_broken, false );
+	$sseo_vals[] = sseo_cli( 'simple-seo import rank-math --restart' );
+	$sseo_vals[] = sseo_cli( 'simple-seo import aioseo' );
+	sseo_check(
+		'a run broken off goes on where it stopped, --restart starts again; a plugin without data is refused',
+		0 === $sseo_vals[0]->return_code && str_starts_with( $sseo_vals[0]->stdout, "Posts: 7, terms: 0.\n" ) && 0 === $sseo_vals[1]->return_code && str_starts_with( $sseo_vals[1]->stdout, "Posts: 1, terms: 0.\n" )
+			&& 1 === $sseo_vals[2]->return_code && 'Error: There is no data of All in One SEO on this site.' === $sseo_vals[2]->stderr && 'done' === Simple_SEO_Import::state( 'rank_math' )['status'],
+		$sseo_vals
+	);
+
+	// Removing a plugin's data.
+	$sseo_db = $GLOBALS['wpdb'];
+	$sseo_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_db->prefix}rank_math_cli_test` ( id INT NOT NULL PRIMARY KEY )" );
+	update_option( 'rank-math-options-general', array( 'x' => 1 ) );
+	$sseo_rc_active = static fn( $plugins ): array => array_merge( (array) $plugins, array( 'seo-by-rank-math/rank-math.php' ) );
+	add_filter( 'option_active_plugins', $sseo_rc_active );
+	$sseo_vals = array( sseo_cli( 'simple-seo cleanup rank-math --yes' ) );
+	remove_filter( 'option_active_plugins', $sseo_rc_active );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'pending' ), false );
+	$sseo_vals[] = sseo_cli( 'simple-seo cleanup rank-math --yes' );
+	update_option( Simple_SEO_Rank_Math_Import::STATE, array( 'status' => 'done' ), false );
+	$sseo_vals[] = sseo_cli( 'simple-seo cleanup rank-math --parts=tables,nope --yes' );
+	$sseo_vals[] = sseo_cli( array( 'simple-seo', 'cleanup', 'rank-math' ), array( 'parts' => '', 'yes' => true ) );
+	$sseo_vals   = array_map( static fn( object $out ): string => $out->return_code . ' ' . $out->stderr, $sseo_vals );
+	sseo_check(
+		'cleanup refused: Rank Math active, its import not done, an unknown part, no part; nothing removed',
+		array(
+			'1 Error: Rank Math is active, so its data is in use. Deactivate it first.',
+			'1 Error: Run the import first: removing comes after it.',
+			'1 Error: No such part: nope. The parts: tables, internals, settings, usermeta, termmeta, postmeta.',
+			'1 Error: No such part: "". The parts: tables, internals, settings, usermeta, termmeta, postmeta.',
+		) === $sseo_vals && array() === Simple_SEO_Rank_Math_Cleanup::state() && (bool) $sseo_db->get_var( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->prefix . 'rank_math_cli_test' ) ),
+		$sseo_vals
+	);
+	// Rank Math switched on while its data goes: the command stops with an error, it does not spin.
+	$sseo_rc_later = static fn( $plugins ): array => 'running' === ( Simple_SEO_Rank_Math_Cleanup::state()['status'] ?? '' ) ? array_merge( (array) $plugins, array( 'seo-by-rank-math/rank-math.php' ) ) : (array) $plugins;
+	add_filter( 'option_active_plugins', $sseo_rc_later );
+	$sseo_vals = array( sseo_cli( 'simple-seo cleanup rank-math --parts=tables --yes' ) );
+	remove_filter( 'option_active_plugins', $sseo_rc_later );
+	$sseo_vals[] = (bool) $sseo_db->get_var( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->prefix . 'rank_math_cli_test' ) );
+	$sseo_vals[] = sseo_cli( 'simple-seo cleanup rank-math' );
+	sseo_check(
+		'stopped short of the end: an error; the next run goes on with it',
+		1 === $sseo_vals[0]->return_code && 'Error: It stopped before the end: run the command again to go on.' === $sseo_vals[0]->stderr && true === $sseo_vals[1]
+			&& 0 === $sseo_vals[2]->return_code && 'Success: Removed: tables: 1.' === $sseo_vals[2]->stdout && 'done' === Simple_SEO_Rank_Math_Cleanup::state()['status'],
+		$sseo_vals
+	);
+	$sseo_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_db->prefix}rank_math_cli_test` ( id INT NOT NULL PRIMARY KEY )" );
+	$sseo_cli_theme = get_theme_root() . '/sseo-cli-theme';
+	wp_mkdir_p( $sseo_cli_theme );
+	file_put_contents( $sseo_cli_theme . '/functions.php', "<?php get_post_meta( 1, 'rank_math_title', true );" );
+	$sseo_cli_dir = static fn(): string => $sseo_cli_theme;
+	add_filter( 'stylesheet_directory', $sseo_cli_dir );
+	$sseo_vals = array( sseo_cli( 'simple-seo cleanup rank-math --yes' ) );
+	$sseo_vals[] = (int) $sseo_db->get_var( $sseo_db->prepare( "SELECT COUNT(*) FROM {$sseo_db->postmeta} WHERE post_id = %d AND meta_key LIKE 'rank\\_math\\_%%'", $sseo_rm ) );
+	$sseo_vals[] = sseo_cli( 'simple-seo cleanup rank-math --parts=postmeta --yes' );
+	remove_filter( 'stylesheet_directory', $sseo_cli_dir );
+	unlink( $sseo_cli_theme . '/functions.php' );
+	rmdir( $sseo_cli_theme );
+	sseo_check(
+		'cleanup: what goes as a table, the part the theme reads kept; named, it goes with a warning',
+		0 === $sseo_vals[0]->return_code && str_contains( $sseo_vals[0]->stdout, "Kept, as the active theme reads it: postmeta (sseo-cli-theme/functions.php).\npart\trows\tsize\tholds\ntables\t1\t" ) && str_ends_with( $sseo_vals[0]->stdout, "\nSuccess: Removed: tables: 1; rows of settings: 1." )
+			&& 2 === $sseo_vals[1] && 0 === $sseo_vals[2]->return_code && 'Warning: The active theme reads postmeta (sseo-cli-theme/functions.php): removed, it is gone for the theme too.' === $sseo_vals[2]->stderr && str_ends_with( $sseo_vals[2]->stdout, "\nSuccess: Removed: rows of post meta: 2." )
+			&& '' === get_post_meta( $sseo_rm, 'rank_math_title', true ) && false === get_option( 'rank-math-options-general' ) && '{title} {sep} Shop' === Simple_SEO_Fields::post_value( $sseo_rm, 'title' ),
+		$sseo_vals
+	);
+	update_post_meta( $sseo_rm, 'rank_math_description', 'x' );
+	$sseo_db->query( "CREATE TABLE IF NOT EXISTS `{$sseo_db->prefix}rank_math_cli_test` ( id INT NOT NULL PRIMARY KEY )" );
+	Simple_SEO_Rank_Math_Cleanup::start( array( 'postmeta' ) );
+	$sseo_vals = array( sseo_cli( 'simple-seo cleanup rank-math --yes' ), (bool) $sseo_db->get_var( $sseo_db->prepare( 'SHOW TABLES LIKE %s', $sseo_db->prefix . 'rank_math_cli_test' ) ) );
+	$sseo_db->query( "DROP TABLE IF EXISTS `{$sseo_db->prefix}rank_math_cli_test`" );
+	$sseo_vals[] = sseo_cli( 'simple-seo cleanup rank-math --yes' );
+	sseo_check(
+		'a removal under way goes on with its own parts, not all that is left; then nothing is left',
+		0 === $sseo_vals[0]->return_code && 'Success: Removed: rows of post meta: 1.' === $sseo_vals[0]->stdout && '' === get_post_meta( $sseo_rm, 'rank_math_description', true ) && true === $sseo_vals[1]
+			&& 0 === $sseo_vals[2]->return_code && 'Success: There is no data of Rank Math on this site.' === $sseo_vals[2]->stdout,
+		$sseo_vals
+	);
+	foreach ( array_merge( $sseo_yi_rows, array( Simple_SEO_Rank_Math_Import::STATE, Simple_SEO_Rank_Math_Cleanup::OPTION ) ) as $sseo_name ) {
+		delete_option( $sseo_name );
+	}
+	Simple_SEO_Settings::install();
+	Simple_SEO_Settings::flush();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );

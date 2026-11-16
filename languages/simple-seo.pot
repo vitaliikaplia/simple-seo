@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.33.0\n"
+"Project-Id-Version: Simple SEO 0.34.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-16T03:28:03+00:00\n"
+"POT-Creation-Date: 2026-11-16T13:24:20+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -510,6 +510,192 @@ msgstr ""
 msgid "Clean-up"
 msgstr ""
 
+#: includes/class-simple-seo-cli-fields.php:92
+msgid "Name the fields to change, for example --title=\"…\"."
+msgstr ""
+
+#. translators: %s: keys of fields, e.g. title, description.
+#: includes/class-simple-seo-cli-fields.php:107
+#, php-format
+msgid "Fields saved: %s."
+msgstr ""
+
+#: includes/class-simple-seo-cli-fields.php:113
+#: includes/class-simple-seo-fields.php:402
+msgid "There is no such term with SEO fields."
+msgstr ""
+
+#: includes/class-simple-seo-cli-fields.php:113
+#: includes/class-simple-seo-cli.php:124
+#: includes/class-simple-seo-fields.php:402
+msgid "There is no such post with SEO fields."
+msgstr ""
+
+#: includes/class-simple-seo-cli-indexnow.php:80
+#: includes/views/tab-indexnow.php:111
+msgid "Nothing has been sent yet."
+msgstr ""
+
+#. translators: %s: ID of a post.
+#: includes/class-simple-seo-cli-indexnow.php:111
+#, php-format
+msgid "Post %s is not a page search engines may show: left out."
+msgstr ""
+
+#. translators: %s: an address.
+#: includes/class-simple-seo-cli-indexnow.php:118
+#, php-format
+msgid "Not an address of this site: %s"
+msgstr ""
+
+#: includes/class-simple-seo-cli-indexnow.php:124
+msgid "Nothing to send."
+msgstr ""
+
+#: includes/class-simple-seo-cli-indexnow.php:141
+msgid "Nothing is waiting to be sent."
+msgstr ""
+
+#: includes/class-simple-seo-cli-indexnow.php:152
+msgid "Nothing is sent:"
+msgstr ""
+
+#. translators: 1: an address, 2: how many more.
+#: includes/class-simple-seo-cli-indexnow.php:166
+#: includes/views/tab-indexnow.php:100
+#, php-format
+msgid "%1$s and %2$s more"
+msgstr ""
+
+#: includes/class-simple-seo-cli-indexnow.php:177
+msgid "Bing did not take all the addresses."
+msgstr ""
+
+#. translators: %s: number of addresses.
+#: includes/class-simple-seo-cli-indexnow.php:180
+#, php-format
+msgid "Addresses Bing took: %s."
+msgstr ""
+
+#. translators: %s: names of SEO plugins, e.g. Yoast SEO and Rank Math.
+#. translators: %s: name of an SEO plugin.
+#: includes/class-simple-seo-cli.php:201
+#: includes/class-simple-seo-cli.php:331
+#: includes/class-simple-seo-import.php:352
+#: includes/views/tab-import.php:74
+#, php-format
+msgid "There is no data of %s on this site."
+msgstr ""
+
+#. translators: 1: number of posts, 2: number of terms.
+#: includes/class-simple-seo-cli.php:212
+#, php-format
+msgid "Posts: %1$s, terms: %2$s."
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/class-simple-seo-cli.php:220
+#, php-format
+msgid "The import from %s is done."
+msgstr ""
+
+#. translators: %s: list of settings.
+#: includes/class-simple-seo-cli.php:241
+#: includes/views/tab-import.php:97
+#, php-format
+msgid "Settings taken: %s."
+msgstr ""
+
+#: includes/class-simple-seo-cli.php:242
+#: includes/views/tab-import.php:98
+msgid "Settings: nothing to take, Simple SEO has its own."
+msgstr ""
+
+#. translators: %s: language codes.
+#: includes/class-simple-seo-cli.php:245
+#: includes/views/tab-import.php:103
+#, php-format
+msgid "Also the home and 404 pages, the breadcrumb labels and the Schema names of the languages: %s."
+msgstr ""
+
+#. translators: 1: posts with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
+#: includes/class-simple-seo-cli.php:250
+#: includes/views/tab-import.php:108
+#, php-format
+msgid "Posts with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
+msgstr ""
+
+#. translators: 1: terms with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
+#: includes/class-simple-seo-cli.php:252
+#: includes/views/tab-import.php:110
+#, php-format
+msgid "Terms with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
+msgstr ""
+
+#. translators: %s: list of variables with how often each was found.
+#: includes/class-simple-seo-cli.php:264
+#: includes/views/tab-import.php:123
+#, php-format
+msgid "Left out of the texts, as Simple SEO has no such variable: %s."
+msgstr ""
+
+#: includes/class-simple-seo-cli.php:274
+#: includes/views/tab-import.php:129
+msgid "Not taken, as Simple SEO has nothing for it yet:"
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/class-simple-seo-cli.php:321
+#: includes/views/tab-import-cleanup.php:60
+#, php-format
+msgid "%s is active, so its data is in use. Deactivate it first."
+msgstr ""
+
+#: includes/class-simple-seo-cli.php:324
+#: includes/views/tab-import-cleanup.php:62
+msgid "Run the import first: removing comes after it."
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/class-simple-seo-cli.php:335
+#, php-format
+msgid "Remove these parts of the data of %s? Removing cannot be undone: have a backup of the database."
+msgstr ""
+
+#. translators: %s: list of what was removed.
+#: includes/class-simple-seo-cli.php:356
+#: includes/views/tab-import-cleanup.php:141
+#, php-format
+msgid "Removed: %s."
+msgstr ""
+
+#: includes/class-simple-seo-cli.php:357
+#: includes/views/tab-import-cleanup.php:142
+msgid "Removed: nothing, it was gone already."
+msgstr ""
+
+#. translators: 1: parts named, 2: the parts there are.
+#: includes/class-simple-seo-cli.php:375
+#, php-format
+msgid "No such part: %1$s. The parts: %2$s."
+msgstr ""
+
+#. translators: 1: a part of a plugin's data, e.g. postmeta; 2: files of the theme.
+#: includes/class-simple-seo-cli.php:384
+#, php-format
+msgid "Kept, as the active theme reads it: %1$s (%2$s)."
+msgstr ""
+
+#. translators: 1: a part of a plugin's data, e.g. postmeta; 2: files of the theme.
+#: includes/class-simple-seo-cli.php:387
+#, php-format
+msgid "The active theme reads %1$s (%2$s): removed, it is gone for the theme too."
+msgstr ""
+
+#: includes/class-simple-seo-cli.php:418
+msgid "It stopped before the end: run the command again to go on."
+msgstr ""
+
 #: includes/class-simple-seo-faq.php:62
 #: includes/class-simple-seo-faq.php:81
 msgid "Questions and answers"
@@ -540,6 +726,48 @@ msgstr ""
 
 #: includes/class-simple-seo-faq.php:85
 msgid "questions"
+msgstr ""
+
+#. translators: %s: key of a field, e.g. title.
+#: includes/class-simple-seo-fields.php:415
+#, php-format
+msgid "There is no SEO field %s here."
+msgstr ""
+
+#. translators: %s: key of a field, e.g. title.
+#: includes/class-simple-seo-fields.php:426
+#, php-format
+msgid "You may not edit the SEO field %s."
+msgstr ""
+
+#. translators: %s: key of a field, e.g. nofollow.
+#: includes/class-simple-seo-fields.php:499
+#, php-format
+msgid "The SEO field %s takes yes or no (1 or 0, true or false)."
+msgstr ""
+
+#. translators: %s: key of a field, e.g. og_image.
+#: includes/class-simple-seo-fields.php:502
+#, php-format
+msgid "The SEO field %s takes the ID of an image in the media library."
+msgstr ""
+
+#. translators: %s: key of a field, e.g. canonical.
+#: includes/class-simple-seo-fields.php:505
+#, php-format
+msgid "The SEO field %s takes a full address that starts with https:// or http://."
+msgstr ""
+
+#. translators: 1: key of a field, e.g. schema_page_type; 2: the values it takes.
+#: includes/class-simple-seo-fields.php:511
+#, php-format
+msgid "The SEO field %1$s takes one of: %2$s."
+msgstr ""
+
+#. translators: %s: key of a field, e.g. title.
+#: includes/class-simple-seo-fields.php:516
+#, php-format
+msgid "The SEO field %s cannot hold this value."
 msgstr ""
 
 #: includes/class-simple-seo-files.php:60
@@ -649,7 +877,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-import.php:39
@@ -670,12 +898,140 @@ msgstr ""
 msgid "Not now"
 msgstr ""
 
-#. translators: %s: names of SEO plugins, e.g. Yoast SEO and Rank Math.
-#. translators: %s: name of an SEO plugin.
-#: includes/class-simple-seo-import.php:291
-#: includes/views/tab-import.php:74
+#: includes/class-simple-seo-import.php:251
+msgid "the separator"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:253
 #, php-format
-msgid "There is no data of %s on this site."
+msgid "templates: %s"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:254
+msgid "what search engines leave out"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:255
+msgid "where attachment pages go"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:256
+msgid "the default image"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:257
+msgid "the X account"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:259
+#, php-format
+msgid "the home and 404 pages: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:261
+#, php-format
+msgid "breadcrumbs: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:263
+#, php-format
+msgid "breadcrumb labels: %s"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:264
+msgid "the XML sitemap switched off"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:266
+#, php-format
+msgid "clean-up: %s"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:267
+msgid "the text of robots.txt"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:269
+#, php-format
+msgid "Schema: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:271
+#, php-format
+msgid "Local SEO: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-import.php:273
+#, php-format
+msgid "codes of webmaster tools: %s"
+msgstr ""
+
+#. translators: %s: number of posts.
+#: includes/class-simple-seo-import.php:285
+#, php-format
+msgid "titles for breadcrumbs (posts: %s)"
+msgstr ""
+
+#. translators: %s: number of posts.
+#: includes/class-simple-seo-import.php:287
+#, php-format
+msgid "titles, descriptions and images for X (posts: %s)"
+msgstr ""
+
+#. translators: %s: number of posts.
+#: includes/class-simple-seo-import.php:289
+#, php-format
+msgid "advanced robots settings (posts: %s)"
+msgstr ""
+
+#. translators: %s: number of posts.
+#: includes/class-simple-seo-import.php:291
+#, php-format
+msgid "Schema of posts (posts: %s)"
+msgstr ""
+
+#. translators: %s: number of users.
+#: includes/class-simple-seo-import.php:293
+#, php-format
+msgid "SEO titles and descriptions of author archives (authors: %s)"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:294
+msgid "templates of titles and descriptions for social networks"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:295
+msgid "the texts the breadcrumbs put before archives and search results and on the 404 page"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:296
+msgid "the person the site represents: choose the user on the Schema tab"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:297
+msgid "codes of webmaster tools Simple SEO has no field for: put those still needed into the custom code of the theme, or they stop working"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:298
+msgid "addresses without the category base: with the plugin off, the addresses of categories get it back"
+msgstr ""
+
+#: includes/class-simple-seo-import.php:299
+msgid "the rules added to robots.txt: put them on the Files tab"
+msgstr ""
+
+#. translators: %s: number of redirections.
+#: includes/class-simple-seo-import.php:301
+#, php-format
+msgid "redirections (%s): with the plugin off they stop working; move them to a redirection plugin first"
 msgstr ""
 
 #: includes/class-simple-seo-indexing.php:58
@@ -743,48 +1099,48 @@ msgstr ""
 msgid "%s is active: Simple SEO steps aside while it is, and sends nothing."
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:311
+#: includes/class-simple-seo-indexnow.php:337
 msgid "It will be tried again in ten minutes."
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:313
+#: includes/class-simple-seo-indexnow.php:339
 msgid "Given up after three tries."
 msgstr ""
 
 #. translators: %s: the error.
-#: includes/class-simple-seo-indexnow.php:366
+#: includes/class-simple-seo-indexnow.php:394
 #, php-format
 msgid "Bing cannot be reached from this server: %s"
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:384
+#: includes/class-simple-seo-indexnow.php:412
 msgid "Taken."
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:386
+#: includes/class-simple-seo-indexnow.php:414
 msgid "Taken; Bing checks the key file first."
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:388
+#: includes/class-simple-seo-indexnow.php:416
 msgid "Bing found the request wrong."
 msgstr ""
 
 #. translators: %s: address of the key file.
-#: includes/class-simple-seo-indexnow.php:391
+#: includes/class-simple-seo-indexnow.php:419
 #, php-format
 msgid "The key is not valid: Bing could not read the key file at %s."
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:393
+#: includes/class-simple-seo-indexnow.php:421
 msgid "The addresses do not belong to the host of the site or to its key."
 msgstr ""
 
-#: includes/class-simple-seo-indexnow.php:395
+#: includes/class-simple-seo-indexnow.php:423
 msgid "Too many requests: Bing asks to wait."
 msgstr ""
 
 #. translators: %s: HTTP status.
-#: includes/class-simple-seo-indexnow.php:399
+#: includes/class-simple-seo-indexnow.php:427
 #, php-format
 msgid "Bing answered %s."
 msgstr ""
@@ -1156,6 +1512,10 @@ msgstr ""
 #: includes/class-simple-seo-readability.php:188
 #, php-format
 msgid "%1$s or more sentences in a row start with the same word: %2$s. Begin them differently."
+msgstr ""
+
+#: includes/class-simple-seo-rest.php:61
+msgid "The SEO fields of Simple SEO the user may edit. An empty value clears a field: an empty text, false, 0 for an image."
 msgstr ""
 
 #: includes/class-simple-seo-schema.php:98
@@ -1585,6 +1945,54 @@ msgstr ""
 
 #: includes/class-simple-seo-social.php:85
 msgid "Best 1200 × 630 pixels. Without it: the featured image, then the default image from the settings."
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:70
+#, php-format
+msgid "tables: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:72
+#, php-format
+msgid "options: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:74
+#, php-format
+msgid "scheduled tasks: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:76
+#, php-format
+msgid "capabilities of roles: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:78
+#, php-format
+msgid "rows of settings: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:80
+#, php-format
+msgid "rows of user meta: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:82
+#, php-format
+msgid "rows of term meta: %s"
+msgstr ""
+
+#. translators: %s: number.
+#: includes/class-simple-seo-source-cleanup.php:84
+#, php-format
+msgid "rows of post meta: %s"
 msgstr ""
 
 #: includes/class-simple-seo-special.php:34
@@ -2240,16 +2648,6 @@ msgid "No data of %s is left on this site."
 msgstr ""
 
 #. translators: %s: name of an SEO plugin.
-#: includes/views/tab-import-cleanup.php:60
-#, php-format
-msgid "%s is active, so its data is in use. Deactivate it first."
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:62
-msgid "Run the import first: removing comes after it."
-msgstr ""
-
-#. translators: %s: name of an SEO plugin.
 #: includes/views/tab-import-cleanup.php:64
 #, php-format
 msgid "What %s left in the database. Simple SEO does not need it: the import has taken what Simple SEO has a place for."
@@ -2307,67 +2705,9 @@ msgstr ""
 
 #. translators: %s: date and time.
 #: includes/views/tab-import-cleanup.php:127
-#: includes/views/tab-import.php:114
+#: includes/views/tab-import.php:90
 #, php-format
 msgid "Finished: %s."
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:135
-#, php-format
-msgid "tables: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:137
-#, php-format
-msgid "options: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:139
-#, php-format
-msgid "scheduled tasks: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:141
-#, php-format
-msgid "capabilities of roles: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:143
-#, php-format
-msgid "rows of settings: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:145
-#, php-format
-msgid "rows of user meta: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:147
-#, php-format
-msgid "rows of term meta: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import-cleanup.php:149
-#, php-format
-msgid "rows of post meta: %s"
-msgstr ""
-
-#. translators: %s: list of what was removed.
-#: includes/views/tab-import-cleanup.php:158
-#, php-format
-msgid "Removed: %s."
-msgstr ""
-
-#: includes/views/tab-import-cleanup.php:159
-msgid "Removed: nothing, it was gone already."
 msgstr ""
 
 #. translators: 1: number of posts, 2: number of terms.
@@ -2416,180 +2756,6 @@ msgstr ""
 
 #: includes/views/tab-import.php:78
 msgid "The last import"
-msgstr ""
-
-#: includes/views/tab-import.php:82
-msgid "the separator"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:84
-#, php-format
-msgid "templates: %s"
-msgstr ""
-
-#: includes/views/tab-import.php:85
-msgid "what search engines leave out"
-msgstr ""
-
-#: includes/views/tab-import.php:86
-msgid "where attachment pages go"
-msgstr ""
-
-#: includes/views/tab-import.php:87
-msgid "the default image"
-msgstr ""
-
-#: includes/views/tab-import.php:88
-msgid "the X account"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:90
-#, php-format
-msgid "the home and 404 pages: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:92
-#, php-format
-msgid "breadcrumbs: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:94
-#, php-format
-msgid "breadcrumb labels: %s"
-msgstr ""
-
-#: includes/views/tab-import.php:95
-msgid "the XML sitemap switched off"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:97
-#, php-format
-msgid "clean-up: %s"
-msgstr ""
-
-#: includes/views/tab-import.php:98
-msgid "the text of robots.txt"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:100
-#, php-format
-msgid "Schema: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:102
-#, php-format
-msgid "Local SEO: %s"
-msgstr ""
-
-#. translators: %s: number.
-#: includes/views/tab-import.php:104
-#, php-format
-msgid "codes of webmaster tools: %s"
-msgstr ""
-
-#. translators: %s: list of settings.
-#: includes/views/tab-import.php:121
-#, php-format
-msgid "Settings taken: %s."
-msgstr ""
-
-#: includes/views/tab-import.php:122
-msgid "Settings: nothing to take, Simple SEO has its own."
-msgstr ""
-
-#. translators: %s: language codes.
-#: includes/views/tab-import.php:127
-#, php-format
-msgid "Also the home and 404 pages, the breadcrumb labels and the Schema names of the languages: %s."
-msgstr ""
-
-#. translators: 1: posts with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
-#: includes/views/tab-import.php:132
-#, php-format
-msgid "Posts with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
-msgstr ""
-
-#. translators: 1: terms with the plugin's fields, 2: of them changed, 3: fields filled, 4: fields kept, 5: values not taken.
-#: includes/views/tab-import.php:134
-#, php-format
-msgid "Terms with SEO fields: %1$s, %2$s of them changed. Fields filled: %3$s; kept as Simple SEO had them: %4$s; not taken, as Simple SEO cannot hold the value: %5$s."
-msgstr ""
-
-#. translators: %s: list of variables with how often each was found.
-#: includes/views/tab-import.php:147
-#, php-format
-msgid "Left out of the texts, as Simple SEO has no such variable: %s."
-msgstr ""
-
-#: includes/views/tab-import.php:153
-msgid "Not taken, as Simple SEO has nothing for it yet:"
-msgstr ""
-
-#. translators: %s: number of posts.
-#: includes/views/tab-import.php:158
-#, php-format
-msgid "titles for breadcrumbs (posts: %s)"
-msgstr ""
-
-#. translators: %s: number of posts.
-#: includes/views/tab-import.php:160
-#, php-format
-msgid "titles, descriptions and images for X (posts: %s)"
-msgstr ""
-
-#. translators: %s: number of posts.
-#: includes/views/tab-import.php:162
-#, php-format
-msgid "advanced robots settings (posts: %s)"
-msgstr ""
-
-#. translators: %s: number of posts.
-#: includes/views/tab-import.php:164
-#, php-format
-msgid "Schema of posts (posts: %s)"
-msgstr ""
-
-#. translators: %s: number of users.
-#: includes/views/tab-import.php:166
-#, php-format
-msgid "SEO titles and descriptions of author archives (authors: %s)"
-msgstr ""
-
-#: includes/views/tab-import.php:167
-msgid "templates of titles and descriptions for social networks"
-msgstr ""
-
-#: includes/views/tab-import.php:168
-msgid "the texts the breadcrumbs put before archives and search results and on the 404 page"
-msgstr ""
-
-#: includes/views/tab-import.php:169
-msgid "the person the site represents: choose the user on the Schema tab"
-msgstr ""
-
-#: includes/views/tab-import.php:170
-msgid "codes of webmaster tools Simple SEO has no field for: put those still needed into the custom code of the theme, or they stop working"
-msgstr ""
-
-#: includes/views/tab-import.php:171
-msgid "addresses without the category base: with the plugin off, the addresses of categories get it back"
-msgstr ""
-
-#: includes/views/tab-import.php:172
-msgid "the rules added to robots.txt: put them on the Files tab"
-msgstr ""
-
-#. translators: %s: number of redirections.
-#: includes/views/tab-import.php:174
-#, php-format
-msgid "redirections (%s): with the plugin off they stop working; move them to a redirection plugin first"
 msgstr ""
 
 #: includes/views/tab-indexing.php:16
@@ -2701,16 +2867,6 @@ msgstr ""
 
 #: includes/views/tab-indexnow.php:86
 msgid "Addresses"
-msgstr ""
-
-#. translators: 1: an address, 2: how many more.
-#: includes/views/tab-indexnow.php:100
-#, php-format
-msgid "%1$s and %2$s more"
-msgstr ""
-
-#: includes/views/tab-indexnow.php:111
-msgid "Nothing has been sent yet."
 msgstr ""
 
 #: includes/views/tab-integrations.php:18

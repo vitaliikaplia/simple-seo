@@ -60,6 +60,32 @@ abstract class Simple_SEO_Source_Cleanup {
 	abstract public static function labels(): array;
 
 	/**
+	 * What the report of a clean-up counts: key => label (%s: how many).
+	 *
+	 * @return array<string, string>
+	 */
+	public static function removed_labels(): array {
+		return array(
+			/* translators: %s: number. */
+			'tables'   => __( 'tables: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'options'  => __( 'options: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'cron'     => __( 'scheduled tasks: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'caps'     => __( 'capabilities of roles: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'settings' => __( 'rows of settings: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'usermeta' => __( 'rows of user meta: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'termmeta' => __( 'rows of term meta: %s', 'simple-seo' ),
+			/* translators: %s: number. */
+			'postmeta' => __( 'rows of post meta: %s', 'simple-seo' ),
+		);
+	}
+
+	/**
 	 * The state of a clean-up: status (running, done), groups still to go, report, started, finished.
 	 *
 	 * @return array<string, mixed>

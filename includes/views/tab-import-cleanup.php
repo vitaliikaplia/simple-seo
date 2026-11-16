@@ -130,24 +130,7 @@ endif;
 			<?php
 			$simple_seo_done  = (array) ( $cleanup['report'] ?? array() );
 			$simple_seo_items = array();
-			foreach ( array(
-				/* translators: %s: number. */
-				'tables'   => __( 'tables: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'options'  => __( 'options: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'cron'     => __( 'scheduled tasks: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'caps'     => __( 'capabilities of roles: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'settings' => __( 'rows of settings: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'usermeta' => __( 'rows of user meta: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'termmeta' => __( 'rows of term meta: %s', 'simple-seo' ),
-				/* translators: %s: number. */
-				'postmeta' => __( 'rows of post meta: %s', 'simple-seo' ),
-			) as $simple_seo_what => $simple_seo_label ) {
+			foreach ( Simple_SEO_Source_Cleanup::removed_labels() as $simple_seo_what => $simple_seo_label ) {
 				if ( ! empty( $simple_seo_done[ $simple_seo_what ] ) ) {
 					$simple_seo_items[] = sprintf( $simple_seo_label, $simple_seo_n( $simple_seo_done[ $simple_seo_what ] ) );
 				}

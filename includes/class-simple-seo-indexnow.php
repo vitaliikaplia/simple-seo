@@ -203,6 +203,27 @@ final class Simple_SEO_IndexNow {
 			|| (bool) preg_match( '/\.(?:test|local|localhost|invalid|example)$/', $host );
 	}
 
+	/**
+	 * The hosts of the site's addresses: of its home and, with wp-loc, of each language's home.
+	 *
+	 * @return string[]
+	 */
+	public static function hosts(): array {
+		$homes = array( (string) get_option( 'home' ) );
+		foreach ( Simple_SEO_WP_Loc::codes() as $code ) {
+			if ( '' !== $code ) {
+				$homes[] = (string) apply_filters( 'wpml_home_url', '', $code );
+			}
+		}
+
+		return array_values( array_unique( array_filter( array_map( static fn( string $url ): string => strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) ), $homes ) ) ) );
+	}
+
+	/** Whether an address is one of this site's: http or https, on one of its hosts. */
+	public static function own( string $url ): bool {
+		return (bool) preg_match( '#^https?://#i', $url ) && in_array( strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) ), self::hosts(), true );
+	}
+
 	/** Whether changes of a post are sent: a published post of a type with SEO fields, no password. */
 	public static function watched( WP_Post $post ): bool {
 		return in_array( $post->post_type, Simple_SEO_Fields::post_types(), true ) && is_post_type_viewable( $post->post_type ) && '' === $post->post_password;
@@ -286,16 +307,20 @@ final class Simple_SEO_IndexNow {
 		}
 	}
 
-	/** Send the batch, a request for each host; what failed on the way is tried again later. */
-	public static function send(): void {
+	/**
+	 * Send the batch, a request for each host; what failed on the way is tried again later.
+	 *
+	 * @return array<int, array{time: int, count: int, url: string, code: int, ok: bool, message: string}> The answers, as the log keeps them.
+	 */
+	public static function send(): array {
 		$queue = self::queue();
 		$urls  = array_keys( $queue['urls'] );
 		if ( ! $urls ) {
-			return;
+			return array();
 		}
 		if ( self::blockers() ) {
 			delete_option( self::QUEUE );
-			return;
+			return array();
 		}
 
 		$by_host = array();
@@ -303,7 +328,8 @@ final class Simple_SEO_IndexNow {
 			$by_host[ strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) ) ][] = $url;
 		}
 
-		$again = array();
+		$again   = array();
+		$answers = array();
 		foreach ( $by_host as $host => $list ) {
 			$result = self::submit( (string) $host, $list );
 			if ( $result['retry'] && $queue['attempts'] + 1 < self::ATTEMPTS ) {
@@ -312,7 +338,7 @@ final class Simple_SEO_IndexNow {
 			} elseif ( $result['retry'] ) {
 				$result['message'] .= ' ' . __( 'Given up after three tries.', 'simple-seo' );
 			}
-			self::log( $list, $result );
+			$answers[] = self::log( $list, $result );
 		}
 
 		// Addresses added while the batch was on its way stay for the next one.
@@ -327,10 +353,12 @@ final class Simple_SEO_IndexNow {
 
 		if ( ! $now['urls'] ) {
 			delete_option( self::QUEUE );
-			return;
+			return $answers;
 		}
 		update_option( self::QUEUE, $now, false );
 		wp_schedule_single_event( time() + ( $again ? self::RETRY : self::DELAY ), self::EVENT );
+
+		return $answers;
 	}
 
 	/**
@@ -404,22 +432,23 @@ final class Simple_SEO_IndexNow {
 	 *
 	 * @param string[]                                                     $urls
 	 * @param array{code: int, ok: bool, retry: bool, message: string} $result
+	 * @return array{time: int, count: int, url: string, code: int, ok: bool, message: string}
 	 */
-	private static function log( array $urls, array $result ): void {
-		$log = get_option( self::LOG, array() );
-		$log = is_array( $log ) ? $log : array();
-		array_unshift(
-			$log,
-			array(
-				'time'    => time(),
-				'count'   => count( $urls ),
-				'url'     => (string) ( $urls[0] ?? '' ),
-				'code'    => $result['code'],
-				'ok'      => $result['ok'],
-				'message' => $result['message'],
-			)
+	private static function log( array $urls, array $result ): array {
+		$entry = array(
+			'time'    => time(),
+			'count'   => count( $urls ),
+			'url'     => (string) ( $urls[0] ?? '' ),
+			'code'    => $result['code'],
+			'ok'      => $result['ok'],
+			'message' => $result['message'],
 		);
+		$log   = get_option( self::LOG, array() );
+		$log   = is_array( $log ) ? $log : array();
+		array_unshift( $log, $entry );
 		update_option( self::LOG, array_slice( $log, 0, self::LOG_SIZE ), false );
+
+		return $entry;
 	}
 
 	/**

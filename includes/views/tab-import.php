@@ -78,31 +78,7 @@ endif;
 	<h3><?php esc_html_e( 'The last import', 'simple-seo' ); ?></h3>
 	<?php
 	$simple_seo_settings = array();
-	$simple_seo_labels   = array(
-		'separator'     => __( 'the separator', 'simple-seo' ),
-		/* translators: %s: number. */
-		'templates'     => __( 'templates: %s', 'simple-seo' ),
-		'indexing'      => __( 'what search engines leave out', 'simple-seo' ),
-		'attachments'   => __( 'where attachment pages go', 'simple-seo' ),
-		'default_image' => __( 'the default image', 'simple-seo' ),
-		'x_account'     => __( 'the X account', 'simple-seo' ),
-		/* translators: %s: number. */
-		'special'       => __( 'the home and 404 pages: %s', 'simple-seo' ),
-		/* translators: %s: number. */
-		'breadcrumbs'   => __( 'breadcrumbs: %s', 'simple-seo' ),
-		/* translators: %s: number. */
-		'labels'        => __( 'breadcrumb labels: %s', 'simple-seo' ),
-		'sitemaps'      => __( 'the XML sitemap switched off', 'simple-seo' ),
-		/* translators: %s: number. */
-		'cleanup'       => __( 'clean-up: %s', 'simple-seo' ),
-		'robots_txt'    => __( 'the text of robots.txt', 'simple-seo' ),
-		/* translators: %s: number. */
-		'schema'        => __( 'Schema: %s', 'simple-seo' ),
-		/* translators: %s: number. */
-		'local'         => __( 'Local SEO: %s', 'simple-seo' ),
-		/* translators: %s: number. */
-		'verification'  => __( 'codes of webmaster tools: %s', 'simple-seo' ),
-	);
+	$simple_seo_labels   = Simple_SEO_Import::settings_labels();
 	foreach ( $simple_seo_labels as $simple_seo_what => $simple_seo_label ) {
 		if ( $simple_seo_count( 'settings', $simple_seo_what ) ) {
 			$simple_seo_settings[] = sprintf( $simple_seo_label, $simple_seo_n( $simple_seo_count( 'settings', $simple_seo_what ) ) );
@@ -153,26 +129,7 @@ endif;
 				<?php esc_html_e( 'Not taken, as Simple SEO has nothing for it yet:', 'simple-seo' ); ?>
 				<ul class="ul-disc">
 					<?php
-					$simple_seo_left = array(
-						/* translators: %s: number of posts. */
-						'bctitle'          => __( 'titles for breadcrumbs (posts: %s)', 'simple-seo' ),
-						/* translators: %s: number of posts. */
-						'twitter'          => __( 'titles, descriptions and images for X (posts: %s)', 'simple-seo' ),
-						/* translators: %s: number of posts. */
-						'robots_adv'       => __( 'advanced robots settings (posts: %s)', 'simple-seo' ),
-						/* translators: %s: number of posts. */
-						'schema'           => __( 'Schema of posts (posts: %s)', 'simple-seo' ),
-						/* translators: %s: number of users. */
-						'authors'          => __( 'SEO titles and descriptions of author archives (authors: %s)', 'simple-seo' ),
-						'social_templates' => __( 'templates of titles and descriptions for social networks', 'simple-seo' ),
-						'breadcrumb_texts' => __( 'the texts the breadcrumbs put before archives and search results and on the 404 page', 'simple-seo' ),
-						'schema_person'    => __( 'the person the site represents: choose the user on the Schema tab', 'simple-seo' ),
-						'verification'     => __( 'codes of webmaster tools Simple SEO has no field for: put those still needed into the custom code of the theme, or they stop working', 'simple-seo' ),
-						'url_bases'        => __( 'addresses without the category base: with the plugin off, the addresses of categories get it back', 'simple-seo' ),
-						'robots_rules'     => __( 'the rules added to robots.txt: put them on the Files tab', 'simple-seo' ),
-						/* translators: %s: number of redirections. */
-						'redirections'     => __( 'redirections (%s): with the plugin off they stop working; move them to a redirection plugin first', 'simple-seo' ),
-					);
+					$simple_seo_left = Simple_SEO_Import::left_labels();
 					foreach ( $simple_seo_left as $simple_seo_what => $simple_seo_label ) :
 						if ( empty( $report['left'][ $simple_seo_what ] ) ) {
 							continue;
