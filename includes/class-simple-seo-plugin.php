@@ -50,6 +50,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Audit::init();
 		Simple_SEO_Links::init();
 		Simple_SEO_Suggestions::init();
+		Simple_SEO_AI::init();
 		Simple_SEO_REST::init();
 		Simple_SEO_Abilities::init();
 		Simple_SEO_Yoast_Compat::init();

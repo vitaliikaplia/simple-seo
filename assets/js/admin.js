@@ -1,7 +1,7 @@
 /**
- * Simple SEO admin: the "Insert structure" buttons next to title and description fields, the image
- * pickers, the search result preview, bulk editing (with alt texts of images filled from their
- * names), the rows of Local SEO for a local business and the import that goes on by itself.
+ * Simple SEO admin: the "Insert structure" and AI buttons next to the SEO fields, the image pickers,
+ * the search result preview, bulk editing (with alt texts of images filled from their names), the
+ * rows of Local SEO for a local business and the import that goes on by itself.
  *
  * Empty field: the structure goes in as it is. Plain text without variables: the text takes the
  * place of {title} (or {excerpt}) in the structure, so the editor's words stay. A field that
@@ -575,6 +575,129 @@
 	}
 
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-analysis]' ), initAnalysis );
+
+	/*
+	 * AI (Simple_SEO_AI): the button next to the SEO title, the meta description and the focus
+	 * keyphrase sends what the editor has now; one variant goes into the field, as if typed there,
+	 * of more the editor chooses one.
+	 */
+	function aiRequest( data ) {
+		var body = {
+			object: data.object,
+			id: data.id,
+			field: data.field,
+			value: fieldValue( data.target ),
+			keyphrase: fieldValue( 'simple-seo-field-keyphrase' )
+		};
+		var block = 'post' === data.object ? blockEditor() : null;
+
+		if ( 'term' === data.object ) {
+			body.title   = fieldValue( 'name' );
+			body.excerpt = fieldValue( 'description' );
+		} else {
+			body.title   = block ? block.getEditedPostAttribute( 'title' ) : fieldValue( 'title' );
+			body.excerpt = block ? block.getEditedPostAttribute( 'excerpt' ) : fieldValue( 'excerpt' );
+			body.content = editorContent();
+		}
+		// What this screen has no field for, the server takes as saved.
+		Object.keys( body ).forEach( function ( key ) {
+			if ( null == body[ key ] ) {
+				delete body[ key ];
+			}
+		} );
+
+		return JSON.stringify( body );
+	}
+
+	function aiPut( field, value ) {
+		field.value = value;
+		field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		field.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+	}
+
+	function initAI( root ) {
+		var data;
+		try {
+			data = JSON.parse( root.getAttribute( 'data-simple-seo-ai' ) );
+		} catch ( error ) {
+			return;
+		}
+
+		var button = root.querySelector( '.simple-seo-ai-button' );
+		var status = root.querySelector( '.simple-seo-ai-status' );
+		var list   = root.querySelector( '.simple-seo-ai-variants' );
+
+		function offer( field, variants ) {
+			var heading = document.createElement( 'span' );
+			heading.className   = 'simple-seo-ai-choose';
+			heading.textContent = data.choose;
+			list.appendChild( heading );
+
+			variants.forEach( function ( variant ) {
+				var option = document.createElement( 'button' );
+				option.type        = 'button';
+				option.className   = 'button simple-seo-ai-variant';
+				option.textContent = variant.shown;
+				option.title       = variant.value;
+				if ( ! variant.fits ) {
+					var note = document.createElement( 'span' );
+					note.className   = 'simple-seo-ai-long';
+					note.textContent = ' — ' + data.long;
+					option.appendChild( note );
+				}
+				option.addEventListener( 'click', function () {
+					aiPut( field, variant.value );
+					list.hidden      = true;
+					list.textContent = '';
+					field.focus();
+				} );
+				list.appendChild( option );
+			} );
+			list.hidden = false;
+		}
+
+		button.addEventListener( 'click', function ( event ) {
+			event.preventDefault();
+			var field = document.getElementById( data.target );
+			if ( ! field ) {
+				return;
+			}
+
+			button.disabled    = true;
+			status.textContent = data.working;
+			list.hidden        = true;
+			list.textContent   = '';
+			window.fetch( data.url + ( -1 === data.url.indexOf( '?' ) ? '?' : '&' ) + '_locale=user', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': data.nonce },
+				body: aiRequest( data )
+			} ).then( function ( response ) {
+				return response.json().catch( function () {
+					return null;
+				} ).then( function ( result ) {
+					if ( ! response.ok || ! result || ! Array.isArray( result.variants ) || ! result.variants.length ) {
+						// The server says what went wrong; a page of errors says nothing to the editor.
+						throw { text: result && 'string' === typeof result.message ? result.message : data.failed };
+					}
+					return result.variants;
+				} );
+			} ).then( function ( variants ) {
+				status.textContent = '';
+				if ( 1 === variants.length ) {
+					aiPut( field, variants[ 0 ].value );
+				} else {
+					offer( field, variants );
+				}
+			} ).catch( function ( error ) {
+				status.textContent = error && error.text ? error.text : data.failed;
+			} ).then( function () {
+				button.disabled = false;
+			} );
+		} );
+	}
+
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-ai]' ), initAI );
 
 	/*
 	 * Search Console in the SEO box (Simple_SEO_Search_Console): the data of the post come after the

@@ -560,3 +560,45 @@
 		font-size: 12px;
 	}
 }
+
+/* Under a field of the SEO block: "Insert structure" and "Write with AI". */
+.simple-seo-field-buttons {
+	display: inline-block;
+	max-width: 100%;
+	margin-top: 4px;
+}
+
+.simple-seo-ai-status:not(:empty) {
+	margin-left: 4px;
+}
+
+.simple-seo-ai-variants {
+	display: block;
+	margin-top: 6px;
+}
+
+.simple-seo-ai-variants[hidden] {
+	display: none;
+}
+
+.simple-seo-ai-choose {
+	display: block;
+	color: #50575e;
+}
+
+.simple-seo-ai-variants .simple-seo-ai-variant {
+	display: block;
+	width: 100%;
+	height: auto;
+	min-height: 30px;
+	margin: 4px 0 0;
+	padding: 4px 10px;
+	line-height: 1.5;
+	text-align: left;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.simple-seo-ai-long {
+	color: #996800;
+}

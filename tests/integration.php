@@ -155,6 +155,7 @@ $sseo_saved_options = array(
 	'integrations'   => get_option( Simple_SEO_Integrations::OPTION ),
 	'search_console' => get_option( Simple_SEO_Search_Console::OPTION ),
 	'indexnow'       => get_option( Simple_SEO_IndexNow::OPTION ),
+	'ai'             => get_option( Simple_SEO_AI::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -249,7 +250,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations', Simple_SEO_Search_Console::OPTION => 'search_console', Simple_SEO_IndexNow::OPTION => 'indexnow' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations', Simple_SEO_Search_Console::OPTION => 'search_console', Simple_SEO_IndexNow::OPTION => 'indexnow', Simple_SEO_AI::OPTION => 'ai' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -344,6 +345,9 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 		delete_option( Simple_SEO_Links::DB_OPTION );
 	}
 	delete_option( Simple_SEO_Links::RECENT );
+	// The answer of the AI Client about the test's provider, and its key.
+	delete_transient( Simple_SEO_AI::READY );
+	delete_option( 'connectors_ai_sseo_test_api_key' );
 	delete_option( Simple_SEO_Audit::RUN );
 	Simple_SEO_Audit::unlock();
 	if ( false !== $sseo_saved_audit['run'] ) {
@@ -10605,6 +10609,585 @@ try {
 	wp_set_current_user( 0 );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'AI' );
+
+	// A provider of the AI Client that answers what the test says (tests/ai-fake-provider.php).
+	require_once SIMPLE_SEO_DIR . 'tests/ai-fake-provider.php';
+	$sseo_ai_new_request = static function (): void {
+		// What one request asked the AI Client stays for that request: a new one reads the kept answer.
+		( new ReflectionProperty( Simple_SEO_AI::class, 'ready' ) )->setValue( null, null );
+	};
+	$sseo_ai_set = static function ( int $variants ): void {
+		update_option( Simple_SEO_AI::OPTION, array( 'variants' => $variants ) );
+		Simple_SEO_Settings::flush();
+	};
+	$sseo_ai_timeout = static fn(): int => (int) get_option( '_transient_timeout_' . Simple_SEO_AI::READY ) - time();
+	$GLOBALS['sseo_ai_prompts']    = array();
+	$GLOBALS['sseo_ai_configured'] = false;
+	$GLOBALS['sseo_ai_without']    = array();
+	Simple_SEO_AI::flush();
+	// Who edits the SEO fields as a site has it by default: earlier sections narrowed it.
+	$sseo_ai_access = get_option( Simple_SEO_Access::OPTION );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	Simple_SEO_Settings::flush();
+
+	$sseo_vals = array(
+		Simple_SEO_Settings::defaults( Simple_SEO_AI::OPTION ),
+		Simple_SEO_AI::sanitize( array() ),
+		Simple_SEO_AI::sanitize( array( 'variants' => '0' ) ),
+		Simple_SEO_AI::sanitize( array( 'variants' => '9' ) ),
+		Simple_SEO_AI::sanitize( array( 'variants' => '3', 'other' => '1' ) ),
+		Simple_SEO_AI::sanitize( array( 'variants' => '5' ) ),
+		Simple_SEO_AI::sanitize( array( 'variants' => '1' ) ),
+	);
+	sseo_check( 'the settings: one variant by default, from 1 to 5', array( array( 'variants' => 1 ), array( 'variants' => 1 ), array( 'variants' => 1 ), array( 'variants' => 5 ), array( 'variants' => 3 ), array( 'variants' => 5 ), array( 'variants' => 1 ) ) === $sseo_vals, $sseo_vals );
+	$sseo_vals = array();
+	foreach ( array( 4, 70, -2 ) as $sseo_val ) {
+		$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->options, array( 'option_value' => maybe_serialize( array( 'variants' => $sseo_val ) ) ), array( 'option_name' => Simple_SEO_AI::OPTION ) );
+		wp_cache_delete( Simple_SEO_AI::OPTION, 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+		Simple_SEO_Settings::flush();
+		$sseo_vals[] = Simple_SEO_AI::variants();
+	}
+	sseo_check( 'the variants as saved, and as a row changed by hand would have them, from 1 to 5', array( 4, 5, 1 ) === $sseo_vals, $sseo_vals );
+
+	// Whether a model can write.
+	$sseo_ai_new_request();
+	$sseo_vals = array( Simple_SEO_AI::ready(), get_transient( Simple_SEO_AI::READY ), $sseo_ai_timeout() );
+	sseo_check(
+		'no provider: no model can write; the answer kept an hour, with the providers it was given for',
+		false === $sseo_vals[0] && array( 'providers' => '', 'ready' => false ) === $sseo_vals[1] && $sseo_vals[2] > 3500 && $sseo_vals[2] <= HOUR_IN_SECONDS,
+		$sseo_vals
+	);
+	\WordPress\AiClient\AiClient::defaultRegistry()->registerProvider( Simple_SEO_Test_AI_Provider::class );
+	$sseo_ai_new_request();
+	$sseo_vals = array( Simple_SEO_AI::ready(), get_transient( Simple_SEO_AI::READY ) );
+	$GLOBALS['sseo_ai_configured'] = true;
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	$sseo_ai_new_request();
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	sseo_check(
+		'a new provider is asked about at once; one not configured yet cannot write; the answer stays for the request and is kept for the next',
+		false === $sseo_vals[0] && array( 'providers' => 'sseo-test', 'ready' => false ) === $sseo_vals[1] && false === $sseo_vals[2] && false === $sseo_vals[3],
+		$sseo_vals
+	);
+	Simple_SEO_AI::flush_option( 'blogname' );
+	Simple_SEO_AI::flush_option( array( 'connectors_ai_x_api_key' ) );
+	$sseo_vals = array( get_transient( Simple_SEO_AI::READY ) );
+	Simple_SEO_AI::flush_option( 'connectors_ai_sseo_test_api_key' );
+	$sseo_vals[] = get_transient( Simple_SEO_AI::READY );
+	$sseo_ai_new_request();
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	$sseo_vals[] = $sseo_ai_timeout();
+	sseo_check(
+		'a key of Connectors changed: asked again, and a model that can write is kept for 12 hours; other options leave the answer',
+		is_array( $sseo_vals[0] ) && false === $sseo_vals[1] && true === $sseo_vals[2] && $sseo_vals[3] > 12 * HOUR_IN_SECONDS - 100 && $sseo_vals[3] <= 12 * HOUR_IN_SECONDS,
+		$sseo_vals
+	);
+	$sseo_vals = array();
+	foreach ( array( 'add', 'update', 'delete' ) as $sseo_name ) {
+		Simple_SEO_AI::ready();
+		$sseo_before = is_array( get_transient( Simple_SEO_AI::READY ) );
+		if ( 'add' === $sseo_name ) {
+			add_option( 'connectors_ai_sseo_test_api_key', 'one', '', false );
+		} elseif ( 'update' === $sseo_name ) {
+			update_option( 'connectors_ai_sseo_test_api_key', 'two' );
+		} else {
+			delete_option( 'connectors_ai_sseo_test_api_key' );
+		}
+		$sseo_vals[ $sseo_name ] = $sseo_before && false === get_transient( Simple_SEO_AI::READY );
+	}
+	sseo_check( 'a key added, changed or removed in Connectors drops the answer', array( 'add' => true, 'update' => true, 'delete' => true ) === $sseo_vals, $sseo_vals );
+	$sseo_ai_new_request();
+	$sseo_vals = array( Simple_SEO_AI::ready() );
+	delete_transient( Simple_SEO_AI::READY );
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	$sseo_vals[] = get_transient( Simple_SEO_AI::READY );
+	sseo_check( 'in one request the AI Client is asked once', array( true, true, false ) === $sseo_vals, $sseo_vals );
+	$sseo_ai_new_request();
+	Simple_SEO_AI::ready();
+	add_filter( 'wp_supports_ai', '__return_false' );
+	$sseo_vals = array( Simple_SEO_AI::ready(), Simple_SEO_AI::button( 'title', 'post', get_post( $sseo_p['author_post'] ) ) );
+	$sseo_val  = Simple_SEO_AI::generate( get_post( $sseo_p['author_post'] ), 'title' );
+	$sseo_vals[] = Simple_SEO_AI::check();
+	remove_filter( 'wp_supports_ai', '__return_false' );
+	Simple_SEO_AI::flush();
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	sseo_check(
+		'AI turned off on the site (wp_supports_ai): no model, no button, nothing written',
+		false === $sseo_vals[0] && '' === $sseo_vals[1] && false === $sseo_vals[2] && true === $sseo_vals[3] && is_wp_error( $sseo_val ) && 'simple_seo_ai_unavailable' === $sseo_val->get_error_code() && 500 === ( $sseo_val->get_error_data()['status'] ?? 0 ),
+		array( $sseo_vals, $sseo_val )
+	);
+
+	// The buttons.
+	wp_set_current_user( $sseo_ed );
+	$sseo_html = Simple_SEO_AI::button( 'title', 'post', get_post( $sseo_p['author_post'] ) );
+	preg_match( '/data-simple-seo-ai="([^"]*)"/', $sseo_html, $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check(
+		'the button: the route, the post and its field, the field it fills, the words of the script',
+		str_starts_with( $sseo_html, '<span class="simple-seo-ai" data-simple-seo-ai="' )
+			&& str_ends_with( $sseo_html, '"><button type="button" class="button simple-seo-ai-button">Write with AI</button> <span class="simple-seo-ai-status description" role="status" aria-live="polite"></span><span class="simple-seo-ai-variants" hidden></span></span>' )
+			&& array(
+				'url'     => rest_url( 'simple-seo/v1/ai' ),
+				'nonce'   => wp_create_nonce( 'wp_rest' ),
+				'object'  => 'post',
+				'id'      => (int) $sseo_p['author_post'],
+				'field'   => 'title',
+				'target'  => 'simple-seo-field-title',
+				'working' => 'Writing…',
+				'failed'  => 'The AI could not write it. Try again.',
+				'choose'  => 'Choose one:',
+				'long'    => 'longer than search results show',
+			) === $sseo_json,
+		$sseo_html
+	);
+	preg_match( '/data-simple-seo-ai="([^"]*)"/', Simple_SEO_AI::button( 'description', 'term', get_term( $sseo_cat_id ) ), $sseo_m );
+	$sseo_json = json_decode( html_entity_decode( $sseo_m[1] ?? '', ENT_QUOTES, 'UTF-8' ), true );
+	sseo_check(
+		'the button of a term; none for the fields the AI does not write',
+		is_array( $sseo_json ) && 'term' === $sseo_json['object'] && $sseo_cat_id === $sseo_json['id'] && 'simple-seo-field-description' === $sseo_json['target']
+			&& '' === Simple_SEO_AI::button( 'keyphrases', 'post', get_post( $sseo_p['author_post'] ) ) && '' === Simple_SEO_AI::button( 'canonical', 'post', get_post( $sseo_p['author_post'] ) ),
+		$sseo_json
+	);
+	$sseo_html  = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
+	$sseo_term  = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
+	$sseo_ai_at = static fn( string $html, string $field, string $before ): bool => (bool) preg_match( '/id="simple-seo-field-' . $field . '"[^<]*(?:<\/textarea>)?<span class="simple-seo-field-buttons">' . $before . '<span class="simple-seo-ai" data-simple-seo-ai="[^"]*&quot;field&quot;:&quot;' . $field . '&quot;/', $html );
+	$sseo_mask  = static fn( string $field ): string => '<button type="button" class="button simple-seo-mask" data-target="simple-seo-field-' . $field . '"[^>]*>Insert structure<\/button> ';
+	sseo_check(
+		'the SEO block: the AI button after "Insert structure" of the title and the description, and alone under the focus keyphrase; no other',
+		3 === substr_count( $sseo_html, 'class="simple-seo-ai"' ) && $sseo_ai_at( $sseo_html, 'title', $sseo_mask( 'title' ) ) && $sseo_ai_at( $sseo_html, 'description', $sseo_mask( 'description' ) ) && $sseo_ai_at( $sseo_html, 'keyphrase', '' ),
+		$sseo_html
+	);
+	sseo_check( 'the form of a term: the title and the description', 2 === substr_count( $sseo_term, 'class="simple-seo-ai"' ) && $sseo_ai_at( $sseo_term, 'title', $sseo_mask( 'title' ) ) && $sseo_ai_at( $sseo_term, 'description', $sseo_mask( 'description' ) ), $sseo_term );
+	$GLOBALS['sseo_ai_configured'] = false;
+	Simple_SEO_AI::flush();
+	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
+	sseo_check(
+		'no model that can write: no AI button, "Insert structure" as it was',
+		! str_contains( $sseo_html, 'simple-seo-ai' ) && (bool) preg_match( '/<span class="simple-seo-field-buttons"><button type="button" class="button simple-seo-mask" data-target="simple-seo-field-title"[^>]*>Insert structure<\/button><\/span>/', $sseo_html ) && ! preg_match( '/id="simple-seo-field-keyphrase"[^>]*><span/', $sseo_html ),
+		$sseo_html
+	);
+	$GLOBALS['sseo_ai_configured'] = true;
+	Simple_SEO_AI::flush();
+
+	// What the AI is asked and what comes into the field.
+	update_option( Simple_SEO_Titles::OPTION, array_replace( Simple_SEO_Settings::get( Simple_SEO_Titles::OPTION ), array( 'templates' => array( 'post:post' => array( 'title' => '{title} {page} {sep} {site}', 'description' => '{excerpt}' ), 'post:sseo_book' => array( 'title' => '{site} {sep} {tagline}', 'description' => '' ) ) ) ) );
+	Simple_SEO_Settings::flush();
+	$sseo_ai = (int) wp_insert_post( array( 'post_title' => 'Aitest garden shears', 'post_status' => 'publish', 'post_author' => $sseo_au, 'post_content' => '<h2>Sharp blades</h2><p>Body text &amp; more.</p><h3>Care</h3><p>Oil them.</p>' ) );
+	$sseo['posts'][] = $sseo_ai;
+	update_post_meta( $sseo_ai, Simple_SEO_Fields::meta_key( 'keyphrase' ), 'garden shears' );
+	$sseo_ai_book = (int) wp_insert_post( array( 'post_title' => 'Aitest book', 'post_type' => 'sseo_book', 'post_status' => 'publish', 'post_author' => $sseo_au, 'post_content' => '<p>A book.</p>', 'post_excerpt' => 'A book <em>excerpt</em>.' ) );
+	$sseo['posts'][] = $sseo_ai_book;
+	$sseo_ai_rest = static function ( array $params ): WP_REST_Response {
+		$request = new WP_REST_Request( 'POST', '/simple-seo/v1/ai' );
+		foreach ( $params as $key => $value ) {
+			$request->set_param( $key, $value );
+		}
+
+		return rest_do_request( $request );
+	};
+	$sseo_ai_last = static fn(): array => (array) end( $GLOBALS['sseo_ai_prompts'] );
+	$sseo_sep     = Simple_SEO_Titles::separator();
+	$sseo_site    = Simple_SEO_Variables::plain( (string) get_option( 'blogname' ) );
+	$sseo_lang    = get_locale();
+	$sseo_lang    = class_exists( 'Locale' ) ? Locale::getDisplayLanguage( $sseo_lang, 'en' ) . ' (' . $sseo_lang . ')' : $sseo_lang;
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		// With wp-loc: the language of the post, not the site's.
+		$sseo_code = array_values( array_diff( array_keys( Simple_SEO_WP_Loc::languages() ), array( Simple_SEO_WP_Loc::default_language() ) ) )[0];
+		do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo_ai, 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_code, 'source_language_code' => null ) );
+		$sseo_lang = Simple_SEO_WP_Loc::locale_of( $sseo_code );
+		$sseo_lang = Locale::getDisplayLanguage( $sseo_lang, 'en' ) . ' (' . $sseo_lang . ')';
+	}
+	$sseo_ai_set( 2 );
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["Fresh words","Second words","Third words"]}';
+	$sseo_ai_tagline           = get_option( 'blogdescription' );
+	update_option( 'blogdescription', 'Garden tips & tools' );
+
+	wp_set_current_user( $sseo_au );
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'title' ) );
+	$sseo_val      = $sseo_ai_last();
+	$sseo_lengths  = Simple_SEO_AI::lengths( 'title', '[TEXT] ' . $sseo_sep . ' ' . $sseo_site, "## Sharp blades\n\nBody text & more.\n\n### Care\n\nOil them." );
+	sseo_check(
+		'REST: the variants of the title asked for, the words of the AI in place of {title} and the other variables kept, as the page shows them',
+		200 === $sseo_response->get_status() && array(
+			'variants' => array(
+				array( 'value' => 'Fresh words {page} {sep} {site}', 'shown' => 'Fresh words ' . $sseo_sep . ' ' . $sseo_site, 'fits' => true ),
+				array( 'value' => 'Second words {page} {sep} {site}', 'shown' => 'Second words ' . $sseo_sep . ' ' . $sseo_site, 'fits' => true ),
+			),
+		) === $sseo_response->get_data(),
+		$sseo_response->get_data()
+	);
+	sseo_check(
+		'the instruction: the language of the post, plain text, JSON of as many variants as set, the schema',
+		implode(
+			"\n",
+			array(
+				'You are an SEO copywriter. You write what search engines show for one page of a website: accurate to the page, specific, natural, never invented — say only what the page itself says.',
+				'Write in ' . $sseo_lang . ', whatever language the instructions are in.',
+				'Plain text only: no quotation marks around the text, no emoji, no hashtags, no Markdown, no curly braces.',
+				'Answer with JSON only, 2 different variants: {"variants": ["…"]}',
+			)
+		) === $sseo_val['system'] && 'application/json' === $sseo_val['mime']
+			&& array( 'type' => 'object', 'properties' => array( 'variants' => array( 'type' => 'array', 'items' => array( 'type' => 'string' ) ) ), 'required' => array( 'variants' ), 'additionalProperties' => false ) === $sseo_val['schema'],
+		$sseo_val
+	);
+	update_option( 'blogdescription', '' );
+	Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' );
+	update_option( 'blogdescription', 'Garden tips & tools' );
+	sseo_check( 'a site without a tagline: its name alone', str_starts_with( $sseo_ai_last()['text'], 'Website: ' . $sseo_site . "\nPage: " ), $sseo_ai_last()['text'] );
+	sseo_check(
+		'the prompt of the title: the site, the page, the keyphrase; how long, in what line; the text with its headings',
+		implode(
+			"\n",
+			array(
+				'Website: ' . $sseo_site . ' — Garden tips & tools',
+				'Page: Post "Aitest garden shears"',
+				'Focus keyphrase: garden shears',
+				'',
+				sprintf( 'Write 2 different variants of the SEO title of this page: the headline search results show as its link, %d to %d characters. Say what the searcher finds on the page and make them want to open it, without clickbait.', $sseo_lengths[0], $sseo_lengths[1] ),
+				'The site puts your words in place of [TEXT] in this line: "[TEXT] ' . $sseo_sep . ' ' . $sseo_site . '". Do not repeat what the rest of the line says.',
+				'Put the focus keyphrase near the start, in a natural form.',
+				'',
+				'Text of the page:',
+				'"""',
+				'## Sharp blades',
+				'',
+				'Body text & more.',
+				'',
+				'### Care',
+				'',
+				'Oil them.',
+				'"""',
+			)
+		) === $sseo_val['text'],
+		$sseo_val['text']
+	);
+
+	// What the editor has now, not saved.
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'title', 'value' => 'Best {title} ever {sep} {title}', 'title' => 'New <b>title</b>', 'excerpt' => 'The short of it.', 'content' => '<p>Edited text.</p>', 'keyphrase' => '' ) );
+	$sseo_val      = $sseo_ai_last()['text'];
+	sseo_check(
+		'what the editor has now: the field with {title} is the template (its first {title} only), the title, the excerpt before the text, the text, no keyphrase',
+		'Best Fresh words ever {sep} {title}' === ( $sseo_response->get_data()['variants'][0]['value'] ?? null ) && 'Best Fresh words ever ' . $sseo_sep . ' Aitest garden shears' === $sseo_response->get_data()['variants'][0]['shown']
+			&& str_contains( $sseo_val, "Page: Post \"New title\"\n\nWrite" ) && str_contains( $sseo_val, 'in this line: "Best [TEXT] ever ' . $sseo_sep . ' Aitest garden shears"' )
+			&& ! str_contains( $sseo_val, 'keyphrase' ) && str_ends_with( $sseo_val, "Text of the page:\n\"\"\"\nThe short of it.\n\nEdited text.\n\"\"\"" ),
+		array( $sseo_response->get_data(), $sseo_val )
+	);
+	$sseo_vals = array();
+	foreach ( array( 'Plain words', '{excerpt} and {title}', '{excerpt} {sep} {site}', '' ) as $sseo_name ) {
+		$sseo_vals[] = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'title', 'value' => $sseo_name ) )->get_data()['variants'][0]['value'] ?? null;
+	}
+	update_post_meta( $sseo_ai, Simple_SEO_Fields::meta_key( 'title' ), 'Saved {title} here' );
+	$sseo_vals[] = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'title' ) )->get_data()['variants'][0]['value'] ?? null;
+	sseo_check(
+		'the template: plain words give way to the template of the type; {title} before {excerpt} in a title, {excerpt} if alone; without a value sent, the field as saved',
+		array( 'Fresh words {page} {sep} {site}', '{excerpt} and Fresh words', 'Fresh words {sep} {site}', 'Fresh words {page} {sep} {site}', 'Saved Fresh words here' ) === $sseo_vals,
+		$sseo_vals
+	);
+	delete_post_meta( $sseo_ai, Simple_SEO_Fields::meta_key( 'title' ) );
+
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'description' ) );
+	$sseo_val      = $sseo_ai_last()['text'];
+	$sseo_lengths  = Simple_SEO_AI::lengths( 'description', '[TEXT]', "## Sharp blades\n\nBody text & more.\n\n### Care\n\nOil them." );
+	sseo_check(
+		'the description: the words of the AI are the whole template {excerpt}; how long; the keyphrase once',
+		'Fresh words' === ( $sseo_response->get_data()['variants'][0]['value'] ?? null ) && 'Fresh words' === $sseo_response->get_data()['variants'][0]['shown'] && true === $sseo_response->get_data()['variants'][0]['fits']
+			&& str_contains( $sseo_val, "Focus keyphrase: garden shears\n\n" . sprintf( 'Write 2 different variants of the meta description of this page: the text under its headline in search results, %d to %d characters, one or two full sentences: what the reader finds on the page and why to open it.', $sseo_lengths[0], $sseo_lengths[1] ) . "\nUse the focus keyphrase once, in a natural form.\n\nText of the page:" )
+			&& ! str_contains( $sseo_val, 'The site puts' ),
+		array( $sseo_response->get_data(), $sseo_val )
+	);
+	$sseo_vals = array(
+		$sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'description', 'value' => '{title}: {excerpt}' ) )->get_data()['variants'][0]['value'] ?? null,
+		$sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'description', 'value' => 'About {title}' ) )->get_data()['variants'][0]['value'] ?? null,
+	);
+	sseo_check( 'a description prefers {excerpt}, else {title}', array( '{title}: Fresh words', 'About Fresh words' ) === $sseo_vals, $sseo_vals );
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["A full sentence."]}';
+	$sseo_vals                 = array( $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'description', 'value' => '' ) )->get_data()['variants'][0]['value'] ?? null, $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'title', 'value' => 'Own' ) )->get_data()['variants'][0]['value'] ?? null );
+	sseo_check( 'a description keeps its full stop, a title loses it', array( 'A full sentence.', 'A full sentence {page} {sep} {site}' ) === $sseo_vals, $sseo_vals );
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["Fresh words","Second words","Third words"]}';
+
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai_book, 'field' => 'title', 'value' => 'Mine {sep} {site}' ) );
+	$sseo_val      = $sseo_ai_last()['text'];
+	sseo_check(
+		'no {title} nor {excerpt} in the field or the template: the AI writes the whole field, and the prompt has no line around its words',
+		'Fresh words' === ( $sseo_response->get_data()['variants'][0]['value'] ?? null ) && 'Fresh words' === $sseo_response->get_data()['variants'][0]['shown']
+			&& str_contains( $sseo_val, 'Page: ' . get_post_type_object( 'sseo_book' )->labels->singular_name . " \"Aitest book\"\n\nWrite 2 different variants of the SEO title" ),
+		array( $sseo_response->get_data(), $sseo_val )
+	);
+	sseo_check( '… nor a line to put them in; the excerpt as saved before the text', ! str_contains( $sseo_val, 'The site puts' ) && ! str_contains( $sseo_val, 'keyphrase' ) && str_ends_with( $sseo_val, "Text of the page:\n\"\"\"\nA book excerpt.\n\nA book.\n\"\"\"" ), $sseo_val );
+	if ( ! Simple_SEO_WP_Loc::languages() ) {
+		$sseo_locale = static fn(): string => 'zz';
+		add_filter( 'locale', $sseo_locale );
+		Simple_SEO_AI::generate( get_post( $sseo_ai_book ), 'title' );
+		remove_filter( 'locale', $sseo_locale );
+		sseo_check( 'a locale without a name: the locale alone', str_contains( $sseo_ai_last()['system'], "\nWrite in zz, whatever language" ), $sseo_ai_last()['system'] );
+	}
+
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["garden shears.","Pruning tools","Garden Shears"]}';
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'keyphrase' ) );
+	$sseo_val      = $sseo_ai_last()['text'];
+	sseo_check(
+		'the focus keyphrase: as the AI wrote it, without a full stop; nothing about lengths or the keyphrase there is',
+		array(
+			array( 'value' => 'garden shears', 'shown' => 'garden shears', 'fits' => true ),
+			array( 'value' => 'Pruning tools', 'shown' => 'Pruning tools', 'fits' => true ),
+		) === ( $sseo_response->get_data()['variants'] ?? null )
+			&& str_contains( $sseo_val, "Page: Post \"Aitest garden shears\"\n\nSuggest 2 different focus keyphrases for this page: what people type into a search engine to find what it offers, 2 to 4 words, the way people search (lowercase except names). The page must answer that search.\n\nText of the page:" )
+			&& ! str_contains( $sseo_val, 'Focus keyphrase:' ) && ! str_contains( $sseo_val, 'characters' ),
+		array( $sseo_response->get_data(), $sseo_val )
+	);
+
+	// The term: its name and description.
+	wp_set_current_user( $sseo_ed );
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["Term words"]}';
+	$sseo_ai_set( 1 );
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'term', 'id' => $sseo_cat_id, 'field' => 'title', 'value' => '', 'title' => 'Aitest category', 'excerpt' => 'All about <i>the</i> category.' ) );
+	$sseo_val      = $sseo_ai_last();
+	sseo_check(
+		'a term: its kind and name, its description as the text; one variant',
+		array( array( 'value' => 'Term words {page} {sep} {site}', 'shown' => 'Term words ' . $sseo_sep . ' ' . $sseo_site, 'fits' => true ) ) === ( $sseo_response->get_data()['variants'] ?? null )
+			&& str_contains( $sseo_val['text'], "Page: Category \"Aitest category\"\n\nWrite one variant of the SEO title" ) && str_ends_with( $sseo_val['text'], "Text of the page:\n\"\"\"\nAll about the category.\n\"\"\"" )
+			&& str_ends_with( $sseo_val['system'], 'Answer with JSON only, one variant: {"variants": ["…"]}' ),
+		array( $sseo_response->get_data(), $sseo_val )
+	);
+	$sseo_response = $sseo_ai_rest( array( 'object' => 'term', 'id' => $sseo_cat_id, 'field' => 'description', 'title' => 'Aitest category', 'excerpt' => '' ) );
+	$sseo_lengths  = Simple_SEO_AI::lengths( 'description', '[TEXT]', 'Aitest category' );
+	sseo_check(
+		'a term without a description: written from its name, as wide as its name',
+		str_ends_with( $sseo_ai_last()['text'], sprintf( "Write one variant of the meta description of this page: the text under its headline in search results, %d to %d characters, one or two full sentences: what the reader finds on the page and why to open it.\n\nThe page has no text yet: write from its title.", $sseo_lengths[0], $sseo_lengths[1] ) ) && 200 === $sseo_response->get_status(),
+		$sseo_ai_last()['text']
+	);
+	$sseo_ai_term_title = get_term_meta( $sseo_cat_id, Simple_SEO_Fields::meta_key( 'title' ), true );
+	update_term_meta( $sseo_cat_id, Simple_SEO_Fields::meta_key( 'title' ), 'Cat {title} best' );
+	$sseo_vals = array( $sseo_ai_rest( array( 'object' => 'term', 'id' => $sseo_cat_id, 'field' => 'title', 'title' => '' ) )->get_data()['variants'][0]['value'] ?? null, $sseo_ai_last()['text'] );
+	update_term_meta( $sseo_cat_id, Simple_SEO_Fields::meta_key( 'title' ), $sseo_ai_term_title );
+	sseo_check( 'a term: its field as saved; without a name, the page is only its kind', 'Cat Term words best' === $sseo_vals[0] && str_contains( $sseo_vals[1], "\nPage: Category\n\nWrite one variant" ), $sseo_vals );
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		$sseo_term = wp_insert_term( 'Aitest lang term', 'category' );
+		// The site's locale apart from the languages of wp-loc.
+		$sseo_locale = static fn(): string => 'fr_FR';
+		add_filter( 'locale', $sseo_locale );
+		$sseo_vals = array();
+		if ( is_array( $sseo_term ) ) {
+			$sseo['terms'][] = array( (int) $sseo_term['term_id'], 'category' );
+			do_action( 'wpml_set_element_language_details', array( 'element_id' => (int) $sseo_term['term_taxonomy_id'], 'element_type' => 'tax_category', 'trid' => null, 'language_code' => $sseo_code, 'source_language_code' => null ) );
+			Simple_SEO_AI::generate( get_term( (int) $sseo_term['term_id'] ), 'title' );
+			$sseo_vals[] = $sseo_ai_last()['system'];
+		}
+		Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' );
+		$sseo_vals[] = $sseo_ai_last()['system'];
+		remove_filter( 'locale', $sseo_locale );
+		sseo_check(
+			'with wp-loc: a term in its language too; the locale of the language, not of the site',
+			is_array( $sseo_term ) && 2 === count( $sseo_vals ) && str_contains( $sseo_vals[0], "\nWrite in " . $sseo_lang . ', whatever language' ) && str_contains( $sseo_vals[1], "\nWrite in " . $sseo_lang . ', whatever language' ),
+			array( $sseo_term, $sseo_vals )
+		);
+	}
+
+	// Who may.
+	$sseo_vals = array();
+	foreach (
+		array(
+			'subscriber'      => array( $sseo_u['subscriber'], 'post', $sseo_ai, 'title' ),
+			'other author'    => array( $sseo_u['contributor'], 'post', $sseo_ai, 'title' ),
+			'author, own'     => array( $sseo_au, 'post', $sseo_ai, 'description' ),
+			'term keyphrase'  => array( $sseo_ed, 'term', $sseo_cat_id, 'keyphrase' ),
+			'no post'         => array( $sseo_ed, 'post', 999999, 'title' ),
+			'private type'    => array( $sseo_ed, 'post', (int) wp_insert_post( array( 'post_title' => 'Aitest private', 'post_type' => 'sseo_private', 'post_status' => 'publish' ) ), 'title' ),
+			'logged out'      => array( 0, 'post', $sseo_ai, 'title' ),
+			'more keyphrases' => array( $sseo_ed, 'post', $sseo_ai, 'keyphrases' ),
+			'a user'          => array( $sseo_ed, 'user', 1, 'title' ),
+			'no id'           => array( $sseo_ed, 'post', null, 'title' ),
+			'no field'        => array( $sseo_ed, 'post', $sseo_ai, null ),
+			'no object'       => array( $sseo_ed, null, $sseo_ai, 'title' ),
+		) as $sseo_name => $sseo_args
+	) {
+		if ( 'private type' === $sseo_name ) {
+			$sseo['posts'][] = $sseo_args[2];
+		}
+		wp_set_current_user( $sseo_args[0] );
+		$sseo_vals[ $sseo_name ] = $sseo_ai_rest( array_filter( array( 'object' => $sseo_args[1], 'id' => $sseo_args[2], 'field' => $sseo_args[3] ), static fn( $value ): bool => null !== $value ) )->get_status();
+	}
+	wp_set_current_user( 0 );
+	$sseo_vals['can'] = array( Simple_SEO_AI::can( 'post', $sseo_ai, 'title' ), Simple_SEO_AI::can( 'post', $sseo_ai, 'description' ) );
+	sseo_check(
+		'who may: whoever may edit the field of the post or term; an unknown field or object is refused',
+		array( 'subscriber' => 403, 'other author' => 403, 'author, own' => 200, 'term keyphrase' => 403, 'no post' => 403, 'private type' => 403, 'logged out' => 401, 'more keyphrases' => 400, 'a user' => 400, 'no id' => 400, 'no field' => 400, 'no object' => 400, 'can' => array( false, false ) ) === $sseo_vals,
+		$sseo_vals
+	);
+	wp_set_current_user( $sseo_ed );
+	sseo_check( 'an editor may for any post; the canonical address is no field of the AI', Simple_SEO_AI::can( 'post', $sseo_ai, 'title' ) && ! Simple_SEO_AI::can( 'post', $sseo_ai, 'canonical' ) && Simple_SEO_AI::can( 'term', $sseo_cat_id, 'description' ) );
+
+	// What the AI answers.
+	$sseo_ai_set( 3 );
+	$sseo_vals = array();
+	foreach (
+		array(
+			'{"variants":["Same words","same WORDS","Other words","Third one","Fourth one"]}',
+			"```json\n{\"variants\": [\"Fenced\"]}\n```",
+			'Sure! {"variants": ["Inside words"]} Hope it helps.',
+			"1. First line\n2) Second line\n- Third line\n* Fourth\n• Fifth\n\n2024 results. 3.5 stars",
+			'["Listed", "Another"]',
+			'{"other": "Nothing"}',
+			'{"variants": ["\"Quoted\"", "«Name» and «Other»", "“Curly”", "{title} evil", "<b>Bold</b>  text", 5, "", "   "]}',
+			'{"variants": ["Ends with a stop.", "Wait...", "Ask?"]}',
+		) as $sseo_name
+	) {
+		$GLOBALS['sseo_ai_answer'] = $sseo_name;
+		$sseo_val                  = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' );
+		$sseo_vals[]               = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() : array_column( $sseo_val, 'value' );
+	}
+	sseo_check(
+		'the answer: the same variant once, as many as set; JSON in a fence or in words, a list, or one a line without its number; quotes around and curly braces go',
+		array(
+			array( 'Same words', 'Other words', 'Third one' ),
+			array( 'Fenced' ),
+			array( 'Inside words' ),
+			array( 'First line', 'Second line', 'Third line' ),
+			array( 'Listed', 'Another' ),
+			'simple_seo_ai_empty',
+			array( 'Quoted', '«Name» and «Other»', 'Curly' ),
+			array( 'Ends with a stop', 'Wait...', 'Ask?' ),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_vals = array(
+		Simple_SEO_AI::parse( "1. First line\n2) Second line\n- Third line\n* Fourth\n• Fifth\n\n2024 results. 3.5 stars", 'title' ),
+		Simple_SEO_AI::parse( '{"variants": ["\"Quoted\"", "«Name» and «Other»", "“Curly”", "{title} evil", "<b>Bold</b>  text", 5, "", "   "]}', 'title' ),
+		Simple_SEO_AI::parse( '{"variants": ["Ends with a stop.", "Wait...", "Ask?", "."]}', 'description' ),
+		Simple_SEO_AI::parse( '{"variants": ["Ends with a stop.", "Wait..."]}', 'title' ),
+		Simple_SEO_AI::parse( 'Just one title', 'title' ),
+		Simple_SEO_AI::parse( '', 'title' ),
+		Simple_SEO_AI::parse( "```\nPlain A\nPlain B\n```", 'title' ),
+	);
+	sseo_check(
+		'parsing: every line, the numbers that start them gone, and a fence around them; tags and curly braces go; a description keeps its full stop, a title loses it',
+		array(
+			array( 'First line', 'Second line', 'Third line', 'Fourth', 'Fifth', '2024 results. 3.5 stars' ),
+			array( 'Quoted', '«Name» and «Other»', 'Curly', 'title evil', 'Bold text' ),
+			array( 'Ends with a stop.', 'Wait...', 'Ask?', '.' ),
+			array( 'Ends with a stop', 'Wait...' ),
+			array( 'Just one title' ),
+			array(),
+			array( 'Plain A', 'Plain B' ),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["' . str_repeat( 'Very long words ', 12 ) . '","' . str_repeat( 'Middle words ', 7 ) . '","Short"]}';
+	$sseo_vals = array( array_column( Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' ), 'fits' ), array_column( Simple_SEO_AI::generate( get_post( $sseo_ai ), 'description' ), 'fits' ), array_column( Simple_SEO_AI::generate( get_post( $sseo_ai ), 'keyphrase' ), 'fits' ) );
+	sseo_check( 'a title or a description wider than search results show it says so, each by its own width; a keyphrase has no width', array( array( false, false, true ), array( false, true, true ), array( true, true, true ) ) === $sseo_vals, $sseo_vals );
+
+	$GLOBALS['sseo_ai_answer'] = new RuntimeException( 'quota gone' );
+	$sseo_val                  = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' );
+	$sseo_response             = $sseo_ai_rest( array( 'object' => 'post', 'id' => $sseo_ai, 'field' => 'title' ) );
+	sseo_check(
+		'the AI Client fails: what it said, for the editor; the route answers so',
+		is_wp_error( $sseo_val ) && 'simple_seo_ai_failed' === $sseo_val->get_error_code() && 'The AI could not write it: quota gone' === $sseo_val->get_error_message() && 500 === ( $sseo_val->get_error_data()['status'] ?? 0 )
+			&& 500 === $sseo_response->get_status() && 'The AI could not write it: quota gone' === ( $sseo_response->get_data()['message'] ?? null ),
+		array( $sseo_val, $sseo_response->get_data() )
+	);
+	$GLOBALS['sseo_ai_answer'] = '{"variants":[]}';
+	$sseo_val                  = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' );
+	sseo_check( 'an answer with nothing to use', is_wp_error( $sseo_val ) && 'simple_seo_ai_empty' === $sseo_val->get_error_code() && 500 === ( $sseo_val->get_error_data()['status'] ?? 0 ), $sseo_val );
+
+	// A model that cannot keep to a schema answers in plain text.
+	$GLOBALS['sseo_ai_without'] = array( 'outputSchema', 'outputMimeType' );
+	$GLOBALS['sseo_ai_answer']  = "Plain one\nPlain two";
+	$sseo_val                   = Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title' );
+	$sseo_vals                  = $sseo_ai_last();
+	$GLOBALS['sseo_ai_without'] = array();
+	sseo_check(
+		'a model without JSON output: asked without a schema, the same words; its lines are the variants',
+		array( 'Plain one {page} {sep} {site}', 'Plain two {page} {sep} {site}' ) === array_column( is_array( $sseo_val ) ? $sseo_val : array(), 'value' ) && null === $sseo_vals['schema'] && null === $sseo_vals['mime'] && str_ends_with( $sseo_vals['system'], 'Answer with JSON only, 3 different variants: {"variants": ["…"]}' ),
+		array( $sseo_val, $sseo_vals )
+	);
+
+	// The text is cut, the lengths follow the width.
+	$GLOBALS['sseo_ai_answer'] = '{"variants":["X"]}';
+	Simple_SEO_AI::generate( get_post( $sseo_ai ), 'title', array( 'content' => '<p>' . str_repeat( 'abcdefghi ', 1000 ) . '</p>' ) );
+	preg_match( '/"""\n(.*)\n"""/s', $sseo_ai_last()['text'], $sseo_m );
+	sseo_check( 'the text the AI reads: at most 8000 characters', Simple_SEO_AI::MAX_TEXT === mb_strlen( $sseo_m[1] ?? '' ) && 8000 === Simple_SEO_AI::MAX_TEXT, mb_strlen( $sseo_m[1] ?? '' ) );
+	$sseo_latin    = 'The quick brown fox jumps over the lazy dog again and again';
+	$sseo_cyrillic = 'Швидка бура лисиця стрибає через лінивого пса знову і знову';
+	$sseo_vals     = array(
+		Simple_SEO_AI::lengths( 'title', '[TEXT]', $sseo_latin ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT]', $sseo_cyrillic ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT] – My Site Name', $sseo_latin ),
+		Simple_SEO_AI::lengths( 'description', '[TEXT]', $sseo_latin ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT]', '' ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT] ' . str_repeat( 'W', 80 ), $sseo_latin ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT] 123456789012345678901234', $sseo_latin ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT] Site', str_repeat( 'i', 30 ) ),
+	);
+	$sseo_most = static fn( array $limit, string $rest, string $sample ): int => max( 10, (int) floor( ( $limit[0] - ( '' !== $rest ? Simple_SEO_Text_Width::width( $rest . ' ', $limit[1] ) : 0 ) ) * 0.9 / ( '' !== $sample ? Simple_SEO_Text_Width::width( $sample, $limit[1] ) / mb_strlen( $sample ) : $limit[1] / 2 ) ) );
+	sseo_check(
+		'how long: 90% of the width search results give, after the rest of the line, in characters as wide as the text; at least 60% of that and what the analysis calls short',
+		array(
+			array( (int) round( $sseo_most( Simple_SEO_Text_Width::TITLE, '', $sseo_latin ) * 0.6 ), $sseo_most( Simple_SEO_Text_Width::TITLE, '', $sseo_latin ) ),
+			array( (int) round( $sseo_most( Simple_SEO_Text_Width::TITLE, '', $sseo_cyrillic ) * 0.6 ), $sseo_most( Simple_SEO_Text_Width::TITLE, '', $sseo_cyrillic ) ),
+			array( (int) round( $sseo_most( Simple_SEO_Text_Width::TITLE, '– My Site Name', $sseo_latin ) * 0.6 ), $sseo_most( Simple_SEO_Text_Width::TITLE, '– My Site Name', $sseo_latin ) ),
+			array( (int) round( $sseo_most( Simple_SEO_Text_Width::DESCRIPTION, '', $sseo_latin ) * 0.6 ), $sseo_most( Simple_SEO_Text_Width::DESCRIPTION, '', $sseo_latin ) ),
+			array( (int) round( $sseo_most( Simple_SEO_Text_Width::TITLE, '', '' ) * 0.6 ), $sseo_most( Simple_SEO_Text_Width::TITLE, '', '' ) ),
+			array( 6, 10 ),
+		) === array_slice( $sseo_vals, 0, 6 ) && $sseo_vals[1][1] < $sseo_vals[0][1] && $sseo_vals[2][1] < $sseo_vals[0][1] && $sseo_vals[3][1] > $sseo_vals[0][1]
+			&& $sseo_vals[6][0] === max( (int) round( $sseo_vals[6][1] * 0.6 ), 30 - mb_strlen( '123456789012345678901234' ) )
+			&& $sseo_most( Simple_SEO_Text_Width::TITLE, 'Site', str_repeat( 'i', 30 ) ) === $sseo_vals[7][1],
+		$sseo_vals
+	);
+	sseo_check( 'in numbers: a Latin title of 58 characters at most, a Cyrillic one of 55, a description of 128', array( array( 35, 58 ), array( 33, 55 ), array( 77, 128 ) ) === array( $sseo_vals[0], $sseo_vals[1], $sseo_vals[3] ), array( $sseo_vals[0], $sseo_vals[1], $sseo_vals[3] ) );
+	$sseo_vals = array(
+		Simple_SEO_AI::lengths( 'title', '[TEXT]', "<p>a</p>\n\n\n\n\n\n<p>b</p>" ) === Simple_SEO_AI::lengths( 'title', '[TEXT]', 'a b' ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT]', str_repeat( 'abcd ', 400 ) . str_repeat( 'W', 3000 ) ) === Simple_SEO_AI::lengths( 'title', '[TEXT]', str_repeat( 'abcd ', 400 ) ),
+		Simple_SEO_AI::lengths( 'title', '[TEXT]', str_repeat( 'Д', 20 ) ),
+		Simple_SEO_AI::lengths( 'description', '[TEXT]', str_repeat( 'Д', 20 ) ),
+	);
+	sseo_check(
+		'the width of the text: on one line, of its first 2000 characters; at least what the analysis calls short (30 and 70) when there is room',
+		true === $sseo_vals[0] && true === $sseo_vals[1] && 30 === $sseo_vals[2][0] && $sseo_vals[2][1] > 30 && 70 === $sseo_vals[3][0] && $sseo_vals[3][1] > 70,
+		$sseo_vals
+	);
+	$sseo_val = Simple_SEO_AI::lengths( 'title', '[TEXT] ab', str_repeat( 'W', 50 ) );
+	sseo_check( 'the fewest never above the most, even when what the analysis calls short is more', $sseo_val[1] < 28 && $sseo_val[0] === $sseo_val[1], $sseo_val );
+
+	// The tab.
+	wp_set_current_user( $sseo_u['administrator'] );
+	Simple_SEO_AI::add_admin_tab();
+	$sseo_tabs = Simple_SEO_Admin::tabs();
+	sseo_check( 'the AI tab: after 404, with its row', isset( $sseo_tabs['ai'] ) && 'AI' === $sseo_tabs['ai']['label'] && array( Simple_SEO_AI::OPTION ) === $sseo_tabs['ai']['options'] && 48 === $sseo_tabs['ai']['order'], $sseo_tabs['ai'] ?? null );
+	$sseo_ai_set( 2 );
+	set_transient( Simple_SEO_AI::READY, array( 'providers' => 'sseo-test', 'ready' => false ), HOUR_IN_SECONDS );
+	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
+	sseo_check(
+		'the tab asks the AI Client now and keeps the answer: a model can write; the link to Connectors; the variants',
+		str_contains( $sseo_html, '<p class="simple-seo-ai-ready">A connected AI can write: the SEO block has the button “Write with AI” next to the SEO title, the meta description and the focus keyphrase.</p>' )
+			&& str_contains( $sseo_html, '<a href="' . esc_url( admin_url( 'options-connectors.php' ) ) . '">Open Connectors</a>' ) && true === ( get_transient( Simple_SEO_AI::READY )['ready'] ?? null )
+			&& str_contains( $sseo_html, '<select id="simple-seo-ai-variants" name="simple_seo_ai[variants]">' ) && 5 === substr_count( $sseo_html, '<option value=' ) && (bool) preg_match( '/<option value="2"\s+selected=[\'"]selected[\'"]>2<\/option>/', $sseo_html ) && str_contains( $sseo_html, '<option value="1">1</option>' ) && str_contains( $sseo_html, '<option value="5">5</option>' ),
+		$sseo_html
+	);
+	$GLOBALS['sseo_ai_configured'] = false;
+	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
+	sseo_check( 'the tab: no model can write yet, said, with the link', str_contains( $sseo_html, '<p class="simple-seo-ai-none">No connected AI can write text yet.' ) && str_contains( $sseo_html, 'options-connectors.php' ) && ! str_contains( $sseo_html, 'simple-seo-ai-ready' ) && false === ( get_transient( Simple_SEO_AI::READY )['ready'] ?? null ), $sseo_html );
+	add_filter( 'wp_supports_ai', '__return_false' );
+	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
+	remove_filter( 'wp_supports_ai', '__return_false' );
+	sseo_check( 'the tab: AI turned off on the site, without the link', str_contains( $sseo_html, '<p class="simple-seo-ai-off">' ) && ! str_contains( $sseo_html, 'options-connectors.php' ) && ! str_contains( $sseo_html, 'simple-seo-ai-none' ), $sseo_html );
+	$GLOBALS['sseo_ai_configured'] = true;
+	wp_set_current_user( $sseo['users']['sseo_seo_manager'] );
+	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
+	sseo_check( 'whoever may not manage the options of the site gets no link to Connectors', str_contains( $sseo_html, 'simple-seo-ai-ready' ) && ! str_contains( $sseo_html, 'options-connectors.php' ), $sseo_html );
+
+	$GLOBALS['sseo_ai_configured'] = false;
+	$GLOBALS['sseo_ai_answer']     = '';
+	Simple_SEO_AI::flush();
+	delete_option( Simple_SEO_AI::OPTION );
+	update_option( Simple_SEO_Access::OPTION, $sseo_ai_access );
+	update_option( 'blogdescription', $sseo_ai_tagline );
+	Simple_SEO_Settings::flush();
+	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Translation' );
 
 	$sseo_mo = SIMPLE_SEO_DIR . 'languages/simple-seo-uk.mo';
@@ -10627,6 +11210,7 @@ try {
 	sseo_check( 'the content analysis is translated', 'Аналіз контенту' === __( 'Content analysis', 'simple-seo' ) && 'SEO-оцінка: %s зі 100' === __( 'SEO score: %s of 100', 'simple-seo' ) );
 	sseo_check( 'readability and the column of scores are translated', 'Читабельність: %s зі 100' === __( 'Readability: %s of 100', 'simple-seo' ) && 'Читабельність: %s' === __( 'Readability: %s', 'simple-seo' ) && 'Речення поспіль починаються з різних слів.' === __( 'Sentences in a row start with different words.', 'simple-seo' ) );
 	sseo_check( 'bulk editing is translated', 'Масове редагування' === __( 'Bulk edit', 'simple-seo' ) && 'Без власного SEO-заголовка' === __( 'Without an SEO title of their own', 'simple-seo' ) && 'Збережено: %s.' === __( 'Saved: %s.', 'simple-seo' ) );
+	sseo_check( 'AI is translated', 'Написати з AI' === __( 'Write with AI', 'simple-seo' ) && 'Варіанти' === __( 'Variants', 'simple-seo' ) && 'AI не зміг це написати: %s' === __( 'The AI could not write it: %s', 'simple-seo' ) && 'Оберіть варіант:' === __( 'Choose one:', 'simple-seo' ) );
 	sseo_check( 'a string with context is translated', 'F Y' === _x( 'F Y', 'month archive date format', 'simple-seo' ) && 'Сторінка %1$d з %2$d' === __( 'Page %1$d of %2$d', 'simple-seo' ) );
 	unload_textdomain( 'simple-seo' );
 

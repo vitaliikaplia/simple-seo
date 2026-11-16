@@ -171,16 +171,23 @@ final class Simple_SEO_Editor {
 
 	/**
 	 * A field with a template: the template as the placeholder and the "Insert structure" button.
+	 * The fields the AI writes get its button (Simple_SEO_AI) as well.
 	 *
 	 * @param array<string, mixed> $field
 	 * @param WP_Post|WP_Term      $object
 	 */
 	private static function input_with_mask( array $field, string $value, string $object_type, $object ): string {
-		$mask = is_callable( $field['mask'] ?? null ) ? (string) call_user_func( $field['mask'], $object_type, $object ) : '';
-		$html = self::input( $field, $value, $mask, $object );
+		$mask    = is_callable( $field['mask'] ?? null ) ? (string) call_user_func( $field['mask'], $object_type, $object ) : '';
+		$html    = self::input( $field, $value, $mask, $object );
+		$buttons = array_filter(
+			array(
+				'' !== $mask ? Simple_SEO_Admin::mask_button( self::input_id( (string) $field['key'] ), $mask ) : '',
+				Simple_SEO_AI::button( (string) $field['key'], $object_type, $object ),
+			)
+		);
 
-		if ( '' !== $mask ) {
-			$html .= '<span style="display:inline-block;margin-top:4px">' . Simple_SEO_Admin::mask_button( self::input_id( (string) $field['key'] ), $mask ) . '</span>';
+		if ( $buttons ) {
+			$html .= '<span class="simple-seo-field-buttons">' . implode( ' ', $buttons ) . '</span>';
 		}
 
 		return $html;
