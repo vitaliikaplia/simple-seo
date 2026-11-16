@@ -405,7 +405,7 @@ abstract class Simple_SEO_Import_Source {
 	/**
 	 * The codes of webmaster tools for the Integrations tab: only where Simple SEO has none.
 	 *
-	 * @param array<string, mixed> $codes  google, bing, yandex, baidu, pinterest, facebook, ahrefs.
+	 * @param array<string, mixed> $codes  google, bing, baidu, pinterest, facebook, ahrefs.
 	 * @param array<string, mixed> $report
 	 */
 	protected static function verification( array $codes, array &$report ): void {

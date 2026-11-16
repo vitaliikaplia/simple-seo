@@ -407,3 +407,14 @@
 		font-size: 12px;
 	}
 }
+
+/* IndexNow: the address of the key file and those of the log break anywhere; the dates by words. */
+.simple-seo-indexnow-file,
+.simple-seo-indexnow-log td + td {
+	overflow-wrap: anywhere;
+}
+
+/* Stronger than .widefat td. */
+.simple-seo-indexnow-log .simple-seo-indexnow-failed {
+	color: #b32d2e;
+}

@@ -149,13 +149,16 @@ final class Simple_SEO_Yoast_Import extends Simple_SEO_Import_Source {
 				array(
 					'google'    => $main['googleverify'] ?? '',
 					'bing'      => $main['msverify'] ?? '',
-					'yandex'    => $main['yandexverify'] ?? '',
 					'baidu'     => $main['baiduverify'] ?? '',
 					'pinterest' => $main['pinterestverify'] ?? '',
 					'ahrefs'    => $main['ahrefsverify'] ?? '',
 				),
 				$report
 			);
+			// A code of a tool Simple SEO has no field for.
+			if ( '' !== trim( self::scalar( $main['yandexverify'] ?? '' ) ) ) {
+				$report['left']['verification'] = 1;
+			}
 			if ( array_key_exists( 'enable_xml_sitemap', $main ) && empty( $main['enable_xml_sitemap'] ) ) {
 				self::sitemaps_off( $report );
 			}

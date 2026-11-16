@@ -88,12 +88,11 @@ final class Simple_SEO_Rank_Math_Import extends Simple_SEO_Import_Source {
 		'google_verify'    => 'google',
 		'bing_verify'      => 'bing',
 		'baidu_verify'     => 'baidu',
-		'yandex_verify'    => 'yandex',
 		'pinterest_verify' => 'pinterest',
 	);
 
 	/** Rank Math's codes Simple SEO has no field for. */
-	private const VERIFICATION_LEFT = array( 'norton_verify', 'custom_webmaster_tags' );
+	private const VERIFICATION_LEFT = array( 'yandex_verify', 'norton_verify', 'custom_webmaster_tags' );
 
 	/** Rank Math's switches that take a base out of addresses. */
 	private const URL_BASES = array( 'strip_category_base', 'wc_remove_product_base', 'wc_remove_category_base', 'wc_remove_category_parent_slugs' );

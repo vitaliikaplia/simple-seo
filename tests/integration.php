@@ -110,6 +110,7 @@ $sseo_saved_options = array(
 	'images'         => get_option( Simple_SEO_Images::OPTION ),
 	'integrations'   => get_option( Simple_SEO_Integrations::OPTION ),
 	'search_console' => get_option( Simple_SEO_Search_Console::OPTION ),
+	'indexnow'       => get_option( Simple_SEO_IndexNow::OPTION ),
 	'blog_public'    => get_option( 'blog_public' ),
 	'robots_txt'     => get_option( Simple_SEO_Files::ROBOTS_OPTION ),
 	'cleanup'        => get_option( Simple_SEO_Cleanup::OPTION ),
@@ -182,7 +183,7 @@ $sseo_cleanup = static function () use ( &$sseo, &$sseo_saved_options, &$sseo_sa
 	// A run broken by a mutation can leave the row empty; the next run then starts from the defaults.
 	update_option( Simple_SEO_Access::OPTION, is_array( $sseo_saved_options['access'] ) && $sseo_saved_options['access'] ? $sseo_saved_options['access'] : Simple_SEO_Access::defaults() );
 	// Rows that were not there go away (back to the defaults); a sanitizer keeps a saved state as it was.
-	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations', Simple_SEO_Search_Console::OPTION => 'search_console' ) as $sseo_name => $sseo_key ) {
+	foreach ( array( Simple_SEO_Titles::OPTION => 'titles', Simple_SEO_Indexing::OPTION => 'indexing', Simple_SEO_Social::OPTION => 'social', Simple_SEO_Special::OPTION => 'special', Simple_SEO_Sitemaps::OPTION => 'sitemaps', Simple_SEO_Breadcrumbs::OPTION => 'breadcrumbs', Simple_SEO_Breadcrumbs::LABELS => 'bc_labels', Simple_SEO_Schema::OPTION => 'schema', Simple_SEO_Schema::NAMES => 'schema_names', Simple_SEO_Local::OPTION => 'local', Simple_SEO_Local::NAMES => 'local_names', Simple_SEO_Images::OPTION => 'images', Simple_SEO_Integrations::OPTION => 'integrations', Simple_SEO_Search_Console::OPTION => 'search_console', Simple_SEO_IndexNow::OPTION => 'indexnow' ) as $sseo_name => $sseo_key ) {
 		delete_option( $sseo_name );
 		if ( is_array( $sseo_saved_options[ $sseo_key ] ) && $sseo_saved_options[ $sseo_key ] ) {
 			add_option( $sseo_name, $sseo_saved_options[ $sseo_key ] );
@@ -3827,7 +3828,7 @@ try {
 			'verification' => array(
 				'google'    => ' abc-DEF_123 ',
 				'bing'      => '<meta name="msvalidate.01" content="0123456789ABCDEF" />',
-				'yandex'    => "bad code\"><script>",
+				'yandex'    => 'yandexcode123',
 				'baidu'     => 'abc',
 				'pinterest' => array( 'no' ),
 				'facebook'  => "<meta name='facebook-domain-verification' content='fbcode123' />",
@@ -3845,7 +3846,7 @@ try {
 			'editors'      => '1',
 		)
 	);
-	sseo_check( 'sanitized: codes as typed or from a whole meta tag; a code with other characters, a short one or no text is none; IDs in capitals or from a pasted snippet; a wrong ID is none; the switches', array( 'google' => 'abc-DEF_123', 'bing' => '0123456789ABCDEF', 'facebook' => 'fbcode123' ) === $sseo_val['verification'] && array( 'google' => 'G-ABC1234567', 'gtm' => 'GTM-AB12CD3', 'meta' => '123456789012345' ) === $sseo_val['tags'] && false === $sseo_val['lazy'] && true === $sseo_val['consent'] && true === $sseo_val['editors'], $sseo_val );
+	sseo_check( 'sanitized: codes as typed or from a whole meta tag; a code with other characters, a short one or no text is none; Yandex has no field; IDs in capitals or from a pasted snippet; a wrong ID is none; the switches', array( 'google' => 'abc-DEF_123', 'bing' => '0123456789ABCDEF', 'facebook' => 'fbcode123' ) === $sseo_val['verification'] && array( 'google' => 'G-ABC1234567', 'gtm' => 'GTM-AB12CD3', 'meta' => '123456789012345' ) === $sseo_val['tags'] && false === $sseo_val['lazy'] && true === $sseo_val['consent'] && true === $sseo_val['editors'], $sseo_val );
 	$sseo_val = Simple_SEO_Integrations::sanitize( array() );
 	sseo_check( 'sanitized: nothing sent is lazy and nothing else', true === $sseo_val['lazy'] && false === $sseo_val['consent'] && false === $sseo_val['editors'] && array() === $sseo_val['tags'] );
 	$sseo_val = Simple_SEO_Integrations::find_ids( "<script async src=\"https://www.googletagmanager.com/gtag/js?id=G-XYZ9876543\"></script><script>gtag('config', 'AW-1234567890');</script><script>ttq.load('CABCDEFGHIJ1234567');</script> GTM-QWERTY1 gtm-qwerty1" );
@@ -3915,7 +3916,7 @@ try {
 	wp_set_current_user( 0 );
 	// The tabs of later sections (llms.txt, Files) are not added yet; Access is.
 	sseo_check( 'the Integrations tab sits after Images and before Access', false !== strpos( $sseo_html, '>Access<' ) && strpos( $sseo_html, '>Images<' ) < strpos( $sseo_html, '>Integrations<' ) && strpos( $sseo_html, '>Integrations<' ) < strpos( $sseo_html, '>Access<' ) );
-	sseo_check( 'the tab: the codes and the IDs as saved, the switches each with its 0, lazy off as saved', str_contains( $sseo_html, 'name="simple_seo_integrations[verification][google]" value="gcode1234"' ) && str_contains( $sseo_html, 'name="simple_seo_integrations[tags][gtm]" value="GTM-AB12CD3"' ) && str_contains( $sseo_html, 'name="simple_seo_integrations[lazy]" value="1" >' ) && 3 === substr_count( $sseo_html, 'value="0">' ) && 7 === substr_count( $sseo_html, 'name="simple_seo_integrations[verification][' ) && 4 === substr_count( $sseo_html, 'name="simple_seo_integrations[tags][' ), $sseo_html );
+	sseo_check( 'the tab: the codes and the IDs as saved, the switches each with its 0, lazy off as saved', str_contains( $sseo_html, 'name="simple_seo_integrations[verification][google]" value="gcode1234"' ) && str_contains( $sseo_html, 'name="simple_seo_integrations[tags][gtm]" value="GTM-AB12CD3"' ) && str_contains( $sseo_html, 'name="simple_seo_integrations[lazy]" value="1" >' ) && 3 === substr_count( $sseo_html, 'value="0">' ) && 6 === substr_count( $sseo_html, 'name="simple_seo_integrations[verification][' ) && ! str_contains( $sseo_html, 'Yandex' ) && 4 === substr_count( $sseo_html, 'name="simple_seo_integrations[tags][' ), $sseo_html );
 	sseo_check( 'the tab says what the theme prints already, and that a tag printed by both is counted twice', str_contains( $sseo_html, 'The theme prints these itself (its options of custom code): Google Tag Manager GTM-AB12CD3' ) && 1 === substr_count( $sseo_html, 'class="description simple-seo-twice"' ) && ! str_contains( $sseo_html_clean, 'The theme prints these itself' ) && ! str_contains( $sseo_html_clean, 'simple-seo-twice' ) );
 	sseo_check( 'the tab saves its row', 'simple-seo-integrations' === ( get_registered_settings()[ Simple_SEO_Integrations::OPTION ]['group'] ?? '' ) );
 
@@ -4534,6 +4535,348 @@ try {
 	}
 	Simple_SEO_Settings::flush();
 	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
+	sseo_section( 'IndexNow' );
+
+	$sseo_ix_public = get_option( 'blog_public' );
+	update_option( 'blog_public', '1' );
+	delete_option( Simple_SEO_IndexNow::OPTION );
+	delete_option( Simple_SEO_IndexNow::QUEUE );
+	delete_option( Simple_SEO_IndexNow::LOG );
+	wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'the defaults: off, no key yet, the row read only where needed; off is the reason nothing is sent', array( 'enabled' => false, 'key' => '' ) === Simple_SEO_Settings::get( Simple_SEO_IndexNow::OPTION ) && false === Simple_SEO_Settings::registered()[ Simple_SEO_IndexNow::OPTION ]['autoload'] && isset( Simple_SEO_IndexNow::blockers()['off'] ) );
+	sseo_check( 'the hooks: the key file early, the changes of posts, the batch', 0 === has_action( 'parse_request', array( Simple_SEO_IndexNow::class, 'serve_key' ) ) && 10 === has_action( 'transition_post_status', array( Simple_SEO_IndexNow::class, 'published' ) ) && 10 === has_action( 'post_updated', array( Simple_SEO_IndexNow::class, 'updated' ) ) && 10 === has_action( 'before_delete_post', array( Simple_SEO_IndexNow::class, 'deleted' ) ) && 10 === has_action( Simple_SEO_IndexNow::EVENT, array( Simple_SEO_IndexNow::class, 'send' ) ) );
+
+	// The key.
+	sseo_check(
+		'a key: 8 to 128 letters, digits and dashes',
+		'abcd-1234' === Simple_SEO_IndexNow::clean_key( 'abcd-1234' ) && '' === Simple_SEO_IndexNow::clean_key( 'abc1234' ) && '' === Simple_SEO_IndexNow::clean_key( str_repeat( 'a', 129 ) ) && str_repeat( 'a', 128 ) === Simple_SEO_IndexNow::clean_key( str_repeat( 'a', 128 ) )
+		&& '' === Simple_SEO_IndexNow::clean_key( 'ключ12345' ) && '' === Simple_SEO_IndexNow::clean_key( 'abc12345<b>' ) && '' === Simple_SEO_IndexNow::clean_key( array( 'abcd-1234' ) ) && (bool) preg_match( '/^[0-9a-f]{32}$/', Simple_SEO_IndexNow::new_key() ) && Simple_SEO_IndexNow::new_key() !== Simple_SEO_IndexNow::new_key()
+	);
+	$sseo_val = Simple_SEO_IndexNow::sanitize( array( 'enabled' => '1' ) );
+	update_option( Simple_SEO_IndexNow::OPTION, $sseo_val );
+	$sseo_ix_key = Simple_SEO_IndexNow::key();
+	$sseo_vals   = array(
+		Simple_SEO_IndexNow::sanitize( array( 'enabled' => '0' ) ),
+		Simple_SEO_IndexNow::sanitize( array( 'enabled' => '1', 'key' => 'stored-key-1' ) ),
+		Simple_SEO_IndexNow::sanitize( array( 'enabled' => '1', 'key' => 'bad key' ) ),
+		Simple_SEO_IndexNow::sanitize( array( 'enabled' => '1', 'new_key' => '1' ) ),
+	);
+	sseo_check(
+		'sanitized: a key made with the first save; kept by the next ones, also switched off; one sent as stored stays; a wrong one is the kept one; a new one on request',
+		true === $sseo_val['enabled'] && (bool) preg_match( '/^[0-9a-f]{32}$/', $sseo_ix_key ) && array( 'enabled' => false, 'key' => $sseo_ix_key ) === $sseo_vals[0]
+		&& 'stored-key-1' === $sseo_vals[1]['key'] && $sseo_ix_key === $sseo_vals[2]['key'] && $sseo_ix_key !== $sseo_vals[3]['key'] && 32 === strlen( $sseo_vals[3]['key'] ) && true === $sseo_vals[3]['enabled'],
+		$sseo_vals
+	);
+
+	$sseo_ix_home = static fn(): string => 'https://www.example.com';
+	$sseo_ix_sub  = static fn(): string => 'https://www.example.com/blog';
+	add_filter( 'pre_option_home', $sseo_ix_home );
+	$sseo_vals = array(
+		Simple_SEO_IndexNow::key_location(),
+		Simple_SEO_IndexNow::key_location( 'http://shop.example.net:8080/a/b/' ),
+		Simple_SEO_IndexNow::key_file( '/' . $sseo_ix_key . '.txt' ),
+		Simple_SEO_IndexNow::key_file( '/other.txt' ),
+		Simple_SEO_IndexNow::key_file( '/blog/' . $sseo_ix_key . '.txt' ),
+	);
+	remove_filter( 'pre_option_home', $sseo_ix_home );
+	add_filter( 'pre_option_home', $sseo_ix_sub );
+	$sseo_vals[] = Simple_SEO_IndexNow::key_location();
+	$sseo_vals[] = Simple_SEO_IndexNow::key_file( '/blog/' . $sseo_ix_key . '.txt' );
+	$sseo_vals[] = Simple_SEO_IndexNow::key_file( '/' . $sseo_ix_key . '.txt' );
+	remove_filter( 'pre_option_home', $sseo_ix_sub );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => false, 'key' => $sseo_ix_key ) );
+	$sseo_vals[] = Simple_SEO_IndexNow::key_file( '/' . $sseo_ix_key . '.txt' );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => true, 'key' => $sseo_ix_key ) );
+	sseo_check(
+		'the key file: under the home of the site, on the host of the addresses; answered with the key there only, and only while IndexNow is on',
+		array(
+			'https://www.example.com/' . $sseo_ix_key . '.txt',
+			'http://shop.example.net:8080/' . $sseo_ix_key . '.txt',
+			$sseo_ix_key,
+			null,
+			null,
+			'https://www.example.com/blog/' . $sseo_ix_key . '.txt',
+			$sseo_ix_key,
+			null,
+			null,
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// When nothing is sent.
+	$sseo_vals = array();
+	foreach ( array(
+		'ready'    => 'https://www.example.com',
+		'test'     => 'http://site.test',
+		'local'    => 'http://shop.local',
+		'host'     => 'http://localhost:8080',
+		'ip'       => 'http://127.0.0.1:8892',
+		'public'   => 'https://example.org',
+	) as $sseo_name => $sseo_home_url ) {
+		$sseo_filter = static fn(): string => $sseo_home_url;
+		add_filter( 'pre_option_home', $sseo_filter );
+		$sseo_vals[ $sseo_name ] = array_keys( Simple_SEO_IndexNow::blockers() );
+		remove_filter( 'pre_option_home', $sseo_filter );
+	}
+	add_filter( 'pre_option_home', $sseo_ix_home );
+	update_option( 'blog_public', '0' );
+	$sseo_vals['private'] = array_keys( Simple_SEO_IndexNow::blockers() );
+	update_option( 'blog_public', '1' );
+	add_filter( 'simple_seo_conflicting_plugin', static fn(): string => 'Rank Math' );
+	$sseo_vals['plugin'] = Simple_SEO_IndexNow::blockers();
+	remove_all_filters( 'simple_seo_conflicting_plugin' );
+	sseo_check(
+		'nothing is sent while the site is hidden from search engines, its address is local, or another SEO plugin is active',
+		array() === $sseo_vals['ready'] && array() === $sseo_vals['public'] && array( 'local' ) === $sseo_vals['test'] && array( 'local' ) === $sseo_vals['local'] && array( 'local' ) === $sseo_vals['host'] && array( 'local' ) === $sseo_vals['ip']
+		&& array( 'private' ) === $sseo_vals['private'] && array( 'plugin' ) === array_keys( $sseo_vals['plugin'] ) && str_contains( $sseo_vals['plugin']['plugin'], 'Rank Math is active' ),
+		$sseo_vals
+	);
+
+	// The changes of posts.
+	$GLOBALS['sseo_ix_requests'] = array();
+	$sseo_ix_reply  = static fn( int $code ): array => array(
+		'headers'  => array(),
+		'body'     => '',
+		'response' => array(
+			'code'    => $code,
+			'message' => '',
+		),
+		'cookies'  => array(),
+		'filename' => null,
+	);
+	$sseo_ix_answer = static fn( string $url, array $args ) => $sseo_ix_reply( 200 );
+	$sseo_ix_fake   = static function ( $pre, $args, $url ) use ( &$sseo_ix_answer ) {
+		if ( Simple_SEO_IndexNow::ENDPOINT !== $url ) {
+			return $pre;
+		}
+		$GLOBALS['sseo_ix_requests'][] = array( (string) $url, $args );
+
+		return $sseo_ix_answer( (string) $url, $args );
+	};
+	add_filter( 'pre_http_request', $sseo_ix_fake, 10, 3 );
+	$sseo_ix_run   = static function (): void {
+		wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
+		Simple_SEO_IndexNow::send();
+	};
+	$sseo_ix_reset = static function (): void {
+		delete_option( Simple_SEO_IndexNow::QUEUE );
+		wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
+	};
+
+	// wp-loc publishes copies of a post in its other languages when it is saved: their addresses
+	// are sent too, and left out of the checks of the post's own.
+	$sseo_ix_own = static function (): array {
+		$urls = array_keys( Simple_SEO_IndexNow::queue()['urls'] );
+		foreach ( array_diff( array_keys( Simple_SEO_WP_Loc::languages() ), array( Simple_SEO_WP_Loc::default_language() ) ) as $sseo_code ) {
+			$urls = array_values( array_filter( $urls, static fn( string $url ): bool => ! str_contains( $url, '.com/' . $sseo_code . '/' ) ) );
+		}
+
+		return $urls;
+	};
+	$sseo['posts']['ix_pub'] = wp_insert_post( array( 'post_title' => 'IndexNow post', 'post_name' => 'ix-post', 'post_status' => 'publish' ) );
+	$sseo_ix_url             = get_permalink( $sseo['posts']['ix_pub'] );
+	$sseo_queue              = Simple_SEO_IndexNow::queue();
+	$sseo_next               = (int) wp_next_scheduled( Simple_SEO_IndexNow::EVENT );
+	sseo_check( 'a post published: its address waits, the batch goes a minute later', array( $sseo_ix_url => true ) === $sseo_queue['urls'] && 0 === $sseo_queue['attempts'] && abs( $sseo_next - ( time() + 60 ) ) <= 2 && str_starts_with( $sseo_ix_url, 'https://www.example.com/' ) && array() === $GLOBALS['sseo_ix_requests'], array( $sseo_queue, $sseo_next - time() ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['ix_pub'], 'post_content' => 'Changed.' ) );
+	sseo_check( 'saved again while published: the same address, once; the batch not moved', array( $sseo_ix_url ) === $sseo_ix_own() && $sseo_next === (int) wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
+	$sseo_ix_reset();
+
+	$sseo_ix_asked = 0;
+	$sseo_ix_count = static function ( $url ) use ( &$sseo_ix_asked ) {
+		++$sseo_ix_asked;
+		return $url;
+	};
+	add_filter( 'simple_seo_canonical', $sseo_ix_count );
+	$sseo['posts']['ix_draft']  = wp_insert_post( array( 'post_title' => 'IndexNow draft', 'post_status' => 'draft' ) );
+	remove_filter( 'simple_seo_canonical', $sseo_ix_count );
+	sseo_check( 'a draft saved costs nothing: its canonical address is not even worked out', 0 === $sseo_ix_asked, $sseo_ix_asked );
+	$sseo['posts']['ix_hidden'] = wp_insert_post( array( 'post_title' => 'IndexNow hidden', 'post_status' => 'publish', 'meta_input' => array( '_simple_seo_index' => 'noindex' ) ) );
+	$sseo['posts']['ix_copy']   = wp_insert_post( array( 'post_title' => 'IndexNow copy', 'post_status' => 'publish', 'meta_input' => array( '_simple_seo_canonical' => 'https://www.example.com/original/' ) ) );
+	$sseo['posts']['ix_secret'] = wp_insert_post( array( 'post_title' => 'IndexNow secret', 'post_status' => 'publish', 'post_password' => 'pass' ) );
+	wp_update_post( array( 'ID' => $sseo['posts']['ix_draft'], 'post_title' => 'IndexNow draft, changed' ) );
+	sseo_check( 'not sent: a draft, saved or changed, a page hidden from search engines, one whose canonical is another page, one with a password', array() === Simple_SEO_IndexNow::queue()['urls'] && false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ), Simple_SEO_IndexNow::queue() );
+	sseo_check( 'watched: posts of types with SEO fields, without a password', Simple_SEO_IndexNow::watched( get_post( $sseo['posts']['ix_pub'] ) ) && ! Simple_SEO_IndexNow::watched( get_post( $sseo['posts']['ix_secret'] ) ) && ! Simple_SEO_IndexNow::watched( new WP_Post( (object) array( 'post_type' => 'attachment', 'post_password' => '' ) ) ) && ! Simple_SEO_IndexNow::watched( new WP_Post( (object) array( 'post_type' => 'revision', 'post_password' => '' ) ) ) );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => false, 'key' => $sseo_ix_key ) );
+	$sseo['posts']['ix_off'] = wp_insert_post( array( 'post_title' => 'IndexNow off', 'post_status' => 'publish' ) );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => true, 'key' => $sseo_ix_key ) );
+	sseo_check( 'switched off: nothing waits', array() === Simple_SEO_IndexNow::queue()['urls'] && false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
+
+	wp_update_post( array( 'ID' => $sseo['posts']['ix_pub'], 'post_name' => 'ix-post-moved' ) );
+	$sseo_ix_moved = get_permalink( $sseo['posts']['ix_pub'] );
+	$sseo_vals = $sseo_ix_own();
+	sort( $sseo_vals );
+	$sseo_val = array( $sseo_ix_url, $sseo_ix_moved );
+	sort( $sseo_val );
+	sseo_check( 'moved to another address: the old one and the new one', $sseo_val === $sseo_vals && $sseo_ix_url !== $sseo_ix_moved, $sseo_vals );
+	$sseo_ix_reset();
+	wp_update_post( array( 'ID' => $sseo['posts']['ix_pub'], 'post_status' => 'draft' ) );
+	sseo_check( 'taken down to a draft: its address, so search engines see it is gone', array( $sseo_ix_moved ) === $sseo_ix_own(), Simple_SEO_IndexNow::queue() );
+	wp_update_post( array( 'ID' => $sseo['posts']['ix_pub'], 'post_status' => 'publish' ) );
+	$sseo_ix_reset();
+	wp_trash_post( $sseo['posts']['ix_pub'] );
+	sseo_check( 'trashed: the address it had, not the one of the trash', array( $sseo_ix_moved ) === $sseo_ix_own(), Simple_SEO_IndexNow::queue() );
+	$sseo_ix_reset();
+	wp_untrash_post( $sseo['posts']['ix_pub'] );
+	wp_update_post( array( 'ID' => $sseo['posts']['ix_pub'], 'post_status' => 'publish' ) );
+	$sseo_ix_reset();
+	$sseo['posts']['ix_gone'] = wp_insert_post( array( 'post_title' => 'IndexNow gone', 'post_name' => 'ix-gone', 'post_status' => 'publish' ) );
+	$sseo_ix_gone             = get_permalink( $sseo['posts']['ix_gone'] );
+	$sseo_ix_reset();
+	wp_delete_post( $sseo['posts']['ix_gone'], true );
+	wp_delete_post( $sseo['posts']['ix_draft'], true );
+	sseo_check( 'deleted at once: the address it had; a draft deleted: nothing', array( $sseo_ix_gone => true ) === Simple_SEO_IndexNow::queue()['urls'], Simple_SEO_IndexNow::queue() );
+	$sseo_ix_reset();
+	Simple_SEO_IndexNow::add( array( 'ftp://example.com/x', '', 'javascript:alert(1)', 'https://www.example.com/a/' ) );
+	sseo_check( 'only web addresses wait', array( 'https://www.example.com/a/' => true ) === Simple_SEO_IndexNow::queue()['urls'] );
+	$sseo_ix_reset();
+	$sseo_many = array();
+	for ( $sseo_i = 0; $sseo_i <= Simple_SEO_IndexNow::BATCH; $sseo_i++ ) {
+		$sseo_many[] = 'https://www.example.com/p' . $sseo_i . '/';
+	}
+	Simple_SEO_IndexNow::add( $sseo_many );
+	sseo_check( 'at most 10,000 addresses wait, as one request takes', 10000 === Simple_SEO_IndexNow::BATCH && Simple_SEO_IndexNow::BATCH === count( Simple_SEO_IndexNow::queue()['urls'] ) );
+	$sseo_ix_reset();
+
+	// The batch.
+	Simple_SEO_IndexNow::add( array( $sseo_ix_moved, 'https://www.example.com/сторінка/', 'https://shop.example.com/x/' ) );
+	$GLOBALS['sseo_ix_requests'] = array();
+	$sseo_ix_run();
+	$sseo_bodies = array_map( static fn( array $request ): array => (array) json_decode( (string) $request[1]['body'], true ), $GLOBALS['sseo_ix_requests'] );
+	$sseo_log    = Simple_SEO_IndexNow::entries();
+	sseo_check(
+		"the batch: a JSON request to Bing for each host, with the key and its file on that host",
+		2 === count( $GLOBALS['sseo_ix_requests'] ) && 'https://www.bing.com/indexnow' === Simple_SEO_IndexNow::ENDPOINT && 'POST' === $GLOBALS['sseo_ix_requests'][0][1]['method'] && 'application/json; charset=utf-8' === $GLOBALS['sseo_ix_requests'][0][1]['headers']['Content-Type']
+		&& array( 'host' => 'www.example.com', 'key' => $sseo_ix_key, 'keyLocation' => 'https://www.example.com/' . $sseo_ix_key . '.txt', 'urlList' => array( $sseo_ix_moved, 'https://www.example.com/сторінка/' ) ) === $sseo_bodies[0]
+		&& array( 'host' => 'shop.example.com', 'key' => $sseo_ix_key, 'keyLocation' => 'https://shop.example.com/' . $sseo_ix_key . '.txt', 'urlList' => array( 'https://shop.example.com/x/' ) ) === $sseo_bodies[1],
+		$sseo_bodies
+	);
+	sseo_check( 'sent: nothing waits, the answers are in the log, the newest first', array() === Simple_SEO_IndexNow::queue()['urls'] && null === get_option( Simple_SEO_IndexNow::QUEUE, null ) && false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) && 2 === count( $sseo_log ) && 'https://shop.example.com/x/' === $sseo_log[0]['url'] && 1 === $sseo_log[0]['count'] && 2 === $sseo_log[1]['count'] && true === $sseo_log[1]['ok'] && 200 === $sseo_log[1]['code'] && 'Taken.' === $sseo_log[1]['message'] && abs( $sseo_log[0]['time'] - time() ) < 5, $sseo_log );
+
+	$sseo_vals = array();
+	foreach ( array( 202, 400, 403, 422, 418 ) as $sseo_code ) {
+		$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( $sseo_code );
+		Simple_SEO_IndexNow::add( array( 'https://www.example.com/a/' ) );
+		$sseo_ix_run();
+		$sseo_entry              = Simple_SEO_IndexNow::entries()[0];
+		$sseo_vals[ $sseo_code ] = array( $sseo_entry['ok'], $sseo_entry['message'], count( Simple_SEO_IndexNow::queue()['urls'] ) );
+	}
+	sseo_check(
+		'answers: accepted while the key is checked; a wrong request, a key Bing cannot read (with the address of its file), addresses not of the site, anything else: given up at once',
+		array( true, 'Taken; Bing checks the key file first.', 0 ) === $sseo_vals[202] && array( false, 'Bing found the request wrong.', 0 ) === $sseo_vals[400]
+		&& array( false, 'The key is not valid: Bing could not read the key file at https://www.example.com/' . $sseo_ix_key . '.txt.', 0 ) === $sseo_vals[403]
+		&& array( false, 'The addresses do not belong to the host of the site or to its key.', 0 ) === $sseo_vals[422] && array( false, 'Bing answered 418.', 0 ) === $sseo_vals[418],
+		$sseo_vals
+	);
+
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 429 );
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/busy/' ) );
+	$sseo_vals = array();
+	for ( $sseo_i = 0; $sseo_i < 3; $sseo_i++ ) {
+		$sseo_ix_run();
+		$sseo_vals[] = array( Simple_SEO_IndexNow::queue(), (int) wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) - time(), Simple_SEO_IndexNow::entries()[0]['message'] );
+	}
+	sseo_check(
+		'too many requests: tried again ten minutes later, three times in all, then given up',
+		array( 'urls' => array( 'https://www.example.com/busy/' => true ), 'attempts' => 1 ) === $sseo_vals[0][0] && abs( $sseo_vals[0][1] - 600 ) <= 2 && 'Too many requests: Bing asks to wait. It will be tried again in ten minutes.' === $sseo_vals[0][2]
+		&& 2 === $sseo_vals[1][0]['attempts'] && array() === $sseo_vals[2][0]['urls'] && 'Too many requests: Bing asks to wait. Given up after three tries.' === $sseo_vals[2][2] && false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ),
+		$sseo_vals
+	);
+	$sseo_ix_answer = static fn( string $url, array $args ) => new WP_Error( 'http_request_failed', 'cURL error 28: timed out' );
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/net/' ) );
+	$sseo_ix_run();
+	$sseo_val = Simple_SEO_IndexNow::entries()[0];
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 503 );
+	$sseo_ix_run();
+	$sseo_val2 = Simple_SEO_IndexNow::entries()[0];
+	sseo_check( 'Bing out of reach or failing: tried again', 0 === $sseo_val['code'] && str_contains( $sseo_val['message'], 'Bing cannot be reached from this server: cURL error 28: timed out It will be tried again' ) && 'Bing answered 503. It will be tried again in ten minutes.' === $sseo_val2['message'] && 2 === Simple_SEO_IndexNow::queue()['attempts'], array( $sseo_val, $sseo_val2 ) );
+	$sseo_ix_reset();
+
+	$sseo_ix_answer = static function ( string $url, array $args ) use ( $sseo_ix_reply ): array {
+		Simple_SEO_IndexNow::add( array( 'https://www.example.com/meanwhile/' ) );
+		return $sseo_ix_reply( 200 );
+	};
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/first/' ) );
+	$sseo_ix_run();
+	sseo_check( 'an address added while the batch is on its way waits for the next one', array( 'urls' => array( 'https://www.example.com/meanwhile/' => true ), 'attempts' => 0 ) === Simple_SEO_IndexNow::queue() && false !== wp_next_scheduled( Simple_SEO_IndexNow::EVENT ), Simple_SEO_IndexNow::queue() );
+	$sseo_ix_reset();
+	$sseo_ix_answer = static fn( string $url, array $args ): array => $sseo_ix_reply( 200 );
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/late/' ) );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => false, 'key' => $sseo_ix_key ) );
+	$GLOBALS['sseo_ix_requests'] = array();
+	$sseo_ix_run();
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => true, 'key' => $sseo_ix_key ) );
+	sseo_check( 'switched off before the batch went: nothing sent, nothing waits', array() === $GLOBALS['sseo_ix_requests'] && null === get_option( Simple_SEO_IndexNow::QUEUE, null ) );
+	$sseo_ix_run();
+	sseo_check( 'an empty batch sends nothing', array() === $GLOBALS['sseo_ix_requests'] );
+	for ( $sseo_i = 0; $sseo_i < 25; $sseo_i++ ) {
+		Simple_SEO_IndexNow::add( array( 'https://www.example.com/log' . $sseo_i . '/' ) );
+		$sseo_ix_run();
+	}
+	$sseo_log = Simple_SEO_IndexNow::entries();
+	sseo_check( 'the log keeps the last 20 answers', 20 === count( $sseo_log ) && 'https://www.example.com/log24/' === $sseo_log[0]['url'] && 'https://www.example.com/log5/' === $sseo_log[19]['url'] );
+	$sseo_ix_reset();
+
+	// The tab.
+	Simple_SEO_IndexNow::add_admin_tab();
+	Simple_SEO_Admin::register_settings();
+	update_option( Simple_SEO_IndexNow::LOG, array( array( 'time' => 1767225600, 'count' => 3, 'url' => 'https://www.example.com/%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0/', 'code' => 403, 'ok' => false, 'message' => 'Bad <b>key</b>' ) ), false );
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/w1/', 'https://www.example.com/w2/' ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$_GET['tab'] = 'indexnow';
+	$sseo_html   = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	update_option( 'blog_public', '0' );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => false, 'key' => $sseo_ix_key ) );
+	delete_option( Simple_SEO_IndexNow::LOG );
+	$sseo_html2 = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
+	update_option( 'blog_public', '1' );
+	update_option( Simple_SEO_IndexNow::OPTION, array( 'enabled' => true, 'key' => $sseo_ix_key ) );
+	unset( $_GET['tab'] );
+	wp_set_current_user( 0 );
+	sseo_check( 'the IndexNow tab sits after Search Console and before Access', strpos( $sseo_html, '>Search Console<' ) < strpos( $sseo_html, '>IndexNow<' ) && strpos( $sseo_html, '>IndexNow<' ) < strpos( $sseo_html, '>Access<' ) );
+	sseo_check(
+		'the tab: the switch on with its 0, the key and the link to its file, the box for a new one with its 0; no warning; the batch waiting; the log, escaped, the address readable',
+		str_contains( $sseo_html, 'name="simple_seo_indexnow[enabled]" value="1" checked=\'checked\'' ) && str_contains( $sseo_html, 'name="simple_seo_indexnow[enabled]" value="0"' ) && str_contains( $sseo_html, '<code>' . $sseo_ix_key . '</code>' )
+		&& str_contains( $sseo_html, 'href="https://www.example.com/' . $sseo_ix_key . '.txt"' ) && str_contains( $sseo_html, 'name="simple_seo_indexnow[new_key]" value="0"' ) && ! str_contains( $sseo_html, 'notice-warning' )
+		&& str_contains( $sseo_html, 'Waiting to be sent: 2 addresses, at ' ) && str_contains( $sseo_html, 'https://www.example.com/сторінка/ and 2 more' ) && str_contains( $sseo_html, 'Bad &lt;b&gt;key&lt;/b&gt;' ) && str_contains( $sseo_html, 'simple-seo-indexnow-failed' ) && ! str_contains( $sseo_html, 'Yandex' ),
+		$sseo_html
+	);
+	sseo_check( 'the tab off and the site hidden: why nothing would be sent, no link to the key file, nothing sent yet', str_contains( $sseo_html2, 'notice-warning' ) && str_contains( $sseo_html2, 'WordPress asks search engines not to index this site' ) && ! str_contains( $sseo_html2, 'IndexNow is off.' ) && ! str_contains( $sseo_html2, 'href="https://www.example.com/' . $sseo_ix_key . '.txt"' ) && str_contains( $sseo_html2, 'Nothing has been sent yet.' ) && ! preg_match( '/name="simple_seo_indexnow\[enabled\]" value="1" checked/', $sseo_html2 ), $sseo_html2 );
+	sseo_check( 'the tab saves its row', 'simple-seo-indexnow' === ( get_registered_settings()[ Simple_SEO_IndexNow::OPTION ]['group'] ?? '' ) );
+	$sseo_ix_reset();
+
+	// Deactivation drops the batch waiting.
+	Simple_SEO_IndexNow::add( array( 'https://www.example.com/d/' ) );
+	$sseo_val = false !== wp_next_scheduled( Simple_SEO_IndexNow::EVENT );
+	Simple_SEO_Plugin::deactivate();
+	sseo_check( 'deactivated: the batch is not sent', $sseo_val && false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
+	flush_rewrite_rules( false );
+	$sseo_ix_reset();
+
+	if ( Simple_SEO_WP_Loc::languages() ) {
+		Simple_SEO_WP_Loc::flush();
+		$sseo_codes = array_keys( Simple_SEO_WP_Loc::languages() );
+		$sseo_o     = (string) current( array_diff( $sseo_codes, array( Simple_SEO_WP_Loc::default_language() ) ) );
+		$sseo['posts']['ix_other'] = wp_insert_post( array( 'post_title' => 'IndexNow other', 'post_name' => 'ix-other', 'post_status' => 'draft' ) );
+		do_action( 'wpml_set_element_language_details', array( 'element_id' => $sseo['posts']['ix_other'], 'element_type' => 'post_post', 'trid' => null, 'language_code' => $sseo_o, 'source_language_code' => null ) );
+		clean_post_cache( $sseo['posts']['ix_other'] );
+		$sseo_ix_reset();
+		wp_update_post( array( 'ID' => $sseo['posts']['ix_other'], 'post_status' => 'publish' ) );
+		$sseo_val = array_keys( Simple_SEO_IndexNow::queue()['urls'] );
+		sseo_check( 'wp-loc: a post of another language is sent at its address under that language', 1 === count( $sseo_val ) && str_ends_with( $sseo_val[0], '/' . $sseo_o . '/ix-other/' ), $sseo_val );
+		$sseo_ix_reset();
+	}
+
+	remove_filter( 'pre_option_home', $sseo_ix_home );
+	remove_filter( 'pre_http_request', $sseo_ix_fake, 10 );
+	delete_option( Simple_SEO_IndexNow::OPTION );
+	delete_option( Simple_SEO_IndexNow::LOG );
+	$sseo_ix_reset();
+	update_option( 'blog_public', $sseo_ix_public );
+	Simple_SEO_Settings::flush();
 
 	// ------------------------------------------------------------------------------------------
 	sseo_section( 'Files: robots.txt and .htaccess' );
@@ -6208,13 +6551,13 @@ try {
 	sseo_check( 'Schema, run again: nothing more to take', ! isset( $sseo_yi_again['settings']['schema'] ), $sseo_yi_again );
 	// The codes of webmaster tools.
 	$sseo_yi_main = get_option( 'wpseo' );
-	update_option( 'wpseo', array_merge( (array) $sseo_yi_main, array( 'googleverify' => 'yoast-google-1', 'msverify' => '<meta name="msvalidate.01" content="BING123ABC" />', 'yandexverify' => 'bad code!', 'pinterestverify' => 'pin1234' ) ) );
+	update_option( 'wpseo', array_merge( (array) $sseo_yi_main, array( 'googleverify' => 'yoast-google-1', 'msverify' => '<meta name="msvalidate.01" content="BING123ABC" />', 'yandexverify' => 'ya1234567', 'baiduverify' => 'bad code!', 'pinterestverify' => 'pin1234' ) ) );
 	update_option( Simple_SEO_Integrations::OPTION, array( 'verification' => array( 'pinterest' => 'own-pin' ) ) );
 	Simple_SEO_Settings::flush();
 	$sseo_yi_again = array();
 	Simple_SEO_Yoast_Import::settings( $sseo_yi_again );
 	$sseo_val = get_option( Simple_SEO_Integrations::OPTION )['verification'] ?? array();
-	sseo_check( "codes of webmaster tools from Yoast: Google's, Bing's from its whole meta tag; a code that is no code is left; Simple SEO's own code stays", array( 'google' => 'yoast-google-1', 'bing' => 'BING123ABC', 'pinterest' => 'own-pin' ) == $sseo_val && 2 === ( $sseo_yi_again['settings']['verification'] ?? 0 ), array( $sseo_val, $sseo_yi_again ) ); // phpcs:ignore Universal.Operators.StrictComparisons
+	sseo_check( "codes of webmaster tools from Yoast: Google's, Bing's from its whole meta tag; a code that is no code is left; Simple SEO's own code stays; Yandex's is not taken and is named as left", array( 'google' => 'yoast-google-1', 'bing' => 'BING123ABC', 'pinterest' => 'own-pin' ) == $sseo_val && 2 === ( $sseo_yi_again['settings']['verification'] ?? 0 ) && 1 === ( $sseo_yi_again['left']['verification'] ?? 0 ), array( $sseo_val, $sseo_yi_again ) ); // phpcs:ignore Universal.Operators.StrictComparisons
 	update_option( 'wpseo', $sseo_yi_main );
 	delete_option( Simple_SEO_Integrations::OPTION );
 	Simple_SEO_Settings::flush();
@@ -7880,7 +8223,9 @@ try {
 	if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 		define( 'WP_UNINSTALL_PLUGIN', 'simple-seo/simple-seo.php' );
 	}
+	wp_schedule_single_event( time() + 60, Simple_SEO_IndexNow::EVENT );
 	include SIMPLE_SEO_DIR . 'uninstall.php';
+	sseo_check( 'uninstall drops a batch of IndexNow waiting', false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );
 	sseo_check( 'uninstall removes the copy of .htaccess', ! is_file( get_home_path() . Simple_SEO_Files::DISK_COPY ) );

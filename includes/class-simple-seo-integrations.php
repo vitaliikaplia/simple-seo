@@ -23,7 +23,6 @@ final class Simple_SEO_Integrations {
 	public const VERIFICATION = array(
 		'google'    => 'google-site-verification',
 		'bing'      => 'msvalidate.01',
-		'yandex'    => 'yandex-verification',
 		'baidu'     => 'baidu-site-verification',
 		'pinterest' => 'p:domain_verify',
 		'facebook'  => 'facebook-domain-verification',

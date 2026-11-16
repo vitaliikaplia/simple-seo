@@ -17,7 +17,6 @@ $simple_seo_tags   = (array) ( $settings['tags'] ?? array() );
 $simple_seo_tools  = array(
 	'google'    => __( 'Google Search Console', 'simple-seo' ),
 	'bing'      => __( 'Bing Webmaster Tools', 'simple-seo' ),
-	'yandex'    => __( 'Yandex Webmaster', 'simple-seo' ),
 	'baidu'     => __( 'Baidu Webmaster Tools', 'simple-seo' ),
 	'pinterest' => __( 'Pinterest', 'simple-seo' ),
 	'facebook'  => __( 'Meta (Facebook) domain verification', 'simple-seo' ),

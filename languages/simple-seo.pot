@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.32.0\n"
+"Project-Id-Version: Simple SEO 0.33.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-16T02:00:57+00:00\n"
+"POT-Creation-Date: 2026-11-16T03:28:03+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -525,6 +525,7 @@ msgid "Question"
 msgstr ""
 
 #: includes/class-simple-seo-faq.php:65
+#: includes/views/tab-indexnow.php:87
 msgid "Answer"
 msgstr ""
 
@@ -648,7 +649,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-import.php:39
@@ -719,7 +720,76 @@ msgstr ""
 msgid "Only when this page repeats another one: the address of the original. Leave empty for the page's own address."
 msgstr ""
 
-#: includes/class-simple-seo-integrations.php:71
+#: includes/class-simple-seo-indexnow.php:70
+#: includes/views/tab-indexnow.php:30
+msgid "IndexNow"
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:177
+msgid "IndexNow is off."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:180
+msgid "WordPress asks search engines not to index this site (Settings, Reading): nothing is sent."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:183
+msgid "The address of this site is local or for development: search engines cannot reach it, so nothing is sent."
+msgstr ""
+
+#. translators: %s: name of an SEO plugin.
+#: includes/class-simple-seo-indexnow.php:188
+#, php-format
+msgid "%s is active: Simple SEO steps aside while it is, and sends nothing."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:311
+msgid "It will be tried again in ten minutes."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:313
+msgid "Given up after three tries."
+msgstr ""
+
+#. translators: %s: the error.
+#: includes/class-simple-seo-indexnow.php:366
+#, php-format
+msgid "Bing cannot be reached from this server: %s"
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:384
+msgid "Taken."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:386
+msgid "Taken; Bing checks the key file first."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:388
+msgid "Bing found the request wrong."
+msgstr ""
+
+#. translators: %s: address of the key file.
+#: includes/class-simple-seo-indexnow.php:391
+#, php-format
+msgid "The key is not valid: Bing could not read the key file at %s."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:393
+msgid "The addresses do not belong to the host of the site or to its key."
+msgstr ""
+
+#: includes/class-simple-seo-indexnow.php:395
+msgid "Too many requests: Bing asks to wait."
+msgstr ""
+
+#. translators: %s: HTTP status.
+#: includes/class-simple-seo-indexnow.php:399
+#, php-format
+msgid "Bing answered %s."
+msgstr ""
+
+#: includes/class-simple-seo-integrations.php:70
 msgid "Integrations"
 msgstr ""
 
@@ -1028,7 +1098,7 @@ msgstr ""
 msgid "Rank Math's fields of posts: what the import took, focus keywords, Schema and the rest"
 msgstr ""
 
-#: includes/class-simple-seo-rank-math-import.php:118
+#: includes/class-simple-seo-rank-math-import.php:117
 msgid "Rank Math's %variables% become Simple SEO's {variables}. A variable Simple SEO has no counterpart for is left out of the text and named in the report."
 msgstr ""
 
@@ -2505,7 +2575,7 @@ msgid "the person the site represents: choose the user on the Schema tab"
 msgstr ""
 
 #: includes/views/tab-import.php:170
-msgid "codes of webmaster tools Simple SEO has no field for (Norton, Microsoft Clarity, custom tags): put them into the custom code of the theme, or they stop working"
+msgid "codes of webmaster tools Simple SEO has no field for: put those still needed into the custom code of the theme, or they stop working"
 msgstr ""
 
 #: includes/views/tab-import.php:171
@@ -2575,6 +2645,74 @@ msgstr ""
 msgid "WordPress makes a page for every uploaded file. It has nothing but the image, so search engines rate it as thin content."
 msgstr ""
 
+#: includes/views/tab-indexnow.php:21
+msgid "IndexNow tells search engines at once when a page is published, changed, moved or taken down, so they visit it sooner than they would by themselves. Simple SEO sends the addresses of such pages to Bing, together, a minute after the change; the search engines that take part in IndexNow share them. Google does not take part: it finds changes through the sitemap."
+msgstr ""
+
+#: includes/views/tab-indexnow.php:33
+msgid "Tell search engines about the changes of pages"
+msgstr ""
+
+#: includes/views/tab-indexnow.php:34
+msgid "Only pages search engines may show are sent, as the sitemap lists them; a page taken down or moved is sent too, so they see it is gone."
+msgstr ""
+
+#: includes/views/tab-indexnow.php:38
+msgid "Key"
+msgstr ""
+
+#. translators: %s: link to the key file.
+#: includes/views/tab-indexnow.php:47
+#, php-format
+msgid "Bing checks that the site owns the key by its file: %s"
+msgstr ""
+
+#: includes/views/tab-indexnow.php:51
+msgid "Its file is answered at the root of the site while IndexNow is on."
+msgstr ""
+
+#: includes/views/tab-indexnow.php:57
+msgid "Make a new key"
+msgstr ""
+
+#: includes/views/tab-indexnow.php:60
+msgid "A key is made when the settings are saved."
+msgstr ""
+
+#: includes/views/tab-indexnow.php:67
+msgid "The last answers"
+msgstr ""
+
+#. translators: 1: number of addresses, 2: date and time.
+#: includes/views/tab-indexnow.php:74
+#, php-format
+msgid "Waiting to be sent: %1$s addresses, at %2$s."
+msgstr ""
+
+#. translators: %s: number of addresses.
+#: includes/views/tab-indexnow.php:76
+#, php-format
+msgid "Waiting to be sent: %s addresses."
+msgstr ""
+
+#: includes/views/tab-indexnow.php:85
+msgid "When"
+msgstr ""
+
+#: includes/views/tab-indexnow.php:86
+msgid "Addresses"
+msgstr ""
+
+#. translators: 1: an address, 2: how many more.
+#: includes/views/tab-indexnow.php:100
+#, php-format
+msgid "%1$s and %2$s more"
+msgstr ""
+
+#: includes/views/tab-indexnow.php:111
+msgid "Nothing has been sent yet."
+msgstr ""
+
 #: includes/views/tab-integrations.php:18
 msgid "Google Search Console"
 msgstr ""
@@ -2584,95 +2722,91 @@ msgid "Bing Webmaster Tools"
 msgstr ""
 
 #: includes/views/tab-integrations.php:20
-msgid "Yandex Webmaster"
-msgstr ""
-
-#: includes/views/tab-integrations.php:21
 msgid "Baidu Webmaster Tools"
 msgstr ""
 
-#: includes/views/tab-integrations.php:22
+#: includes/views/tab-integrations.php:21
 msgid "Pinterest"
 msgstr ""
 
-#: includes/views/tab-integrations.php:23
+#: includes/views/tab-integrations.php:22
 msgid "Meta (Facebook) domain verification"
 msgstr ""
 
-#: includes/views/tab-integrations.php:24
+#: includes/views/tab-integrations.php:23
 msgid "Ahrefs"
 msgstr ""
 
-#: includes/views/tab-integrations.php:27
+#: includes/views/tab-integrations.php:26
 msgid "Google Analytics 4 or Google tag"
 msgstr ""
 
-#: includes/views/tab-integrations.php:28
+#: includes/views/tab-integrations.php:27
 msgid "Google Tag Manager"
 msgstr ""
 
-#: includes/views/tab-integrations.php:29
+#: includes/views/tab-integrations.php:28
 msgid "Meta Pixel"
 msgstr ""
 
-#: includes/views/tab-integrations.php:30
+#: includes/views/tab-integrations.php:29
 msgid "TikTok Pixel"
 msgstr ""
 
-#: includes/views/tab-integrations.php:33
+#: includes/views/tab-integrations.php:32
 msgid "The codes that confirm the site to webmaster tools, and the tags of analytics and advertising: paste the code or the ID, or the whole snippet the service gives, and Simple SEO takes what it needs from it."
 msgstr ""
 
-#: includes/views/tab-integrations.php:35
+#: includes/views/tab-integrations.php:34
 msgid "Site verification"
 msgstr ""
 
-#: includes/views/tab-integrations.php:36
+#: includes/views/tab-integrations.php:35
 msgid "Each code is a meta tag on the home page, where these tools look for it."
 msgstr ""
 
-#: includes/views/tab-integrations.php:50
+#: includes/views/tab-integrations.php:49
 msgid "Analytics and pixels"
 msgstr ""
 
 #. translators: %s: services with their IDs, e.g. Google Tag Manager GTM-ABC123.
-#: includes/views/tab-integrations.php:60
+#: includes/views/tab-integrations.php:59
 #, php-format
 msgid "The theme prints these itself (its options of custom code): %s. A tag printed by both is counted twice: keep it in one place."
 msgstr ""
 
-#: includes/views/tab-integrations.php:73
+#: includes/views/tab-integrations.php:72
 msgid "The theme prints this one too: it is counted twice."
 msgstr ""
 
-#: includes/views/tab-integrations.php:79
-#: includes/views/tab-integrations.php:82
+#: includes/views/tab-integrations.php:78
+#: includes/views/tab-integrations.php:81
 msgid "Loading"
 msgstr ""
 
-#: includes/views/tab-integrations.php:86
+#: includes/views/tab-integrations.php:85
 msgid "Load the tags on the visitor's first move"
 msgstr ""
 
 #. translators: %s: number of seconds.
-#: includes/views/tab-integrations.php:91
+#: includes/views/tab-integrations.php:90
 #, php-format
 msgid "The events are taken at once, the scripts of Google, Meta and TikTok come when the visitor scrolls, touches or types, leaves the page, or after %s seconds: pages are faster and PageSpeed does not see them. Off: they load at once, as their own snippets do."
 msgstr ""
 
-#: includes/views/tab-integrations.php:97
+#: includes/views/tab-integrations.php:96
 msgid "Wait for the visitor's consent to cookies"
 msgstr ""
 
-#: includes/views/tab-integrations.php:99
+#: includes/views/tab-integrations.php:98
 msgid "Google's consent mode starts denied and the pixels wait, until the theme's banner calls simpleSeoConsent( true ) or sends the event simple-seo-consent with { granted: true }. Without a banner that does it, nothing is counted."
 msgstr ""
 
-#: includes/views/tab-integrations.php:103
+#: includes/views/tab-integrations.php:102
 msgid "Count those who edit the site too"
 msgstr ""
 
-#: includes/views/tab-integrations.php:105
+#: includes/views/tab-integrations.php:104
 msgid "Off: no tags for users who can edit posts, so their visits do not count."
 msgstr ""
 

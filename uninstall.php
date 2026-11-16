@@ -28,6 +28,9 @@ unset( $simple_seo_transients, $simple_seo_transient );
 
 delete_site_transient( 'simple_seo_github_update_data' );
 
+// A batch of IndexNow waiting (Simple_SEO_IndexNow::EVENT).
+wp_clear_scheduled_hook( 'simple_seo_indexnow_send' );
+
 // The copy of the previous .htaccess kept next to it (Simple_SEO_Files::DISK_COPY).
 require_once ABSPATH . 'wp-admin/includes/file.php';
 $simple_seo_copy = get_home_path() . '.htaccess.simple-seo-backup';

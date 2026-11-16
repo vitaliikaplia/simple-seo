@@ -45,6 +45,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Scores::init();
 		Simple_SEO_Bulk::init();
 		Simple_SEO_Search_Console::init();
+		Simple_SEO_IndexNow::init();
 		Simple_SEO_Yoast_Compat::init();
 
 		if ( is_admin() ) {
@@ -123,8 +124,12 @@ final class Simple_SEO_Plugin {
 		flush_rewrite_rules( false );
 	}
 
-	/** WordPress builds the rewrite rules again on the next request, without the sitemap and llms.txt addresses. */
+	/**
+	 * WordPress builds the rewrite rules again on the next request, without the sitemap and llms.txt
+	 * addresses; a batch of IndexNow waiting is not sent.
+	 */
 	public static function deactivate( bool $network_wide = false ): void {
 		delete_option( 'rewrite_rules' );
+		wp_clear_scheduled_hook( Simple_SEO_IndexNow::EVENT );
 	}
 }

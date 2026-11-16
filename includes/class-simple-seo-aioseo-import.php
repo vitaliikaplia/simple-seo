@@ -69,10 +69,10 @@ final class Simple_SEO_Aioseo_Import extends Simple_SEO_Import_Source {
 
 	/** AIOSEO's codes for webmaster tools. */
 	/** AIOSEO's codes for webmaster tools Simple SEO has a field for (the same names). */
-	private const VERIFICATION = array( 'google', 'bing', 'yandex', 'baidu', 'pinterest' );
+	private const VERIFICATION = array( 'google', 'bing', 'baidu', 'pinterest' );
 
 	/** AIOSEO's codes Simple SEO has no field for. */
-	private const VERIFICATION_LEFT = array( 'norton', 'microsoftClarityProjectId', 'miscellaneousVerification' );
+	private const VERIFICATION_LEFT = array( 'yandex', 'norton', 'microsoftClarityProjectId', 'miscellaneousVerification' );
 
 	/** AIOSEO's feeds (kept when on) => Simple SEO's switches that remove them. */
 	private const FEEDS = array(
