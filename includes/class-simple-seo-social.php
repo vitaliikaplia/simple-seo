@@ -126,6 +126,10 @@ final class Simple_SEO_Social {
 		if ( ! $id && $context->object instanceof WP_Post && ! $context->password_required ) {
 			$id = (int) get_post_thumbnail_id( $context->object );
 		}
+		if ( ! $id && Simple_SEO_Context::POST_TYPE_ARCHIVE === $context->kind && $context->object_id ) {
+			// The featured image of the page of the archive (the shop page).
+			$id = (int) get_post_thumbnail_id( $context->object_id );
+		}
 		if ( ! $id ) {
 			$id = Simple_SEO_Special::image_id( Simple_SEO_Titles::template_slot( $context ) );
 		}

@@ -1,7 +1,10 @@
 <?php
 /**
  * WooCommerce (decisions/woocommerce): a product in the Schema graph of Simple SEO instead of
- * WooCommerce's own JSON-LD, Open Graph of products, and the return policy of the shop.
+ * WooCommerce's own JSON-LD, Open Graph of products, and the return policy of the shop; the shop
+ * page as the page of the archive of products (its SEO fields, title and image), the trail of
+ * products through the shop and their categories, the cart, the checkout and the account hidden
+ * from search engines and the sitemaps, and hidden products out of the sitemaps.
  *
  * The product node is WooCommerce's own — it knows its prices, sales, variations, taxes, stock,
  * identifiers and reviews best — taken from its generator (the filter
@@ -18,6 +21,9 @@ final class Simple_SEO_WooCommerce {
 	/** The taxonomy of brands of WooCommerce (9.6 and later). */
 	public const BRANDS = 'product_brand';
 
+	/** WooCommerce's pages that are no content: hidden from search engines and the sitemaps. */
+	public const PAGES = array( 'cart', 'checkout', 'myaccount' );
+
 	/** WooCommerce's JSON-LD types that Simple SEO's graph says itself. */
 	private const SAID = array( 'product', 'review', 'website', 'onlinestore' );
 
@@ -26,6 +32,102 @@ final class Simple_SEO_WooCommerce {
 		add_filter( 'simple_seo_schema_pieces', array( self::class, 'schema_pieces' ), 4, 2 );
 		add_filter( 'simple_seo_head_tags', array( self::class, 'head_tags' ), 4, 2 );
 		add_filter( 'woocommerce_structured_data_type_for_page', array( self::class, 'woocommerce_types' ) );
+		add_filter( 'simple_seo_archive_page', array( self::class, 'archive_page' ), 10, 2 );
+		add_filter( 'simple_seo_breadcrumb_taxonomy', array( self::class, 'breadcrumb_taxonomy' ), 10, 2 );
+		add_filter( 'simple_seo_noindex', array( self::class, 'noindex' ), 10, 2 );
+		add_filter( 'simple_seo_sitemap_exclude', array( self::class, 'sitemap_exclude' ), 10, 3 );
+	}
+
+	/**
+	 * The shop page stands for the archive of products.
+	 *
+	 * @param mixed $page_id
+	 * @return mixed
+	 */
+	public static function archive_page( $page_id, string $post_type ) {
+		return 'product' === $post_type && self::active() ? max( 0, (int) wc_get_page_id( 'shop' ) ) : $page_id;
+	}
+
+	/**
+	 * Products go through their categories, not their brands or tags.
+	 *
+	 * @param mixed $taxonomy
+	 * @return mixed
+	 */
+	public static function breadcrumb_taxonomy( $taxonomy, string $post_type ) {
+		return 'product' === $post_type && taxonomy_exists( 'product_cat' ) ? 'product_cat' : $taxonomy;
+	}
+
+	/** The IDs of the cart, the checkout and the account, those there are. */
+	public static function pages(): array {
+		if ( ! self::active() ) {
+			return array();
+		}
+
+		return array_values( array_filter( array_map( static fn( string $page ): int => (int) wc_get_page_id( $page ), self::PAGES ), static fn( int $id ): bool => $id > 0 ) );
+	}
+
+	/**
+	 * The cart, the checkout and the account are no content (WooCommerce hides them from search
+	 * engines too): no canonical, no sitemap, no audit of them as pages to rank.
+	 *
+	 * @param mixed $noindex
+	 * @return mixed
+	 */
+	public static function noindex( $noindex, Simple_SEO_Context $context ) {
+		return Simple_SEO_Context::SINGULAR === $context->kind && in_array( $context->object_id, self::pages(), true ) ? true : $noindex;
+	}
+
+	/**
+	 * Out of the sitemaps: the cart, the checkout, the account, and the shop page (the sitemap of
+	 * products opens with its address); products hidden from the catalog and the search.
+	 *
+	 * @param mixed $ids
+	 * @return mixed
+	 */
+	public static function sitemap_exclude( $ids, string $kind, string $name ) {
+		if ( 'post' !== $kind || ! is_array( $ids ) || ! self::active() ) {
+			return $ids;
+		}
+		if ( 'page' === $name ) {
+			return array_merge( $ids, self::pages(), array( max( 0, (int) wc_get_page_id( 'shop' ) ) ) );
+		}
+		if ( 'product' === $name ) {
+			return array_merge( $ids, self::hidden_products() );
+		}
+
+		return $ids;
+	}
+
+	/**
+	 * Products hidden from the catalog and the search both (their visibility is "Hidden").
+	 *
+	 * @return int[]
+	 */
+	public static function hidden_products(): array {
+		$query = new WP_Query(
+			array(
+				'post_type'              => 'product',
+				'post_status'            => 'publish',
+				'fields'                 => 'ids',
+				'posts_per_page'         => -1,
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'suppress_filters'       => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- once for a sitemap of products.
+				'tax_query'              => array(
+					array(
+						'taxonomy' => 'product_visibility',
+						'field'    => 'name',
+						'terms'    => array( 'exclude-from-catalog', 'exclude-from-search' ),
+						'operator' => 'AND',
+					),
+				),
+			)
+		);
+
+		return array_map( 'intval', $query->posts );
 	}
 
 	/** Whether WooCommerce is there. */

@@ -116,6 +116,10 @@ final class Simple_SEO_Variables {
 			case Simple_SEO_Context::TERM:
 				return $context->object instanceof WP_Term ? (string) $context->object->name : '';
 			case Simple_SEO_Context::POST_TYPE_ARCHIVE:
+				if ( $context->object_id ) {
+					// The page of the archive: the title of the shop page, not "Products".
+					return (string) get_post_field( 'post_title', $context->object_id );
+				}
 				return $context->object instanceof WP_Post_Type ? (string) $context->object->labels->name : '';
 			case Simple_SEO_Context::AUTHOR:
 				return $context->object instanceof WP_User ? (string) $context->object->display_name : '';
@@ -168,7 +172,10 @@ final class Simple_SEO_Variables {
 			return (string) $object->description;
 		}
 		if ( $object instanceof WP_Post_Type ) {
-			return (string) $object->description;
+			// The excerpt of the page of the archive, when it has one.
+			$page = $context->object_id ? get_post( $context->object_id ) : null;
+
+			return $page instanceof WP_Post && '' !== trim( $page->post_excerpt ) ? $page->post_excerpt : (string) $object->description;
 		}
 
 		return '';

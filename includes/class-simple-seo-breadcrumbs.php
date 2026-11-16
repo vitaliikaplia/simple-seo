@@ -236,7 +236,17 @@ final class Simple_SEO_Breadcrumbs {
 			return '';
 		}
 
-		return in_array( 'category', $taxonomies, true ) ? 'category' : (string) $taxonomies[0];
+		/**
+		 * The taxonomy of a post type's trail when the settings choose none (WooCommerce: product_cat).
+		 * One the post type has not is not taken.
+		 *
+		 * @param string   $taxonomy   Category when the post type has it, else the first.
+		 * @param string   $post_type
+		 * @param string[] $taxonomies The hierarchical taxonomies of the post type.
+		 */
+		$taxonomy = (string) apply_filters( 'simple_seo_breadcrumb_taxonomy', in_array( 'category', $taxonomies, true ) ? 'category' : (string) $taxonomies[0], $post_type, $taxonomies );
+
+		return in_array( $taxonomy, $taxonomies, true ) ? $taxonomy : (string) $taxonomies[0];
 	}
 
 	/**
@@ -448,8 +458,10 @@ final class Simple_SEO_Breadcrumbs {
 	private static function archive_item( string $post_type ): ?array {
 		$object = get_post_type_object( $post_type );
 		$link   = $object instanceof WP_Post_Type && $object->has_archive ? get_post_type_archive_link( $post_type ) : false;
+		// The archive is called as its page is (the shop page), else by the post type's name.
+		$page = Simple_SEO_Context::archive_page( $post_type );
 
-		return is_string( $link ) && '' !== $link ? self::item( Simple_SEO_Variables::plain( (string) $object->labels->name ), $link ) : null;
+		return is_string( $link ) && '' !== $link ? self::item( Simple_SEO_Variables::plain( $page ? $page->post_title : (string) $object->labels->name ), $link ) : null;
 	}
 
 	/** @return array{label: string, url: string} */

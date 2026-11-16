@@ -30,7 +30,10 @@ final class Simple_SEO_Context {
 	/** One of the constants above. */
 	public string $kind = self::OTHER;
 
-	/** Post, term or user ID; 0 when the page has no single object. */
+	/**
+	 * Post, term or user ID; 0 when the page has no single object. A post type archive that has a
+	 * page of its own (the shop of WooCommerce: archive_page()) has that page's ID: its SEO fields.
+	 */
 	public int $object_id = 0;
 
 	/** @var WP_Post|WP_Term|WP_User|WP_Post_Type|null */
@@ -119,12 +122,7 @@ final class Simple_SEO_Context {
 		} elseif ( $query->is_post_type_archive() ) {
 			$post_type = $query->get( 'post_type' );
 			$post_type = is_array( $post_type ) ? (string) reset( $post_type ) : (string) $post_type;
-			$object    = get_post_type_object( $post_type );
-			if ( $object instanceof WP_Post_Type ) {
-				$context->kind    = self::POST_TYPE_ARCHIVE;
-				$context->object  = $object;
-				$context->subtype = $post_type;
-			}
+			$context   = self::for_post_type_archive( $post_type );
 		} elseif ( $query->is_author() ) {
 			$user = $query->get_queried_object();
 			if ( $user instanceof WP_User ) {
@@ -200,12 +198,30 @@ final class Simple_SEO_Context {
 		$context = new self();
 		$object  = get_post_type_object( $post_type );
 		if ( $object instanceof WP_Post_Type ) {
-			$context->kind    = self::POST_TYPE_ARCHIVE;
-			$context->object  = $object;
-			$context->subtype = $post_type;
+			$context->kind      = self::POST_TYPE_ARCHIVE;
+			$context->object    = $object;
+			$context->subtype   = $post_type;
+			$context->object_id = (int) ( self::archive_page( $post_type )->ID ?? 0 );
 		}
 
 		return $context;
+	}
+
+	/**
+	 * The page that stands for a post type's archive, as the shop page of WooCommerce stands for
+	 * the archive of products: its SEO fields, title and image are the archive's. Published only.
+	 * Filter: simple_seo_archive_page.
+	 */
+	public static function archive_page( string $post_type ): ?WP_Post {
+		/**
+		 * The ID of the page that stands for a post type's archive; 0 for none.
+		 *
+		 * @param int    $page_id
+		 * @param string $post_type
+		 */
+		$page = get_post( (int) apply_filters( 'simple_seo_archive_page', 0, $post_type ) );
+
+		return $page instanceof WP_Post && 'page' === $page->post_type && 'publish' === $page->post_status ? $page : null;
 	}
 
 	public static function for_author( WP_User $user ): self {
@@ -230,9 +246,9 @@ final class Simple_SEO_Context {
 		return (int) gmmktime( 0, 0, 0, max( 1, $month ), max( 1, $day ), $year );
 	}
 
-	/** Whether the page has its own SEO fields: a post or a term. */
+	/** Whether the page has its own SEO fields: a post or a term, or the page of an archive. */
 	public function has_fields(): bool {
-		return $this->object_id > 0 && in_array( $this->kind, array( self::SINGULAR, self::POSTS_PAGE, self::TERM ), true );
+		return $this->object_id > 0 && in_array( $this->kind, array( self::SINGULAR, self::POSTS_PAGE, self::TERM, self::POST_TYPE_ARCHIVE ), true );
 	}
 
 	/** A stored SEO field of the page's post or term, '' when it has none. */

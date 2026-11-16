@@ -1513,7 +1513,7 @@ try {
 	update_option( 'blog_public', '1' );
 	add_filter( 'simple_seo_noindex', '__return_true' );
 	sseo_check( 'simple_seo_noindex decides last', Simple_SEO_Indexing::is_noindex( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) );
-	remove_all_filters( 'simple_seo_noindex' );
+	remove_filter( 'simple_seo_noindex', '__return_true' );
 	update_post_meta( $sseo_p['author_post'], '_simple_seo_nofollow', '1' );
 	sseo_check( 'nofollow from the field', Simple_SEO_Indexing::is_nofollow( $sseo_ctx_of( array( 'p' => $sseo_p['author_post'] ) ) ) && ! Simple_SEO_Indexing::is_nofollow( $sseo_ctx_of( array( 'p' => $sseo_p['bare'] ) ) ) );
 
@@ -11611,6 +11611,51 @@ try {
 		$sseo_vals
 	);
 
+	// The page of a post type's archive (simple_seo_archive_page): its fields, title, excerpt and image.
+	$sseo_wc_arch = (int) wp_insert_post( array( 'post_title' => 'Aitest library', 'post_type' => 'page', 'post_status' => 'publish', 'post_excerpt' => 'All the <b>books</b>.' ) );
+	$sseo['posts'][] = $sseo_wc_arch;
+	update_post_meta( $sseo_wc_arch, Simple_SEO_Fields::meta_key( 'description' ), 'The books of the library.' );
+	$sseo_wc_cover = (int) wp_insert_attachment( array( 'post_title' => 'Libcover', 'post_mime_type' => 'image/jpeg', 'post_status' => 'inherit' ), 'lib-cover.jpg' );
+	$sseo['posts'][] = $sseo_wc_cover;
+	set_post_thumbnail( $sseo_wc_arch, $sseo_wc_cover );
+	$sseo_wc_book = (int) wp_insert_post( array( 'post_title' => 'Aitest novel', 'post_type' => 'sseo_book', 'post_status' => 'publish' ) );
+	$sseo['posts'][] = $sseo_wc_book;
+	$sseo_ctx  = Simple_SEO_Context::for_post_type_archive( 'sseo_book' );
+	$sseo_vals = array( $sseo_ctx->object_id, $sseo_ctx->has_fields(), Simple_SEO_Context::archive_page( 'sseo_book' ), Simple_SEO_Variables::object_title( $sseo_ctx ) );
+	$sseo_wc_page = static fn( $id, string $post_type ) => 'sseo_book' === $post_type ? $GLOBALS['sseo_wc_arch_id'] : $id;
+	$GLOBALS['sseo_wc_arch_id'] = $sseo_wc_arch;
+	add_filter( 'simple_seo_archive_page', $sseo_wc_page, 10, 2 );
+	$sseo_ctx    = Simple_SEO_Context::for_post_type_archive( 'sseo_book' );
+	$sseo_vals[] = array( $sseo_ctx->object_id, $sseo_ctx->has_fields(), $sseo_ctx->field( 'description' ), Simple_SEO_Variables::object_title( $sseo_ctx ), Simple_SEO_Variables::excerpt( $sseo_ctx ), Simple_SEO_Social::image_id( $sseo_ctx ) );
+	$sseo_vals[] = Simple_SEO_Titles::description( $sseo_ctx );
+	$sseo_vals[] = array_column( Simple_SEO_Breadcrumbs::items( $sseo_ctx ), 'label' );
+	$sseo_vals[] = array_column( Simple_SEO_Breadcrumbs::items( Simple_SEO_Context::for_post( get_post( $sseo_wc_book ) ) ), 'label' );
+	$sseo_vals[] = Simple_SEO_Context::from_query( sseo_query( array( 'post_type' => 'sseo_book' ) ) )->object_id;
+	wp_update_post( array( 'ID' => $sseo_wc_arch, 'post_excerpt' => '' ) );
+	$sseo_wc_desc = get_post_type_object( 'sseo_book' )->description;
+	get_post_type_object( 'sseo_book' )->description = 'The books, all of them.';
+	$sseo_vals[] = Simple_SEO_Variables::excerpt( Simple_SEO_Context::for_post_type_archive( 'sseo_book' ) );
+	get_post_type_object( 'sseo_book' )->description = $sseo_wc_desc;
+	wp_update_post( array( 'ID' => $sseo_wc_arch, 'post_status' => 'draft' ) );
+	$sseo_vals[] = Simple_SEO_Context::for_post_type_archive( 'sseo_book' )->object_id;
+	$GLOBALS['sseo_wc_arch_id'] = $sseo_wc_book;
+	$sseo_vals[] = Simple_SEO_Context::archive_page( 'sseo_book' );
+	remove_filter( 'simple_seo_archive_page', $sseo_wc_page, 10 );
+	unset( $GLOBALS['sseo_wc_arch_id'] );
+	sseo_check(
+		'the page of an archive: none by default; its SEO fields, title, excerpt (else the type\'s description) and image are the archive\'s, and its title in the trails; published, and a page only',
+		array( 0, false, null, 'Books' ) === array_slice( $sseo_vals, 0, 4 )
+			&& array( $sseo_wc_arch, true, 'The books of the library.', 'Aitest library', 'All the <b>books</b>.', $sseo_wc_cover ) === $sseo_vals[4]
+			&& 'The books of the library.' === $sseo_vals[5] && array( 'Home', 'Aitest library' ) === $sseo_vals[6] && array( 'Home', 'Aitest library', 'Aitest novel' ) === $sseo_vals[7] && $sseo_wc_arch === $sseo_vals[8]
+			&& 'The books, all of them.' === $sseo_vals[9] && 0 === $sseo_vals[10] && null === $sseo_vals[11],
+		$sseo_vals
+	);
+	$sseo_wc_tax = static fn( $taxonomy, string $post_type ) => 'post' === $post_type ? 'sseo_nope' : $taxonomy;
+	add_filter( 'simple_seo_breadcrumb_taxonomy', $sseo_wc_tax, 10, 2 );
+	$sseo_vals = array( Simple_SEO_Breadcrumbs::default_taxonomy( 'post' ) );
+	remove_filter( 'simple_seo_breadcrumb_taxonomy', $sseo_wc_tax, 10 );
+	sseo_check( 'the taxonomy of a trail by the filter, one the post type has only', array( 'category' ) === $sseo_vals, $sseo_vals );
+
 	if ( ! Simple_SEO_WooCommerce::active() ) {
 		$sseo_ctx  = Simple_SEO_Context::current();
 		$sseo_vals = array(
@@ -11621,7 +11666,8 @@ try {
 		);
 		sseo_check(
 			'without WooCommerce: no product, no policy, the graph and the tags as they are',
-			array( array( 'webpage' => array( '@id' => 'x' ) ), array( 'og:type' => array( 'tag' => 'meta', 'attributes' => array( 'property' => 'og:type', 'content' => 'article' ) ) ), null, '' ) === $sseo_vals,
+			array( array( 'webpage' => array( '@id' => 'x' ) ), array( 'og:type' => array( 'tag' => 'meta', 'attributes' => array( 'property' => 'og:type', 'content' => 'article' ) ) ), null, '' ) === $sseo_vals
+				&& array() === Simple_SEO_WooCommerce::pages() && array( 5 ) === Simple_SEO_WooCommerce::sitemap_exclude( array( 5 ), 'post', 'page' ) && 7 === Simple_SEO_WooCommerce::archive_page( 7, 'product' ) && false === Simple_SEO_WooCommerce::noindex( false, Simple_SEO_Context::current() ),
 			$sseo_vals
 		);
 	} else {
@@ -11783,6 +11829,76 @@ try {
 		$sseo_wc_set( array( 'mode' => 'always' ) );
 		unset( $GLOBALS['post'] );
 		sseo_check( 'WooCommerce prints no JSON-LD of its own where the graph has the product; with the graph off, its own', '' === $sseo_vals[0] && str_contains( $sseo_vals[1], '"@type":"Product"' ), $sseo_vals );
+
+		// The shop, the trails, the cart and the sitemaps.
+		$sseo_wc_shop = (int) wc_get_page_id( 'shop' );
+		$sseo_wc_cats = array();
+		foreach ( array( 'Woocat tables', 'Woocat oak' ) as $sseo_name ) {
+			$sseo_term       = wp_insert_term( $sseo_name, 'product_cat', $sseo_wc_cats ? array( 'parent' => $sseo_wc_cats[0] ) : array() );
+			$sseo_wc_cats[]  = (int) $sseo_term['term_id'];
+			$sseo['terms'][] = array( (int) $sseo_term['term_id'], 'product_cat' );
+		}
+		wp_set_object_terms( $sseo_wc_table, array( $sseo_wc_cats[1] ), 'product_cat' );
+		update_post_meta( $sseo_wc_shop, Simple_SEO_Fields::meta_key( 'description' ), 'Our shop of oak.' );
+		$sseo_ctx  = $sseo_wc_show( array( 'post_type' => 'product' ) );
+		$sseo_vals = array( $sseo_ctx->kind, $sseo_ctx->object_id, Simple_SEO_Titles::title( $sseo_ctx ), Simple_SEO_Titles::description( $sseo_ctx ), array_column( Simple_SEO_Breadcrumbs::items( $sseo_ctx ), 'label' ) );
+		$sseo_vals[] = array_column( Simple_SEO_Breadcrumbs::items( $sseo_wc_show( array( 'p' => $sseo_wc_table, 'post_type' => 'product' ) ) ), 'label' );
+		$sseo_vals[] = array_column( Simple_SEO_Breadcrumbs::items( $sseo_wc_show( array( 'product_cat' => get_term( $sseo_wc_cats[1] )->slug ) ) ), 'label' );
+		$sseo_vals[] = Simple_SEO_Breadcrumbs::default_taxonomy( 'product' );
+		$sseo_vals[] = Simple_SEO_WooCommerce::breadcrumb_taxonomy( 'category', 'post' );
+		delete_post_meta( $sseo_wc_shop, Simple_SEO_Fields::meta_key( 'description' ) );
+		$sseo_shop = get_the_title( $sseo_wc_shop );
+		sseo_check(
+			'the shop: the archive of products with the shop page\'s fields and title; the trails of products and their categories through the shop and the categories',
+			array( Simple_SEO_Context::POST_TYPE_ARCHIVE, $sseo_wc_shop, $sseo_shop . ' ' . $sseo_sep . ' ' . $sseo_site, 'Our shop of oak.', array( 'Home', $sseo_shop ) ) === array_slice( $sseo_vals, 0, 5 )
+				&& array( 'Home', $sseo_shop, 'Woocat tables', 'Woocat oak', 'Wootest oak table' ) === $sseo_vals[5] && array( 'Home', $sseo_shop, 'Woocat tables', 'Woocat oak' ) === $sseo_vals[6] && 'product_cat' === $sseo_vals[7] && 'category' === $sseo_vals[8],
+			$sseo_vals
+		);
+		$sseo_vals = array();
+		foreach ( Simple_SEO_WooCommerce::PAGES as $sseo_name ) {
+			$sseo_ctx                = $sseo_wc_show( array( 'page_id' => (int) wc_get_page_id( $sseo_name ) ) );
+			$sseo_vals[ $sseo_name ] = array( Simple_SEO_Indexing::is_noindex( $sseo_ctx ), Simple_SEO_Indexing::canonical( $sseo_ctx ) );
+		}
+		$sseo_vals['a page'] = Simple_SEO_Indexing::is_noindex( $sseo_wc_show( array( 'page_id' => $sseo_wc_arch ) ) );
+		$sseo_wc_account = get_option( 'woocommerce_myaccount_page_id' );
+		update_option( 'woocommerce_myaccount_page_id', '' );
+		$sseo_vals['no account'] = Simple_SEO_WooCommerce::pages();
+		update_option( 'woocommerce_myaccount_page_id', $sseo_wc_account );
+		$sseo_vals['no account'] = array( (int) wc_get_page_id( 'cart' ), (int) wc_get_page_id( 'checkout' ) ) === $sseo_vals['no account'];
+		sseo_check(
+			'the cart, the checkout and the account: hidden from search engines, no canonical; other pages as they were; a page WooCommerce has not, none',
+			array( 'cart' => array( true, '' ), 'checkout' => array( true, '' ), 'myaccount' => array( true, '' ), 'a page' => false, 'no account' => true ) === $sseo_vals && 3 === count( Simple_SEO_WooCommerce::pages() ),
+			$sseo_vals
+		);
+		$sseo_wc_hidden = array();
+		foreach ( array( 'hidden', 'catalog', 'search' ) as $sseo_name ) {
+			$sseo_wc_hidden[ $sseo_name ] = $sseo_wc_product( array( 'name' => 'Woovisible ' . $sseo_name, 'regular_price' => '5' ) );
+			$sseo_product                 = wc_get_product( $sseo_wc_hidden[ $sseo_name ] );
+			$sseo_product->set_catalog_visibility( $sseo_name );
+			$sseo_product->save();
+		}
+		wp_update_post( array( 'ID' => $sseo_wc_arch, 'post_status' => 'publish' ) );
+		$sseo_pages    = array_map( static fn( WP_Post $post ): int => (int) $post->ID, Simple_SEO_Sitemaps::posts( 'page', '', 10000 ) );
+		$sseo_products = array_map( static fn( WP_Post $post ): int => (int) $post->ID, Simple_SEO_Sitemaps::posts( 'product', '', 10000 ) );
+		$sseo_vals     = array(
+			array_values( array_intersect( array_merge( Simple_SEO_WooCommerce::pages(), array( $sseo_wc_shop ) ), $sseo_pages ) ),
+			in_array( $sseo_wc_arch, $sseo_pages, true ),
+			array_values( array_intersect( $sseo_wc_hidden, $sseo_products ) ),
+			in_array( $sseo_wc_table, $sseo_products, true ),
+			Simple_SEO_WooCommerce::hidden_products(),
+			Simple_SEO_WooCommerce::sitemap_exclude( array( 3 ), 'term', 'product_cat' ),
+			Simple_SEO_WooCommerce::sitemap_exclude( array( 3 ), 'post', 'post' ),
+			Simple_SEO_WooCommerce::sitemap_exclude( 'x', 'post', 'page' ),
+			Simple_SEO_WooCommerce::sitemap_exclude( array( 3 ), 'term', 'page' ),
+			Simple_SEO_WooCommerce::sitemap_exclude( array( 3 ), 'post', 'page' ),
+		);
+		sseo_check(
+			'the sitemaps: no cart, checkout, account, nor the shop page (the sitemap of products opens with it); no product hidden from the catalog and the search, those hidden from one of them listed',
+			array() === $sseo_vals[0] && true === $sseo_vals[1] && array( $sseo_wc_hidden['catalog'], $sseo_wc_hidden['search'] ) === $sseo_vals[2] && true === $sseo_vals[3]
+				&& array( $sseo_wc_hidden['hidden'] ) === $sseo_vals[4] && array( 3 ) === $sseo_vals[5] && array( 3 ) === $sseo_vals[6] && 'x' === $sseo_vals[7] && array( 3 ) === $sseo_vals[8]
+				&& array_merge( array( 3 ), Simple_SEO_WooCommerce::pages(), array( $sseo_wc_shop ) ) === $sseo_vals[9],
+			$sseo_vals
+		);
 	}
 
 	update_option( Simple_SEO_Schema::OPTION, $sseo_wc_schema );
