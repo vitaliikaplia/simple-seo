@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.50.0
+Stable tag: 0.51.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,11 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.51.0 =
+* Keyword research with the Keyword Planner of Google Ads, free, chosen on the part Volumes and difficulty: the search volume of each search, its competition in Google Ads, cost per click and volumes of the last twelve months, sorted by volume, and more searches of the phrase from the Keyword Planner. Its API needs a Google Cloud project with the Basic access level and a Google Ads account; each answer is kept a month.
+* A service account signs in: the key of Search Console, or one of its own kept encrypted; the ID of a manager account when the account is reached through one. When the settings are saved the plugin asks which Google Ads accounts the service account sees, so the tab shows whether it works or what to fix.
+* With Google Ads the page shows the column Competition instead of KD, which Google Ads does not give; Google Trends stays with DataForSEO.
 
 = 0.50.0 =
 * Keyword research with DataForSEO, chosen on the new part Volumes and difficulty of the tab Keyword research: the search volume of each search, its keyword difficulty, cost per click and volumes of the last twelve months, sorted by volume, and more searches of the phrase from its database; Google Trends of the phrase over five years. Paid by the request from your DataForSEO account (about $0.15–0.20 for a new phrase); each answer is kept a month.

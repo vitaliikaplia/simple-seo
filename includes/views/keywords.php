@@ -13,7 +13,8 @@
  * @var bool                                $ai        Whether the AI groups and plans.
  * @var bool                                $gsc       Whether the searches have the data of Search Console.
  * @var bool                                $draft     Whether the user may create a draft.
- * @var bool                                $metrics   Whether the searches have volumes (DataForSEO).
+ * @var bool                                $metrics   Whether the searches have volumes (DataForSEO or Google Ads).
+ * @var bool                                $kd        Whether they have the keyword difficulty (DataForSEO), else the competition of Google Ads.
  * @var bool                                $trends    Whether Google Trends of the phrase is loaded.
  */
 
@@ -25,6 +26,7 @@ $simple_seo_sources = array(
 	'suggest'        => __( 'suggestions of Google search', 'simple-seo' ),
 	'search_console' => __( 'Search Console', 'simple-seo' ),
 	'dataforseo'     => 'DataForSEO',
+	'google_ads'     => 'Google Ads',
 );
 // A sparkline of twelve monthly volumes, bars from the oldest.
 $simple_seo_spark = static function ( array $values ): string {
@@ -160,7 +162,11 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 								<th scope="col"><?php esc_html_e( 'Topic', 'simple-seo' ); ?></th>
 								<?php if ( $metrics ) : ?>
 									<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="volume"><?php esc_html_e( 'Volume', 'simple-seo' ); ?></button></th>
-									<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="kd" title="<?php esc_attr_e( 'Keyword difficulty, 0–100: how hard it is to reach the top ten', 'simple-seo' ); ?>"><?php esc_html_e( 'KD', 'simple-seo' ); ?></button></th>
+									<?php if ( $kd ) : ?>
+										<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="kd" title="<?php esc_attr_e( 'Keyword difficulty, 0–100: how hard it is to reach the top ten', 'simple-seo' ); ?>"><?php esc_html_e( 'KD', 'simple-seo' ); ?></button></th>
+									<?php else : ?>
+										<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="competition" title="<?php esc_attr_e( 'Competition in Google Ads, 0–100: how many advertisers bid on the search', 'simple-seo' ); ?>"><?php esc_html_e( 'Competition', 'simple-seo' ); ?></button></th>
+									<?php endif; ?>
 									<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="cpc" title="<?php esc_attr_e( 'Cost per click in Google Ads, USD', 'simple-seo' ); ?>"><?php esc_html_e( 'CPC', 'simple-seo' ); ?></button></th>
 									<th scope="col"><?php esc_html_e( '12 months', 'simple-seo' ); ?></th>
 								<?php endif; ?>
@@ -174,7 +180,7 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 						<tbody>
 							<?php foreach ( $result['items'] as $simple_seo_item ) : ?>
 								<?php $simple_seo_m = is_array( $simple_seo_item['metrics'] ?? null ) ? $simple_seo_item['metrics'] : array(); ?>
-								<tr data-kw="<?php echo esc_attr( $simple_seo_item['keyword'] ); ?>" data-kw-topic="<?php echo esc_attr( $simple_seo_item['topic'] ); ?>" data-kw-question="<?php echo $simple_seo_item['question'] ? '1' : '0'; ?>"<?php echo $metrics ? sprintf( ' data-kw-volume="%s" data-kw-kd="%s" data-kw-cpc="%s"', esc_attr( (string) ( $simple_seo_m['volume'] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['kd'] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['cpc'] ?? -1 ) ) ) : ''; ?>>
+								<tr data-kw="<?php echo esc_attr( $simple_seo_item['keyword'] ); ?>" data-kw-topic="<?php echo esc_attr( $simple_seo_item['topic'] ); ?>" data-kw-question="<?php echo $simple_seo_item['question'] ? '1' : '0'; ?>"<?php echo $metrics ? sprintf( ' data-kw-volume="%s" data-kw-%s="%s" data-kw-cpc="%s"', esc_attr( (string) ( $simple_seo_m['volume'] ?? -1 ) ), $kd ? 'kd' : 'competition', esc_attr( (string) ( $simple_seo_m[ $kd ? 'kd' : 'competition' ] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['cpc'] ?? -1 ) ) ) : ''; ?>>
 									<td>
 										<a href="<?php echo esc_url( $simple_seo_google( $simple_seo_item['keyword'] ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $simple_seo_item['keyword'] ); ?></a>
 										<?php if ( $simple_seo_item['question'] ) : ?>
@@ -184,7 +190,7 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 									<td class="simple-seo-kw-topic"><?php echo esc_html( $simple_seo_item['topic'] ); ?></td>
 									<?php if ( $metrics ) : ?>
 										<td class="num"><?php echo isset( $simple_seo_m['volume'] ) ? esc_html( number_format_i18n( $simple_seo_m['volume'] ) ) : '—'; ?></td>
-										<td class="num"><?php echo isset( $simple_seo_m['kd'] ) ? esc_html( (string) $simple_seo_m['kd'] ) : '—'; ?></td>
+										<td class="num"><?php echo isset( $simple_seo_m[ $kd ? 'kd' : 'competition' ] ) ? esc_html( (string) $simple_seo_m[ $kd ? 'kd' : 'competition' ] ) : '—'; ?></td>
 										<td class="num"><?php echo isset( $simple_seo_m['cpc'] ) ? esc_html( '$' . number_format_i18n( $simple_seo_m['cpc'], 2 ) ) : '—'; ?></td>
 										<td><?php echo ! empty( $simple_seo_m['trend'] ) ? $simple_seo_spark( $simple_seo_m['trend'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput -- numbers only. ?></td>
 									<?php endif; ?>

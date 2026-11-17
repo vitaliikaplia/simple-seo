@@ -273,7 +273,7 @@
 			} );
 		}
 
-		// The columns of DataForSEO sort the table: the biggest first, again for the smallest.
+		// The columns of the volumes sort the table: the biggest first, again for the smallest.
 		var body = root.querySelector( 'tbody' );
 		Array.prototype.forEach.call( root.querySelectorAll( '[data-kw-sort]' ), function ( button ) {
 			button.addEventListener( 'click', function () {

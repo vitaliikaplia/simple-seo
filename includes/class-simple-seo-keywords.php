@@ -146,6 +146,10 @@ final class Simple_SEO_Keywords {
 				'dfs_secret'     => '',
 				'dfs_sandbox'    => false,
 				'trends'         => true,
+				'gads_customer'  => '',
+				'gads_login'     => '',
+				'gads_key'       => array(),
+				'gads_use_gsc'   => true,
 			),
 			array( self::class, 'sanitize' ),
 			false
@@ -155,6 +159,8 @@ final class Simple_SEO_Keywords {
 		// A login saved: its balance asked at once, so the tab shows whether it works.
 		add_action( 'add_option_' . self::OPTION, array( Simple_SEO_DataForSEO::class, 'check' ) );
 		add_action( 'update_option_' . self::OPTION, array( Simple_SEO_DataForSEO::class, 'check' ) );
+		add_action( 'add_option_' . self::OPTION, array( Simple_SEO_Google_Ads::class, 'check' ) );
+		add_action( 'update_option_' . self::OPTION, array( Simple_SEO_Google_Ads::class, 'check' ) );
 
 		if ( is_admin() ) {
 			add_action( 'init', array( self::class, 'add_admin_tab' ), 6 );
@@ -171,10 +177,11 @@ final class Simple_SEO_Keywords {
 	/**
 	 * The settings as the form sends them or as they are kept. The password of DataForSEO comes
 	 * from the form as dfs_password and is kept encrypted as dfs_secret: an empty field keeps the
-	 * saved one, the box dfs_forget removes it.
+	 * saved one, the box dfs_forget removes it. The key of a service account for Google Ads comes
+	 * as gads_json and is kept as gads_key, as Search Console keeps its own (or that one is used).
 	 *
 	 * @param array<string, mixed> $input
-	 * @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string, volumes: string, dfs_login: string, dfs_secret: string, dfs_sandbox: bool, trends: bool}
+	 * @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string, volumes: string, dfs_login: string, dfs_secret: string, dfs_sandbox: bool, trends: bool, gads_customer: string, gads_login: string, gads_key: array<string, string>, gads_use_gsc: bool}
 	 */
 	public static function sanitize( array $input ): array {
 		$language = is_string( $input['language'] ?? null ) ? $input['language'] : '';
@@ -188,18 +195,42 @@ final class Simple_SEO_Keywords {
 			$secret = '';
 		}
 
+		$key  = $input['gads_key'] ?? ( Simple_SEO_Settings::get( self::OPTION )['gads_key'] ?? array() );
+		$json = is_string( $input['gads_json'] ?? null ) ? trim( $input['gads_json'] ) : '';
+		if ( '' !== $json ) {
+			$read = Simple_SEO_Search_Console::read_key( $json );
+			if ( is_wp_error( $read ) ) {
+				add_settings_error( self::OPTION, $read->get_error_code(), $read->get_error_message() );
+			} else {
+				$key = $read;
+			}
+		} elseif ( ! empty( $input['gads_forget'] ) ) {
+			$key = array();
+		}
+
 		return array(
 			'suggest'        => self::ticked( $input['suggest'] ?? true ),
 			'search_console' => self::ticked( $input['search_console'] ?? true ),
 			'ai'             => self::ticked( $input['ai'] ?? true ),
 			'language'       => isset( self::LANGUAGES[ $language ] ) ? $language : '',
 			'country'        => in_array( $country, self::COUNTRIES, true ) ? $country : '',
-			'volumes'        => in_array( $volumes, array( '', 'dataforseo' ), true ) ? $volumes : '',
+			'volumes'        => in_array( $volumes, array( '', 'dataforseo', 'google_ads' ), true ) ? $volumes : '',
 			'dfs_login'      => is_string( $input['dfs_login'] ?? null ) ? sanitize_text_field( trim( $input['dfs_login'] ) ) : '',
 			'dfs_secret'     => is_string( $secret ) ? $secret : '',
 			'dfs_sandbox'    => self::ticked( $input['dfs_sandbox'] ?? false ),
 			'trends'         => self::ticked( $input['trends'] ?? true ),
+			'gads_customer'  => self::customer( $input['gads_customer'] ?? '' ),
+			'gads_login'     => self::customer( $input['gads_login'] ?? '' ),
+			'gads_key'       => is_array( $key ) && is_string( $key['email'] ?? null ) && is_string( $key['secret'] ?? null ) ? array_map( 'strval', array_intersect_key( $key, array_flip( array( 'email', 'project', 'id', 'secret' ) ) ) ) : array(),
+			'gads_use_gsc'   => self::ticked( $input['gads_use_gsc'] ?? true ),
 		);
+	}
+
+	/** The ID of a Google Ads account: its ten digits, without the hyphens; '' for anything else. */
+	private static function customer( $value ): string {
+		$digits = is_string( $value ) ? (string) preg_replace( '/[\s-]/', '', $value ) : '';
+
+		return 1 === preg_match( '/^\d{10}$/', $digits ) ? $digits : '';
 	}
 
 	/** A box of the form (hidden 0, box 1) or a value already clean. */
@@ -207,7 +238,7 @@ final class Simple_SEO_Keywords {
 		return true === $value || '1' === $value || 1 === $value;
 	}
 
-	/** @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string, volumes: string, dfs_login: string, dfs_secret: string, dfs_sandbox: bool, trends: bool} */
+	/** @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string, volumes: string, dfs_login: string, dfs_secret: string, dfs_sandbox: bool, trends: bool, gads_customer: string, gads_login: string, gads_key: array<string, string>, gads_use_gsc: bool} */
 	public static function settings(): array {
 		return self::sanitize( Simple_SEO_Settings::get( self::OPTION ) );
 	}
@@ -681,13 +712,18 @@ final class Simple_SEO_Keywords {
 			if ( '' !== $error ) {
 				$errors['dataforseo'] = $error;
 			}
+		} elseif ( Simple_SEO_Google_Ads::on() ) {
+			[ $items, $error ] = self::with_planner( $items, $seed, $language, $country );
+			if ( '' !== $error ) {
+				$errors['google_ads'] = $error;
+			}
 		}
 
 		$items = array_values( $items );
 		foreach ( $items as $index => $item ) {
 			$items[ $index ]['question'] = self::is_question( $item['keyword'], $language );
 		}
-		if ( Simple_SEO_DataForSEO::on() ) {
+		if ( self::volumes_on() ) {
 			// The most searched first; those without a volume keep their order after them.
 			usort( $items, static fn( array $a, array $b ): int => ( $b['metrics']['volume'] ?? -1 ) <=> ( $a['metrics']['volume'] ?? -1 ) );
 		}
@@ -771,6 +807,52 @@ final class Simple_SEO_Keywords {
 		}
 
 		return array( $items, '' );
+	}
+
+	/**
+	 * The ideas with the metrics of the Keyword Planner of Google Ads: more searches of the phrase
+	 * with theirs, then the volumes of the others. No difficulty: Google Ads has none.
+	 *
+	 * @param array<string, array<string, mixed>> $items keyword => item.
+	 * @return array{0: array<string, array<string, mixed>>, 1: string} The items and why some have none.
+	 */
+	private static function with_planner( array $items, string $seed, string $language, string $country ): array {
+		$more = Simple_SEO_Google_Ads::ideas( $seed, $language, $country );
+		if ( is_wp_error( $more ) ) {
+			return array( $items, $more->get_error_message() );
+		}
+		foreach ( $more as $keyword => $metrics ) {
+			$keyword = (string) $keyword;
+			if ( ! isset( $items[ $keyword ] ) ) {
+				$items[ $keyword ] = self::item( $keyword, 'google_ads' );
+			} else {
+				$items[ $keyword ]['sources'][] = 'google_ads';
+			}
+			$items[ $keyword ]['metrics'] = $metrics;
+		}
+
+		$missing = array();
+		foreach ( $items as $keyword => $item ) {
+			if ( null === $item['metrics'] ) {
+				$missing[] = (string) $keyword;
+			}
+		}
+		$volumes = $missing ? Simple_SEO_Google_Ads::volumes( $missing, $language, $country ) : array();
+		if ( is_wp_error( $volumes ) ) {
+			return array( $items, $volumes->get_error_message() );
+		}
+		foreach ( $volumes as $keyword => $metrics ) {
+			if ( isset( $items[ $keyword ] ) && null === $items[ $keyword ]['metrics'] ) {
+				$items[ $keyword ]['metrics'] = $metrics;
+			}
+		}
+
+		return array( $items, '' );
+	}
+
+	/** Whether the searches get volumes: from DataForSEO or the Keyword Planner of Google Ads. */
+	public static function volumes_on(): bool {
+		return Simple_SEO_DataForSEO::on() || Simple_SEO_Google_Ads::on();
 	}
 
 	/**
@@ -1364,6 +1446,8 @@ final class Simple_SEO_Keywords {
 			'country'  => $countries[ self::site_country() ] ?? self::site_country(),
 		);
 		$balance   = Simple_SEO_DataForSEO::on() ? Simple_SEO_DataForSEO::balance() : null;
+		$planner   = Simple_SEO_Google_Ads::on() ? Simple_SEO_Google_Ads::status() : null;
+		$gsc_key   = Simple_SEO_Search_Console::connected();
 
 		require SIMPLE_SEO_DIR . 'includes/views/tab-keywords.php';
 	}
@@ -1425,8 +1509,9 @@ final class Simple_SEO_Keywords {
 		$ai        = self::ai_on();
 		$gsc       = self::gsc_on();
 		$draft     = current_user_can( 'edit_posts' );
-		$metrics   = Simple_SEO_DataForSEO::on();
-		$trends    = $metrics && self::settings()['trends'];
+		$metrics   = self::volumes_on();
+		$kd        = Simple_SEO_DataForSEO::on();
+		$trends    = $kd && self::settings()['trends'];
 
 		require SIMPLE_SEO_DIR . 'includes/views/keywords.php';
 	}

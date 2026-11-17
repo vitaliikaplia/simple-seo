@@ -12299,6 +12299,10 @@ MD === $sseo_val,
 			'dfs_secret'     => '',
 			'dfs_sandbox'    => false,
 			'trends'         => true,
+			'gads_customer'  => '',
+			'gads_login'     => '',
+			'gads_key'       => array(),
+			'gads_use_gsc'   => true,
 		) === $sseo_vals[0] && false === $sseo_vals[1]
 			&& array(
 				'suggest'        => false,
@@ -12311,6 +12315,10 @@ MD === $sseo_val,
 				'dfs_secret'     => '',
 				'dfs_sandbox'    => false,
 				'trends'         => true,
+				'gads_customer'  => '',
+				'gads_login'     => '',
+				'gads_key'       => array(),
+				'gads_use_gsc'   => true,
 			) === $sseo_vals[2]
 			&& array(
 				'suggest'        => false,
@@ -12323,6 +12331,10 @@ MD === $sseo_val,
 				'dfs_secret'     => '',
 				'dfs_sandbox'    => false,
 				'trends'         => true,
+				'gads_customer'  => '',
+				'gads_login'     => '',
+				'gads_key'       => array(),
+				'gads_use_gsc'   => true,
 			) === $sseo_vals[3]
 			&& array(
 				'suggest'        => true,
@@ -12335,6 +12347,10 @@ MD === $sseo_val,
 				'dfs_secret'     => '',
 				'dfs_sandbox'    => false,
 				'trends'         => true,
+				'gads_customer'  => '',
+				'gads_login'     => '',
+				'gads_key'       => array(),
+				'gads_use_gsc'   => true,
 			) === $sseo_vals[4],
 		$sseo_vals
 	);
@@ -13105,7 +13121,8 @@ MD === $sseo_val,
 			&& str_contains( $sseo_html, 'That of the site (' . Simple_SEO_Keywords::languages()[ Simple_SEO_Keywords::site_language() ] . ')' ) && str_contains( $sseo_html, '<option value="UA"' )
 			&& str_contains( $sseo_html, 'The queries this site was shown for in the last 90 days' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Keywords::page_url() ) )
 			&& str_contains( $sseo_html, '<option value="pl"  selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="CH"  selected=\'selected\'>' )
-			&& ! str_contains( $sseo_html, 'dfs_forget' ) && ! str_contains( $sseo_html, 'placeholder="Saved' ) && str_contains( $sseo_html, '<option value=""  selected=\'selected\'>None</option>' ),
+			&& ! str_contains( $sseo_html, 'dfs_forget' ) && ! str_contains( $sseo_html, 'placeholder="Saved' ) && str_contains( $sseo_html, '<option value=""  selected=\'selected\'>None</option>' )
+			&& str_contains( $sseo_html, '<option value="google_ads" >Google Ads (Keyword Planner)</option>' ) && ! str_contains( $sseo_html, 'gads_forget' ) && ! str_contains( $sseo_html, 'simple-seo-gads-status' ),
 		$sseo_html
 	);
 
@@ -13737,6 +13754,680 @@ MD === $sseo_val,
 
 	remove_filter( 'pre_http_request', $sseo_kw_dfs_fake, 10 );
 	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_dfs\\_%'" );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+
+	// Google Ads, answered here: $sseo_kw_gads maps a path to its data, array( status, body ), a raw
+	// body or a WP_Error; $sseo_kw_gads_token answers the token for Google Ads (those of Search
+	// Console go on). Each request is kept: the claims of the token, else the method, body, headers.
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_kw_gads_accounts         = array( 'resourceNames' => array( 'customers/1234567890', 'customers/5550001111', 'managers/1' ) );
+	$sseo_kw_gads                  = array( 'customers:listAccessibleCustomers' => $sseo_kw_gads_accounts );
+	$sseo_kw_gads_ok               = array(
+		200,
+		array(
+			'access_token' => 'gads-token',
+			'expires_in'   => 3599,
+		),
+	);
+	$sseo_kw_gads_token            = $sseo_kw_gads_ok;
+	$sseo_kw_gads_fake             = static function ( $pre, $args, $url ) use ( &$sseo_kw_gads, &$sseo_kw_gads_token, $sseo_kw_reply ) {
+		if ( Simple_SEO_Search_Console::TOKEN_URL === $url ) {
+			$parts  = explode( '.', (string) ( $args['body']['assertion'] ?? '' ) );
+			$claims = json_decode( (string) base64_decode( strtr( $parts[1] ?? '', '-_', '+/' ) ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+			if ( Simple_SEO_Google_Ads::SCOPE !== ( $claims['scope'] ?? '' ) ) {
+				return $pre;
+			}
+			$GLOBALS['sseo_kw_gads_asked'][] = array(
+				'path'   => 'token',
+				'claims' => $claims,
+				'header' => json_decode( (string) base64_decode( strtr( $parts[0], '-_', '+/' ) ), true ), // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+			);
+
+			return $sseo_kw_gads_token instanceof WP_Error ? $sseo_kw_gads_token : $sseo_kw_reply( $sseo_kw_gads_token[0], $sseo_kw_gads_token[1] );
+		}
+		if ( str_starts_with( (string) $url, Simple_SEO_Google_Ads::API ) ) {
+			$path                            = substr( (string) $url, strlen( Simple_SEO_Google_Ads::API ) );
+			$GLOBALS['sseo_kw_gads_asked'][] = array(
+				'path'    => $path,
+				'method'  => $args['method'] ?? '',
+				'body'    => isset( $args['body'] ) ? json_decode( (string) $args['body'], true ) : null,
+				'raw'     => (string) ( $args['body'] ?? '' ),
+				'headers' => $args['headers'] ?? array(),
+			);
+			$answer                          = $sseo_kw_gads[ $path ] ?? array();
+			if ( $answer instanceof WP_Error ) {
+				return $answer;
+			}
+			if ( is_string( $answer ) ) {
+				return array( 'body' => $answer ) + $sseo_kw_reply( 200, array() );
+			}
+			if ( is_int( $answer[0] ?? null ) ) {
+				return $sseo_kw_reply( $answer[0], $answer[1] );
+			}
+
+			return $sseo_kw_reply( 200, $answer );
+		}
+
+		return $pre;
+	};
+	add_filter( 'pre_http_request', $sseo_kw_gads_fake, 11, 3 );
+	$sseo_kw_gads_api    = static fn(): array => array_values( array_filter( $GLOBALS['sseo_kw_gads_asked'], static fn( array $one ): bool => 'token' !== $one['path'] ) );
+	$sseo_kw_gads_forget = static function (): void {
+		$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_gads\\_%'" );
+		wp_cache_flush();
+	};
+	$sseo_kw_gads_key    = array();
+	$sseo_kw_gads_on     = static function ( array $more = array() ) use ( $sseo_kw_set, &$sseo_kw_gads_key ): void {
+		$sseo_kw_set(
+			array_replace(
+				array(
+					'volumes'       => 'google_ads',
+					'gads_customer' => '1234567890',
+					'gads_key'      => $sseo_kw_gads_key,
+					'gads_use_gsc'  => false,
+				),
+				$more
+			)
+		);
+	};
+
+	// The settings: the IDs of the accounts, the key of its own.
+	$sseo_kw_ids = array();
+	foreach ( array( '123-456-7890', ' 123 456 7890 ', '1234567890', '12345', '123-456-78901', 'abcdefghij', 1234567890 ) as $sseo_value ) {
+		$sseo_kw_ids[] = Simple_SEO_Keywords::sanitize(
+			array(
+				'gads_customer' => $sseo_value,
+				'gads_login'    => $sseo_value,
+			)
+		);
+	}
+	$sseo_kw_gads_json = (string) wp_json_encode(
+		array(
+			'type'           => 'service_account',
+			'project_id'     => 'sseo-ads',
+			'private_key_id' => 'ads1',
+			'private_key'    => $sseo_kw_pem,
+			'client_email'   => 'ads@sseo-ads.iam.gserviceaccount.com',
+		)
+	);
+	$sseo_kw_row       = Simple_SEO_Keywords::sanitize(
+		array(
+			'volumes'      => 'google_ads',
+			'gads_json'    => '  ' . $sseo_kw_gads_json . "\n",
+			'gads_use_gsc' => '0',
+		)
+	);
+	$sseo_kw_gads_key  = $sseo_kw_row['gads_key'];
+	$sseo_vals         = array(
+		$sseo_kw_row['volumes'],
+		array_keys( $sseo_kw_gads_key ),
+		array( $sseo_kw_gads_key['email'] ?? '', $sseo_kw_gads_key['project'] ?? '', $sseo_kw_gads_key['id'] ?? '' ),
+		$sseo_kw_pem !== ( $sseo_kw_gads_key['secret'] ?? '' ) && $sseo_kw_pem === Simple_SEO_Search_Console::decrypt( $sseo_kw_gads_key['secret'] ?? '' ),
+		$sseo_kw_row['gads_use_gsc'],
+	);
+	update_option( Simple_SEO_Keywords::OPTION, $sseo_kw_row );
+	Simple_SEO_Settings::flush();
+	$GLOBALS['wp_settings_errors'] = array();
+	$sseo_vals[]                   = Simple_SEO_Keywords::sanitize( array( 'gads_json' => '{"type":"authorized_user"}' ) )['gads_key']['email'] ?? '';
+	$sseo_vals[]                   = wp_list_pluck( get_settings_errors( Simple_SEO_Keywords::OPTION ), 'code' );
+	$GLOBALS['wp_settings_errors'] = array();
+	$sseo_vals[]                   = Simple_SEO_Keywords::sanitize( array( 'gads_json' => ' ' ) )['gads_key']['email'] ?? '';
+	$sseo_vals[]                   = get_settings_errors( Simple_SEO_Keywords::OPTION );
+	$sseo_vals[]                   = Simple_SEO_Keywords::sanitize( array( 'gads_forget' => '1' ) )['gads_key'];
+	$sseo_vals[]                   = Simple_SEO_Keywords::sanitize(
+		array(
+			'gads_key' => array(
+				'email'   => 'a@example.com',
+				'secret'  => 'x',
+				'extra'   => 'y',
+				'project' => 7,
+			),
+		)
+	)['gads_key'];
+	$sseo_vals[]                   = Simple_SEO_Keywords::sanitize( array( 'gads_key' => array( 'email' => 'a@example.com' ) ) )['gads_key'];
+	$sseo_vals[]                   = array( Simple_SEO_Keywords::sanitize( array() )['gads_use_gsc'], Simple_SEO_Keywords::sanitize( array( 'gads_use_gsc' => '1' ) )['gads_use_gsc'] );
+	sseo_check(
+		'Google Ads: the IDs of the accounts as their ten digits without hyphens and spaces, else none; the key of its own read from its JSON and kept encrypted; the saved one kept when the field is empty or the JSON is no key (said), the box removes it; only what a key has kept',
+		array( '1234567890', '1234567890', '1234567890', '', '', '', '' ) === array_column( $sseo_kw_ids, 'gads_customer' ) && array_column( $sseo_kw_ids, 'gads_customer' ) === array_column( $sseo_kw_ids, 'gads_login' )
+			&& array(
+				'google_ads',
+				array( 'email', 'project', 'id', 'secret' ),
+				array( 'ads@sseo-ads.iam.gserviceaccount.com', 'sseo-ads', 'ads1' ),
+				true,
+				false,
+				'ads@sseo-ads.iam.gserviceaccount.com',
+				array( 'simple_seo_gsc_type' ),
+				'ads@sseo-ads.iam.gserviceaccount.com',
+				array(),
+				array(),
+				array(
+					'email'   => 'a@example.com',
+					'secret'  => 'x',
+					'project' => '7',
+				),
+				array(),
+				array( true, true ),
+			) === $sseo_vals,
+		array( $sseo_kw_ids, $sseo_vals )
+	);
+
+	// On with an account and a key: its own, or that of Search Console.
+	$sseo_vals = array( Simple_SEO_Google_Ads::on() );
+	$sseo_kw_gads_on();
+	$sseo_vals[] = array( Simple_SEO_Google_Ads::on(), Simple_SEO_Keywords::volumes_on(), Simple_SEO_Google_Ads::key()['email'] ?? '' );
+	$sseo_kw_gads_on( array( 'gads_use_gsc' => true ) );
+	$sseo_vals[] = array( Simple_SEO_Google_Ads::on(), Simple_SEO_Google_Ads::key()['email'] ?? '' );
+	foreach ( array( array( 'volumes' => 'dataforseo' ), array( 'gads_customer' => '' ), array( 'gads_key' => array() ), array( 'gads_key' => array( 'secret' => '' ) + $sseo_kw_gads_key ) ) as $sseo_name ) {
+		$sseo_kw_gads_on( $sseo_name );
+		$sseo_vals[] = Simple_SEO_Google_Ads::on() || Simple_SEO_Keywords::volumes_on();
+	}
+	sseo_check(
+		'Google Ads gives the volumes when chosen, with the ID of the account and a key: of its own, or of Search Console when chosen; not without one of them',
+		array( false, array( true, true, 'ads@sseo-ads.iam.gserviceaccount.com' ), array( true, 'kw@sseo-kw.iam.gserviceaccount.com' ), false, false, false, false ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// The token: the service account signs in for Google Ads, the token kept encrypted.
+	$sseo_kw_gads_on();
+	delete_transient( Simple_SEO_Google_Ads::CACHE . 'token' );
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_vals                     = array( Simple_SEO_Google_Ads::token(), Simple_SEO_Google_Ads::token() );
+	$sseo_kw_saved                 = get_transient( Simple_SEO_Google_Ads::CACHE . 'token' );
+	$sseo_kw_until                 = (int) get_option( '_transient_timeout_' . Simple_SEO_Google_Ads::CACHE . 'token' ) - time();
+	$sseo_kw_asked                 = $GLOBALS['sseo_kw_gads_asked'];
+	set_transient(
+		Simple_SEO_Google_Ads::CACHE . 'token',
+		array(
+			'for'   => md5( 'another key' ),
+			'token' => Simple_SEO_Search_Console::encrypt( 'old-token' ),
+		),
+		600
+	);
+	$sseo_vals[] = Simple_SEO_Google_Ads::token();
+	sseo_check(
+		'the token of Google Ads: asked with the key of the service account for Google Ads, kept encrypted until shortly before it ends; that of another key not used',
+		array( 'gads-token', 'gads-token', 'gads-token' ) === $sseo_vals && 1 === count( $sseo_kw_asked ) && 2 === count( $GLOBALS['sseo_kw_gads_asked'] )
+			&& 'ads@sseo-ads.iam.gserviceaccount.com' === ( $sseo_kw_asked[0]['claims']['iss'] ?? '' ) && Simple_SEO_Search_Console::TOKEN_URL === ( $sseo_kw_asked[0]['claims']['aud'] ?? '' )
+			&& HOUR_IN_SECONDS === ( $sseo_kw_asked[0]['claims']['exp'] ?? 0 ) - ( $sseo_kw_asked[0]['claims']['iat'] ?? 0 ) && abs( time() - ( $sseo_kw_asked[0]['claims']['iat'] ?? 0 ) ) <= 2 && 'ads1' === ( $sseo_kw_asked[0]['header']['kid'] ?? '' )
+			&& is_array( $sseo_kw_saved ) && ! str_contains( (string) wp_json_encode( $sseo_kw_saved ), 'gads-token' ) && 'gads-token' === Simple_SEO_Search_Console::decrypt( (string) ( $sseo_kw_saved['token'] ?? '' ) )
+			&& $sseo_kw_until > 3470 && $sseo_kw_until <= 3479,
+		array( $sseo_vals, $sseo_kw_asked, $sseo_kw_saved, $sseo_kw_until )
+	);
+	$sseo_vals = array();
+	foreach (
+		array(
+			array(
+				400,
+				array(
+					'error'             => 'invalid_grant',
+					'error_description' => 'Invalid JWT Signature.',
+				),
+			),
+			array( 400, array( 'error' => 'invalid_grant' ) ),
+			array( 500, array() ),
+			array( 503, array( 'access_token' => 'not-this' ) ),
+			array( 200, array( 'expires_in' => 3599 ) ),
+			new WP_Error( 'http_request_failed', 'cURL error 28' ),
+		) as $sseo_kw_gads_token
+	) {
+		delete_transient( Simple_SEO_Google_Ads::CACHE . 'token' );
+		$sseo_val    = Simple_SEO_Google_Ads::token();
+		$sseo_vals[] = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() . ': ' . $sseo_val->get_error_message() : $sseo_val;
+	}
+	$sseo_kw_gads_token = $sseo_kw_gads_ok;
+	$sseo_kw_gads_on( array( 'gads_key' => array( 'secret' => 'not a secret' ) + $sseo_kw_gads_key ) );
+	$sseo_val    = Simple_SEO_Google_Ads::token();
+	$sseo_vals[] = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() : $sseo_val;
+	$sseo_kw_gads_on( array( 'gads_key' => array() ) );
+	$sseo_val    = Simple_SEO_Google_Ads::request( 'customers:listAccessibleCustomers' );
+	$sseo_vals[] = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() : $sseo_val;
+	$sseo_kw_gads_on();
+	sseo_check(
+		'a token Google does not give: what it said, else its status; no network; a key the site cannot read; no key',
+		array(
+			'simple_seo_gads_token: Google did not let the service account in (Invalid JWT Signature.): check that its key is not deleted in Google Cloud, or paste a new one.',
+			'simple_seo_gads_token: Google did not let the service account in (invalid_grant): check that its key is not deleted in Google Cloud, or paste a new one.',
+			'simple_seo_gads_token: Google did not let the service account in (500): check that its key is not deleted in Google Cloud, or paste a new one.',
+			'simple_seo_gads_token: Google did not let the service account in (503): check that its key is not deleted in Google Cloud, or paste a new one.',
+			'simple_seo_gads_token: Google did not let the service account in (200): check that its key is not deleted in Google Cloud, or paste a new one.',
+			'simple_seo_gads_network: Google Ads cannot be reached from this server: cURL error 28',
+			'simple_seo_gads_secret',
+			'simple_seo_gads_no_key',
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// The requests: the token, the manager account, the body as JSON.
+	$sseo_kw_gads['customers/1234567890:some'] = array( 'ok' => 1 );
+	$sseo_kw_gads_on( array( 'gads_login' => '111-222-3333' ) );
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_vals                     = array(
+		Simple_SEO_Google_Ads::request( 'customers:listAccessibleCustomers' ),
+		Simple_SEO_Google_Ads::request( 'customers/1234567890:some', array( 'keywords' => array( 'іван чай' ) ) ),
+	);
+	$sseo_kw_asked                 = $sseo_kw_gads_api();
+	$sseo_kw_gads_on();
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	Simple_SEO_Google_Ads::request( 'customers/1234567890:some', array() );
+	$sseo_kw_asked[] = $sseo_kw_gads_api()[0] ?? array();
+	sseo_check(
+		'a request of Google Ads: with the token, through the manager account when given; a GET without a body, a POST with its JSON',
+		array( $sseo_kw_gads_accounts, array( 'ok' => 1 ) ) === $sseo_vals
+			&& 'GET' === $sseo_kw_asked[0]['method'] && '' === $sseo_kw_asked[0]['raw'] && 'Bearer gads-token' === ( $sseo_kw_asked[0]['headers']['Authorization'] ?? '' ) && '1112223333' === ( $sseo_kw_asked[0]['headers']['login-customer-id'] ?? '' ) && ! isset( $sseo_kw_asked[0]['headers']['Content-Type'] )
+			&& 'POST' === $sseo_kw_asked[1]['method'] && '{"keywords":["іван чай"]}' === $sseo_kw_asked[1]['raw'] && 'application/json' === ( $sseo_kw_asked[1]['headers']['Content-Type'] ?? '' ) && '1112223333' === ( $sseo_kw_asked[1]['headers']['login-customer-id'] ?? '' )
+			&& 'customers/1234567890:some' === $sseo_kw_asked[2]['path'] && 'Bearer gads-token' === ( $sseo_kw_asked[2]['headers']['Authorization'] ?? '' ) && ! isset( $sseo_kw_asked[2]['headers']['login-customer-id'] ),
+		$sseo_kw_asked
+	);
+	$sseo_kw_gads_fail = static fn( int $status, string $message, array $code = array() ): array => array(
+		$status,
+		array(
+			'error' => array(
+				'code'    => $status,
+				'message' => $code ? 'Request contains an invalid argument.' : $message,
+				'details' => $code ? array(
+					array(
+						'@type'  => 'type.googleapis.com/google.ads.googleads.v26.errors.GoogleAdsFailure',
+						'errors' => array(
+							array(
+								'errorCode' => $code,
+								'message'   => $message,
+							),
+						),
+					),
+				) : array(),
+			),
+		),
+	);
+	$sseo_vals         = array();
+	foreach (
+		array(
+			$sseo_kw_gads_fail( 403, 'Google Ads API has not been used in project 123 before or it is disabled.' ),
+			$sseo_kw_gads_fail( 403, 'The Google Cloud project is not approved for this call.', array( 'authorizationError' => 'CLOUD_PROJECT_NOT_APPROVED' ) ),
+			$sseo_kw_gads_fail( 403, "User doesn't have permission to access customer.", array( 'authorizationError' => 'USER_PERMISSION_DENIED' ) ),
+			$sseo_kw_gads_fail( 403, 'The caller does not have permission' ),
+			$sseo_kw_gads_fail( 400, 'The customer was not found.', array( 'requestError' => 'CUSTOMER_NOT_FOUND' ) ),
+			$sseo_kw_gads_fail( 429, 'Resource has been exhausted.' ),
+			$sseo_kw_gads_fail( 400, 'Bad keywords.', array( 'requestError' => 'INVALID_INPUT' ) ),
+			$sseo_kw_gads_fail( 500, 'Internal error encountered.' ),
+			array( 502, array() ),
+			'not json',
+			new WP_Error( 'http_request_failed', 'cURL error 6' ),
+		) as $sseo_answer
+	) {
+		$sseo_kw_gads['customers/1234567890:some'] = $sseo_answer;
+		$sseo_val                                  = Simple_SEO_Google_Ads::request( 'customers/1234567890:some', array() );
+		$sseo_vals[]                               = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() . ': ' . $sseo_val->get_error_message() : $sseo_val;
+	}
+	$sseo_vals[]                               = false !== get_transient( Simple_SEO_Google_Ads::CACHE . 'token' );
+	$sseo_kw_gads['customers/1234567890:some'] = $sseo_kw_gads_fail( 401, 'Request had invalid authentication credentials.' );
+	$sseo_val                                  = Simple_SEO_Google_Ads::request( 'customers/1234567890:some', array() );
+	$sseo_vals[]                               = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() . ': ' . $sseo_val->get_error_message() : $sseo_val;
+	$sseo_vals[]                               = get_transient( Simple_SEO_Google_Ads::CACHE . 'token' );
+	sseo_check(
+		'what Google Ads answers that is no data, said with what to do: the API off, the project without the access level, the service account no user of the account, too many requests; else its status and what it said; no network; a token refused forgotten',
+		array(
+			'simple_seo_gads_403: The Google Ads API is off in the project of the service account: turn it on in Google Cloud (APIs and services, Library), wait a few minutes and try again.',
+			'simple_seo_gads_403: The Google Cloud project of the service account may not plan keywords yet: ask for the Basic access level of the Google Ads API on its Google Ads API page in the Cloud Console.',
+			'simple_seo_gads_403: The service account has no access to the Google Ads account: add its email as a user of the account (Admin, Access and security), or give the ID of the manager account it is reached through.',
+			'simple_seo_gads_403: The service account has no access to the Google Ads account: add its email as a user of the account (Admin, Access and security), or give the ID of the manager account it is reached through.',
+			'simple_seo_gads_400: The service account has no access to the Google Ads account: add its email as a user of the account (Admin, Access and security), or give the ID of the manager account it is reached through.',
+			'simple_seo_gads_429: Google Ads asks to wait: too many requests. Try again in a minute.',
+			'simple_seo_gads_400: Google Ads answered 400: INVALID_INPUT: Bad keywords.',
+			'simple_seo_gads_500: Google Ads answered 500: Internal error encountered.',
+			'simple_seo_gads_502: Google Ads answered 502: —',
+			'simple_seo_gads_200: Google Ads answered 200: —',
+			'simple_seo_gads_network: Google Ads cannot be reached from this server: cURL error 6',
+			true,
+			'simple_seo_gads_401: Google Ads answered 401: Request had invalid authentication credentials.',
+			false,
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Saving the settings asks whether the service account reaches Google Ads, kept a day.
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_kw_gads_on( array( 'gads_login' => '1112223333' ) );
+	$sseo_kw_asked = $sseo_kw_gads_api();
+	$sseo_val      = Simple_SEO_Google_Ads::status();
+	$sseo_kw_until = (int) get_option( '_transient_timeout_' . Simple_SEO_Google_Ads::CACHE . 'status' ) - time();
+	$sseo_vals     = array( $sseo_val['accounts'] ?? null, $sseo_val['error'] ?? null, abs( time() - ( $sseo_val['time'] ?? 0 ) ) <= 2, $sseo_kw_until > DAY_IN_SECONDS - 10 && $sseo_kw_until <= DAY_IN_SECONDS );
+	$sseo_kw_saved = get_transient( Simple_SEO_Google_Ads::CACHE . 'status' );
+	set_transient( Simple_SEO_Google_Ads::CACHE . 'status', array( 'account' => md5( 'another' ) ) + $sseo_kw_saved, 600 );
+	$sseo_vals[] = Simple_SEO_Google_Ads::status();
+	$sseo_kw_gads['customers:listAccessibleCustomers'] = $sseo_kw_gads_fail( 403, "User doesn't have permission to access customer.", array( 'authorizationError' => 'USER_PERMISSION_DENIED' ) );
+	$sseo_kw_gads_on();
+	$sseo_val    = Simple_SEO_Google_Ads::status();
+	$sseo_vals[] = array( $sseo_val['accounts'] ?? null, str_starts_with( $sseo_val['error'] ?? '', 'The service account has no access to the Google Ads account' ) );
+	$sseo_kw_gads['customers:listAccessibleCustomers'] = $sseo_kw_gads_accounts;
+	$GLOBALS['sseo_kw_gads_asked']                     = array();
+	$sseo_kw_set( array() );
+	$sseo_vals[] = array( Simple_SEO_Google_Ads::status(), false === get_transient( Simple_SEO_Google_Ads::CACHE . 'status' ), $GLOBALS['sseo_kw_gads_asked'] );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_kw_gads_on();
+	$sseo_vals[] = Simple_SEO_Google_Ads::status()['accounts'] ?? null;
+	sseo_check(
+		'the settings saved, the first time too: whether the service account reaches Google Ads and the accounts it sees, kept a day for this key and account; nothing asked with Google Ads off',
+		array( 1, 'customers:listAccessibleCustomers', 'GET', '1112223333' ) === array( count( $sseo_kw_asked ), $sseo_kw_asked[0]['path'] ?? '', $sseo_kw_asked[0]['method'] ?? '', $sseo_kw_asked[0]['headers']['login-customer-id'] ?? '' )
+			&& array( array( '1234567890', '5550001111' ), '', true, true, null, array( array(), true ), array( null, true, array() ), array( '1234567890', '5550001111' ) ) === $sseo_vals,
+		array( $sseo_kw_asked, $sseo_vals )
+	);
+
+	// The metrics of a search.
+	$sseo_kw_gads_months = array();
+	foreach ( range( 1, 13 ) as $sseo_val ) {
+		$sseo_kw_stamp         = gmmktime( 0, 0, 0, 10 + $sseo_val, 1, 2025 );
+		$sseo_kw_gads_months[] = array(
+			'month'           => strtoupper( gmdate( 'F', $sseo_kw_stamp ) ),
+			'year'            => gmdate( 'Y', $sseo_kw_stamp ),
+			'monthlySearches' => (string) ( 10 * $sseo_val ),
+		);
+	}
+	$sseo_vals = array(
+		Simple_SEO_Google_Ads::metrics(
+			array(
+				'avgMonthlySearches'     => '1900',
+				'competition'            => 'MEDIUM',
+				'competitionIndex'       => '42',
+				'averageCpcMicros'       => '354999',
+				'lowTopOfPageBidMicros'  => '100000',
+				'highTopOfPageBidMicros' => '900000',
+				'monthlySearchVolumes'   => array_merge(
+					array_reverse( $sseo_kw_gads_months ),
+					array(
+						array(
+							'month'           => 'SMARCH',
+							'year'            => '2026',
+							'monthlySearches' => '999',
+						),
+						array(
+							'month'           => 'MAY',
+							'monthlySearches' => '999',
+						),
+						'nope',
+					)
+				),
+			)
+		),
+		Simple_SEO_Google_Ads::metrics(
+			array(
+				'lowTopOfPageBidMicros'  => '200000',
+				'highTopOfPageBidMicros' => '600000',
+			)
+		),
+		Simple_SEO_Google_Ads::metrics( array( 'lowTopOfPageBidMicros' => '200000' ) ),
+		Simple_SEO_Google_Ads::metrics( array( 'monthlySearchVolumes' => 'nope' ) ),
+	);
+	$sseo_kw_none = array(
+		'volume'      => null,
+		'competition' => null,
+		'cpc'         => null,
+		'trend'       => null,
+		'kd'          => null,
+	);
+	sseo_check(
+		'the metrics of a search of Google Ads: its volume, competition, the average cost per click in dollars, else the middle of the bids at the top of the page, the volumes of the last twelve months from the oldest; no difficulty',
+		array(
+			array(
+				'volume'      => 1900,
+				'competition' => 42,
+				'cpc'         => 0.35,
+				'trend'       => array( 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130 ),
+				'kd'          => null,
+			),
+			array_replace( $sseo_kw_none, array( 'cpc' => 0.4 ) ),
+			$sseo_kw_none,
+			$sseo_kw_none,
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// More searches of the phrase, the volumes of others.
+	$sseo_kw_gads_forget();
+	$sseo_kw_gads_on();
+	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas'] = array(
+		'results'   => array(
+			array(
+				'text'               => 'Іван  Чай',
+				'keywordIdeaMetrics' => array(
+					'avgMonthlySearches' => '2900',
+					'competitionIndex'   => '12',
+				),
+			),
+			array(
+				'text'               => 'іван чай',
+				'keywordIdeaMetrics' => array( 'avgMonthlySearches' => '5' ),
+			),
+			array( 'text' => 'копорський чай' ),
+			array( 'text' => ' ' ),
+			'nope',
+		),
+		'totalSize' => '4',
+	);
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_val                      = Simple_SEO_Google_Ads::ideas( 'іван чай', 'uk', 'UA' );
+	Simple_SEO_Google_Ads::ideas( 'іван чай', 'uk', 'UA' );
+	Simple_SEO_Google_Ads::ideas( 'іван чай', 'xx', 'ZZ' );
+	$sseo_kw_asked = $sseo_kw_gads_api();
+	sseo_check(
+		'more searches of the phrase from the Keyword Planner: asked of the account for the language and country on Google search, each once with its metrics; kept a month; English and the United States for those it has no constant of',
+		array(
+			'іван чай'       => array_replace(
+				$sseo_kw_none,
+				array(
+					'volume'      => 2900,
+					'competition' => 12,
+				)
+			),
+			'копорський чай' => $sseo_kw_none,
+		) === $sseo_val && 2 === count( $sseo_kw_asked ) && 'customers/1234567890:generateKeywordIdeas' === $sseo_kw_asked[0]['path'] && 'POST' === $sseo_kw_asked[0]['method']
+			&& array(
+				'keywordSeed'        => array( 'keywords' => array( 'іван чай' ) ),
+				'language'           => 'languageConstants/1036',
+				'geoTargetConstants' => array( 'geoTargetConstants/2804' ),
+				'keywordPlanNetwork' => 'GOOGLE_SEARCH',
+				'pageSize'           => 300,
+			) === $sseo_kw_asked[0]['body']
+			&& 'languageConstants/1000' === ( $sseo_kw_asked[1]['body']['language'] ?? '' ) && array( 'geoTargetConstants/2840' ) === ( $sseo_kw_asked[1]['body']['geoTargetConstants'] ?? null ),
+		array( $sseo_val, $sseo_kw_asked )
+	);
+	$sseo_kw_saved = $sseo_kw_gads['customers/1234567890:generateKeywordIdeas'];
+	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas'] = $sseo_kw_gads_fail( 429, 'Resource has been exhausted.' );
+	$sseo_vals = array( Simple_SEO_Google_Ads::ideas( 'чай', 'uk', 'UA' ) );
+	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas'] = $sseo_kw_saved;
+	$sseo_vals[] = Simple_SEO_Google_Ads::ideas( 'чай', 'uk', 'UA' );
+	sseo_check( 'an answer of the Keyword Planner that is no data: said, not kept', is_wp_error( $sseo_vals[0] ) && 'simple_seo_gads_429' === $sseo_vals[0]->get_error_code() && isset( $sseo_vals[1]['копорський чай'] ), $sseo_vals );
+
+	$sseo_kw_gads['customers/1234567890:generateKeywordHistoricalMetrics'] = array(
+		'results' => array(
+			array(
+				'text'           => 'як пити іван чай',
+				'closeVariants'  => array( 'як пити іван-чай', 'Як Пити Іван Чай' ),
+				'keywordMetrics' => array( 'avgMonthlySearches' => '140' ),
+			),
+			array(
+				'text'           => 'іван-чай ціна',
+				'keywordMetrics' => array(
+					'avgMonthlySearches' => '1000',
+					'averageCpcMicros'   => '250000',
+				),
+			),
+			array( 'text' => 'без даних' ),
+			array( 'keywordMetrics' => array( 'avgMonthlySearches' => '7' ) ),
+		),
+	);
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_val                      = Simple_SEO_Google_Ads::volumes( array( 'іван-чай ціна', 'як пити іван чай', 'чай 🍵', 'іван-чай ціна', 'як пити іван-чай' ), 'uk', 'UA' );
+	$sseo_kw_asked                 = $sseo_kw_gads_api();
+	sseo_check(
+		'the volumes from the Keyword Planner: those it takes asked once, in order; the close variants Google merges get the metrics of their search',
+		array(
+			'як пити іван чай' => array_replace( $sseo_kw_none, array( 'volume' => 140 ) ),
+			'як пити іван-чай' => array_replace( $sseo_kw_none, array( 'volume' => 140 ) ),
+			'іван-чай ціна'    => array_replace(
+				$sseo_kw_none,
+				array(
+					'volume' => 1000,
+					'cpc'    => 0.25,
+				)
+			),
+			'без даних'        => $sseo_kw_none,
+		) === $sseo_val && 1 === count( $sseo_kw_asked ) && 'customers/1234567890:generateKeywordHistoricalMetrics' === $sseo_kw_asked[0]['path']
+			&& array(
+				'keywords'           => array( 'як пити іван чай', 'як пити іван-чай', 'іван-чай ціна' ),
+				'language'           => 'languageConstants/1036',
+				'geoTargetConstants' => array( 'geoTargetConstants/2804' ),
+				'keywordPlanNetwork' => 'GOOGLE_SEARCH',
+			) === $sseo_kw_asked[0]['body'],
+		array( $sseo_val, $sseo_kw_asked )
+	);
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_val                      = Simple_SEO_Google_Ads::volumes( array_map( static fn( int $n ): string => 'чай ' . $n, range( 1, Simple_SEO_Google_Ads::MAX + 1 ) ), 'uk', 'UA' );
+	$sseo_kw_asked                 = $sseo_kw_gads_api();
+	sseo_check(
+		'more searches than the Keyword Planner takes at once: asked in parts',
+		is_array( $sseo_val ) && 2 === count( $sseo_kw_asked ) && Simple_SEO_Google_Ads::MAX === count( $sseo_kw_asked[0]['body']['keywords'] ?? array() ) && array( 'чай ' . ( Simple_SEO_Google_Ads::MAX + 1 ) ) === ( $sseo_kw_asked[1]['body']['keywords'] ?? null ),
+		array_map( static fn( array $one ): int => count( $one['body']['keywords'] ?? array() ), $sseo_kw_asked )
+	);
+
+	// The research with the Keyword Planner.
+	$sseo_kw_gads_ideas = array(
+		'results' => array(
+			array(
+				'text'               => 'іван чай',
+				'keywordIdeaMetrics' => array( 'avgMonthlySearches' => '2900' ),
+			),
+			array(
+				'text'               => 'копорський чай',
+				'keywordIdeaMetrics' => array(
+					'avgMonthlySearches' => '880',
+					'competitionIndex'   => '20',
+				),
+			),
+			array(
+				'text'               => 'іван чай користь',
+				'keywordIdeaMetrics' => array( 'avgMonthlySearches' => '590' ),
+			),
+		),
+	);
+	$sseo_kw_gads_volumes = array(
+		'results' => array(
+			array(
+				'text'           => 'іван-чай ціна',
+				'keywordMetrics' => array( 'avgMonthlySearches' => '1000' ),
+			),
+			array(
+				'text'           => 'як пити іван чай',
+				'keywordMetrics' => array( 'avgMonthlySearches' => '140' ),
+			),
+			array(
+				'text'           => 'іван чай',
+				'keywordMetrics' => array( 'avgMonthlySearches' => '1' ),
+			),
+			array(
+				'text'           => 'чай для схуднення',
+				'keywordMetrics' => array( 'avgMonthlySearches' => '50' ),
+			),
+		),
+	);
+	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas']             = $sseo_kw_gads_ideas;
+	$sseo_kw_gads['customers/1234567890:generateKeywordHistoricalMetrics'] = $sseo_kw_gads_volumes;
+	$sseo_kw_gads_forget();
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_val                      = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	$sseo_items                    = is_array( $sseo_val ) ? array_column( $sseo_val['items'], null, 'keyword' ) : array();
+	$sseo_kw_asked                 = $sseo_kw_gads_api();
+	sseo_check(
+		'the research with the Keyword Planner: its searches of the phrase added with their metrics, the volumes of the others asked; the most searched first; no difficulty',
+		is_array( $sseo_val ) && array() === $sseo_val['errors']
+			&& array( 'іван чай', 'іван-чай ціна', 'копорський чай', 'іван чай користь', 'як пити іван чай' ) === array_slice( array_column( $sseo_val['items'], 'keyword' ), 0, 5 )
+			&& 2900 === $sseo_items['іван чай']['metrics']['volume'] && 20 === $sseo_items['копорський чай']['metrics']['competition'] && null === $sseo_items['2024']['metrics'] && ! isset( $sseo_items['чай для схуднення'] )
+			&& array( 'google_ads' ) === $sseo_items['копорський чай']['sources'] && array( 'suggest', 'search_console', 'google_ads' ) === $sseo_items['іван чай користь']['sources']
+			&& array() === array_filter( array_column( array_filter( array_column( $sseo_val['items'], 'metrics' ) ), 'kd' ), static fn( $kd ): bool => null !== $kd )
+			&& array( 'customers/1234567890:generateKeywordIdeas', 'customers/1234567890:generateKeywordHistoricalMetrics' ) === array_column( $sseo_kw_asked, 'path' )
+			&& in_array( '2024', $sseo_kw_asked[1]['body']['keywords'] ?? array(), true ) && ! in_array( 'іван чай користь', $sseo_kw_asked[1]['body']['keywords'] ?? array( 'іван чай користь' ), true ) && ! in_array( 'іван чай', $sseo_kw_asked[1]['body']['keywords'] ?? array( 'іван чай' ), true ),
+		array( $sseo_val, $sseo_kw_asked )
+	);
+	$sseo_kw_gads['customers/1234567890:generateKeywordHistoricalMetrics'] = $sseo_kw_gads_fail( 400, 'Bad keywords.', array( 'requestError' => 'INVALID_INPUT' ) );
+	$sseo_kw_gads_forget();
+	$sseo_val = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	sseo_check( 'the volumes of the Keyword Planner that fail: said, the searches of the phrase keep theirs', is_array( $sseo_val ) && str_contains( $sseo_val['errors']['google_ads'] ?? '', 'Bad keywords.' ) && 2900 === ( array_column( $sseo_val['items'], null, 'keyword' )['іван чай']['metrics']['volume'] ?? null ), $sseo_val );
+	$sseo_kw_gads['customers/1234567890:generateKeywordHistoricalMetrics'] = $sseo_kw_gads_volumes;
+	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas']             = $sseo_kw_gads_fail( 403, "User doesn't have permission to access customer.", array( 'authorizationError' => 'USER_PERMISSION_DENIED' ) );
+	$sseo_kw_gads_forget();
+	$GLOBALS['sseo_kw_gads_asked'] = array();
+	$sseo_val                      = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	$sseo_kw_asked                 = $sseo_kw_gads_api();
+	$_GET                          = array(
+		'page'    => Simple_SEO_Keywords::PAGE,
+		'q'       => 'іван чай',
+		'lang'    => 'uk',
+		'country' => 'UA',
+	);
+	$sseo_html                     = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$_GET                          = array();
+	sseo_check(
+		'the Keyword Planner that cannot answer: said on the page, the searches without volumes, nothing more asked',
+		is_array( $sseo_val ) && str_starts_with( $sseo_val['errors']['google_ads'] ?? '', 'The service account has no access' ) && array() === array_filter( array_column( $sseo_val['items'], 'metrics' ) ) && 1 === count( $sseo_kw_asked )
+			&& str_contains( $sseo_html, 'No searches from Google Ads: The service account has no access to the Google Ads account' ),
+		$sseo_val
+	);
+	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas'] = $sseo_kw_gads_ideas;
+	$sseo_kw_gads_forget();
+
+	// The page, Trends and the tab with the Keyword Planner.
+	$_GET      = array(
+		'page'    => Simple_SEO_Keywords::PAGE,
+		'q'       => 'іван чай',
+		'lang'    => 'uk',
+		'country' => 'UA',
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$_GET      = array();
+	$sseo_val  = Simple_SEO_Keywords::trends( 'іван чай', 'uk', 'UA' );
+	sseo_check(
+		'the page with the Keyword Planner: the columns of the volume, competition instead of the difficulty it has not, and cost per click to sort by; no Google Trends, which comes from DataForSEO',
+		str_contains( $sseo_html, 'data-kw-sort="volume"' ) && str_contains( $sseo_html, 'data-kw-sort="competition"' ) && ! str_contains( $sseo_html, 'data-kw-sort="kd"' ) && ! str_contains( $sseo_html, 'data-kw-kd=' )
+			&& str_contains( $sseo_html, 'data-kw="копорський чай" data-kw-topic="' ) && str_contains( $sseo_html, 'data-kw-volume="880" data-kw-competition="20" data-kw-cpc="-1">' ) && (bool) preg_match( '#<td class="num">880</td>\s*<td class="num">20</td>\s*<td class="num">—</td>#u', $sseo_html )
+			&& ! str_contains( $sseo_html, 'data-trends' ) && ! str_contains( $sseo_html, 'data-kw-trends' ) && is_wp_error( $sseo_val ) && 'simple_seo_kw_no_trends' === $sseo_val->get_error_code(),
+		$sseo_html
+	);
+
+	$sseo_kw_gads_on(
+		array(
+			'gads_login'   => '1112223333',
+			'gads_use_gsc' => true,
+		)
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	sseo_check(
+		'the tab with the Keyword Planner: chosen, the IDs of the accounts, the key of Search Console chosen, its own saved and the box that removes it, a field for another; whether it reached Google Ads when saved; no secret shown',
+		str_contains( $sseo_html, '<option value="google_ads"  selected=\'selected\'>Google Ads (Keyword Planner)</option>' ) && str_contains( $sseo_html, 'name="simple_seo_keywords[gads_customer]" value="1234567890"' ) && str_contains( $sseo_html, 'name="simple_seo_keywords[gads_login]" value="1112223333"' )
+			&& (bool) preg_match( '/<input type="hidden" name="simple_seo_keywords\[gads_use_gsc\]" value="0">\s*<label><input type="checkbox" name="simple_seo_keywords\[gads_use_gsc\]" value="1"\s+checked=/', $sseo_html ) && str_contains( $sseo_html, 'The key of Search Console (kw@sseo-kw.iam.gserviceaccount.com)' )
+			&& str_contains( $sseo_html, 'A key of its own is saved: ads@sseo-ads.iam.gserviceaccount.com' ) && str_contains( $sseo_html, 'Or a key of its own: the JSON file of a service account' ) && str_contains( $sseo_html, 'name="simple_seo_keywords[gads_forget]"' ) && str_contains( $sseo_html, '<textarea id="simple-seo-keywords-gads-json" name="simple_seo_keywords[gads_json]"' )
+			&& str_contains( $sseo_html, '<p class="simple-seo-gads-status">' ) && (bool) preg_match( '/Connected: the service account sees 2 Google Ads accounts \(checked \d+ seconds? ago, when the settings were saved\)\./', $sseo_html ) && ! str_contains( $sseo_html, 'simple-seo-gads-error' )
+			&& ! str_contains( $sseo_html, $sseo_kw_gads_key['secret'] ) && ! str_contains( $sseo_html, 'gads-token' ),
+		$sseo_html
+	);
+	$sseo_kw_gads['customers:listAccessibleCustomers'] = $sseo_kw_gads_fail( 403, 'Google Ads API has not been used in project 123 before or it is disabled.' );
+	$sseo_kw_gads_on( array( 'gads_key' => array() ) );
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	sseo_check(
+		'the tab: why the service account does not reach Google Ads; without the key of Search Console only a field for one of its own',
+		! str_contains( $sseo_html, 'simple-seo-gads-status' ) && ! str_contains( $sseo_html, 'simple-seo-gads-error' ) && ! str_contains( $sseo_html, 'The key of Search Console' ) && ! str_contains( $sseo_html, 'gads_forget' )
+			&& str_contains( $sseo_html, '<input type="hidden" name="simple_seo_keywords[gads_use_gsc]" value="0">' ) && ! str_contains( $sseo_html, '<input type="checkbox" name="simple_seo_keywords[gads_use_gsc]"' )
+			&& str_contains( $sseo_html, '>The JSON file of a service account</label>' ),
+		$sseo_html
+	);
+	$sseo_kw_gads_on();
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	sseo_check( 'the tab: what Google Ads answered when the settings were saved, said', str_contains( $sseo_html, '<p class="simple-seo-gads-error"><strong>The Google Ads API is off in the project of the service account' ) && ! str_contains( $sseo_html, 'simple-seo-gads-status' ), $sseo_html );
+
+	remove_filter( 'pre_http_request', $sseo_kw_gads_fake, 11 );
+	$sseo_kw_gads_forget();
 	delete_option( Simple_SEO_Keywords::OPTION );
 	Simple_SEO_Settings::flush();
 

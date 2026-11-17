@@ -7,6 +7,8 @@
  * @var array<string, string>                                                                   $countries Code => name.
  * @var array{language: string, country: string}                                                $site      Those of the site.
  * @var array{time: int, balance: float|null, error: string}|null                               $balance   Of DataForSEO, as last asked.
+ * @var array{time: int, accounts: string[], error: string}|null                                $planner   Of Google Ads, as last asked.
+ * @var bool                                                                                    $gsc_key   Whether Search Console has a key.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -109,6 +111,7 @@ $simple_seo_boxes  = array(
 				<select id="simple-seo-keywords-volumes" name="<?php echo esc_attr( $simple_seo_option ); ?>[volumes]">
 					<option value="" <?php selected( $settings['volumes'], '' ); ?>><?php esc_html_e( 'None', 'simple-seo' ); ?></option>
 					<option value="dataforseo" <?php selected( $settings['volumes'], 'dataforseo' ); ?>>DataForSEO</option>
+					<option value="google_ads" <?php selected( $settings['volumes'], 'google_ads' ); ?>><?php esc_html_e( 'Google Ads (Keyword Planner)', 'simple-seo' ); ?></option>
 				</select>
 				<p class="description">
 					<?php
@@ -119,8 +122,15 @@ $simple_seo_boxes  = array(
 					);
 					?>
 				</p>
+				<p class="description"><?php esc_html_e( 'The Keyword Planner of Google Ads is free, but its API asks a Google Cloud project with the Basic access level and a Google Ads account; it rounds the volumes, and has no keyword difficulty nor Google Trends.', 'simple-seo' ); ?></p>
 			</td>
 		</tr>
+	</tbody>
+</table>
+
+<h3>DataForSEO</h3>
+<table class="form-table" role="presentation">
+	<tbody>
 		<tr>
 			<th scope="row"><label for="simple-seo-keywords-dfs-login"><?php esc_html_e( 'API login of DataForSEO', 'simple-seo' ); ?></label></th>
 			<td>
@@ -163,6 +173,69 @@ $simple_seo_boxes  = array(
 					<input type="hidden" name="<?php echo esc_attr( $simple_seo_option ); ?>[dfs_sandbox]" value="0">
 					<label><input type="checkbox" name="<?php echo esc_attr( $simple_seo_option ); ?>[dfs_sandbox]" value="1" <?php checked( $settings['dfs_sandbox'] ); ?>> <?php esc_html_e( 'Sandbox: made-up data, free — to try the connection', 'simple-seo' ); ?></label>
 				</fieldset>
+			</td>
+		</tr>
+	</tbody>
+</table>
+<h3><?php esc_html_e( 'Google Ads (Keyword Planner)', 'simple-seo' ); ?></h3>
+<p><?php esc_html_e( 'A service account of Google Cloud signs in, as for Search Console: turn the Google Ads API on in its project, ask for the Basic access level on the page of the Google Ads API in the Cloud Console (Google checks the project first), and add the email of the service account as a user of the Google Ads account (Admin, Access and security).', 'simple-seo' ); ?></p>
+<table class="form-table" role="presentation">
+	<tbody>
+		<tr>
+			<th scope="row"><label for="simple-seo-keywords-gads-customer"><?php esc_html_e( 'Google Ads account ID', 'simple-seo' ); ?></label></th>
+			<td>
+				<input type="text" id="simple-seo-keywords-gads-customer" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_customer]" value="<?php echo esc_attr( $settings['gads_customer'] ); ?>" class="regular-text" placeholder="123-456-7890" autocomplete="off">
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><label for="simple-seo-keywords-gads-login"><?php esc_html_e( 'Manager account ID', 'simple-seo' ); ?></label></th>
+			<td>
+				<input type="text" id="simple-seo-keywords-gads-login" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_login]" value="<?php echo esc_attr( $settings['gads_login'] ); ?>" class="regular-text" autocomplete="off">
+				<p class="description"><?php esc_html_e( 'Only when the service account reaches the account through a manager account.', 'simple-seo' ); ?></p>
+			</td>
+		</tr>
+		<tr>
+			<th scope="row"><?php esc_html_e( 'Service account', 'simple-seo' ); ?></th>
+			<td>
+				<?php if ( $gsc_key ) : ?>
+					<input type="hidden" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_use_gsc]" value="0">
+					<label><input type="checkbox" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_use_gsc]" value="1" <?php checked( $settings['gads_use_gsc'] ); ?>>
+						<?php
+						/* translators: %s: email of the service account. */
+						echo esc_html( sprintf( __( 'The key of Search Console (%s)', 'simple-seo' ), Simple_SEO_Search_Console::account() ) );
+						?>
+					</label>
+				<?php else : ?>
+					<input type="hidden" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_use_gsc]" value="0">
+				<?php endif; ?>
+				<?php if ( ! empty( $settings['gads_key']['email'] ) ) : ?>
+					<p>
+						<?php
+						/* translators: %s: email of the service account. */
+						echo esc_html( sprintf( __( 'A key of its own is saved: %s', 'simple-seo' ), $settings['gads_key']['email'] ) );
+						?>
+						<label style="margin-left:1em"><input type="checkbox" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_forget]" value="1"> <?php esc_html_e( 'Remove it', 'simple-seo' ); ?></label>
+					</p>
+				<?php endif; ?>
+				<p><label for="simple-seo-keywords-gads-json"><?php echo esc_html( $gsc_key ? __( 'Or a key of its own: the JSON file of a service account', 'simple-seo' ) : __( 'The JSON file of a service account', 'simple-seo' ) ); ?></label></p>
+				<textarea id="simple-seo-keywords-gads-json" name="<?php echo esc_attr( $simple_seo_option ); ?>[gads_json]" rows="4" class="large-text code" spellcheck="false" autocomplete="off"></textarea>
+				<p class="description"><?php esc_html_e( 'Its private key is kept encrypted with the keys of this site.', 'simple-seo' ); ?></p>
+				<?php if ( null !== $planner ) : ?>
+					<?php if ( '' !== $planner['error'] ) : ?>
+						<p class="simple-seo-gads-error"><strong><?php echo esc_html( $planner['error'] ); ?></strong></p>
+					<?php else : ?>
+						<p class="simple-seo-gads-status">
+							<?php
+							printf(
+								/* translators: 1: number of Google Ads accounts, 2: a span of time, e.g. 5 mins. */
+								esc_html__( 'Connected: the service account sees %1$s Google Ads accounts (checked %2$s ago, when the settings were saved).', 'simple-seo' ),
+								esc_html( number_format_i18n( count( $planner['accounts'] ) ) ),
+								esc_html( human_time_diff( $planner['time'] ) )
+							);
+							?>
+						</p>
+					<?php endif; ?>
+				<?php endif; ?>
 			</td>
 		</tr>
 	</tbody>
