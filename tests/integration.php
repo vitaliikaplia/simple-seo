@@ -12294,6 +12294,11 @@ MD === $sseo_val,
 			'ai'             => true,
 			'language'       => '',
 			'country'        => '',
+			'volumes'        => '',
+			'dfs_login'      => '',
+			'dfs_secret'     => '',
+			'dfs_sandbox'    => false,
+			'trends'         => true,
 		) === $sseo_vals[0] && false === $sseo_vals[1]
 			&& array(
 				'suggest'        => false,
@@ -12301,6 +12306,11 @@ MD === $sseo_val,
 				'ai'             => false,
 				'language'       => 'pl',
 				'country'        => 'DE',
+				'volumes'        => '',
+				'dfs_login'      => '',
+				'dfs_secret'     => '',
+				'dfs_sandbox'    => false,
+				'trends'         => true,
 			) === $sseo_vals[2]
 			&& array(
 				'suggest'        => false,
@@ -12308,6 +12318,11 @@ MD === $sseo_val,
 				'ai'             => true,
 				'language'       => '',
 				'country'        => '',
+				'volumes'        => '',
+				'dfs_login'      => '',
+				'dfs_secret'     => '',
+				'dfs_sandbox'    => false,
+				'trends'         => true,
 			) === $sseo_vals[3]
 			&& array(
 				'suggest'        => true,
@@ -12315,6 +12330,11 @@ MD === $sseo_val,
 				'ai'             => true,
 				'language'       => '',
 				'country'        => '',
+				'volumes'        => '',
+				'dfs_login'      => '',
+				'dfs_secret'     => '',
+				'dfs_sandbox'    => false,
+				'trends'         => true,
 			) === $sseo_vals[4],
 		$sseo_vals
 	);
@@ -12659,7 +12679,7 @@ MD === $sseo_val,
 			&& array( 'suggest', 'search_console' ) === $sseo_items['іван чай користь']['sources'] && 40 === $sseo_items['іван чай користь']['gsc']['impressions']
 			&& array( 'search_console' ) === $sseo_items['іван-чай ціна']['sources'] && 7.3 === $sseo_items['іван чай користь']['gsc']['position']
 			&& null === $sseo_items['як пити іван чай']['gsc'] && true === $sseo_items['як пити іван чай']['question'] && false === $sseo_items['2024']['question']
-			&& array( 'keyword', 'question', 'sources', 'topic', 'gsc' ) === array_keys( $sseo_items['2024'] ),
+			&& array( 'keyword', 'question', 'sources', 'topic', 'gsc', 'metrics' ) === array_keys( $sseo_items['2024'] ) && null === $sseo_items['2024']['metrics'],
 		$sseo_val
 	);
 	$sseo_kw_code = 403;
@@ -12814,7 +12834,7 @@ MD === $sseo_val,
 	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
 	$GLOBALS['sseo_ai_answer'] = new RuntimeException( 'down' );
 	$sseo_val                  = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
-	$sseo_vals[]               = is_wp_error( $sseo_val ) && str_contains( $sseo_val->get_error_message(), 'down' ) ? $sseo_val->get_error_code() : $sseo_val;
+	$sseo_vals[]               = is_wp_error( $sseo_val ) ? ( str_contains( $sseo_val->get_error_message(), 'down' ) ? $sseo_val->get_error_code() : 'no word of the AI Client' ) : $sseo_val;
 	$GLOBALS['sseo_ai_answer'] = 'nonsense';
 	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
 	$GLOBALS['sseo_ai_answer'] = '{"parent_topic":"x","topics":[{"name":"x","keywords":["інше"]}]}';
@@ -13025,7 +13045,7 @@ MD === $sseo_val,
 		'country' => 'UA',
 	);
 	$sseo_html                               = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
-	$sseo_vals['fields subscriber page']     = str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk">' ) && ! str_contains( $sseo_html, 'data-draft' );
+	$sseo_vals['fields subscriber page']     = str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-country="UA">' ) && ! str_contains( $sseo_html, 'data-draft' );
 	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
 	Simple_SEO_Settings::flush();
 	$sseo_kw_die                    = static fn(): callable => static function (): void {
@@ -13084,7 +13104,8 @@ MD === $sseo_val,
 			&& str_contains( $sseo_html, 'name="simple_seo_keywords[ai]"' ) && str_contains( $sseo_html, '<select id="simple-seo-keywords-language" name="simple_seo_keywords[language]">' )
 			&& str_contains( $sseo_html, 'That of the site (' . Simple_SEO_Keywords::languages()[ Simple_SEO_Keywords::site_language() ] . ')' ) && str_contains( $sseo_html, '<option value="UA"' )
 			&& str_contains( $sseo_html, 'The queries this site was shown for in the last 90 days' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Keywords::page_url() ) )
-			&& str_contains( $sseo_html, '<option value="pl"  selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="CH"  selected=\'selected\'>' ),
+			&& str_contains( $sseo_html, '<option value="pl"  selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="CH"  selected=\'selected\'>' )
+			&& ! str_contains( $sseo_html, 'dfs_forget' ) && ! str_contains( $sseo_html, 'placeholder="Saved' ) && str_contains( $sseo_html, '<option value=""  selected=\'selected\'>None</option>' ),
 		$sseo_html
 	);
 
@@ -13097,7 +13118,7 @@ MD === $sseo_val,
 	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
 	sseo_check(
 		'the page: the phrase searched, the searches with the questions marked, the topics to filter by, the data of Search Console, the AI and the draft',
-		str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-draft' ) && 11 === substr_count( $sseo_html, '<tr data-kw="' ) && 4 === substr_count( $sseo_html, '<span class="simple-seo-kw-tag">question</span>' )
+		str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-country="UA" data-draft>' ) && 11 === substr_count( $sseo_html, '<tr data-kw="' ) && 4 === substr_count( $sseo_html, '<span class="simple-seo-kw-tag">question</span>' )
 			&& str_contains( $sseo_html, '<button type="button" class="button button-small" data-kw-filter="topic" data-kw-topic="пити" aria-pressed="false">пити (3)</button>' )
 			&& str_contains( $sseo_html, '<tr data-kw="іван-чай ціна" data-kw-topic="" data-kw-question="0">' ) && str_contains( $sseo_html, '<td class="num">90</td>' ) && str_contains( $sseo_html, '<td class="num">7.3</td>' )
 			&& str_contains( $sseo_html, 'data-kw-filter="questions"' ) && str_contains( $sseo_html, 'data-kw-group' ) && str_contains( $sseo_html, 'data-kw-outline' )
@@ -13204,6 +13225,520 @@ MD === $sseo_val,
 			&& Simple_SEO_Keywords::EDITOR_IDEAS === $sseo_val['max'] && 'Use as the focus keyphrase' === $sseo_val['text']['focus'],
 		array( $sseo_vals, $sseo_val )
 	);
+
+	// DataForSEO, answered here: $sseo_kw_dfs maps a path to the result of its task, an envelope,
+	// a status or a WP_Error; each request is kept with its method, body and authorization.
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	$sseo_kw_env                  = static fn( array $result, int $status = 20000, string $message = 'Ok.', int $top = 20000 ): array => array(
+		'status_code'    => $top,
+		'status_message' => 20000 === $top ? 'Ok.' : $message,
+		'tasks'          => array(
+			array(
+				'status_code'    => $status,
+				'status_message' => $message,
+				'result'         => $result,
+			),
+		),
+	);
+	$sseo_kw_dfs                  = array();
+	$sseo_kw_dfs_fake             = static function ( $pre, $args, $url ) use ( &$sseo_kw_dfs, $sseo_kw_reply, $sseo_kw_env ) {
+		foreach ( array( Simple_SEO_DataForSEO::API, Simple_SEO_DataForSEO::SANDBOX ) as $base ) {
+			if ( str_starts_with( (string) $url, $base ) ) {
+				$path                            = substr( (string) $url, strlen( $base ) );
+				$GLOBALS['sseo_kw_dfs_asked'][] = array(
+					'url'    => (string) $url,
+					'path'   => $path,
+					'method' => $args['method'] ?? '',
+					'body'   => isset( $args['body'] ) ? json_decode( (string) $args['body'], true ) : null,
+					'raw'    => (string) ( $args['body'] ?? '' ),
+					'auth'   => (string) ( $args['headers']['Authorization'] ?? '' ),
+				);
+				$answer                          = $sseo_kw_dfs[ $path ] ?? array();
+				if ( $answer instanceof WP_Error ) {
+					return $answer;
+				}
+				if ( is_string( $answer ) ) {
+					return array( 'body' => $answer ) + $sseo_kw_reply( 200, array() );
+				}
+				if ( is_int( $answer ) ) {
+					return $sseo_kw_reply( $answer, array() );
+				}
+
+				return $sseo_kw_reply( 200, isset( $answer['tasks'] ) ? $answer : $sseo_kw_env( $answer ) );
+			}
+		}
+
+		return $pre;
+	};
+	add_filter( 'pre_http_request', $sseo_kw_dfs_fake, 10, 3 );
+	$sseo_kw_dfs_on = static function ( array $more = array() ) use ( $sseo_kw_set ): void {
+		$sseo_kw_set(
+			array_replace(
+				array(
+					'volumes'    => 'dataforseo',
+					'dfs_login'  => 'kw@example.com',
+					'dfs_secret' => Simple_SEO_Search_Console::encrypt( 'pass-1' ),
+				),
+				$more
+			)
+		);
+	};
+
+	// The password: kept encrypted, an empty field keeps it, the box removes it.
+	$sseo_kw_dfs['appendix/user_data'] = array( array( 'money' => array( 'balance' => 12.345 ) ) );
+	$sseo_kw_set( array() );
+	$sseo_vals = array();
+	foreach ( array( array( 'volumes' => '' ), array( 'dfs_login' => '' ), array( 'dfs_secret' => '' ) ) as $sseo_name ) {
+		$sseo_kw_dfs_on( $sseo_name );
+		$sseo_vals[] = Simple_SEO_DataForSEO::on() || null !== Simple_SEO_DataForSEO::balance();
+	}
+	sseo_check( 'DataForSEO is off without being chosen, without a login or without a password: nothing asked, no balance', array( false, false, false ) === $sseo_vals, $sseo_vals );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	delete_transient( Simple_SEO_DataForSEO::CACHE . 'balance' );
+	$sseo_kw_dfs_on();
+	sseo_check( 'the settings saved for the first time: the balance asked too', 12.345 === ( Simple_SEO_DataForSEO::balance()['balance'] ?? null ) );
+	$sseo_kw_set( array() );
+	$sseo_vals   = array( Simple_SEO_DataForSEO::on() );
+	$sseo_kw_row = Simple_SEO_Keywords::sanitize(
+		array(
+			'volumes'      => 'dataforseo',
+			'dfs_login'    => ' kw@example.com ',
+			'dfs_password' => ' pass-1 ',
+		)
+	);
+	$sseo_vals[] = array( $sseo_kw_row['volumes'], $sseo_kw_row['dfs_login'], 'pass-1' !== $sseo_kw_row['dfs_secret'] && 'pass-1' === Simple_SEO_Search_Console::decrypt( $sseo_kw_row['dfs_secret'] ) );
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	update_option( Simple_SEO_Keywords::OPTION, $sseo_kw_row );
+	Simple_SEO_Settings::flush();
+	$sseo_vals[] = Simple_SEO_DataForSEO::on();
+	$sseo_vals[] = Simple_SEO_DataForSEO::balance();
+	$sseo_vals[] = array_column( $GLOBALS['sseo_kw_dfs_asked'], 'method', 'path' );
+	$sseo_vals[] = Simple_SEO_Search_Console::decrypt( Simple_SEO_Keywords::sanitize( array( 'dfs_password' => '' ) )['dfs_secret'] );
+	$sseo_vals[] = Simple_SEO_Keywords::sanitize( array( 'dfs_forget' => '1' ) )['dfs_secret'];
+	$sseo_vals[] = Simple_SEO_Search_Console::decrypt( Simple_SEO_Keywords::sanitize( array( 'dfs_password' => 'pass-2' ) )['dfs_secret'] );
+	$sseo_vals[] = Simple_SEO_Keywords::sanitize( array( 'volumes' => 'ahrefs' ) )['volumes'];
+	$sseo_vals   = array_map( static fn( $one ) => is_array( $one ) && isset( $one['time'] ) ? array( $one['balance'], $one['error'], abs( $one['time'] - time() ) <= 2 ) : $one, $sseo_vals );
+	sseo_check(
+		'DataForSEO: on with its login and password, the password kept encrypted; saved, the balance asked at once and kept; an empty field keeps the password, the box removes it, a new one replaces it; no other source of volumes',
+		array( false, array( 'dataforseo', 'kw@example.com', true ), true, array( 12.345, '', true ), array( 'appendix/user_data' => 'GET' ), 'pass-1', '', 'pass-2', '' ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_kw_dfs['appendix/user_data'] = 401;
+	$sseo_kw_dfs_on( array( 'dfs_login' => 'wrong@example.com' ) );
+	$sseo_val = Simple_SEO_DataForSEO::balance();
+	set_transient(
+		Simple_SEO_DataForSEO::CACHE . 'balance',
+		array(
+			'account' => md5( 'another' ),
+			'time'    => time(),
+			'balance' => 1.0,
+			'error'   => '',
+		),
+		HOUR_IN_SECONDS
+	);
+	$sseo_vals = array( Simple_SEO_DataForSEO::balance() );
+	$sseo_kw_dfs_on( array( 'dfs_login' => 'wrong@example.com' ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	$sseo_vals[] = str_contains( $sseo_html, '<p class="simple-seo-dfs-error"><strong>DataForSEO did not accept the login and password' ) && ! str_contains( $sseo_html, 'simple-seo-dfs-balance' );
+	$sseo_kw_dfs_on();
+	sseo_check(
+		'a login DataForSEO does not accept: said; the balance of another login is not shown',
+		is_array( $sseo_val ) && null === $sseo_val['balance'] && str_contains( $sseo_val['error'], 'did not accept the login and password' ) && array( null, true ) === $sseo_vals,
+		array( $sseo_val, $sseo_vals )
+	);
+
+	// The requests.
+	$GLOBALS['sseo_kw_dfs_asked']       = array();
+	$sseo_kw_dfs['some/path/live']      = array( array( 'x' => 1 ) );
+	$sseo_vals                          = array( Simple_SEO_DataForSEO::request( 'some/path/live', array( 'keyword' => 'іван чай' ) ) );
+	$sseo_kw_asked                      = $GLOBALS['sseo_kw_dfs_asked'][0] ?? array();
+	$sseo_kw_dfs_on( array( 'dfs_sandbox' => true ) );
+	Simple_SEO_DataForSEO::request( 'some/path/live', array( 'keyword' => 'x' ) );
+	$sseo_vals[] = end( $GLOBALS['sseo_kw_dfs_asked'] )['url'] ?? '';
+	$sseo_kw_dfs_on();
+	sseo_check(
+		'a request: one task in an array, letters as they are, HTTP Basic with the login and password, the result of the task; the sandbox when asked',
+		array( array( array( 'x' => 1 ) ), Simple_SEO_DataForSEO::SANDBOX . 'some/path/live' ) === $sseo_vals
+			&& 'POST' === $sseo_kw_asked['method'] && array( array( 'keyword' => 'іван чай' ) ) === $sseo_kw_asked['body'] && str_contains( $sseo_kw_asked['raw'], 'іван чай' )
+			&& 'Basic ' . base64_encode( 'kw@example.com:pass-1' ) === $sseo_kw_asked['auth'] && Simple_SEO_DataForSEO::API . 'some/path/live' === $sseo_kw_asked['url'], // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		array( $sseo_vals, $sseo_kw_asked )
+	);
+	$sseo_vals                     = array();
+	$sseo_kw_dfs['some/path/live'] = 401;
+	$sseo_vals[]                   = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_dfs['some/path/live'] = $sseo_kw_env( array(), 20000, 'x', 40210 );
+	$sseo_vals[]                   = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_dfs['some/path/live'] = $sseo_kw_env( array(), 40501, 'Invalid Field: location_code.' );
+	$sseo_vals[]                   = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_dfs['some/path/live'] = $sseo_kw_env( array(), 40202, 'Rate limit.' );
+	$sseo_vals[]                   = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_dfs['some/path/live'] = 'not json';
+	$sseo_vals[]                   = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_dfs['some/path/live'] = new WP_Error( 'http_request_failed', 'cURL error 6' );
+	$sseo_vals[]                   = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_set( array() );
+	$sseo_vals[] = Simple_SEO_DataForSEO::request( 'some/path/live', array() );
+	$sseo_kw_dfs_on();
+	$sseo_vals = array_map( static fn( $one ) => is_wp_error( $one ) ? $one->get_error_code() . ': ' . $one->get_error_message() : $one, $sseo_vals );
+	sseo_check(
+		'what DataForSEO answers that is no result: the login refused, the balance short, a field it does not take, too many requests, an answer of something else, no network, no login',
+		str_starts_with( $sseo_vals[0], 'simple_seo_dfs_40100: DataForSEO did not accept' ) && str_starts_with( $sseo_vals[1], 'simple_seo_dfs_40210: The balance of the DataForSEO account is not enough' )
+			&& 'simple_seo_dfs_40501: DataForSEO answered 40501: Invalid Field: location_code.' === $sseo_vals[2] && str_starts_with( $sseo_vals[3], 'simple_seo_dfs_40202: DataForSEO asks to wait' )
+			&& str_starts_with( $sseo_vals[4], 'simple_seo_dfs_answer: ' ) && 'simple_seo_dfs_network: DataForSEO cannot be reached from this server: cURL error 6' === $sseo_vals[5] && str_starts_with( $sseo_vals[6], 'simple_seo_dfs_login: ' ),
+		$sseo_vals
+	);
+
+	// The metrics.
+	$sseo_kw_months = array();
+	foreach ( range( 1, 14 ) as $sseo_val ) {
+		$sseo_kw_months[] = array(
+			'year'          => 2025 + intdiv( $sseo_val - 1, 12 ),
+			'month'         => ( $sseo_val - 1 ) % 12 + 1,
+			'search_volume' => 100 * $sseo_val,
+		);
+	}
+	$sseo_vals = array(
+		Simple_SEO_DataForSEO::metrics(
+			array(
+				'search_volume'    => 1400,
+				'competition'      => 0.471,
+				'cpc'              => 1.234,
+				'monthly_searches' => array_reverse( $sseo_kw_months ),
+			),
+			array( 'keyword_difficulty' => 37 )
+		),
+		Simple_SEO_DataForSEO::metrics(
+			array(
+				'search_volume'     => 90,
+				'competition'       => 'HIGH',
+				'competition_index' => 80,
+				'cpc'               => null,
+			)
+		),
+		Simple_SEO_DataForSEO::metrics( array() ),
+	);
+	sseo_check(
+		'the metrics of a search: the volume, the competition of 0–100, the cost per click in cents, the volumes of the last twelve months from the oldest, the difficulty; null for what is missing',
+		array(
+			array(
+				'volume'      => 1400,
+				'competition' => 47,
+				'cpc'         => 1.23,
+				'trend'       => array( 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400 ),
+				'kd'          => 37,
+			),
+			array(
+				'volume'      => 90,
+				'competition' => 80,
+				'cpc'         => null,
+				'trend'       => null,
+				'kd'          => null,
+			),
+			array(
+				'volume'      => null,
+				'competition' => null,
+				'cpc'         => null,
+				'trend'       => null,
+				'kd'          => null,
+			),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_vals = array_map( array( Simple_SEO_DataForSEO::class, 'takes' ), array( 'іван чай', str_repeat( 'а', 81 ), 'a b c d e f g h i j k', 'чай 🍵', "чай з м'ятою", 'іван-чай', '', 'tea & honey' ) );
+	sseo_check( 'the searches Google Ads takes: 80 characters and ten words at most, letters, digits and a few signs', array( true, false, false, false, true, true, false, true ) === $sseo_vals, $sseo_vals );
+
+	// Suggestions, volumes, difficulty and Google Trends.
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	$sseo_kw_dfs['dataforseo_labs/google/keyword_suggestions/live'] = array(
+		array(
+			'seed_keyword_data' => array(
+				'keyword'            => 'іван чай',
+				'keyword_info'       => array( 'search_volume' => 2400 ),
+				'keyword_properties' => array( 'keyword_difficulty' => 20 ),
+			),
+			'items'             => array(
+				array(
+					'keyword'            => 'Іван чай користь',
+					'keyword_info'       => array(
+						'search_volume' => 880,
+						'cpc'           => 0.3,
+					),
+					'keyword_properties' => array( 'keyword_difficulty' => 12 ),
+				),
+				array(
+					'keyword'      => 'іван чай чорний',
+					'keyword_info' => array( 'search_volume' => 50 ),
+				),
+				array(
+					'keyword'      => 'іван чай',
+					'keyword_info' => array( 'search_volume' => 1 ),
+				),
+				array( 'keyword' => '' ),
+			),
+		),
+	);
+	$sseo_val      = Simple_SEO_DataForSEO::suggestions( 'іван чай', 'uk', 'UA' );
+	$sseo_kw_asked = $GLOBALS['sseo_kw_dfs_asked'][0] ?? array();
+	Simple_SEO_DataForSEO::suggestions( 'іван чай', 'uk', 'UA' );
+	sseo_check(
+		'more searches of the phrase from Labs: the phrase first, each once, clean, with their metrics; asked in the location of the country and the language, kept',
+		array( 'іван чай', 'іван чай користь', 'іван чай чорний' ) === array_keys( (array) $sseo_val ) && 2400 === $sseo_val['іван чай']['volume'] && 20 === $sseo_val['іван чай']['kd'] && 0.3 === $sseo_val['іван чай користь']['cpc'] && null === $sseo_val['іван чай чорний']['kd']
+			&& 1 === count( $GLOBALS['sseo_kw_dfs_asked'] ) && 'dataforseo_labs/google/keyword_suggestions/live' === $sseo_kw_asked['path']
+			&& array(
+				array(
+					'keyword'              => 'іван чай',
+					'location_code'        => 2804,
+					'language_code'        => 'uk',
+					'include_seed_keyword' => true,
+					'limit'                => 300,
+				),
+			) === $sseo_kw_asked['body'],
+		array( $sseo_val, $sseo_kw_asked )
+	);
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	$sseo_kw_dfs['keywords_data/google_ads/search_volume/live'] = array(
+		array(
+			'keyword'           => 'іван чай купити',
+			'search_volume'     => 320,
+			'competition_index' => 90,
+			'cpc'               => 0.8,
+		),
+		array(
+			'keyword'       => 'як пити іван чай',
+			'search_volume' => 140,
+		),
+	);
+	$sseo_val      = Simple_SEO_DataForSEO::volumes( array( 'іван чай купити', 'як пити іван чай', 'чай 🍵', 'іван чай купити' ), 'uk', 'GB' );
+	$sseo_kw_asked = $GLOBALS['sseo_kw_dfs_asked'][0] ?? array();
+	sseo_check(
+		'the volumes from Google Ads: of the searches it takes, once each, in order; their metrics',
+		array( 'іван чай купити', 'як пити іван чай' ) === array_keys( (array) $sseo_val ) && 320 === $sseo_val['іван чай купити']['volume'] && 90 === $sseo_val['іван чай купити']['competition']
+			&& array(
+				array(
+					'keywords'      => array( 'як пити іван чай', 'іван чай купити' ),
+					'location_code' => 2826,
+					'language_code' => 'uk',
+				),
+			) === $sseo_kw_asked['body'],
+		array( $sseo_val, $sseo_kw_asked )
+	);
+	$sseo_kw_dfs['dataforseo_labs/google/bulk_keyword_difficulty/live'] = array(
+		array(
+			'items' => array(
+				array(
+					'keyword'            => 'іван чай купити',
+					'keyword_difficulty' => 44,
+				),
+				array(
+					'keyword'            => 'як пити іван чай',
+					'keyword_difficulty' => null,
+				),
+			),
+		),
+	);
+	$sseo_val = Simple_SEO_DataForSEO::difficulty( array( 'як пити іван чай', 'іван чай купити' ), 'uk', 'UA' );
+	sseo_check( 'the difficulty from Labs: of the searches that have it', array( 'іван чай купити' => 44 ) === $sseo_val, $sseo_val );
+	$sseo_kw_dfs['keywords_data/google_trends/explore/live'] = array(
+		array(
+			'items' => array(
+				array(
+					'type' => 'google_trends_map',
+					'data' => array(
+						array(
+							'date_from' => '2020-01-01',
+							'values'    => array( 5 ),
+						),
+					),
+				),
+				array(
+					'type' => 'google_trends_graph',
+					'data' => array(
+						array(
+							'date_from' => '2024-01-07',
+							'values'    => array( 40 ),
+						),
+						array(
+							'date_from'    => '2024-01-14',
+							'values'       => array( 0 ),
+							'missing_data' => true,
+						),
+						array(
+							'date_from' => '2024-01-21',
+							'values'    => array( 100 ),
+						),
+					),
+				),
+			),
+		),
+	);
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	$sseo_val                     = Simple_SEO_DataForSEO::trends( 'іван-чай: (купити)', 'uk', 'UA' );
+	$sseo_kw_asked                = $GLOBALS['sseo_kw_dfs_asked'][0]['body'][0] ?? array();
+	sseo_check(
+		'Google Trends: the points of its graph with data, over five years, the phrase without the signs it does not take',
+		array(
+			array(
+				'date'  => '2024-01-07',
+				'value' => 40,
+			),
+			array(
+				'date'  => '2024-01-21',
+				'value' => 100,
+			),
+		) === $sseo_val && array( 'іван чай   купити ' ) === ( $sseo_kw_asked['keywords'] ?? null ) && 'past_5_years' === ( $sseo_kw_asked['time_range'] ?? null ) && 2804 === ( $sseo_kw_asked['location_code'] ?? null ) && array( 'google_trends_graph' ) === ( $sseo_kw_asked['item_types'] ?? null ),
+		array( $sseo_val, $sseo_kw_asked )
+	);
+
+	// The research with the volumes.
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_dfs\\_%'" );
+	wp_cache_flush();
+	$sseo_kw_dfs['keywords_data/google_ads/search_volume/live'] = array(
+		array(
+			'keyword'       => 'як пити іван чай',
+			'search_volume' => 140,
+		),
+		array(
+			'keyword'       => 'іван-чай ціна',
+			'search_volume' => 1000,
+		),
+	);
+	$sseo_kw_dfs['dataforseo_labs/google/bulk_keyword_difficulty/live'] = array(
+		array(
+			'items' => array(
+				array(
+					'keyword'            => 'як пити іван чай',
+					'keyword_difficulty' => 9,
+				),
+			),
+		),
+	);
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	$sseo_val                     = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	$sseo_items                   = is_array( $sseo_val ) ? array_column( $sseo_val['items'], null, 'keyword' ) : array();
+	$sseo_kw_paths                = array_column( $GLOBALS['sseo_kw_dfs_asked'], 'path' );
+	$sseo_kw_hard                 = array();
+	foreach ( $sseo_items as $sseo_name => $sseo_item ) {
+		if ( is_array( $sseo_item['metrics'] ) && ( null === $sseo_item['metrics']['kd'] || 9 === $sseo_item['metrics']['kd'] ) && Simple_SEO_DataForSEO::takes( (string) $sseo_name ) ) {
+			$sseo_kw_hard[] = (string) $sseo_name;
+		}
+	}
+	sort( $sseo_kw_hard );
+	$sseo_kw_volumes              = array_values( array_filter( $GLOBALS['sseo_kw_dfs_asked'], static fn( array $one ): bool => 'keywords_data/google_ads/search_volume/live' === $one['path'] ) );
+	sseo_check(
+		'the research with DataForSEO: its searches of the phrase added, the volumes of the others asked of Google Ads and the difficulty of those without of Labs; the most searched first, those without a volume after in their order',
+		is_array( $sseo_val ) && array() === $sseo_val['errors']
+			&& array( 'іван чай', 'іван-чай ціна', 'іван чай користь', 'як пити іван чай', 'іван чай чорний' ) === array_slice( array_column( $sseo_val['items'], 'keyword' ), 0, 5 )
+			&& array( 'suggest', 'search_console', 'dataforseo' ) === $sseo_items['іван чай користь']['sources'] && array( 'dataforseo' ) === $sseo_items['іван чай чорний']['sources']
+			&& 9 === $sseo_items['як пити іван чай']['metrics']['kd'] && 140 === $sseo_items['як пити іван чай']['metrics']['volume'] && null === $sseo_items['2024']['metrics']
+			&& array( 'dataforseo_labs/google/keyword_suggestions/live', 'keywords_data/google_ads/search_volume/live', 'dataforseo_labs/google/bulk_keyword_difficulty/live' ) === $sseo_kw_paths
+			&& ! in_array( 'іван чай користь', $sseo_kw_volumes[0]['body'][0]['keywords'] ?? array( 'іван чай користь' ), true ) && in_array( '2024', $sseo_kw_volumes[0]['body'][0]['keywords'] ?? array(), true )
+			&& $sseo_kw_hard === ( end( $GLOBALS['sseo_kw_dfs_asked'] )['body'][0]['keywords'] ?? null ),
+		array( $sseo_val, $GLOBALS['sseo_kw_dfs_asked'] )
+	);
+	foreach ( array( 'keywords_data/google_ads/search_volume/live', 'dataforseo_labs/google/bulk_keyword_difficulty/live' ) as $sseo_name ) {
+		$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_dfs\\_%'" );
+		wp_cache_flush();
+		$sseo_kw_saved              = $sseo_kw_dfs[ $sseo_name ];
+		$sseo_kw_dfs[ $sseo_name ] = $sseo_kw_env( array(), 40501, 'Invalid Field: keywords.' );
+		$sseo_val                   = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+		$sseo_kw_dfs[ $sseo_name ] = $sseo_kw_saved;
+		sseo_check( "a request of DataForSEO that fails ({$sseo_name}): said, and the searches keep what came before it", is_array( $sseo_val ) && str_contains( $sseo_val['errors']['dataforseo'] ?? '', 'Invalid Field: keywords.' ) && 2400 === ( array_column( $sseo_val['items'], null, 'keyword' )['іван чай']['metrics']['volume'] ?? null ), $sseo_val );
+	}
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_dfs\\_%'" );
+	wp_cache_flush();
+	$sseo_kw_dfs['dataforseo_labs/google/keyword_suggestions/live'] = $sseo_kw_env( array(), 20000, 'x', 40210 );
+	$GLOBALS['sseo_kw_dfs_asked'] = array();
+	$sseo_val                     = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	sseo_check(
+		'DataForSEO that cannot answer: said, the searches without volumes, nothing more asked',
+		is_array( $sseo_val ) && str_contains( $sseo_val['errors']['dataforseo'] ?? '', 'balance' ) && null === $sseo_val['items'][0]['metrics'] && 1 === count( $GLOBALS['sseo_kw_dfs_asked'] ),
+		$sseo_val
+	);
+
+	// Google Trends of the phrase.
+	$sseo_vals = array( Simple_SEO_Keywords::trends( 'іван чай', 'uk', 'UA' ) );
+	$sseo_kw_dfs_on( array( 'trends' => false ) );
+	$sseo_vals[] = Simple_SEO_Keywords::trends( 'іван чай', 'uk', 'UA' );
+	$sseo_kw_set( array() );
+	$sseo_vals[] = Simple_SEO_Keywords::trends( 'іван чай', 'uk', 'UA' );
+	$sseo_kw_dfs_on();
+	$sseo_vals[] = Simple_SEO_Keywords::trends( ' ', 'uk', 'UA' );
+	$sseo_vals[] = $sseo_kw_rest(
+		'/keywords/trends',
+		array(
+			'seed'     => 'іван чай',
+			'language' => 'uk',
+			'country'  => 'UA',
+		)
+	)->get_data()['points'][1]['value'] ?? null;
+	$sseo_vals = array_map( static fn( $one ) => is_wp_error( $one ) ? $one->get_error_code() : $one, $sseo_vals );
+	sseo_check(
+		'Google Trends of the phrase: from DataForSEO with Trends on, else said; through REST too',
+		is_array( $sseo_vals[0] ) && 'іван чай' === $sseo_vals[0]['seed'] && 2 === count( $sseo_vals[0]['points'] ) && array( 'simple_seo_kw_no_trends', 'simple_seo_kw_no_trends', 'simple_seo_kw_empty', 100 ) === array_slice( $sseo_vals, 1 ),
+		$sseo_vals
+	);
+
+	// The page and the tab.
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_dfs\\_%'" );
+	wp_cache_flush();
+	$sseo_kw_dfs['dataforseo_labs/google/keyword_suggestions/live'] = $sseo_kw_env( array( array( 'items' => array() ) ) );
+	$sseo_kw_dfs['keywords_data/google_ads/search_volume/live']     = array(
+		array(
+			'keyword'           => 'як пити іван чай',
+			'search_volume'     => 1400,
+			'competition_index' => 30,
+			'cpc'               => 0.25,
+			'monthly_searches'  => array_reverse( $sseo_kw_months ),
+		),
+	);
+	$_GET      = array(
+		'page'    => Simple_SEO_Keywords::PAGE,
+		'q'       => 'іван чай',
+		'lang'    => 'uk',
+		'country' => 'UA',
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$_GET      = array();
+	sseo_check(
+		'the page with DataForSEO: the columns of the volume, difficulty and cost per click to sort by, the volumes of twelve months, Google Trends to load',
+		str_contains( $sseo_html, 'data-country="UA" data-draft data-trends>' ) && str_contains( $sseo_html, '<div class="simple-seo-kw-trends" data-kw-trends hidden>' ) && str_contains( $sseo_html, 'data-kw-sort="volume"' ) && str_contains( $sseo_html, 'data-kw-sort="kd"' )
+			&& str_contains( $sseo_html, '<tr data-kw="як пити іван чай" data-kw-topic="пити" data-kw-question="1" data-kw-volume="1400" data-kw-kd="9" data-kw-cpc="0.25">' ) && str_contains( $sseo_html, '<td class="num">1,400</td>' ) && str_contains( $sseo_html, '<td class="num">$0.25</td>' )
+			&& 1 === substr_count( $sseo_html, '<svg class="simple-seo-kw-spark"' ) && 12 === substr_count( $sseo_html, '<rect ' ) && str_contains( $sseo_html, '<rect x="55" y="0" width="4" height="20"></rect>' ) && str_contains( $sseo_html, '<rect x="0" y="16" width="4" height="4"></rect>' )
+			&& str_contains( $sseo_html, 'data-kw-volume="-1"' ),
+		$sseo_html
+	);
+	$sseo_kw_dfs_on( array( 'trends' => false ) );
+	$_GET      = array(
+		'page'    => Simple_SEO_Keywords::PAGE,
+		'q'       => 'іван чай',
+		'lang'    => 'uk',
+		'country' => 'UA',
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$_GET      = array();
+	sseo_check( 'the page with Trends off: the volumes, no Google Trends', str_contains( $sseo_html, 'data-kw-sort="volume"' ) && ! str_contains( $sseo_html, 'data-trends' ) && ! str_contains( $sseo_html, 'data-kw-trends' ) );
+	Simple_SEO_DataForSEO::check();
+	$sseo_kw_dfs_on( array( 'dfs_sandbox' => true ) );
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	sseo_check(
+		'the tab with DataForSEO: chosen, its login, the password saved and the box that removes it, the sandbox and Trends, its balance as last asked',
+		str_contains( $sseo_html, '<option value="dataforseo"  selected=\'selected\'>DataForSEO</option>' ) && str_contains( $sseo_html, 'name="simple_seo_keywords[dfs_login]" value="kw@example.com"' )
+			&& str_contains( $sseo_html, 'name="simple_seo_keywords[dfs_password]" value="" class="regular-text" autocomplete="new-password" placeholder="Saved — leave empty to keep it">' ) && str_contains( $sseo_html, 'name="simple_seo_keywords[dfs_forget]"' )
+			&& (bool) preg_match( '/name="simple_seo_keywords\[dfs_sandbox\]" value="1"\s+checked=/', $sseo_html ) && (bool) preg_match( '/name="simple_seo_keywords\[trends\]" value="1"\s+checked=/', $sseo_html )
+			&& ! str_contains( $sseo_html, 'simple-seo-dfs-balance' ) && str_contains( $sseo_html, 'data-simple-seo-section="volumes"' ),
+		$sseo_html
+	);
+	$sseo_kw_dfs['appendix/user_data'] = array( array( 'money' => array( 'balance' => 12.345 ) ) );
+	Simple_SEO_DataForSEO::check();
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	sseo_check( 'the tab: the balance of DataForSEO when the settings were saved', str_contains( $sseo_html, 'Connected: the balance is $12.35 (checked 1 second ago, when the settings were saved).' ) || str_contains( $sseo_html, 'Connected: the balance is $12.35 (checked 2 seconds ago' ), $sseo_html );
+	sseo_check( 'the script knows the address of Google Trends', rest_url( 'simple-seo/v1/keywords/trends' ) === Simple_SEO_Keywords::script_data()['trends'] );
+
+	remove_filter( 'pre_http_request', $sseo_kw_dfs_fake, 10 );
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_dfs\\_%'" );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
 
 	remove_filter( 'simple_seo_keywords_fetch', $sseo_kw_fetch, 10 );
 	remove_filter( 'pre_http_request', $sseo_kw_google, 10 );
@@ -13764,7 +14299,7 @@ MD === $sseo_val,
 		'llms'           => Simple_SEO_Llms::enabled() ? array( 'llms', 'markdown', 'preview' ) : array( 'llms', 'markdown' ),
 		'integrations'   => array( 'verification', 'analytics' ),
 		'search-console' => array( 'connection', 'how' ),
-		'keywords'       => array(),
+		'keywords'       => array( 'sources', 'volumes' ),
 		'access'         => array(),
 		'import'         => array(),
 	);

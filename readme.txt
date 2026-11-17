@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.49.0
+Stable tag: 0.50.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,11 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.50.0 =
+* Keyword research with DataForSEO, chosen on the new part Volumes and difficulty of the tab Keyword research: the search volume of each search, its keyword difficulty, cost per click and volumes of the last twelve months, sorted by volume, and more searches of the phrase from its database; Google Trends of the phrase over five years. Paid by the request from your DataForSEO account (about $0.15–0.20 for a new phrase); each answer is kept a month.
+* The API password is kept encrypted; when the settings are saved the balance of the account is asked, so the tab shows whether the login works. A sandbox with made-up data tries the connection for free.
+* The SEO block shows the volume and difficulty by each idea.
 
 = 0.49.0 =
 * Keyword research, on the page SEO → Keywords and by the focus keyphrase in the SEO block: the searches people make around a phrase — Google's own suggestions for the phrase, for it with each letter, with question words before it and prepositions after it — free and without a key, kept a week.

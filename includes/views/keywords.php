@@ -13,6 +13,8 @@
  * @var bool                                $ai        Whether the AI groups and plans.
  * @var bool                                $gsc       Whether the searches have the data of Search Console.
  * @var bool                                $draft     Whether the user may create a draft.
+ * @var bool                                $metrics   Whether the searches have volumes (DataForSEO).
+ * @var bool                                $trends    Whether Google Trends of the phrase is loaded.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -22,7 +24,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 $simple_seo_sources = array(
 	'suggest'        => __( 'suggestions of Google search', 'simple-seo' ),
 	'search_console' => __( 'Search Console', 'simple-seo' ),
+	'dataforseo'     => 'DataForSEO',
 );
+// A sparkline of twelve monthly volumes, bars from the oldest.
+$simple_seo_spark = static function ( array $values ): string {
+	$top  = max( 1, max( $values ) );
+	$bars = '';
+	foreach ( array_values( $values ) as $simple_seo_i => $simple_seo_value ) {
+		$simple_seo_h = max( 1, (int) round( 20 * $simple_seo_value / $top ) );
+		$bars        .= sprintf( '<rect x="%d" y="%d" width="4" height="%d"></rect>', $simple_seo_i * 5, 20 - $simple_seo_h, $simple_seo_h );
+	}
+
+	return '<svg class="simple-seo-kw-spark" viewBox="0 0 60 20" width="60" height="20" aria-hidden="true">' . $bars . '</svg>';
+};
 $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 	? sprintf( ' <a href="%1$s">%2$s</a>', esc_url( Simple_SEO_Admin::url( 'keywords' ) ), esc_html__( 'Open the Keyword research tab of the settings', 'simple-seo' ) )
 	: '';
@@ -88,7 +102,7 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 					'https://www.google.com/search'
 				);
 				?>
-				<div class="simple-seo-kw-results" data-simple-seo-kw-page data-seed="<?php echo esc_attr( $result['seed'] ); ?>" data-language="<?php echo esc_attr( $result['language'] ); ?>"<?php echo $draft ? ' data-draft' : ''; ?>>
+				<div class="simple-seo-kw-results" data-simple-seo-kw-page data-seed="<?php echo esc_attr( $result['seed'] ); ?>" data-language="<?php echo esc_attr( $result['language'] ); ?>" data-country="<?php echo esc_attr( $result['country'] ); ?>"<?php echo $draft ? ' data-draft' : ''; ?><?php echo $trends ? ' data-trends' : ''; ?>>
 					<p class="simple-seo-kw-summary">
 						<?php
 						printf(
@@ -122,6 +136,13 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 						</span>
 					</div>
 
+					<?php if ( $trends ) : ?>
+						<div class="simple-seo-kw-trends" data-kw-trends hidden>
+							<h2><?php esc_html_e( 'Google Trends: the interest over five years', 'simple-seo' ); ?></h2>
+							<div class="simple-seo-kw-trends-chart"></div>
+						</div>
+					<?php endif; ?>
+
 					<?php if ( $ai ) : ?>
 						<p class="simple-seo-kw-ai">
 							<button type="button" class="button" data-kw-group><?php esc_html_e( 'Group into topics with AI', 'simple-seo' ); ?></button>
@@ -137,6 +158,12 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 							<tr>
 								<th scope="col"><?php esc_html_e( 'Search', 'simple-seo' ); ?></th>
 								<th scope="col"><?php esc_html_e( 'Topic', 'simple-seo' ); ?></th>
+								<?php if ( $metrics ) : ?>
+									<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="volume"><?php esc_html_e( 'Volume', 'simple-seo' ); ?></button></th>
+									<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="kd" title="<?php esc_attr_e( 'Keyword difficulty, 0–100: how hard it is to reach the top ten', 'simple-seo' ); ?>"><?php esc_html_e( 'KD', 'simple-seo' ); ?></button></th>
+									<th scope="col" class="num"><button type="button" class="button-link" data-kw-sort="cpc" title="<?php esc_attr_e( 'Cost per click in Google Ads, USD', 'simple-seo' ); ?>"><?php esc_html_e( 'CPC', 'simple-seo' ); ?></button></th>
+									<th scope="col"><?php esc_html_e( '12 months', 'simple-seo' ); ?></th>
+								<?php endif; ?>
 								<?php if ( $gsc ) : ?>
 									<th scope="col" class="num"><?php esc_html_e( 'Impressions', 'simple-seo' ); ?></th>
 									<th scope="col" class="num"><?php esc_html_e( 'Clicks', 'simple-seo' ); ?></th>
@@ -146,7 +173,8 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 						</thead>
 						<tbody>
 							<?php foreach ( $result['items'] as $simple_seo_item ) : ?>
-								<tr data-kw="<?php echo esc_attr( $simple_seo_item['keyword'] ); ?>" data-kw-topic="<?php echo esc_attr( $simple_seo_item['topic'] ); ?>" data-kw-question="<?php echo $simple_seo_item['question'] ? '1' : '0'; ?>">
+								<?php $simple_seo_m = is_array( $simple_seo_item['metrics'] ?? null ) ? $simple_seo_item['metrics'] : array(); ?>
+								<tr data-kw="<?php echo esc_attr( $simple_seo_item['keyword'] ); ?>" data-kw-topic="<?php echo esc_attr( $simple_seo_item['topic'] ); ?>" data-kw-question="<?php echo $simple_seo_item['question'] ? '1' : '0'; ?>"<?php echo $metrics ? sprintf( ' data-kw-volume="%s" data-kw-kd="%s" data-kw-cpc="%s"', esc_attr( (string) ( $simple_seo_m['volume'] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['kd'] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['cpc'] ?? -1 ) ) ) : ''; ?>>
 									<td>
 										<a href="<?php echo esc_url( $simple_seo_google( $simple_seo_item['keyword'] ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $simple_seo_item['keyword'] ); ?></a>
 										<?php if ( $simple_seo_item['question'] ) : ?>
@@ -154,6 +182,12 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 										<?php endif; ?>
 									</td>
 									<td class="simple-seo-kw-topic"><?php echo esc_html( $simple_seo_item['topic'] ); ?></td>
+									<?php if ( $metrics ) : ?>
+										<td class="num"><?php echo isset( $simple_seo_m['volume'] ) ? esc_html( number_format_i18n( $simple_seo_m['volume'] ) ) : '—'; ?></td>
+										<td class="num"><?php echo isset( $simple_seo_m['kd'] ) ? esc_html( (string) $simple_seo_m['kd'] ) : '—'; ?></td>
+										<td class="num"><?php echo isset( $simple_seo_m['cpc'] ) ? esc_html( '$' . number_format_i18n( $simple_seo_m['cpc'], 2 ) ) : '—'; ?></td>
+										<td><?php echo ! empty( $simple_seo_m['trend'] ) ? $simple_seo_spark( $simple_seo_m['trend'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput -- numbers only. ?></td>
+									<?php endif; ?>
 									<?php if ( $gsc ) : ?>
 										<?php if ( is_array( $simple_seo_item['gsc'] ) ) : ?>
 											<td class="num"><?php echo esc_html( number_format_i18n( $simple_seo_item['gsc']['impressions'] ) ); ?></td>

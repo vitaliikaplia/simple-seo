@@ -934,6 +934,44 @@
 	list-style: disc;
 }
 
+.simple-seo-kw-spark rect {
+	fill: #2271b1;
+}
+
+.simple-seo-kw-table [data-kw-sort] {
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.simple-seo-kw-trends {
+	margin: 12px 0 16px;
+	padding: 4px 20px 12px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+.simple-seo-kw-trends h2 {
+	font-size: 14px;
+}
+
+.simple-seo-kw-trends-svg {
+	display: block;
+	width: 100%;
+	max-width: 720px;
+	height: auto;
+}
+
+.simple-seo-kw-trends-svg polyline {
+	fill: none;
+	stroke: #2271b1;
+	stroke-width: 2;
+}
+
+.simple-seo-kw-trends-svg text {
+	fill: #646970;
+	font-size: 11px;
+}
+
 /* The ideas under the focus keyphrase of a post. */
 .simple-seo-kw-ideas {
 	margin: -4px 0 12px;

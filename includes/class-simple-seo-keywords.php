@@ -141,12 +141,20 @@ final class Simple_SEO_Keywords {
 				'ai'             => true,
 				'language'       => '',
 				'country'        => '',
+				'volumes'        => '',
+				'dfs_login'      => '',
+				'dfs_secret'     => '',
+				'dfs_sandbox'    => false,
+				'trends'         => true,
 			),
 			array( self::class, 'sanitize' ),
 			false
 		);
 
 		add_action( 'rest_api_init', array( self::class, 'register_routes' ) );
+		// A login saved: its balance asked at once, so the tab shows whether it works.
+		add_action( 'add_option_' . self::OPTION, array( Simple_SEO_DataForSEO::class, 'check' ) );
+		add_action( 'update_option_' . self::OPTION, array( Simple_SEO_DataForSEO::class, 'check' ) );
 
 		if ( is_admin() ) {
 			add_action( 'init', array( self::class, 'add_admin_tab' ), 6 );
@@ -161,12 +169,24 @@ final class Simple_SEO_Keywords {
 	 */
 
 	/**
+	 * The settings as the form sends them or as they are kept. The password of DataForSEO comes
+	 * from the form as dfs_password and is kept encrypted as dfs_secret: an empty field keeps the
+	 * saved one, the box dfs_forget removes it.
+	 *
 	 * @param array<string, mixed> $input
-	 * @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string}
+	 * @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string, volumes: string, dfs_login: string, dfs_secret: string, dfs_sandbox: bool, trends: bool}
 	 */
 	public static function sanitize( array $input ): array {
 		$language = is_string( $input['language'] ?? null ) ? $input['language'] : '';
 		$country  = is_string( $input['country'] ?? null ) ? strtoupper( $input['country'] ) : '';
+		$volumes  = is_string( $input['volumes'] ?? null ) ? $input['volumes'] : '';
+		$password = is_string( $input['dfs_password'] ?? null ) ? trim( $input['dfs_password'] ) : '';
+		$secret   = $input['dfs_secret'] ?? ( Simple_SEO_Settings::get( self::OPTION )['dfs_secret'] ?? '' );
+		if ( '' !== $password ) {
+			$secret = Simple_SEO_Search_Console::encrypt( $password );
+		} elseif ( ! empty( $input['dfs_forget'] ) ) {
+			$secret = '';
+		}
 
 		return array(
 			'suggest'        => self::ticked( $input['suggest'] ?? true ),
@@ -174,6 +194,11 @@ final class Simple_SEO_Keywords {
 			'ai'             => self::ticked( $input['ai'] ?? true ),
 			'language'       => isset( self::LANGUAGES[ $language ] ) ? $language : '',
 			'country'        => in_array( $country, self::COUNTRIES, true ) ? $country : '',
+			'volumes'        => in_array( $volumes, array( '', 'dataforseo' ), true ) ? $volumes : '',
+			'dfs_login'      => is_string( $input['dfs_login'] ?? null ) ? sanitize_text_field( trim( $input['dfs_login'] ) ) : '',
+			'dfs_secret'     => is_string( $secret ) ? $secret : '',
+			'dfs_sandbox'    => self::ticked( $input['dfs_sandbox'] ?? false ),
+			'trends'         => self::ticked( $input['trends'] ?? true ),
 		);
 	}
 
@@ -182,7 +207,7 @@ final class Simple_SEO_Keywords {
 		return true === $value || '1' === $value || 1 === $value;
 	}
 
-	/** @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string} */
+	/** @return array{suggest: bool, search_console: bool, ai: bool, language: string, country: string, volumes: string, dfs_login: string, dfs_secret: string, dfs_sandbox: bool, trends: bool} */
 	public static function settings(): array {
 		return self::sanitize( Simple_SEO_Settings::get( self::OPTION ) );
 	}
@@ -651,9 +676,20 @@ final class Simple_SEO_Keywords {
 			}
 		}
 
+		if ( Simple_SEO_DataForSEO::on() ) {
+			[ $items, $error ] = self::with_metrics( $items, $seed, $language, $country );
+			if ( '' !== $error ) {
+				$errors['dataforseo'] = $error;
+			}
+		}
+
 		$items = array_values( $items );
 		foreach ( $items as $index => $item ) {
 			$items[ $index ]['question'] = self::is_question( $item['keyword'], $language );
+		}
+		if ( Simple_SEO_DataForSEO::on() ) {
+			// The most searched first; those without a volume keep their order after them.
+			usort( $items, static fn( array $a, array $b ): int => ( $b['metrics']['volume'] ?? -1 ) <=> ( $a['metrics']['volume'] ?? -1 ) );
 		}
 		[ $items, $topics ] = self::topics( $items, $seed, $language );
 
@@ -667,7 +703,7 @@ final class Simple_SEO_Keywords {
 		);
 	}
 
-	/** @return array{keyword: string, question: bool, sources: string[], topic: string, gsc: array<string, mixed>|null} */
+	/** @return array{keyword: string, question: bool, sources: string[], topic: string, gsc: array<string, mixed>|null, metrics: array<string, mixed>|null} */
 	private static function item( string $keyword, string $source ): array {
 		return array(
 			'keyword'  => $keyword,
@@ -675,6 +711,88 @@ final class Simple_SEO_Keywords {
 			'sources'  => array( $source ),
 			'topic'    => '',
 			'gsc'      => null,
+			'metrics'  => null,
+		);
+	}
+
+	/**
+	 * The ideas with the metrics of DataForSEO: more searches of the phrase from its Labs with
+	 * theirs, then the volumes of the others from Google Ads and their difficulty from Labs. What
+	 * one request could not give stops those after it.
+	 *
+	 * @param array<string, array<string, mixed>> $items keyword => item.
+	 * @return array{0: array<string, array<string, mixed>>, 1: string} The items and why some have none.
+	 */
+	private static function with_metrics( array $items, string $seed, string $language, string $country ): array {
+		$more = Simple_SEO_DataForSEO::suggestions( $seed, $language, $country );
+		if ( is_wp_error( $more ) ) {
+			return array( $items, $more->get_error_message() );
+		}
+		foreach ( $more as $keyword => $metrics ) {
+			$keyword = (string) $keyword;
+			if ( ! isset( $items[ $keyword ] ) ) {
+				$items[ $keyword ] = self::item( $keyword, 'dataforseo' );
+			} else {
+				$items[ $keyword ]['sources'][] = 'dataforseo';
+			}
+			$items[ $keyword ]['metrics'] = $metrics;
+		}
+
+		$missing = array();
+		foreach ( $items as $keyword => $item ) {
+			if ( null === $item['metrics'] ) {
+				$missing[] = (string) $keyword;
+			}
+		}
+		$volumes = $missing ? Simple_SEO_DataForSEO::volumes( $missing, $language, $country ) : array();
+		if ( is_wp_error( $volumes ) ) {
+			return array( $items, $volumes->get_error_message() );
+		}
+		foreach ( $volumes as $keyword => $metrics ) {
+			if ( isset( $items[ $keyword ] ) ) {
+				$items[ $keyword ]['metrics'] = $metrics;
+			}
+		}
+
+		$hard = array();
+		foreach ( $items as $keyword => $item ) {
+			if ( null !== $item['metrics'] && null === $item['metrics']['kd'] ) {
+				$hard[] = (string) $keyword;
+			}
+		}
+		$difficulty = $hard ? Simple_SEO_DataForSEO::difficulty( $hard, $language, $country ) : array();
+		if ( is_wp_error( $difficulty ) ) {
+			return array( $items, $difficulty->get_error_message() );
+		}
+		foreach ( $difficulty as $keyword => $kd ) {
+			if ( isset( $items[ $keyword ] ) ) {
+				$items[ $keyword ]['metrics']['kd'] = $kd;
+			}
+		}
+
+		return array( $items, '' );
+	}
+
+	/**
+	 * The interest over time of a phrase in Google Trends, from DataForSEO while it is on with
+	 * Trends.
+	 *
+	 * @return array{seed: string, points: array<int, array{date: string, value: int}>}|WP_Error
+	 */
+	public static function trends( string $seed, string $language = '', string $country = '' ) {
+		$seed = self::clean( $seed );
+		if ( '' === $seed ) {
+			return new WP_Error( 'simple_seo_kw_empty', __( 'Type a phrase to find the searches around it.', 'simple-seo' ), array( 'status' => 400 ) );
+		}
+		if ( ! Simple_SEO_DataForSEO::on() || ! self::settings()['trends'] ) {
+			return new WP_Error( 'simple_seo_kw_no_trends', __( 'Google Trends comes from DataForSEO: connect it and turn Trends on on the Keyword research tab.', 'simple-seo' ), array( 'status' => 400 ) );
+		}
+		$language = self::language( $language, $seed );
+		$points   = Simple_SEO_DataForSEO::trends( $seed, $language, self::country( $country, $language ) );
+
+		return is_wp_error( $points ) ? $points : array(
+			'seed'   => $seed,
+			'points' => $points,
 		);
 	}
 
@@ -1150,6 +1268,23 @@ final class Simple_SEO_Keywords {
 		);
 		register_rest_route(
 			Simple_SEO_Analysis::NAMESPACE,
+			'/keywords/trends',
+			array(
+				'methods'             => 'POST',
+				'callback'            => static fn( WP_REST_Request $request ) => self::trends( (string) $request['seed'], (string) $request['language'], (string) $request['country'] ),
+				'permission_callback' => $can,
+				'args'                => array(
+					'seed'     => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'language' => $text,
+					'country'  => $text,
+				),
+			)
+		);
+		register_rest_route(
+			Simple_SEO_Analysis::NAMESPACE,
 			'/keywords/topics',
 			array(
 				'methods'             => 'POST',
@@ -1206,7 +1341,18 @@ final class Simple_SEO_Keywords {
 	 */
 
 	public static function add_admin_tab(): void {
-		Simple_SEO_Admin::add_tab( 'keywords', __( 'Keyword research', 'simple-seo' ), array( self::OPTION ), array( self::class, 'render_tab' ), 30, 'services' );
+		Simple_SEO_Admin::add_tab(
+			'keywords',
+			__( 'Keyword research', 'simple-seo' ),
+			array( self::OPTION ),
+			array( self::class, 'render_tab' ),
+			30,
+			'services',
+			static fn(): array => array(
+				'sources' => __( 'Sources', 'simple-seo' ),
+				'volumes' => __( 'Volumes and difficulty', 'simple-seo' ),
+			)
+		);
 	}
 
 	public static function render_tab(): void {
@@ -1217,6 +1363,7 @@ final class Simple_SEO_Keywords {
 			'language' => $languages[ self::site_language() ],
 			'country'  => $countries[ self::site_country() ] ?? self::site_country(),
 		);
+		$balance   = Simple_SEO_DataForSEO::on() ? Simple_SEO_DataForSEO::balance() : null;
 
 		require SIMPLE_SEO_DIR . 'includes/views/tab-keywords.php';
 	}
@@ -1278,6 +1425,8 @@ final class Simple_SEO_Keywords {
 		$ai        = self::ai_on();
 		$gsc       = self::gsc_on();
 		$draft     = current_user_can( 'edit_posts' );
+		$metrics   = Simple_SEO_DataForSEO::on();
+		$trends    = $metrics && self::settings()['trends'];
 
 		require SIMPLE_SEO_DIR . 'includes/views/keywords.php';
 	}
@@ -1312,6 +1461,7 @@ final class Simple_SEO_Keywords {
 			'topics'  => $base . '/topics',
 			'outline' => $base . '/outline',
 			'draft'   => $base . '/draft',
+			'trends'  => $base . '/trends',
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'max'     => self::EDITOR_IDEAS,
 			'text'    => array(
@@ -1336,6 +1486,7 @@ final class Simple_SEO_Keywords {
 				'all'       => __( 'All', 'simple-seo' ),
 				'questions' => __( 'Questions', 'simple-seo' ),
 				'more'      => __( 'Open the keyword research', 'simple-seo' ),
+				'volume'    => __( 'a month', 'simple-seo' ),
 			),
 			'page'    => self::page_url(),
 		);

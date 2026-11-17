@@ -273,7 +273,77 @@
 			} );
 		}
 
+		// The columns of DataForSEO sort the table: the biggest first, again for the smallest.
+		var body = root.querySelector( 'tbody' );
+		Array.prototype.forEach.call( root.querySelectorAll( '[data-kw-sort]' ), function ( button ) {
+			button.addEventListener( 'click', function () {
+				var key  = 'data-kw-' + button.getAttribute( 'data-kw-sort' );
+				var down = 'desc' !== button.getAttribute( 'data-kw-order' );
+				button.setAttribute( 'data-kw-order', down ? 'desc' : 'asc' );
+				rows.slice().sort( function ( a, b ) {
+					var diff = parseFloat( b.getAttribute( key ) ) - parseFloat( a.getAttribute( key ) );
+					return down ? diff : -diff;
+				} ).forEach( function ( row ) {
+					body.appendChild( row );
+				} );
+			} );
+		} );
+
+		// Google Trends of the phrase: asked after the page, it takes DataForSEO a while.
+		var trends = root.querySelector( '[data-kw-trends]' );
+		if ( trends && root.hasAttribute( 'data-trends' ) ) {
+			post( config.trends, {
+				seed: root.getAttribute( 'data-seed' ),
+				language: root.getAttribute( 'data-language' ),
+				country: root.getAttribute( 'data-country' )
+			} ).then( function ( data ) {
+				if ( data.points && data.points.length > 1 ) {
+					drawTrends( trends.querySelector( '.simple-seo-kw-trends-chart' ), data.points );
+					trends.hidden = false;
+				}
+			} ).catch( function () {} );
+		}
+
 		apply();
+	}
+
+	// A line of the points (date, value 0–100) with the years marked under it.
+	function drawTrends( box, points ) {
+		var width  = 600;
+		var height = 120;
+		var ns     = 'http://www.w3.org/2000/svg';
+		var svg    = document.createElementNS( ns, 'svg' );
+		svg.setAttribute( 'viewBox', '0 0 ' + width + ' ' + ( height + 20 ) );
+		svg.setAttribute( 'class', 'simple-seo-kw-trends-svg' );
+		svg.setAttribute( 'role', 'img' );
+		var step  = width / ( points.length - 1 );
+		var line  = points.map( function ( point, index ) {
+			return ( index * step ).toFixed( 1 ) + ',' + ( height - point.value * height / 100 ).toFixed( 1 );
+		} ).join( ' ' );
+		var path  = document.createElementNS( ns, 'polyline' );
+		path.setAttribute( 'points', line );
+		svg.appendChild( path );
+		var year = '';
+		var last = null;
+		points.forEach( function ( point, index ) {
+			var current = String( point.date ).slice( 0, 4 );
+			if ( current !== year ) {
+				year = current;
+				var x     = index * step;
+				var label = document.createElementNS( ns, 'text' );
+				// A year that began just before the next: only the next is named.
+				if ( last && x - parseFloat( last.getAttribute( 'x' ) ) < 40 ) {
+					svg.removeChild( last );
+				}
+				label.setAttribute( 'x', x.toFixed( 1 ) );
+				label.setAttribute( 'y', String( height + 16 ) );
+				label.textContent = year;
+				svg.appendChild( label );
+				last = label;
+			}
+		} );
+		box.textContent = '';
+		box.appendChild( svg );
 	}
 
 	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-kw-page]' ), initPage );
@@ -317,6 +387,9 @@
 				line.appendChild( element( 'span', 'simple-seo-kw-idea', item.keyword ) );
 				if ( item.question ) {
 					line.appendChild( element( 'span', 'simple-seo-kw-tag', text.question ) );
+				}
+				if ( item.metrics && null !== item.metrics.volume ) {
+					line.appendChild( element( 'span', 'description', item.metrics.volume + ' ' + text.volume + ( null !== item.metrics.kd ? ', KD ' + item.metrics.kd : '' ) ) );
 				}
 				if ( item.gsc ) {
 					line.appendChild( element( 'span', 'description', ' ' + item.gsc.impressions + ' / ' + item.gsc.clicks + ' / ' + item.gsc.position ) );
