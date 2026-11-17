@@ -50,6 +50,21 @@ final class Simple_SEO_Admin {
 	);
 
 	/**
+	 * The user setting that keeps the groups folded in the menu, their ids joined with "_": WordPress's
+	 * own user settings, a cookie the script writes that WordPress keeps in the user's meta.
+	 */
+	public const CLOSED = 'simple_seo_closed';
+
+	/**
+	 * The groups of the menu this user has folded.
+	 *
+	 * @return string[]
+	 */
+	public static function closed_groups(): array {
+		return array_values( array_intersect( array_keys( self::groups() ), explode( '_', (string) get_user_setting( self::CLOSED, '' ) ) ) );
+	}
+
+	/**
 	 * The groups of the tabs in the menu on the left, in their order.
 	 *
 	 * @return array<string, string> Group => label.
@@ -215,6 +230,7 @@ final class Simple_SEO_Admin {
 		$tabs          = self::tabs();
 		$current       = self::current_tab();
 		$groups        = self::groups();
+		$closed        = self::closed_groups();
 		self::$sections = self::sections( $current );
 		self::$section  = self::current_section( self::$sections );
 		$sections      = self::$sections;
@@ -274,7 +290,8 @@ final class Simple_SEO_Admin {
 			wp_enqueue_script(
 				'simple-seo-admin',
 				SIMPLE_SEO_URL . 'assets/js/admin.js',
-				array(),
+				// WordPress's user settings keep the folded groups of the settings menu.
+				array( 'utils' ),
 				SIMPLE_SEO_VERSION,
 				array(
 					'in_footer' => true,

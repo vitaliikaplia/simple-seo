@@ -6,6 +6,8 @@
  * @var array{variants: int, alt_upload: bool} $settings
  * @var string                                 $status   ready, none (no model can write text) or off
  *                                                       (this site turned AI off).
+ * @var int                                    $checked  When the AI Client was asked last, 0 for never.
+ * @var string                                 $check    The link that asks it now.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -23,6 +25,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<p class="simple-seo-ai-off"><?php esc_html_e( 'AI is turned off on this site (the WP_AI_SUPPORT constant or the wp_supports_ai filter), so the SEO block has no AI buttons.', 'simple-seo' ); ?></p>
 				<?php else : ?>
 					<p class="simple-seo-ai-none"><?php esc_html_e( 'No connected AI can write text yet. Connect a provider (Anthropic, Google, OpenAI or another) with its key in Settings → Connectors, and the buttons appear.', 'simple-seo' ); ?></p>
+				<?php endif; ?>
+				<?php if ( 'off' !== $status ) : ?>
+					<p class="simple-seo-ai-checked">
+						<?php
+						if ( $checked ) {
+							printf(
+								/* translators: %s: a span of time, e.g. 5 mins. */
+								esc_html__( 'Checked %s ago; it is checked again by itself, in the background.', 'simple-seo' ),
+								esc_html( human_time_diff( $checked ) )
+							);
+						}
+						?>
+						<a href="<?php echo esc_url( $check ); ?>"><?php esc_html_e( 'Check now', 'simple-seo' ); ?></a>
+					</p>
 				<?php endif; ?>
 				<?php if ( 'off' !== $status && current_user_can( 'manage_options' ) ) : ?>
 					<p><a href="<?php echo esc_url( admin_url( 'options-connectors.php' ) ); ?>"><?php esc_html_e( 'Open Connectors', 'simple-seo' ); ?></a></p>

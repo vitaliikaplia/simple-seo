@@ -41,8 +41,10 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}simple_seo_audit" ); // phpcs
 wp_clear_scheduled_hook( 'simple_seo_audit_step' );
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}simple_seo_links" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange
 wp_clear_scheduled_hook( 'simple_seo_links_retry' );
-// The alt texts of new images the AI has yet to write, one event for each image.
+// The alt texts of new images the AI has yet to write, one event for each image, and a check of the
+// AI Client waiting (Simple_SEO_AI::CHECK_EVENT).
 wp_unschedule_hook( 'simple_seo_ai_alt' );
+wp_clear_scheduled_hook( 'simple_seo_ai_check' );
 
 // The copy of the previous .htaccess kept next to it (Simple_SEO_Files::DISK_COPY).
 require_once ABSPATH . 'wp-admin/includes/file.php';

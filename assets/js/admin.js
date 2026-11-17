@@ -994,6 +994,95 @@
 		} );
 	}
 
+	// Settings: the groups of the menu fold, and WordPress's user settings keep which are folded (the
+	// page opens them so; the group of the tab shown stays open).
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-group]' ), function ( group ) {
+		group.addEventListener( 'toggle', function () {
+			if ( ! window.getUserSetting || ! window.setUserSetting || ! window.deleteUserSetting ) {
+				return;
+			}
+			var id     = group.getAttribute( 'data-simple-seo-group' );
+			var closed = String( window.getUserSetting( 'simple_seo_closed', '' ) ).split( '_' ).filter( function ( one ) {
+				return '' !== one && one !== id;
+			} );
+			if ( ! group.open ) {
+				closed.push( id );
+			}
+			if ( closed.length ) {
+				window.setUserSetting( 'simple_seo_closed', closed.join( '_' ) );
+			} else {
+				window.deleteUserSetting( 'simple_seo_closed' );
+			}
+		} );
+	} );
+
+	// Settings: the menu and the page stick to the top. One taller than the screen scrolls with the
+	// page down to its end and stays there, and back up to its top. Whenever the direction changes, a
+	// space above it in its column (--simple-seo-offset) holds it where it is and its sticky edge
+	// changes, so the browser itself moves it as the page scrolls, without a script on each step.
+	var sticky = Array.prototype.slice.call( document.querySelectorAll( '[data-simple-seo-sticky]' ) );
+	if ( sticky.length && window.matchMedia ) {
+		var wide  = window.matchMedia( '(min-width: 783px)' );
+		var edge  = parseFloat( window.getComputedStyle( sticky[0] ).top ) || 48;
+		var gap   = 16;
+		var lastY = window.pageYOffset;
+		var down  = true;
+
+		var place = function () {
+			var heights = sticky.map( function ( item ) {
+				return item.offsetHeight;
+			} );
+			// Measure all first, then write: a write would move what is measured next.
+			var plans = sticky.map( function ( item, index ) {
+				var column = item.parentNode;
+				var others = heights.filter( function ( height, other ) {
+					return other !== index;
+				} );
+				var room   = others.length ? Math.max( 0, Math.max.apply( null, others ) - heights[ index ] ) : 0;
+				var plan   = { column: column, item: item, offset: 0, top: '', bottom: '' };
+				if ( ! wide.matches || ! room || heights[ index ] + edge + gap <= window.innerHeight ) {
+					return plan;
+				}
+				plan.offset = Math.min( room, Math.max( 0, item.getBoundingClientRect().top - column.getBoundingClientRect().top ) );
+				if ( down ) {
+					plan.top    = ( window.innerHeight - gap - heights[ index ] ) + 'px';
+					plan.bottom = 'auto';
+				} else {
+					plan.top    = 'auto';
+					plan.bottom = ( window.innerHeight - edge - heights[ index ] ) + 'px';
+				}
+				return plan;
+			} );
+			plans.forEach( function ( plan ) {
+				plan.column.style.setProperty( '--simple-seo-offset', plan.offset + 'px' );
+				plan.item.style.top    = plan.top;
+				plan.item.style.bottom = plan.bottom;
+			} );
+		};
+
+		window.addEventListener( 'scroll', function () {
+			var y = window.pageYOffset;
+			if ( y === lastY ) {
+				return;
+			}
+			var now = y > lastY;
+			lastY   = y;
+			if ( now !== down ) {
+				down = now;
+				place();
+			}
+		}, { passive: true } );
+		window.addEventListener( 'resize', place );
+		if ( window.ResizeObserver ) {
+			// A group folded or opened, a sub-tab switched: the heights change.
+			var watch = new window.ResizeObserver( place );
+			sticky.forEach( function ( item ) {
+				watch.observe( item );
+			} );
+		}
+		place();
+	}
+
 	// The import goes on by itself, a request at a time; the button stays for a page that stops.
 	var next = document.querySelector( '[data-simple-seo-continue]' );
 	if ( next ) {

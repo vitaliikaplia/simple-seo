@@ -11251,10 +11251,11 @@ MD === $sseo_val,
 
 	// Whether a model can write.
 	$sseo_ai_new_request();
-	$sseo_vals = array( Simple_SEO_AI::ready(), get_transient( Simple_SEO_AI::READY ), $sseo_ai_timeout() );
+	$sseo_vals = array( Simple_SEO_AI::ready(), get_transient( Simple_SEO_AI::READY ), $sseo_ai_timeout(), Simple_SEO_AI::checked() );
 	sseo_check(
-		'no provider: no model can write; the answer kept an hour, with the providers it was given for',
-		false === $sseo_vals[0] && array( 'providers' => '', 'ready' => false ) === $sseo_vals[1] && $sseo_vals[2] > 3500 && $sseo_vals[2] <= HOUR_IN_SECONDS,
+		'no provider: no model can write; the answer kept with the providers it was given for and its time, a week at most',
+		false === $sseo_vals[0] && array( 'providers', 'ready', 'time' ) === array_keys( (array) $sseo_vals[1] ) && '' === $sseo_vals[1]['providers'] && false === $sseo_vals[1]['ready']
+			&& abs( $sseo_vals[1]['time'] - time() ) <= 2 && $sseo_vals[1]['time'] === $sseo_vals[3] && $sseo_vals[2] > WEEK_IN_SECONDS - 100 && $sseo_vals[2] <= WEEK_IN_SECONDS,
 		$sseo_vals
 	);
 	\WordPress\AiClient\AiClient::defaultRegistry()->registerProvider( Simple_SEO_Test_AI_Provider::class );
@@ -11266,7 +11267,7 @@ MD === $sseo_val,
 	$sseo_vals[] = Simple_SEO_AI::ready();
 	sseo_check(
 		'a new provider is asked about at once; one not configured yet cannot write; the answer stays for the request and is kept for the next',
-		false === $sseo_vals[0] && array( 'providers' => 'sseo-test', 'ready' => false ) === $sseo_vals[1] && false === $sseo_vals[2] && false === $sseo_vals[3],
+		false === $sseo_vals[0] && array( 'providers' => 'sseo-test', 'ready' => false ) === array_diff_key( (array) $sseo_vals[1], array( 'time' => 0 ) ) && false === $sseo_vals[2] && false === $sseo_vals[3],
 		$sseo_vals
 	);
 	Simple_SEO_AI::flush_option( 'blogname' );
@@ -11278,8 +11279,8 @@ MD === $sseo_val,
 	$sseo_vals[] = Simple_SEO_AI::ready();
 	$sseo_vals[] = $sseo_ai_timeout();
 	sseo_check(
-		'a key of Connectors changed: asked again, and a model that can write is kept for 12 hours; other options leave the answer',
-		is_array( $sseo_vals[0] ) && false === $sseo_vals[1] && true === $sseo_vals[2] && $sseo_vals[3] > 12 * HOUR_IN_SECONDS - 100 && $sseo_vals[3] <= 12 * HOUR_IN_SECONDS,
+		'a key of Connectors changed: asked again, and a model that can write is kept; other options leave the answer',
+		is_array( $sseo_vals[0] ) && false === $sseo_vals[1] && true === $sseo_vals[2] && $sseo_vals[3] > WEEK_IN_SECONDS - 100 && $sseo_vals[3] <= WEEK_IN_SECONDS,
 		$sseo_vals
 	);
 	$sseo_vals = array();
@@ -11301,7 +11302,60 @@ MD === $sseo_val,
 	delete_transient( Simple_SEO_AI::READY );
 	$sseo_vals[] = Simple_SEO_AI::ready();
 	$sseo_vals[] = get_transient( Simple_SEO_AI::READY );
-	sseo_check( 'in one request the AI Client is asked once', array( true, true, false ) === $sseo_vals, $sseo_vals );
+	// The answer kept, read once, stays for the request too.
+	set_transient( Simple_SEO_AI::READY, array( 'providers' => 'sseo-test', 'ready' => true, 'time' => time() ), WEEK_IN_SECONDS );
+	$sseo_ai_new_request();
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	delete_transient( Simple_SEO_AI::READY );
+	$sseo_vals[] = Simple_SEO_AI::ready();
+	$sseo_vals[] = get_transient( Simple_SEO_AI::READY );
+	sseo_check( 'in one request the AI Client is asked once, and the answer kept read once', array( true, true, false, true, true, false ) === $sseo_vals, $sseo_vals );
+
+	// An old answer holds while WP-Cron asks again in the background: no page waits for the providers.
+	// Asked now, the AI Client would say the opposite of what is kept.
+	$sseo_ai_stale = static function ( array $kept ) use ( $sseo_ai_new_request ): array {
+		wp_clear_scheduled_hook( Simple_SEO_AI::CHECK_EVENT );
+		set_transient( Simple_SEO_AI::READY, $kept, WEEK_IN_SECONDS );
+		$sseo_ai_new_request();
+		$GLOBALS['sseo_ai_configured'] = empty( $kept['ready'] );
+		$answer                        = Simple_SEO_AI::ready();
+		$GLOBALS['sseo_ai_configured'] = true;
+		$next                          = wp_next_scheduled( Simple_SEO_AI::CHECK_EVENT );
+
+		return array( $answer, $kept === get_transient( Simple_SEO_AI::READY ), false !== $next && $next <= time() );
+	};
+	$sseo_val  = time();
+	$sseo_vals = array(
+		'can write, 11 hours'  => $sseo_ai_stale( array( 'providers' => 'sseo-test', 'ready' => true, 'time' => $sseo_val - 11 * HOUR_IN_SECONDS ) ),
+		'can write, 13 hours'  => $sseo_ai_stale( array( 'providers' => 'sseo-test', 'ready' => true, 'time' => $sseo_val - 13 * HOUR_IN_SECONDS ) ),
+		'none, 50 minutes'     => $sseo_ai_stale( array( 'providers' => 'sseo-test', 'ready' => false, 'time' => $sseo_val - 50 * MINUTE_IN_SECONDS ) ),
+		'none, 70 minutes'     => $sseo_ai_stale( array( 'providers' => 'sseo-test', 'ready' => false, 'time' => $sseo_val - 70 * MINUTE_IN_SECONDS ) ),
+		'kept without a time'  => $sseo_ai_stale( array( 'providers' => 'sseo-test', 'ready' => true ) ),
+	);
+	sseo_check(
+		'the answer kept holds and the AI Client is not asked; once it is old (12 hours, an hour for no model, at once without its time) WP-Cron asks again',
+		array(
+			'can write, 11 hours'  => array( true, true, false ),
+			'can write, 13 hours'  => array( true, true, true ),
+			'none, 50 minutes'     => array( false, true, false ),
+			'none, 70 minutes'     => array( false, true, true ),
+			'kept without a time'  => array( true, true, true ),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+	$GLOBALS['sseo_ai_configured'] = false;
+	$sseo_ai_new_request();
+	do_action( Simple_SEO_AI::CHECK_EVENT );
+	$sseo_vals                     = array( get_transient( Simple_SEO_AI::READY ), Simple_SEO_AI::ready() );
+	$GLOBALS['sseo_ai_configured'] = true;
+	wp_clear_scheduled_hook( Simple_SEO_AI::CHECK_EVENT );
+	Simple_SEO_AI::flush();
+	$sseo_vals[] = Simple_SEO_AI::checked();
+	sseo_check(
+		'the event asks the AI Client and keeps its answer with the time; no answer, no time',
+		false === ( $sseo_vals[0]['ready'] ?? null ) && abs( ( $sseo_vals[0]['time'] ?? 0 ) - time() ) <= 2 && false === $sseo_vals[1] && 0 === $sseo_vals[2],
+		$sseo_vals
+	);
 	$sseo_ai_new_request();
 	Simple_SEO_AI::ready();
 	add_filter( 'wp_supports_ai', '__return_false' );
@@ -12105,12 +12159,57 @@ MD === $sseo_val,
 	$sseo_tabs = Simple_SEO_Admin::tabs();
 	sseo_check( 'the AI tab: first of the group of AI and agents, with its row', isset( $sseo_tabs['ai'] ) && 'AI' === $sseo_tabs['ai']['label'] && array( Simple_SEO_AI::OPTION ) === $sseo_tabs['ai']['options'] && 10 === $sseo_tabs['ai']['order'] && 'ai' === $sseo_tabs['ai']['group'], $sseo_tabs['ai'] ?? null );
 	$sseo_ai_set( 2 );
-	set_transient( Simple_SEO_AI::READY, array( 'providers' => 'sseo-test', 'ready' => false ), HOUR_IN_SECONDS );
+	// The tab reads the answer kept: asking the providers would hold the page for seconds.
+	set_transient( Simple_SEO_AI::READY, array( 'providers' => 'sseo-test', 'ready' => false, 'time' => time() - 300 ), WEEK_IN_SECONDS );
+	$sseo_ai_new_request();
 	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
 	sseo_check(
-		'the tab asks the AI Client now and keeps the answer: a model can write; the link to Connectors; the variants',
+		'the tab says the answer kept without asking the AI Client, when it was asked, and has the link that asks now',
+		str_contains( $sseo_html, '<p class="simple-seo-ai-none">' ) && ! str_contains( $sseo_html, 'simple-seo-ai-ready' ) && false === ( get_transient( Simple_SEO_AI::READY )['ready'] ?? null )
+			&& (bool) preg_match( '/<p class="simple-seo-ai-checked">\s*Checked 5 min(?:ute)?s ago; it is checked again by itself, in the background.\s*<a href="[^"]*\/wp-admin\/admin-post\.php\?action=simple_seo_ai_check_now&#038;_wpnonce=' . wp_create_nonce( 'simple_seo_ai_check_now' ) . '">Check now<\/a>/', $sseo_html ),
+		$sseo_html
+	);
+	$sseo_ai_go  = static function ( string $location ): string {
+		throw new RuntimeException( 'redirect: ' . $location );
+	};
+	$sseo_ai_die = static fn(): callable => static function (): void {
+		throw new RuntimeException( 'wp_die' );
+	};
+	$sseo_ai_now = static function ( bool $nonce ): string {
+		$_REQUEST = $nonce ? array( '_wpnonce' => wp_create_nonce( 'simple_seo_ai_check_now' ) ) : array();
+		try {
+			Simple_SEO_AI::check_now();
+			$result = 'handled';
+		} catch ( RuntimeException $error ) {
+			$result = $error->getMessage();
+		}
+		$_REQUEST = array();
+
+		return $result;
+	};
+	add_filter( 'wp_die_handler', $sseo_ai_die, 99 );
+	add_filter( 'wp_redirect', $sseo_ai_go, 1 );
+	$sseo_vals = array( $sseo_ai_now( false ), get_transient( Simple_SEO_AI::READY )['ready'] ?? null );
+	wp_set_current_user( $sseo_u['author'] );
+	$sseo_vals[] = $sseo_ai_now( true );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_vals[] = $sseo_ai_now( true );
+	$sseo_vals[] = get_transient( Simple_SEO_AI::READY )['ready'] ?? null;
+	remove_filter( 'wp_redirect', $sseo_ai_go, 1 );
+	remove_filter( 'wp_die_handler', $sseo_ai_die, 99 );
+	$sseo_vals[] = has_action( 'admin_post_simple_seo_ai_check_now', array( Simple_SEO_AI::class, 'check_now' ) );
+	$sseo_vals[] = has_action( 'simple_seo_ai_check', array( Simple_SEO_AI::class, 'check' ) );
+	sseo_check(
+		'the link asks the AI Client now and goes back to the tab; not without its nonce, nor for whoever may not change the settings',
+		array( 'wp_die', false, 'wp_die', 'redirect: ' . Simple_SEO_Admin::url( 'ai' ), true, 10, 10 ) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
+	sseo_check(
+		'the tab after the link: a model can write; checked just now; the link to Connectors; the variants',
 		str_contains( $sseo_html, '<p class="simple-seo-ai-ready">A connected AI can write: the SEO block has the button “Write with AI” next to the SEO title, the meta description and the focus keyphrase.</p>' )
-			&& str_contains( $sseo_html, '<a href="' . esc_url( admin_url( 'options-connectors.php' ) ) . '">Open Connectors</a>' ) && true === ( get_transient( Simple_SEO_AI::READY )['ready'] ?? null )
+			&& (bool) preg_match( '/Checked [12] seconds? ago;/', $sseo_html )
+			&& str_contains( $sseo_html, '<a href="' . esc_url( admin_url( 'options-connectors.php' ) ) . '">Open Connectors</a>' )
 			&& str_contains( $sseo_html, '<select id="simple-seo-ai-variants" name="simple_seo_ai[variants]">' ) && 5 === substr_count( $sseo_html, '<option value=' ) && (bool) preg_match( '/<option value="2"\s+selected=[\'"]selected[\'"]>2<\/option>/', $sseo_html ) && str_contains( $sseo_html, '<option value="1">1</option>' ) && str_contains( $sseo_html, '<option value="5">5</option>' ),
 		$sseo_html
 	);
@@ -12121,13 +12220,16 @@ MD === $sseo_val,
 	sseo_check( 'the tab: the alt texts of new images, off', (bool) preg_match( '/<input type="checkbox" name="simple_seo_ai\[alt_upload\]" value="1"> Write the alt text/', $sseo_html ), $sseo_html );
 	$sseo_ai_set( 2 );
 	$GLOBALS['sseo_ai_configured'] = false;
+	// No answer kept: the tab asks.
+	Simple_SEO_AI::flush();
 	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
 	sseo_check( 'the tab: no model can write yet, said, with the link', str_contains( $sseo_html, '<p class="simple-seo-ai-none">No connected AI can write text yet.' ) && str_contains( $sseo_html, 'options-connectors.php' ) && ! str_contains( $sseo_html, 'simple-seo-ai-ready' ) && false === ( get_transient( Simple_SEO_AI::READY )['ready'] ?? null ), $sseo_html );
 	add_filter( 'wp_supports_ai', '__return_false' );
 	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
 	remove_filter( 'wp_supports_ai', '__return_false' );
-	sseo_check( 'the tab: AI turned off on the site, without the link', str_contains( $sseo_html, '<p class="simple-seo-ai-off">' ) && ! str_contains( $sseo_html, 'options-connectors.php' ) && ! str_contains( $sseo_html, 'simple-seo-ai-none' ), $sseo_html );
+	sseo_check( 'the tab: AI turned off on the site, without the link to Connectors nor the one that checks', str_contains( $sseo_html, '<p class="simple-seo-ai-off">' ) && ! str_contains( $sseo_html, 'options-connectors.php' ) && ! str_contains( $sseo_html, 'simple-seo-ai-none' ) && ! str_contains( $sseo_html, 'simple-seo-ai-checked' ), $sseo_html );
 	$GLOBALS['sseo_ai_configured'] = true;
+	Simple_SEO_AI::flush();
 	wp_set_current_user( $sseo['users']['sseo_seo_manager'] );
 	$sseo_html = sseo_capture( array( Simple_SEO_AI::class, 'render_tab' ) );
 	sseo_check( 'whoever may not manage the options of the site gets no link to Connectors', str_contains( $sseo_html, 'simple-seo-ai-ready' ) && ! str_contains( $sseo_html, 'options-connectors.php' ), $sseo_html );
@@ -12608,13 +12710,27 @@ MD === $sseo_val,
 	);
 
 	wp_set_current_user( $sseo_u['administrator'] );
+	// The folded groups: WordPress's own user settings, read from the cookie the script writes.
+	$sseo_lay_cookie = 'wp-settings-' . $sseo_u['administrator'];
+	$sseo_vals       = array();
+	foreach ( array( 'simple_seo_closed=ai_nope_search&libraryContent=browse', 'libraryContent=browse', 'simple_seo_closed=' ) as $sseo_name ) {
+		$_COOKIE[ $sseo_lay_cookie ] = $sseo_name;
+		unset( $GLOBALS['_updated_user_settings'] );
+		$sseo_vals[] = Simple_SEO_Admin::closed_groups();
+	}
+	sseo_check( 'the folded groups: those of the user setting that are groups, in the order of the menu; none', array( array( 'search', 'ai' ), array(), array() ) === $sseo_vals, $sseo_vals );
+	$_COOKIE[ $sseo_lay_cookie ] = 'simple_seo_closed=search_crawl';
+	unset( $GLOBALS['_updated_user_settings'] );
 	$_GET['tab']     = 'indexing';
 	$_GET['section'] = 'sitemap';
 	$sseo_html       = sseo_capture( array( Simple_SEO_Admin::class, 'render_page' ) );
-	unset( $_GET['tab'], $_GET['section'] );
+	unset( $_GET['tab'], $_GET['section'], $_COOKIE[ $sseo_lay_cookie ], $GLOBALS['_updated_user_settings'] );
 	$sseo_vals = array(
-		'groups'   => substr_count( $sseo_html, '<div class="simple-seo-sidebar-section">' ),
-		'group'    => str_contains( $sseo_html, '<h2 class="simple-seo-sidebar-group"><span class="dashicons dashicons-admin-site-alt3" aria-hidden="true"></span>For search engines</h2>' ),
+		'groups'   => substr_count( $sseo_html, '<details class="simple-seo-sidebar-section' ),
+		'folded'   => str_contains( $sseo_html, '<details class="simple-seo-sidebar-section" data-simple-seo-group="search">' ) && str_contains( $sseo_html, '<details class="simple-seo-sidebar-section" data-simple-seo-group="markup" open>' ),
+		'here'     => str_contains( $sseo_html, '<details class="simple-seo-sidebar-section is-current" data-simple-seo-group="crawl" open>' ),
+		'group'    => str_contains( $sseo_html, '<summary><h2 class="simple-seo-sidebar-group"><span class="dashicons dashicons-admin-site-alt3" aria-hidden="true"></span>For search engines</h2></summary>' ),
+		'sticky'   => (bool) preg_match( '/<div class="simple-seo-column simple-seo-column-menu">\s*<nav class="simple-seo-sidebar" aria-label="[^"]+" data-simple-seo-sticky>/', $sseo_html ) && (bool) preg_match( '/<div class="simple-seo-column simple-seo-column-main">\s*<div class="simple-seo-main" data-simple-seo-sticky>/', $sseo_html ),
 		'current'  => (bool) preg_match( '/<a href="[^"]*tab=indexing" class="is-current" aria-current="page">Indexing<\/a>/', $sseo_html ),
 		'title'    => str_contains( $sseo_html, '<h2 class="simple-seo-main-title">Indexing</h2>' ),
 		'subtab'   => (bool) preg_match( '/<a href="[^"]*section=sitemap" class="nav-tab nav-tab-active" data-simple-seo-subtab="sitemap" aria-current="page">/', $sseo_html ) && (bool) preg_match( '/<a href="[^"]*section=pages" class="nav-tab" data-simple-seo-subtab="pages">/', $sseo_html ),
@@ -12626,10 +12742,12 @@ MD === $sseo_val,
 		'after'    => sseo_capture( static fn() => Simple_SEO_Admin::section( 'x' ) ),
 	);
 	sseo_check(
-		'the page: the groups in the menu with the tab marked, its title, its sub-tabs with the one asked for shown and the others hidden but in the form, the white panel, the list for a phone; after the page a part is not hidden',
-		array( 'groups' => 6, 'group' => true, 'current' => true, 'title' => true, 'subtab' => true, 'shown' => true, 'hidden' => true, 'fields' => true, 'panel' => true, 'list' => true, 'after' => '<div class="simple-seo-section" id="simple-seo-section-x" data-simple-seo-section="x">' ) === $sseo_vals,
+		'the page: the groups in the menu, the folded ones closed but that of the tab shown, marked like the tab; the menu and the page sticky in their columns; its title, its sub-tabs with the one asked for shown and the others hidden but in the form, the white panel, the list for a phone; after the page a part is not hidden',
+		array( 'groups' => 6, 'folded' => true, 'here' => true, 'group' => true, 'sticky' => true, 'current' => true, 'title' => true, 'subtab' => true, 'shown' => true, 'hidden' => true, 'fields' => true, 'panel' => true, 'list' => true, 'after' => '<div class="simple-seo-section" id="simple-seo-section-x" data-simple-seo-section="x">' ) === $sseo_vals,
 		$sseo_vals
 	);
+	$sseo_vals = wp_scripts()->query( 'simple-seo-admin' );
+	sseo_check( 'admin.js needs WordPress\'s user settings (utils), which keep the folded groups', $sseo_vals && in_array( 'utils', $sseo_vals->deps, true ), $sseo_vals ? $sseo_vals->deps : null );
 	$sseo_vals = array();
 	foreach ( array( 'social', 'import', 'special' ) as $sseo_name ) {
 		$_GET['tab'] = $sseo_name;
@@ -12756,11 +12874,12 @@ MD === $sseo_val,
 	wp_schedule_single_event( time() + 60, Simple_SEO_Audit::EVENT );
 	wp_schedule_single_event( time() + 60, Simple_SEO_Links::RETRY );
 	wp_schedule_single_event( time() + 60, Simple_SEO_AI::ALT_EVENT, array( 123 ) );
+	wp_schedule_single_event( time() + 60, Simple_SEO_AI::CHECK_EVENT );
 	include SIMPLE_SEO_DIR . 'uninstall.php';
 	sseo_check( 'uninstall drops a batch of IndexNow waiting', false === wp_next_scheduled( Simple_SEO_IndexNow::EVENT ) );
 	sseo_check( 'uninstall drops the table of the monitor of 404s and its clean-up', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Monitor::table() ) ) && false === wp_next_scheduled( Simple_SEO_Monitor::EVENT ) );
 	sseo_check( 'uninstall drops the report of the audit, its run and a step waiting', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Audit::table() ) ) && false === wp_next_scheduled( Simple_SEO_Audit::EVENT ) && false === get_option( Simple_SEO_Audit::RUN ) );
-	sseo_check( 'uninstall drops the alt texts of new images the AI has yet to write', false === wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( 123 ) ) );
+	sseo_check( 'uninstall drops the alt texts of new images the AI has yet to write, and a check of the AI Client waiting', false === wp_next_scheduled( Simple_SEO_AI::ALT_EVENT, array( 123 ) ) && false === wp_next_scheduled( Simple_SEO_AI::CHECK_EVENT ) );
 	sseo_check( 'uninstall drops the links of the audit and a check of them waiting', ! $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( 'SHOW TABLES LIKE %s', Simple_SEO_Links::table() ) ) && false === wp_next_scheduled( Simple_SEO_Links::RETRY ) );
 	$sseo_left = $GLOBALS['wpdb']->get_col( "SELECT option_name FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE 'simple\\_seo\\_%'" );
 	sseo_check( 'uninstall removes every simple_seo_ option', array() === $sseo_left, $sseo_left );

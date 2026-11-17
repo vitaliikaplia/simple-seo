@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.47.0
+Stable tag: 0.48.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,12 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.48.0 =
+* The groups of the settings menu fold and open; WordPress keeps which are folded for each user, and the group of the tab shown stays open. Each group heading has its icon on a tile, blue for the group of the tab shown, and an arrow; its tabs hang from a line under the icon.
+* The menu no longer scrolls inside itself: it scrolls with the page. The menu and the page stick to the top; one taller than the screen scrolls down to its end and stays there, and back up to its top.
+* Switching the sub-tabs no longer shakes the panel under them by a pixel or two.
+* The AI tab opens at once: it shows the answer kept of whether a connected AI can write, with when it was checked and a link that checks now. Asking the providers took seconds on each visit. An old answer (12 hours, an hour while no model can write) still holds while WP-Cron asks again in the background, so no page waits for the providers.
 
 = 0.47.0 =
 * The settings page has its tabs in a menu on the left, in groups, each a band of its own with an icon: the search appearance, social networks and Schema, for search engines, AI and agents, services, the plugin. The menu and the page stick to the top: the shorter of them stays in view while the other scrolls. On a phone the menu is a list to choose from.

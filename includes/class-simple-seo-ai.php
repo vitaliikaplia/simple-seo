@@ -26,6 +26,18 @@ final class Simple_SEO_AI {
 	/** Whether a model can write text, kept until the providers or their keys change. */
 	public const READY = 'simple_seo_ai_ready';
 
+	/** WP-Cron event: ask the AI Client again, in the background, once its answer is old. */
+	public const CHECK_EVENT = 'simple_seo_ai_check';
+
+	/** The link of the AI tab that asks the AI Client now: its admin-post action and nonce. */
+	public const CHECK_NOW = 'simple_seo_ai_check_now';
+
+	/** How long an answer that a model can write holds before it is asked again in the background. */
+	public const FRESH = 12 * HOUR_IN_SECONDS;
+
+	/** No model may be a network that failed: that answer is asked again sooner. */
+	public const FRESH_NONE = HOUR_IN_SECONDS;
+
 	/** The fields the AI writes. */
 	public const FIELDS = array( 'title', 'description', 'keyphrase' );
 
@@ -81,6 +93,8 @@ final class Simple_SEO_AI {
 		// After wp-loc (10): its copies of the image in the other languages are there by then.
 		add_action( 'add_attachment', array( self::class, 'uploaded' ), 20 );
 		add_action( self::ALT_EVENT, array( self::class, 'alt_event' ) );
+		add_action( self::CHECK_EVENT, array( self::class, 'check' ) );
+		add_action( 'admin_post_' . self::CHECK_NOW, array( self::class, 'check_now' ) );
 		add_filter( 'attachment_fields_to_edit', array( self::class, 'media_field' ), 10, 2 );
 		add_action( 'wp_enqueue_media', array( self::class, 'enqueue_media' ) );
 		// A key saved or removed in Settings → Connectors: ask again.
@@ -111,8 +125,10 @@ final class Simple_SEO_AI {
 	}
 
 	/**
-	 * Whether a model can write text, as the AI Client said last: asking it reaches the providers,
-	 * so the answer is kept until a provider comes or goes or a key of Connectors changes.
+	 * Whether a model can write text, as the AI Client said last: asking it reaches the providers and
+	 * takes seconds, so no page waits for it but the first. The answer is kept until a provider comes
+	 * or goes or a key of Connectors changes; once it is old (FRESH, FRESH_NONE), it still holds while
+	 * WP-Cron asks again in the background.
 	 */
 	public static function ready(): bool {
 		if ( ! self::allowed() ) {
@@ -124,13 +140,18 @@ final class Simple_SEO_AI {
 
 		$stored = get_transient( self::READY );
 		if ( is_array( $stored ) && ( $stored['providers'] ?? null ) === self::providers() ) {
-			return self::$ready = ! empty( $stored['ready'] );
+			$ready = ! empty( $stored['ready'] );
+			if ( (int) ( $stored['time'] ?? 0 ) < time() - ( $ready ? self::FRESH : self::FRESH_NONE ) && ! wp_next_scheduled( self::CHECK_EVENT ) ) {
+				wp_schedule_single_event( time(), self::CHECK_EVENT );
+			}
+
+			return self::$ready = $ready;
 		}
 
 		return self::check();
 	}
 
-	/** Ask the AI Client now whether a model can write text, and keep the answer. */
+	/** Ask the AI Client now whether a model can write text, and keep the answer with its time. */
 	public static function check(): bool {
 		$ready = false;
 		if ( self::allowed() ) {
@@ -145,12 +166,32 @@ final class Simple_SEO_AI {
 			array(
 				'providers' => self::providers(),
 				'ready'     => $ready,
+				'time'      => time(),
 			),
-			// No model now may be a network that failed: ask again sooner.
-			$ready ? 12 * HOUR_IN_SECONDS : HOUR_IN_SECONDS
+			// The time says when it is old; a week is only a limit for a site whose cron never runs.
+			WEEK_IN_SECONDS
 		);
 
 		return self::$ready = $ready;
+	}
+
+	/** When the AI Client was asked last, 0 while there is no answer. */
+	public static function checked(): int {
+		$stored = get_transient( self::READY );
+
+		return is_array( $stored ) ? (int) ( $stored['time'] ?? 0 ) : 0;
+	}
+
+	/** The link of the AI tab: ask the AI Client now, then back to the tab. */
+	public static function check_now(): void {
+		if ( ! current_user_can( Simple_SEO_Access::CAP_SETTINGS ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'simple-seo' ), 403 );
+		}
+		check_admin_referer( self::CHECK_NOW );
+
+		self::check();
+		wp_safe_redirect( Simple_SEO_Admin::url( 'ai' ) );
+		exit;
 	}
 
 	public static function flush(): void {
@@ -816,8 +857,10 @@ final class Simple_SEO_AI {
 
 	public static function render_tab(): void {
 		$settings = self::sanitize( Simple_SEO_Settings::get( self::OPTION ) );
-		// The tab tells the truth of now, and the editors get it too.
-		$status = ! self::allowed() ? 'off' : ( self::check() ? 'ready' : 'none' );
+		// The answer kept: asking the providers would hold the page for seconds. The link asks now.
+		$status  = ! self::allowed() ? 'off' : ( self::ready() ? 'ready' : 'none' );
+		$checked = self::checked();
+		$check   = wp_nonce_url( add_query_arg( 'action', self::CHECK_NOW, admin_url( 'admin-post.php' ) ), self::CHECK_NOW );
 
 		require SIMPLE_SEO_DIR . 'includes/views/tab-ai.php';
 	}
