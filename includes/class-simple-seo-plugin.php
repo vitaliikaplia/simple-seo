@@ -46,6 +46,7 @@ final class Simple_SEO_Plugin {
 		Simple_SEO_Scores::init();
 		Simple_SEO_Bulk::init();
 		Simple_SEO_Search_Console::init();
+		Simple_SEO_Keywords::init();
 		Simple_SEO_IndexNow::init();
 		Simple_SEO_Monitor::init();
 		Simple_SEO_Audit::init();

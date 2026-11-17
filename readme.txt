@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.48.0
+Stable tag: 0.49.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,13 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.49.0 =
+* Keyword research, on the page SEO → Keywords and by the focus keyphrase in the SEO block: the searches people make around a phrase — Google's own suggestions for the phrase, for it with each letter, with question words before it and prepositions after it — free and without a key, kept a week.
+* The questions among them marked, and topics of the words they share, to filter by.
+* With Search Console connected, the queries this site was shown for with the words of the phrase, and its impressions, clicks and position for each search.
+* With an AI connected in Settings → Connectors, topics under a parent topic, and the structure of an article on what is shown: its title, sections with subheadings and the searches each covers, and a FAQ of the questions — to copy, or as a draft with the headings, the block Questions and answers and the focus keyphrase.
+* The tab Keyword research turns each source on or off and sets the language and country searched in; by default those of the post (wp-loc), of the phrase by its letters, or of the site.
 
 = 0.48.0 =
 * The groups of the settings menu fold and open; WordPress keeps which are folded for each user, and the group of the tab shown stays open. Each group heading has its icon on a tile, blue for the group of the tab shown, and an arrow; its tabs hang from a line under the icon.

@@ -171,7 +171,8 @@ final class Simple_SEO_Editor {
 
 	/**
 	 * A field with a template: the template as the placeholder and the "Insert structure" button.
-	 * The fields the AI writes get its button (Simple_SEO_AI) as well.
+	 * The fields the AI writes get its button (Simple_SEO_AI) as well, and the focus keyphrase the
+	 * one of the keyword research (Simple_SEO_Keywords).
 	 *
 	 * @param array<string, mixed> $field
 	 * @param WP_Post|WP_Term      $object
@@ -183,6 +184,7 @@ final class Simple_SEO_Editor {
 			array(
 				'' !== $mask ? Simple_SEO_Admin::mask_button( self::input_id( (string) $field['key'] ), $mask ) : '',
 				Simple_SEO_AI::button( (string) $field['key'], $object_type, $object ),
+				Simple_SEO_Keywords::button( (string) $field['key'], $object_type, $object ),
 			)
 		);
 

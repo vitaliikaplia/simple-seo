@@ -860,6 +860,109 @@
 	margin: 16px 0;
 }
 
+/* The keyword research: the search form, the filters, the plan of an article, the table. */
+.simple-seo-kw-form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 16px 0;
+}
+
+.simple-seo-kw-form input[type="search"] {
+	flex: 1 1 280px;
+	max-width: 480px;
+}
+
+.simple-seo-kw-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 12px 0;
+}
+
+.simple-seo-kw-topics {
+	display: contents;
+}
+
+.simple-seo-kw-filters .button.is-pressed,
+.simple-seo-kw-filters .button[aria-pressed="true"] {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.simple-seo-kw-tag {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 0 6px;
+	border-radius: 9px;
+	background: #f0f6fc;
+	color: #135e96;
+	font-size: 11px;
+	line-height: 18px;
+}
+
+.simple-seo-kw-table td.num,
+.simple-seo-kw-table th.num {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.simple-seo-kw-table tr[hidden] {
+	display: none;
+}
+
+.simple-seo-kw-parent {
+	font-weight: 600;
+}
+
+.simple-seo-kw-outline {
+	margin: 12px 0 16px;
+	padding: 4px 20px 8px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-left: 4px solid #2271b1;
+}
+
+.simple-seo-kw-outline .simple-seo-kw-section h3 {
+	margin: 1em 0 .25em;
+}
+
+.simple-seo-kw-outline ul {
+	margin: 0 0 .25em 1.5em;
+	list-style: disc;
+}
+
+/* The ideas under the focus keyphrase of a post. */
+.simple-seo-kw-ideas {
+	margin: -4px 0 12px;
+	padding: 8px 12px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.simple-seo-kw-ideas ul {
+	margin: 0;
+	max-height: 320px;
+	overflow-y: auto;
+}
+
+.simple-seo-kw-ideas li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 10px;
+	align-items: baseline;
+	margin: 0;
+	padding: 4px 0;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.simple-seo-kw-ideas .simple-seo-kw-idea {
+	flex: 1 1 auto;
+}
+
 @media screen and (max-width: 782px) {
 	.simple-seo-layout {
 		display: block;

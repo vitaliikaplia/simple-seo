@@ -422,6 +422,46 @@ final class Simple_SEO_AI {
 		return $texts ? $texts : new WP_Error( 'simple_seo_ai_empty', __( 'The AI answered with nothing to put in the field. Try again.', 'simple-seo' ), array( 'status' => 500 ) );
 	}
 
+	/**
+	 * Ask the AI for JSON of a schema (Simple_SEO_Keywords: topics, the structure of an article): what
+	 * it answered, read from a model that cannot keep to a schema too; the caller takes what it needs.
+	 *
+	 * @param array<string, mixed> $schema JSON Schema of an object.
+	 * @return array<string, mixed>|WP_Error
+	 */
+	public static function structured( string $prompt, string $system, array $schema ) {
+		if ( ! self::allowed() ) {
+			return new WP_Error( 'simple_seo_ai_unavailable', __( 'AI is not available on this site: connect a provider in Settings → Connectors.', 'simple-seo' ), array( 'status' => 500 ) );
+		}
+
+		try {
+			// A builder keeps what it is told: the one for JSON and the plain one are two.
+			$json   = wp_ai_client_prompt( $prompt )->using_system_instruction( $system )->as_json_response( $schema );
+			$answer = ( true === $json->is_supported_for_text_generation() ? $json : wp_ai_client_prompt( $prompt )->using_system_instruction( $system ) )->generate_text();
+		} catch ( Throwable $error ) {
+			$answer = new WP_Error( 'simple_seo_ai_error', $error->getMessage() );
+		}
+		if ( is_wp_error( $answer ) ) {
+			return new WP_Error(
+				'simple_seo_ai_failed',
+				/* translators: %s: what the AI Client said. */
+				sprintf( __( 'The AI could not write it: %s', 'simple-seo' ), $answer->get_error_message() ),
+				array( 'status' => 500 )
+			);
+		}
+
+		// JSON alone, or among words or in a fence: the object from the first { to the last }.
+		$text = trim( (string) $answer );
+		$data = json_decode( $text, true );
+		if ( ! is_array( $data ) && preg_match( '/\{.*\}/s', $text, $found ) ) {
+			$data = json_decode( $found[0], true );
+		}
+
+		return is_array( $data )
+			? $data
+			: new WP_Error( 'simple_seo_ai_empty', __( 'The AI answered with nothing that could be read. Try again.', 'simple-seo' ), array( 'status' => 500 ) );
+	}
+
 	/** A text with a word broken by another script: a Latin letter right next to a Cyrillic one. */
 	public static function broken( string $text ): bool {
 		return 1 === preg_match( '/\p{Cyrillic}\p{Latin}|\p{Latin}\p{Cyrillic}/u', $text );

@@ -11416,8 +11416,8 @@ MD === $sseo_val,
 	Simple_SEO_AI::flush();
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
 	sseo_check(
-		'no model that can write: no AI button, "Insert structure" as it was',
-		! str_contains( $sseo_html, 'simple-seo-ai' ) && (bool) preg_match( '/<span class="simple-seo-field-buttons"><button type="button" class="button simple-seo-mask" data-target="simple-seo-field-title"[^>]*>Insert structure<\/button><\/span>/', $sseo_html ) && ! preg_match( '/id="simple-seo-field-keyphrase"[^>]*><span/', $sseo_html ),
+		'no model that can write: no AI button, "Insert structure" as it was; by the focus keyphrase the keyword research only',
+		! str_contains( $sseo_html, 'simple-seo-ai' ) && (bool) preg_match( '/<span class="simple-seo-field-buttons"><button type="button" class="button simple-seo-mask" data-target="simple-seo-field-title"[^>]*>Insert structure<\/button><\/span>/', $sseo_html ) && (bool) preg_match( '/id="simple-seo-field-keyphrase"[^>]*><span class="simple-seo-field-buttons"><button type="button" class="button simple-seo-kw-button" data-simple-seo-kw="[a-z]*">Find keyphrases<\/button><\/span>/', $sseo_html ),
 		$sseo_html
 	);
 	$GLOBALS['sseo_ai_configured'] = true;
@@ -12244,6 +12244,985 @@ MD === $sseo_val,
 	wp_set_current_user( 0 );
 
 	// ------------------------------------------------------------------------------------------
+	sseo_section( 'Keyword research' );
+
+	$sseo_kw_access  = get_option( Simple_SEO_Access::OPTION );
+	$sseo_kw_gsc_row = get_option( Simple_SEO_Search_Console::OPTION );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	delete_option( Simple_SEO_Search_Console::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'Search Console not connected: the searches without its data; the suggestions still find them', ! Simple_SEO_Keywords::gsc_on() && Simple_SEO_Keywords::available() );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_kw_set = static function ( array $values ): void {
+		update_option( Simple_SEO_Keywords::OPTION, array_replace( Simple_SEO_Keywords::sanitize( array() ), $values ) );
+		Simple_SEO_Settings::flush();
+	};
+
+	$sseo_vals = array(
+		Simple_SEO_Settings::get( Simple_SEO_Keywords::OPTION ),
+		Simple_SEO_Settings::registered()[ Simple_SEO_Keywords::OPTION ]['autoload'],
+		Simple_SEO_Keywords::sanitize(
+			array(
+				'suggest'        => '0',
+				'search_console' => '1',
+				'ai'             => 0,
+				'language'       => 'pl',
+				'country'        => 'de',
+			)
+		),
+		Simple_SEO_Keywords::sanitize(
+			array(
+				'language' => 'xx',
+				'country'  => 'ZZ',
+				'suggest'  => array(),
+			)
+		),
+		Simple_SEO_Keywords::sanitize(
+			array(
+				'suggest'        => true,
+				'search_console' => false,
+				'ai'             => 1,
+			)
+		),
+	);
+	sseo_check(
+		'the settings: every source on, the language and country of the site, the row read when it is used; the boxes and codes as sent, unknown ones left out',
+		array(
+			'suggest'        => true,
+			'search_console' => true,
+			'ai'             => true,
+			'language'       => '',
+			'country'        => '',
+		) === $sseo_vals[0] && false === $sseo_vals[1]
+			&& array(
+				'suggest'        => false,
+				'search_console' => true,
+				'ai'             => false,
+				'language'       => 'pl',
+				'country'        => 'DE',
+			) === $sseo_vals[2]
+			&& array(
+				'suggest'        => false,
+				'search_console' => true,
+				'ai'             => true,
+				'language'       => '',
+				'country'        => '',
+			) === $sseo_vals[3]
+			&& array(
+				'suggest'        => true,
+				'search_console' => false,
+				'ai'             => true,
+				'language'       => '',
+				'country'        => '',
+			) === $sseo_vals[4],
+		$sseo_vals
+	);
+
+	$sseo_vals = array();
+	foreach ( array( 'uk', 'en_GB', 'pl_PL', 'fr_CA', 'ru_RU', 'ja', 'de_DE_formal' ) as $sseo_name ) {
+		$sseo_kw_locale = static fn(): string => $sseo_name;
+		add_filter( 'locale', $sseo_kw_locale, 99 );
+		$sseo_vals[ $sseo_name ] = Simple_SEO_Keywords::site_language() . '/' . Simple_SEO_Keywords::site_country();
+		remove_filter( 'locale', $sseo_kw_locale, 99 );
+	}
+	sseo_check(
+		'the language and country of the site: its locale and region, the country of the language without one there is, English for a language there is none of',
+		array(
+			'uk'           => 'uk/UA',
+			'en_GB'        => 'en/GB',
+			'pl_PL'        => 'pl/PL',
+			'fr_CA'        => 'fr/CA',
+			'ru_RU'        => 'ru/UA',
+			'ja'           => 'en/US',
+			'de_DE_formal' => 'de/DE',
+		) === $sseo_vals,
+		$sseo_vals
+	);
+	$sseo_vals = array(
+		Simple_SEO_Keywords::guess( 'іван чай', 'en' ),
+		Simple_SEO_Keywords::guess( 'чай', 'ru' ),
+		Simple_SEO_Keywords::guess( 'чай', 'en' ),
+		Simple_SEO_Keywords::guess( 'Ёлка', 'uk' ),
+		Simple_SEO_Keywords::guess( 'чай їжа', 'ru' ),
+		Simple_SEO_Keywords::guess( 'green tea', 'uk' ),
+		Simple_SEO_Keywords::guess( 'herbata', 'pl' ),
+		Simple_SEO_Keywords::guess( '2024', 'de' ),
+		Simple_SEO_Keywords::language( 'de', 'іван чай' ),
+		Simple_SEO_Keywords::language( 'xx', 'іван чай' ),
+		Simple_SEO_Keywords::language(),
+		Simple_SEO_Keywords::country( 'pl' ),
+		Simple_SEO_Keywords::country( '', 'uk' === Simple_SEO_Keywords::site_language() ? 'pl' : 'uk' ),
+		Simple_SEO_Keywords::country( '', Simple_SEO_Keywords::site_language() ),
+		Simple_SEO_Keywords::country(),
+	);
+	$sseo_kw_set(
+		array(
+			'language' => 'fr',
+			'country'  => 'CH',
+		)
+	);
+	$sseo_vals[] = Simple_SEO_Keywords::language( '', 'іван чай' );
+	$sseo_vals[] = Simple_SEO_Keywords::country( '', 'uk' );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check(
+		'the language searched in: asked for, else of the settings, else of the phrase by its letters, else of the site; the country: asked for, else of the settings, else of the site for its language, else of the language',
+		array(
+			'uk',
+			'ru',
+			'uk',
+			'ru',
+			'uk',
+			'en',
+			'pl',
+			'de',
+			'de',
+			'uk',
+			Simple_SEO_Keywords::site_language(),
+			'PL',
+			'uk' === Simple_SEO_Keywords::site_language() ? 'PL' : 'UA',
+			Simple_SEO_Keywords::site_country(),
+			Simple_SEO_Keywords::site_country(),
+			'fr',
+			'CH',
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Words.
+	$sseo_vals = array(
+		Simple_SEO_Keywords::clean( "  Іван   <b>ЧАЙ</b>\n " ),
+		Simple_SEO_Keywords::clean( str_repeat( 'ab ', 40 ) ),
+		array_map(
+			static fn( array $one ): bool => Simple_SEO_Keywords::is_question( $one[0], $one[1] ),
+			array(
+				array( 'як пити іван чай', 'uk' ),
+				array( 'іван чай як пити', 'uk' ),
+				array( 'чи можна пити', 'uk' ),
+				array( 'можна пити іван чай вагітним', 'uk' ),
+				array( 'пити можна', 'uk' ),
+				array( 'іван чай купити', 'uk' ),
+				array( 'can i drink tea', 'en' ),
+				array( 'green tea can', 'en' ),
+				array( 'tea benefits?', 'en' ),
+				array( '', 'uk' ),
+				array( 'як пити', 'xx' ),
+			)
+		),
+		array(
+			Simple_SEO_Keywords::matches( 'користь іван чаю', 'іван чай' ),
+			Simple_SEO_Keywords::matches( "чай з м'ятою", 'іван чай' ),
+			Simple_SEO_Keywords::matches( 'іван-чай фото', 'іван чай' ),
+			Simple_SEO_Keywords::matches( 'іван', 'іван чай' ),
+			Simple_SEO_Keywords::matches( 'Green Teas', 'green tea' ),
+			Simple_SEO_Keywords::matches( 'іваненко чай', 'іван чай' ),
+		),
+	);
+	sseo_check(
+		'a phrase as searched: plain, lower case, single spaces, 80 characters at most; questions by their words; a search of the phrase has its every word in some form',
+		array(
+			'іван чай',
+			trim( str_repeat( 'ab ', 27 ) ),
+			array( true, true, true, true, false, false, true, false, true, false, false ),
+			array( true, false, true, false, true, false ),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// Google's suggestions.
+	$sseo_kw_queries = Simple_SEO_Keywords::suggest_queries( 'іван чай', 'uk' );
+	$sseo_vals       = array(
+		$sseo_kw_queries[0],
+		count( $sseo_kw_queries ),
+		count( array_unique( $sseo_kw_queries ) ),
+		array_values( array_diff( array( 'як іван чай', 'чи іван чай', 'іван чай для', 'іван чай без', 'іван чай а', 'іван чай я', 'іван чай ґ' ), $sseo_kw_queries ) ),
+		count( Simple_SEO_Keywords::suggest_queries( 'tea', 'en' ) ),
+		Simple_SEO_Keywords::suggest_queries( 'tea', 'xx' ),
+	);
+	sseo_check( 'the searches asked of Google: the phrase first, each question word before it, each preposition and letter after it, each once', array( 'іван чай', 51, 51, array( 'іван чай ґ' ), 43, array( 'tea' ) ) === $sseo_vals, $sseo_vals );
+	$sseo_val = Simple_SEO_Keywords::suggest_url( 'як пити', 'uk', 'UA' );
+	sseo_check(
+		'the address of the suggestions: Google search in UTF-8, the language and country, the search encoded',
+		str_starts_with( $sseo_val, Simple_SEO_Keywords::SUGGEST_URL . '?' ) && str_contains( $sseo_val, 'client=firefox' ) && str_contains( $sseo_val, 'ie=utf-8' ) && str_contains( $sseo_val, 'oe=utf-8' ) && str_contains( $sseo_val, 'hl=uk' ) && str_contains( $sseo_val, 'gl=ua' ) && str_contains( $sseo_val, 'q=' . rawurlencode( 'як пити' ) ),
+		$sseo_val
+	);
+	$sseo_vals = array(
+		Simple_SEO_Keywords::parse_suggestions( '["іван чай",["Іван чай  користь","іван чай фото",5,""]]' ),
+		Simple_SEO_Keywords::parse_suggestions( 'nonsense' ),
+		Simple_SEO_Keywords::parse_suggestions( '{"a":1}' ),
+		Simple_SEO_Keywords::parse_suggestions( '["x","y"]' ),
+	);
+	sseo_check( 'an answer of Google: its searches, clean; nothing from anything else', array( array( 'іван чай користь', 'іван чай фото' ), array(), array(), array() ) === $sseo_vals, $sseo_vals );
+
+	// Google, answered here: each address is kept, the body comes from $sseo_kw_answer by the search.
+	$GLOBALS['sseo_kw_fetched'] = array();
+	$sseo_kw_answers            = array(
+		'іван чай'     => array( 'іван чай', 'Іван чай користь', 'іван чай купити', '2024' ),
+		'як іван чай'  => array( 'як пити іван чай', 'як заварювати іван чай', 'як пити іван чай' ),
+		'чи іван чай'  => array( 'чи можна пити іван чай на ніч' ),
+		'скільки іван чай' => array( 'скільки пити іван чай' ),
+		'іван чай для' => array( 'іван чай для жінок', 'іван чай користь' ),
+	);
+	$sseo_kw_answer             = static fn( string $query ): ?string => (string) wp_json_encode( array( $query, $sseo_kw_answers[ $query ] ?? array() ) );
+	$sseo_kw_fetch              = static function ( $pre, array $urls ) use ( &$sseo_kw_answer ): array {
+		$bodies = array();
+		foreach ( $urls as $url ) {
+			$GLOBALS['sseo_kw_fetched'][] = $url;
+			parse_str( (string) wp_parse_url( $url, PHP_URL_QUERY ), $sseo_kw_args );
+			$bodies[ $url ] = $sseo_kw_answer( (string) ( $sseo_kw_args['q'] ?? '' ) );
+		}
+
+		return $bodies;
+	};
+	add_filter( 'simple_seo_keywords_fetch', $sseo_kw_fetch, 10, 2 );
+	$sseo_kw_cache   = Simple_SEO_Keywords::CACHE . md5( 'suggest|іван чай|uk|UA' );
+	$sseo_kw_timeout = static fn(): int => (int) get_option( '_transient_timeout_' . $sseo_kw_cache ) - time();
+	$sseo_kw_found   = array( 'іван чай', 'іван чай користь', 'іван чай купити', '2024', 'як пити іван чай', 'як заварювати іван чай', 'чи можна пити іван чай на ніч', 'скільки пити іван чай', 'іван чай для жінок' );
+	delete_transient( $sseo_kw_cache );
+
+	$sseo_val  = Simple_SEO_Keywords::suggestions( 'іван чай', 'uk', 'UA' );
+	$sseo_vals = array(
+		$sseo_val,
+		count( $GLOBALS['sseo_kw_fetched'] ),
+		count( array_filter( $GLOBALS['sseo_kw_fetched'], static fn( string $url ): bool => str_contains( $url, 'hl=uk' ) && str_contains( $url, 'gl=ua' ) ) ),
+		$sseo_kw_timeout(),
+	);
+	$GLOBALS['sseo_kw_fetched'] = array();
+	$sseo_vals[]                = Simple_SEO_Keywords::suggestions( 'іван чай', 'uk', 'UA' ) === $sseo_val && array() === $GLOBALS['sseo_kw_fetched'];
+	$sseo_vals[]                = Simple_SEO_Keywords::suggestions( 'іван чай', 'uk', 'UA', true ) === $sseo_val && 51 === count( $GLOBALS['sseo_kw_fetched'] );
+	sseo_check(
+		'the suggestions: each search of the phrase asked in its language and country, the answers once each, in their order, digits as text; kept a week, asked again on demand',
+		$sseo_kw_found === $sseo_vals[0] && 51 === $sseo_vals[1] && 51 === $sseo_vals[2] && $sseo_vals[3] > WEEK_IN_SECONDS - 100 && $sseo_vals[3] <= WEEK_IN_SECONDS && true === $sseo_vals[4] && true === $sseo_vals[5],
+		$sseo_vals
+	);
+	$sseo_kw_answer = static fn( string $query ): ?string => 'чи іван чай' === $query ? null : (string) wp_json_encode( array( $query, $sseo_kw_answers[ $query ] ?? array() ) );
+	$sseo_vals      = array( Simple_SEO_Keywords::suggestions( 'іван чай', 'uk', 'UA', true ), $sseo_kw_timeout() );
+	$sseo_kw_answer = static fn( string $query ): ?string => null;
+	delete_transient( $sseo_kw_cache );
+	$sseo_val    = Simple_SEO_Keywords::suggestions( 'іван чай', 'uk', 'UA' );
+	$sseo_vals[] = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() : $sseo_val;
+	$sseo_vals[] = get_transient( $sseo_kw_cache );
+	sseo_check(
+		'a request without an answer: the others shown, kept an hour only; none answered: an error, nothing kept',
+		array_values( array_diff( $sseo_kw_found, array( 'чи можна пити іван чай на ніч' ) ) ) === $sseo_vals[0] && $sseo_vals[1] > HOUR_IN_SECONDS - 100 && $sseo_vals[1] <= HOUR_IN_SECONDS && 'simple_seo_kw_suggest' === $sseo_vals[2] && false === $sseo_vals[3],
+		$sseo_vals
+	);
+	$sseo_kw_answer = static fn( string $query ): ?string => (string) wp_json_encode( array( $query, $sseo_kw_answers[ $query ] ?? array() ) );
+
+	// Search Console, answered here: a key made here, the property chosen, the rows of $sseo_kw_rows.
+	$sseo_kw_pkey = openssl_pkey_new(
+		array(
+			'private_key_bits' => 2048,
+			'private_key_type' => OPENSSL_KEYTYPE_RSA,
+		)
+	);
+	openssl_pkey_export( $sseo_kw_pkey, $sseo_kw_pem );
+	update_option(
+		Simple_SEO_Search_Console::OPTION,
+		Simple_SEO_Search_Console::sanitize(
+			array(
+				'json'     => (string) wp_json_encode(
+					array(
+						'type'           => 'service_account',
+						'project_id'     => 'sseo-kw',
+						'private_key_id' => 'kw1',
+						'private_key'    => $sseo_kw_pem,
+						'client_email'   => 'kw@sseo-kw.iam.gserviceaccount.com',
+					)
+				),
+				'property' => 'sc-domain:example.com',
+			)
+		)
+	);
+	Simple_SEO_Settings::flush();
+	delete_transient( Simple_SEO_Search_Console::CACHE . 'token' );
+	$GLOBALS['sseo_kw_gsc'] = array();
+	$sseo_kw_rows           = array(
+		array(
+			'keys'        => array( 'іван чай оптом' ),
+			'clicks'      => 0,
+			'impressions' => 20,
+			'position'    => 15.5,
+		),
+		array(
+			'keys'        => array( 'Іван чай користь' ),
+			'clicks'      => 3,
+			'impressions' => 40,
+			'position'    => 7.26,
+		),
+		array(
+			'keys'        => array( 'іван-чай ціна' ),
+			'clicks'      => 1,
+			'impressions' => 90,
+			'position'    => 12.04,
+		),
+		array(
+			'keys'        => array( "чай з м'ятою" ),
+			'clicks'      => 9,
+			'impressions' => 500,
+			'position'    => 3,
+		),
+		array(
+			'keys'        => array( 'іван чай' ),
+			'clicks'      => 0,
+			'impressions' => 5,
+			'position'    => 30,
+		),
+	);
+	$sseo_kw_code   = 200;
+	$sseo_kw_reply  = static fn( int $code, array $body ): array => array(
+		'headers'  => array(),
+		'body'     => (string) wp_json_encode( $body ),
+		'response' => array(
+			'code'    => $code,
+			'message' => '',
+		),
+		'cookies'  => array(),
+		'filename' => null,
+	);
+	$sseo_kw_google = static function ( $pre, $args, $url ) use ( &$sseo_kw_rows, &$sseo_kw_code, $sseo_kw_reply ) {
+		if ( str_starts_with( (string) $url, 'https://oauth2.googleapis.com/' ) ) {
+			return $sseo_kw_reply(
+				200,
+				array(
+					'access_token' => 'kw-token',
+					'expires_in'   => 3599,
+				)
+			);
+		}
+		if ( str_starts_with( (string) $url, Simple_SEO_Search_Console::API ) ) {
+			$GLOBALS['sseo_kw_gsc'][] = array( (string) $url, json_decode( (string) ( $args['body'] ?? '' ), true ) );
+
+			return 200 === $sseo_kw_code ? $sseo_kw_reply( 200, array( 'rows' => $sseo_kw_rows ) ) : $sseo_kw_reply( $sseo_kw_code, array( 'error' => array( 'message' => 'no' ) ) );
+		}
+
+		return $pre;
+	};
+	add_filter( 'pre_http_request', $sseo_kw_google, 10, 3 );
+	$sseo_val   = Simple_SEO_Keywords::gsc( 'чай іван' );
+	$sseo_asked = $GLOBALS['sseo_kw_gsc'][0] ?? array( '', array() );
+	sseo_check(
+		'Search Console: the queries of the last 90 days with the longest word of the phrase, those with all its words in some form kept, with their clicks, impressions and position',
+		array(
+			'іван чай оптом'   => array(
+				'clicks'      => 0,
+				'impressions' => 20,
+				'position'    => 15.5,
+			),
+			'іван чай користь' => array(
+				'clicks'      => 3,
+				'impressions' => 40,
+				'position'    => 7.3,
+			),
+			'іван-чай ціна'    => array(
+				'clicks'      => 1,
+				'impressions' => 90,
+				'position'    => 12.0,
+			),
+			'іван чай'         => array(
+				'clicks'      => 0,
+				'impressions' => 5,
+				'position'    => 30.0,
+			),
+		) === $sseo_val
+			&& str_contains( $sseo_asked[0], 'sites/' . rawurlencode( 'sc-domain:example.com' ) . '/searchAnalytics/query' )
+			&& array( 'query' ) === ( $sseo_asked[1]['dimensions'] ?? null ) && 1000 === ( $sseo_asked[1]['rowLimit'] ?? null )
+			&& gmdate( 'Y-m-d', time() - 90 * DAY_IN_SECONDS ) === ( $sseo_asked[1]['startDate'] ?? null ) && gmdate( 'Y-m-d' ) === ( $sseo_asked[1]['endDate'] ?? null )
+			&& array(
+				array(
+					'filters' => array(
+						array(
+							'dimension'  => 'query',
+							'operator'   => 'contains',
+							'expression' => 'іва',
+						),
+					),
+				),
+			) === ( $sseo_asked[1]['dimensionFilterGroups'] ?? null ),
+		array( $sseo_val, $sseo_asked )
+	);
+
+	// Research.
+	$sseo_val   = Simple_SEO_Keywords::research( ' Іван  чай ', 'uk', 'ua' );
+	$sseo_items = is_array( $sseo_val ) ? array_column( $sseo_val['items'], null, 'keyword' ) : array();
+	sseo_check(
+		'the research: the suggestions in their order, then the queries of Search Console not among them, most seen first; the data of Search Console on each search it has; questions marked',
+		is_array( $sseo_val ) && 'іван чай' === $sseo_val['seed'] && 'uk' === $sseo_val['language'] && 'UA' === $sseo_val['country'] && array() === $sseo_val['errors']
+			&& array_merge( $sseo_kw_found, array( 'іван-чай ціна', 'іван чай оптом' ) ) === array_column( $sseo_val['items'], 'keyword' )
+			&& array(
+				array(
+					'name'  => 'пити',
+					'count' => 3,
+				),
+			) === $sseo_val['topics'] && 'пити' === $sseo_items['скільки пити іван чай']['topic'] && '' === $sseo_items['іван чай користь']['topic']
+			&& array( 'suggest', 'search_console' ) === $sseo_items['іван чай користь']['sources'] && 40 === $sseo_items['іван чай користь']['gsc']['impressions']
+			&& array( 'search_console' ) === $sseo_items['іван-чай ціна']['sources'] && 7.3 === $sseo_items['іван чай користь']['gsc']['position']
+			&& null === $sseo_items['як пити іван чай']['gsc'] && true === $sseo_items['як пити іван чай']['question'] && false === $sseo_items['2024']['question']
+			&& array( 'keyword', 'question', 'sources', 'topic', 'gsc' ) === array_keys( $sseo_items['2024'] ),
+		$sseo_val
+	);
+	$sseo_kw_code = 403;
+	$sseo_kw_answer = static fn( string $query ): ?string => null;
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_gsc\\_%' OR option_name LIKE '\\_transient%simple\\_seo\\_kw\\_%'" );
+	wp_cache_flush();
+	$sseo_val = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	sseo_check(
+		'a source that fails says why, and the others still answer',
+		is_array( $sseo_val ) && array() === $sseo_val['items'] && array( 'suggest', 'search_console' ) === array_keys( $sseo_val['errors'] ) && '' !== $sseo_val['errors']['search_console'],
+		$sseo_val
+	);
+	$sseo_kw_code   = 200;
+	$sseo_kw_answer = static fn( string $query ): ?string => (string) wp_json_encode( array( $query, $sseo_kw_answers[ $query ] ?? array() ) );
+	$sseo_kw_set(
+		array(
+			'suggest'        => false,
+			'search_console' => false,
+		)
+	);
+	$GLOBALS['sseo_kw_fetched'] = array();
+	$GLOBALS['sseo_kw_gsc']     = array();
+	$sseo_val                   = Simple_SEO_Keywords::research( 'іван чай', 'uk', 'UA' );
+	$sseo_vals                  = array( $sseo_val['items'] ?? null, $GLOBALS['sseo_kw_fetched'], $GLOBALS['sseo_kw_gsc'], Simple_SEO_Keywords::available(), Simple_SEO_Keywords::gsc_on() );
+	$sseo_val                   = Simple_SEO_Keywords::research( '  <b></b> ' );
+	$sseo_vals[]                = is_wp_error( $sseo_val ) ? $sseo_val->get_error_code() . ' ' . $sseo_val->get_error_data()['status'] : $sseo_val;
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check( 'the sources turned off ask nothing; no phrase, no research', array( array(), array(), array(), false, false, 'simple_seo_kw_empty 400' ) === $sseo_vals, $sseo_vals );
+
+	// Topics of the words.
+	$sseo_kw_item  = static fn( string $keyword ): array => array(
+		'keyword'  => $keyword,
+		'question' => false,
+		'sources'  => array( 'suggest' ),
+		'topic'    => '',
+		'gsc'      => null,
+	);
+	$sseo_kw_items = array_map(
+		$sseo_kw_item,
+		array(
+			'як пити іван чай',
+			'чи можна пити іван чай на ніч',
+			'скільки пити іван чай',
+			'користі іван чаю для жінок',
+			'іван чай користь',
+			'іван чай користь і шкода',
+			'іван чай від тиску',
+			'іван чай користь тиск',
+			'іван чай і тиск',
+			'чи підвищує іван чай тиск',
+			'іван чай фото',
+			'іван чай фото квітки',
+			'іван чай',
+		)
+	);
+	[ $sseo_kw_items, $sseo_vals ] = Simple_SEO_Keywords::topics( $sseo_kw_items, 'іван чай', 'uk' );
+	sseo_check(
+		'the topics of the words: the word most searches share beyond the phrase (the first of them when as many share two), its forms one, named by the form most use; the biggest first; fewer than three searches, no topic',
+		array(
+			array(
+				'name'  => 'користь',
+				'count' => 4,
+			),
+			array(
+				'name'  => 'пити',
+				'count' => 3,
+			),
+			array(
+				'name'  => 'тиск',
+				'count' => 3,
+			),
+		) === $sseo_vals
+			&& array( 'пити', 'пити', 'пити', 'користь', 'користь', 'користь', 'тиск', 'користь', 'тиск', 'тиск', '', '', '' ) === array_column( $sseo_kw_items, 'topic' ),
+		array( $sseo_vals, array_column( $sseo_kw_items, 'topic' ) )
+	);
+	$sseo_vals = array(
+		Simple_SEO_Keywords::topics( array_map( $sseo_kw_item, array( 'навіщо пити іван чай', 'навіщо збирати іван чай', 'навіщо сушити іван чай', 'іван чай ру', 'ру іван чай фото', 'іван чай ру ціна' ) ), 'іван чай', 'uk' )[1],
+		Simple_SEO_Keywords::topics( array_map( $sseo_kw_item, array( 'іван чай купити ціна', 'іван чай купити оптом', 'іван чай купити київ', 'іван чай ціна', 'іван чай ціна за кг' ) ), 'іван чай', 'uk' ),
+	);
+	sseo_check(
+		'no topic of question words nor of words of two letters; a word whose searches went under a bigger topic but two is none',
+		array() === $sseo_vals[0]
+			&& array(
+				array(
+					'name'  => 'купити',
+					'count' => 3,
+				),
+			) === $sseo_vals[1][1] && array( 'купити', 'купити', 'купити', '', '' ) === array_column( $sseo_vals[1][0], 'topic' ),
+		$sseo_vals
+	);
+
+	// The AI.
+	$GLOBALS['sseo_ai_configured'] = true;
+	$GLOBALS['sseo_ai_prompts']    = array();
+	Simple_SEO_AI::flush();
+	$GLOBALS['sseo_ai_answer'] = (string) wp_json_encode(
+		array(
+			'parent_topic' => ' Іван-чай ',
+			'topics'       => array(
+				array(
+					'name'     => 'Користь',
+					'keywords' => array( 'іван чай користь', 'вигадана фраза', 'Іван чай користь' ),
+				),
+				array(
+					'name'     => '',
+					'keywords' => array( 'іван чай фото' ),
+				),
+				array(
+					'name'     => "Як\n пити",
+					'keywords' => array( 'як пити іван чай', 'іван чай користь' ),
+				),
+				array(
+					'name'     => 'Порожня',
+					'keywords' => array( 'немає такої' ),
+				),
+			),
+		)
+	);
+	$sseo_val    = Simple_SEO_Keywords::ai_topics( 'Іван чай', array( 'іван чай користь', ' Як  пити іван чай ', 'іван чай фото', '', 5 ), 'uk' );
+	$sseo_prompt = end( $GLOBALS['sseo_ai_prompts'] );
+	sseo_check(
+		'the topics of the AI: of the searches given only, each once, named in one line; the parent topic; the AI told the subject, the searches and the language, for JSON',
+		array(
+			'parent' => 'Іван-чай',
+			'topics' => array(
+				array(
+					'name'     => 'Користь',
+					'keywords' => array( 'іван чай користь' ),
+				),
+				array(
+					'name'     => 'Як пити',
+					'keywords' => array( 'як пити іван чай' ),
+				),
+			),
+		) === $sseo_val
+			&& is_array( $sseo_prompt ) && str_contains( $sseo_prompt['text'], "The subject: іван чай\n\nThe searches, one a line:\nіван чай користь\nяк пити іван чай\nіван чай фото" )
+			&& str_contains( $sseo_prompt['system'], 'Name the topics in Ukrainian' ) && is_array( $sseo_prompt['schema'] ) && array( 'parent_topic', 'topics' ) === $sseo_prompt['schema']['required'],
+		array( $sseo_val, $sseo_prompt )
+	);
+	$GLOBALS['sseo_ai_answer'] = "Here:\n```json\n{\"parent_topic\":\"p\",\"topics\":[{\"name\":\"n\",\"keywords\":[\"іван чай фото\"]}]}\n```";
+	$sseo_val                  = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	sseo_check( 'an answer of the AI with words and a fence around its JSON is read', is_array( $sseo_val ) && 'p' === $sseo_val['parent'], $sseo_val );
+	$GLOBALS['sseo_ai_without'] = array( 'outputSchema', 'outputMimeType' );
+	$GLOBALS['sseo_ai_prompts'] = array();
+	$sseo_val                   = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$sseo_prompt                = end( $GLOBALS['sseo_ai_prompts'] );
+	$GLOBALS['sseo_ai_without'] = array();
+	sseo_check( 'a model without JSON output is asked without the schema, and its JSON read', is_array( $sseo_val ) && 'p' === $sseo_val['parent'] && is_array( $sseo_prompt ) && null === $sseo_prompt['schema'], array( $sseo_val, $sseo_prompt ) );
+	$sseo_vals                 = array();
+	$GLOBALS['sseo_ai_answer'] = '["іван чай фото"]';
+	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$GLOBALS['sseo_ai_answer'] = new RuntimeException( 'down' );
+	$sseo_val                  = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$sseo_vals[]               = is_wp_error( $sseo_val ) && str_contains( $sseo_val->get_error_message(), 'down' ) ? $sseo_val->get_error_code() : $sseo_val;
+	$GLOBALS['sseo_ai_answer'] = 'nonsense';
+	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$GLOBALS['sseo_ai_answer'] = '{"parent_topic":"x","topics":[{"name":"x","keywords":["інше"]}]}';
+	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( 'іван чай', array( '' ), 'uk' );
+	$sseo_vals[]               = Simple_SEO_Keywords::ai_topics( '', array( 'іван чай фото' ), 'uk' );
+	$sseo_kw_set( array( 'ai' => false ) );
+	$sseo_vals[] = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$sseo_vals[] = Simple_SEO_Keywords::outline( 'іван чай', '', array( 'іван чай фото' ), 'uk' );
+	$sseo_vals[] = Simple_SEO_Keywords::ai_on();
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	add_filter( 'wp_supports_ai', '__return_false' );
+	$sseo_vals[] = Simple_SEO_Keywords::ai_topics( 'іван чай', array( 'іван чай фото' ), 'uk' );
+	$sseo_vals[] = Simple_SEO_Keywords::ai_on();
+	remove_filter( 'wp_supports_ai', '__return_false' );
+	$sseo_vals = array_map( static fn( $one ) => is_wp_error( $one ) ? $one->get_error_code() : $one, $sseo_vals );
+	sseo_check(
+		'no topics from a list, from an AI that fails, from an answer that cannot be read or has none of the searches, from no searches or no phrase, with the AI turned off for the research or on the site',
+		array( 'simple_seo_ai_empty', 'simple_seo_ai_failed', 'simple_seo_ai_empty', 'simple_seo_ai_empty', 'simple_seo_kw_empty', 'simple_seo_kw_empty', 'simple_seo_kw_ai_off', 'simple_seo_kw_ai_off', false, 'simple_seo_ai_unavailable', false ) === $sseo_vals,
+		$sseo_vals
+	);
+
+	$GLOBALS['sseo_ai_answer'] = (string) wp_json_encode(
+		array(
+			'title'    => " Іван-чай:\n як заварювати ",
+			'sections' => array(
+				array(
+					'heading'     => 'Як заварювати',
+					'subheadings' => array( 'Пропорції', '', 'Час' ),
+					'keywords'    => array( 'як заварювати іван чай', 'вигадка' ),
+				),
+				array(
+					'heading'     => '',
+					'subheadings' => array(),
+					'keywords'    => array(),
+				),
+			),
+			'faq'      => array( 'чи можна пити іван чай на ніч', 'Вигадане питання?', 'чи можна пити іван чай на ніч' ),
+		)
+	);
+	$sseo_val    = Simple_SEO_Keywords::outline( 'Іван чай', 'Приготування', array( 'як заварювати іван чай', 'чи можна пити іван чай на ніч', 'іван чай купити' ), 'uk' );
+	$sseo_prompt = end( $GLOBALS['sseo_ai_prompts'] );
+	sseo_check(
+		'the structure of an article: the title and headings in one line, the empty left out; each section with the searches it covers of those given; the FAQ of the questions given, each once; the AI told the topic and the questions',
+		array(
+			'title'    => 'Іван-чай: як заварювати',
+			'sections' => array(
+				array(
+					'heading'     => 'Як заварювати',
+					'subheadings' => array( 'Пропорції', 'Час' ),
+					'keywords'    => array( 'як заварювати іван чай' ),
+				),
+			),
+			'faq'      => array( 'чи можна пити іван чай на ніч' ),
+		) === $sseo_val
+			&& is_array( $sseo_prompt ) && str_contains( $sseo_prompt['text'], "The topic of the article: Приготування\n\nThe searches, one a line:\nяк заварювати іван чай" ) && str_ends_with( $sseo_prompt['text'], "The questions among them:\nяк заварювати іван чай\nчи можна пити іван чай на ніч" ) && str_contains( $sseo_prompt['system'], 'Write in Ukrainian' ),
+		array( $sseo_val, $sseo_prompt )
+	);
+	$sseo_vals                 = array();
+	$GLOBALS['sseo_ai_answer'] = '{"title":"","sections":[{"heading":"x","subheadings":[],"keywords":[]}],"faq":[]}';
+	$sseo_vals[]               = Simple_SEO_Keywords::outline( 'іван чай', '', array( 'іван чай фото' ), 'uk' );
+	$GLOBALS['sseo_ai_answer'] = '{"title":"x","sections":[],"faq":[]}';
+	$sseo_vals[]               = Simple_SEO_Keywords::outline( 'іван чай', '', array( 'іван чай фото' ), 'uk' );
+	$sseo_vals[]               = Simple_SEO_Keywords::outline( 'іван чай', '', array(), 'uk' );
+	$sseo_vals                 = array_map( static fn( $one ) => is_wp_error( $one ) ? $one->get_error_code() : $one, $sseo_vals );
+	$sseo_val                  = Simple_SEO_Keywords::clean_outline(
+		array(
+			'title'    => 'x',
+			'sections' => array_fill(
+				0,
+				20,
+				array(
+					'heading'     => 'h',
+					'subheadings' => array_fill( 0, 10, 's' ),
+					'keywords'    => array( 'a', 'a', 'b' ),
+				)
+			),
+			'faq'      => array_map( 'strval', range( 1, 15 ) ),
+		)
+	);
+	$sseo_vals[]               = array( count( $sseo_val['sections'] ), count( $sseo_val['sections'][0]['subheadings'] ), $sseo_val['sections'][0]['keywords'], count( $sseo_val['faq'] ) );
+	$sseo_vals[]               = Simple_SEO_Keywords::clean_outline( array( 'sections' => 'x' ) );
+	sseo_check(
+		'no structure without a title or a section, nor from no searches; at most 15 sections of 8 subheadings and 12 questions',
+		array(
+			'simple_seo_ai_empty',
+			'simple_seo_ai_empty',
+			'simple_seo_kw_empty',
+			array( 15, 8, array( 'a', 'b' ), 12 ),
+			array(
+				'title'    => '',
+				'sections' => array(),
+				'faq'      => array(),
+			),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// A draft of the structure.
+	$sseo_val = Simple_SEO_Keywords::draft(
+		array(
+			'title'    => 'Іван-чай: як заварювати',
+			'sections' => array(
+				array(
+					'heading'     => 'Як заварювати <b>чай</b> & пити',
+					'subheadings' => array( 'Пропорції' ),
+					'keywords'    => array(),
+				),
+			),
+			'faq'      => array( 'Чи можна пити на ніч?' ),
+		),
+		'Іван Чай'
+	);
+	$sseo_kw_post = is_array( $sseo_val ) ? get_post( $sseo_val['id'] ) : null;
+	if ( $sseo_kw_post ) {
+		$sseo['posts'][] = $sseo_kw_post->ID;
+	}
+	$sseo_kw_blocks = $sseo_kw_post ? array_values( array_filter( parse_blocks( $sseo_kw_post->post_content ), static fn( array $block ): bool => null !== $block['blockName'] ) ) : array();
+	sseo_check(
+		'a draft of the structure: its title, a heading for each section and subheading with a paragraph to write in, the FAQ as the block with the answers to write, the phrase as its focus keyphrase',
+		$sseo_kw_post instanceof WP_Post && 'draft' === $sseo_kw_post->post_status && 'post' === $sseo_kw_post->post_type && 'Іван-чай: як заварювати' === $sseo_kw_post->post_title
+			&& array( 'core/heading', 'core/paragraph', 'core/heading', 'core/paragraph', Simple_SEO_FAQ::BLOCK ) === array_column( $sseo_kw_blocks, 'blockName' )
+			&& '<h2 class="wp-block-heading">Як заварювати чай &amp; пити</h2>' === trim( $sseo_kw_blocks[0]['innerHTML'] ) && array() === $sseo_kw_blocks[0]['attrs']
+			&& array( 'level' => 3 ) === $sseo_kw_blocks[2]['attrs'] && '<h3 class="wp-block-heading">Пропорції</h3>' === trim( $sseo_kw_blocks[2]['innerHTML'] ) && '<p></p>' === trim( $sseo_kw_blocks[1]['innerHTML'] )
+			&& array(
+				'items' => array(
+					array(
+						'question' => 'Чи можна пити на ніч?',
+						'answer'   => '',
+					),
+				),
+			) === $sseo_kw_blocks[4]['attrs']
+			&& 'іван чай' === Simple_SEO_Fields::post_value( $sseo_kw_post->ID, 'keyphrase' ) && get_edit_post_link( $sseo_kw_post->ID, 'raw' ) === $sseo_val['edit'],
+		array( $sseo_val, $sseo_kw_blocks )
+	);
+	$sseo_val = Simple_SEO_Keywords::draft( array( 'title' => 'x' ), 'x' );
+	sseo_check( 'no draft of a structure without a section', is_wp_error( $sseo_val ) && 'simple_seo_kw_outline' === $sseo_val->get_error_code() );
+
+	// REST.
+	$sseo_kw_rest = static function ( string $route, array $body ): WP_REST_Response {
+		$request = new WP_REST_Request( 'POST', '/' . Simple_SEO_Analysis::NAMESPACE . $route );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body( (string) wp_json_encode( $body ) );
+
+		return rest_do_request( $request );
+	};
+	$sseo_vals    = array();
+	foreach ( array( '/keywords', '/keywords/topics', '/keywords/outline', '/keywords/draft' ) as $sseo_name ) {
+		$sseo_vals[ $sseo_name ] = isset( rest_get_server()->get_routes()[ '/' . Simple_SEO_Analysis::NAMESPACE . $sseo_name ] );
+	}
+	$sseo_val                  = $sseo_kw_rest(
+		'/keywords',
+		array(
+			'seed'     => 'іван чай',
+			'language' => 'uk',
+			'country'  => 'UA',
+		)
+	);
+	$sseo_vals['research']     = array( $sseo_val->get_status(), count( $sseo_val->get_data()['items'] ?? array() ) );
+	$sseo_vals['no seed']      = $sseo_kw_rest( '/keywords', array() )->get_status();
+	$GLOBALS['sseo_ai_answer'] = (string) wp_json_encode(
+		array(
+			'title'    => 'T',
+			'sections' => array(
+				array(
+					'heading'     => 'H',
+					'subheadings' => array(),
+					'keywords'    => array(),
+				),
+			),
+			'faq'      => array(),
+		)
+	);
+	$sseo_vals['outline']      = $sseo_kw_rest(
+		'/keywords/outline',
+		array(
+			'seed'     => 'іван чай',
+			'keywords' => array( 'іван чай фото' ),
+		)
+	)->get_data()['title'] ?? null;
+	wp_set_current_user( $sseo_u['subscriber'] );
+	foreach ( array( '/keywords', '/keywords/topics', '/keywords/outline', '/keywords/draft' ) as $sseo_name ) {
+		$sseo_vals[ 'subscriber ' . $sseo_name ] = $sseo_kw_rest(
+			$sseo_name,
+			array(
+				'seed'     => 'x',
+				'keywords' => array( 'x' ),
+				'outline'  => array( 'title' => 'x' ),
+			)
+		)->get_status();
+	}
+	update_option( Simple_SEO_Access::OPTION, array( 'fields' => array( 'administrator', 'subscriber' ) ) + Simple_SEO_Access::defaults() );
+	Simple_SEO_Settings::flush();
+	$sseo_vals['fields subscriber research'] = $sseo_kw_rest(
+		'/keywords',
+		array(
+			'seed'     => 'іван чай',
+			'language' => 'uk',
+			'country'  => 'UA',
+		)
+	)->get_status();
+	$sseo_vals['fields subscriber draft']    = $sseo_kw_rest( '/keywords/draft', array( 'outline' => array( 'title' => 'x' ) ) )->get_status();
+	$_GET                                    = array(
+		'page'    => Simple_SEO_Keywords::PAGE,
+		'q'       => 'іван чай',
+		'lang'    => 'uk',
+		'country' => 'UA',
+	);
+	$sseo_html                               = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$sseo_vals['fields subscriber page']     = str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk">' ) && ! str_contains( $sseo_html, 'data-draft' );
+	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
+	Simple_SEO_Settings::flush();
+	$sseo_kw_die                    = static fn(): callable => static function (): void {
+		throw new RuntimeException( 'wp_die' );
+	};
+	add_filter( 'wp_die_handler', $sseo_kw_die, 99 );
+	try {
+		sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+		$sseo_vals['subscriber page'] = 'shown';
+	} catch ( RuntimeException $sseo_error ) {
+		$sseo_vals['subscriber page'] = $sseo_error->getMessage();
+	}
+	remove_filter( 'wp_die_handler', $sseo_kw_die, 99 );
+	$_GET = array();
+	wp_set_current_user( $sseo_u['administrator'] );
+	sseo_check(
+		'REST: the research, the topics, the structure and the draft, for whoever edits the SEO fields; the draft and its button for whoever may write posts',
+		array(
+			'/keywords'                     => true,
+			'/keywords/topics'              => true,
+			'/keywords/outline'             => true,
+			'/keywords/draft'               => true,
+			'research'                      => array( 200, 11 ),
+			'no seed'                       => 400,
+			'outline'                       => 'T',
+			'subscriber /keywords'          => 403,
+			'subscriber /keywords/topics'   => 403,
+			'subscriber /keywords/outline'  => 403,
+			'subscriber /keywords/draft'    => 403,
+			'fields subscriber research'    => 200,
+			'fields subscriber draft'       => 403,
+			'fields subscriber page'        => true,
+			'subscriber page'               => 'wp_die',
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
+	// The admin.
+	Simple_SEO_Keywords::add_admin_tab();
+	$sseo_tabs = Simple_SEO_Admin::tabs();
+	sseo_check( 'the Keyword research tab: in the services, after Search Console, with its row', isset( $sseo_tabs['keywords'] ) && 'Keyword research' === $sseo_tabs['keywords']['label'] && array( Simple_SEO_Keywords::OPTION ) === $sseo_tabs['keywords']['options'] && 30 === $sseo_tabs['keywords']['order'] && 'services' === $sseo_tabs['keywords']['group'], $sseo_tabs['keywords'] ?? null );
+	$sseo_kw_set(
+		array(
+			'search_console' => false,
+			'language'       => 'pl',
+			'country'        => 'CH',
+		)
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_tab' ) );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check(
+		'the tab: each source a box with what it gives, the language and country of the site by default',
+		(bool) preg_match( '/<input type="hidden" name="simple_seo_keywords\[suggest\]" value="0">\s*<label>\s*<input type="checkbox" name="simple_seo_keywords\[suggest\]" value="1"\s+checked=[\'"]checked[\'"]>/', $sseo_html )
+			&& (bool) preg_match( '/<input type="checkbox" name="simple_seo_keywords\[search_console\]" value="1"\s*>/', $sseo_html )
+			&& str_contains( $sseo_html, 'name="simple_seo_keywords[ai]"' ) && str_contains( $sseo_html, '<select id="simple-seo-keywords-language" name="simple_seo_keywords[language]">' )
+			&& str_contains( $sseo_html, 'That of the site (' . Simple_SEO_Keywords::languages()[ Simple_SEO_Keywords::site_language() ] . ')' ) && str_contains( $sseo_html, '<option value="UA"' )
+			&& str_contains( $sseo_html, 'The queries this site was shown for in the last 90 days' ) && str_contains( $sseo_html, esc_url( Simple_SEO_Keywords::page_url() ) )
+			&& str_contains( $sseo_html, '<option value="pl"  selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="CH"  selected=\'selected\'>' ),
+		$sseo_html
+	);
+
+	$_GET      = array(
+		'page'    => Simple_SEO_Keywords::PAGE,
+		'q'       => 'Іван чай',
+		'lang'    => 'uk',
+		'country' => 'ua',
+	);
+	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	sseo_check(
+		'the page: the phrase searched, the searches with the questions marked, the topics to filter by, the data of Search Console, the AI and the draft',
+		str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-draft' ) && 11 === substr_count( $sseo_html, '<tr data-kw="' ) && 4 === substr_count( $sseo_html, '<span class="simple-seo-kw-tag">question</span>' )
+			&& str_contains( $sseo_html, '<button type="button" class="button button-small" data-kw-filter="topic" data-kw-topic="пити" aria-pressed="false">пити (3)</button>' )
+			&& str_contains( $sseo_html, '<tr data-kw="іван-чай ціна" data-kw-topic="" data-kw-question="0">' ) && str_contains( $sseo_html, '<td class="num">90</td>' ) && str_contains( $sseo_html, '<td class="num">7.3</td>' )
+			&& str_contains( $sseo_html, 'data-kw-filter="questions"' ) && str_contains( $sseo_html, 'data-kw-group' ) && str_contains( $sseo_html, 'data-kw-outline' )
+			&& str_contains( $sseo_html, 'Searches found: 11, questions among them: 4.' ) && str_contains( $sseo_html, '<option value="uk"  selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="UA"  selected=\'selected\'>' )
+			&& str_contains( $sseo_html, esc_url( add_query_arg( 'refresh', '1', Simple_SEO_Keywords::page_url( 'іван чай', 'uk', 'UA' ) ) ) )
+			&& str_contains( $sseo_html, esc_url( 'https://www.google.com/search?q=' . rawurlencode( 'як пити іван чай' ) . '&hl=uk&gl=ua' ) ),
+		$sseo_html
+	);
+	$GLOBALS['sseo_kw_fetched'] = array();
+	$_GET['refresh']            = '1';
+	sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$sseo_vals = array( count( $GLOBALS['sseo_kw_fetched'] ) );
+	unset( $_GET['refresh'] );
+	$sseo_kw_set( array( 'ai' => false ) );
+	$sseo_html   = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$sseo_vals[] = str_contains( $sseo_html, '<tr data-kw="' ) && ! str_contains( $sseo_html, 'data-kw-group' ) && ! str_contains( $sseo_html, 'data-kw-outline' );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	$sseo_kw_code   = 403;
+	$sseo_kw_answer = static fn( string $query ): ?string => null;
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_gsc\\_%' OR option_name LIKE '\\_transient%simple\\_seo\\_kw\\_%'" );
+	wp_cache_flush();
+	$sseo_html      = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	$sseo_vals[]    = str_contains( $sseo_html, 'No searches from suggestions of Google search: Google did not answer' ) && str_contains( $sseo_html, 'No searches from Search Console:' ) && str_contains( $sseo_html, '<p>No searches found around this phrase.</p>' ) && ! str_contains( $sseo_html, '<tr data-kw="' );
+	$sseo_kw_code   = 200;
+	$sseo_kw_answer = static fn( string $query ): ?string => (string) wp_json_encode( array( $query, $sseo_kw_answers[ $query ] ?? array() ) );
+	sseo_check( 'the page: asked again on demand; without the AI no buttons of it; what a source could not give, and no searches', array( 51, true, true ) === $sseo_vals, $sseo_vals );
+	sseo_check( 'the address of the page for a phrase', admin_url( 'admin.php?page=simple-seo-keywords&q=' . rawurlencode( 'іван чай' ) . '&lang=uk&country=UA' ) === Simple_SEO_Keywords::page_url( 'іван чай', 'uk', 'UA' ) && admin_url( 'admin.php?page=simple-seo-keywords' ) === Simple_SEO_Keywords::page_url() );
+	$sseo_kw_set( array( 'suggest' => false ) );
+	sseo_check( 'with the suggestions off, Search Console alone finds searches', Simple_SEO_Keywords::available() && Simple_SEO_Keywords::gsc_on() );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+
+	$_GET      = array( 'page' => Simple_SEO_Keywords::PAGE );
+	$sseo_vals = array( sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) ) );
+	$sseo_kw_set(
+		array(
+			'suggest'        => false,
+			'search_console' => false,
+		)
+	);
+	$sseo_vals[] = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	$_GET = array();
+	sseo_check(
+		'the page without a phrase: the form only; with every source off: no form, what to do',
+		str_contains( $sseo_vals[0], 'class="simple-seo-kw-form"' ) && ! str_contains( $sseo_vals[0], 'simple-seo-kw-table' ) && str_contains( $sseo_vals[1], 'Every source of searches is turned off.' ) && ! str_contains( $sseo_vals[1], 'simple-seo-kw-form' ) && str_contains( $sseo_vals[1], esc_url( Simple_SEO_Admin::url( 'keywords' ) ) )
+	);
+
+	$sseo_kw_term = get_term_by( 'slug', 'uncategorized', 'category' );
+	$sseo_vals    = array(
+		Simple_SEO_Keywords::button( 'keyphrase', 'post', get_post( $sseo_p['author_post'] ) ),
+		Simple_SEO_Keywords::button( 'title', 'post', get_post( $sseo_p['author_post'] ) ),
+		Simple_SEO_Keywords::button( 'keyphrase', 'term', $sseo_kw_term ),
+	);
+	wp_set_current_user( $sseo_u['subscriber'] );
+	$sseo_vals[] = Simple_SEO_Keywords::button( 'keyphrase', 'post', get_post( $sseo_p['author_post'] ) );
+	wp_set_current_user( $sseo_u['administrator'] );
+	$sseo_kw_set(
+		array(
+			'suggest'        => false,
+			'search_console' => false,
+		)
+	);
+	$sseo_vals[] = Simple_SEO_Keywords::button( 'keyphrase', 'post', get_post( $sseo_p['author_post'] ) );
+	delete_option( Simple_SEO_Keywords::OPTION );
+	Simple_SEO_Settings::flush();
+	sseo_check(
+		'the button of the SEO block: by the focus keyphrase of a post, for whoever edits the SEO fields, while a source finds searches; with the language of the post',
+		(bool) preg_match( '/^<button type="button" class="button simple-seo-kw-button" data-simple-seo-kw="[a-z]*">Find keyphrases<\/button>$/', $sseo_vals[0] ) && array( '', '', '', '' ) === array_slice( $sseo_vals, 1 ),
+		$sseo_vals
+	);
+
+	$sseo_kw_menu    = array( $GLOBALS['menu'] ?? null, $GLOBALS['submenu'] ?? null );
+	$GLOBALS['menu'] = array();
+	Simple_SEO_Admin::add_menu();
+	Simple_SEO_Keywords::add_menu();
+	$sseo_vals = array( Simple_SEO_Keywords::hook() );
+	wp_dequeue_script( 'simple-seo-keywords' );
+	Simple_SEO_Keywords::enqueue( 'index.php' );
+	$sseo_vals[] = wp_script_is( 'simple-seo-keywords', 'enqueued' );
+	Simple_SEO_Keywords::enqueue( Simple_SEO_Keywords::hook() );
+	$sseo_vals[] = wp_script_is( 'simple-seo-keywords', 'enqueued' );
+	$sseo_vals[] = str_contains( (string) wp_scripts()->get_data( 'simple-seo-keywords', 'data' ), 'var simpleSeoKeywords = ' );
+	wp_dequeue_script( 'simple-seo-keywords' );
+	wp_dequeue_style( 'simple-seo-admin' );
+	Simple_SEO_Admin::enqueue( Simple_SEO_Keywords::hook() );
+	$sseo_vals[] = wp_style_is( 'simple-seo-admin', 'enqueued' );
+	wp_dequeue_style( 'simple-seo-admin' );
+	wp_dequeue_script( 'simple-seo-admin' );
+	set_current_screen( 'post' );
+	Simple_SEO_Keywords::enqueue( 'post.php' );
+	$sseo_vals[] = wp_script_is( 'simple-seo-keywords', 'enqueued' );
+	wp_dequeue_script( 'simple-seo-keywords' );
+	unset( $GLOBALS['current_screen'] );
+	$GLOBALS['menu']    = $sseo_kw_menu[0];
+	$GLOBALS['submenu'] = $sseo_kw_menu[1];
+	$sseo_val           = Simple_SEO_Keywords::script_data();
+	sseo_check(
+		'the script: on the page and in the editor of posts with SEO fields, not elsewhere; the addresses of REST, the nonce and its words',
+		str_ends_with( $sseo_vals[0], 'simple-seo-keywords' ) && array( false, true, true, true, true ) === array_slice( $sseo_vals, 1 )
+			&& rest_url( 'simple-seo/v1/keywords' ) === $sseo_val['url'] && rest_url( 'simple-seo/v1/keywords/draft' ) === $sseo_val['draft'] && wp_verify_nonce( $sseo_val['nonce'], 'wp_rest' )
+			&& Simple_SEO_Keywords::EDITOR_IDEAS === $sseo_val['max'] && 'Use as the focus keyphrase' === $sseo_val['text']['focus'],
+		array( $sseo_vals, $sseo_val )
+	);
+
+	remove_filter( 'simple_seo_keywords_fetch', $sseo_kw_fetch, 10 );
+	remove_filter( 'pre_http_request', $sseo_kw_google, 10 );
+	$GLOBALS['wpdb']->query( "DELETE FROM {$GLOBALS['wpdb']->options} WHERE option_name LIKE '\\_transient%simple\\_seo\\_gsc\\_%' OR option_name LIKE '\\_transient%simple\\_seo\\_kw\\_%'" );
+	wp_cache_flush();
+	if ( false === $sseo_kw_gsc_row ) {
+		delete_option( Simple_SEO_Search_Console::OPTION );
+	} else {
+		update_option( Simple_SEO_Search_Console::OPTION, $sseo_kw_gsc_row );
+	}
+	$GLOBALS['sseo_ai_configured'] = false;
+	$GLOBALS['sseo_ai_answer']     = '';
+	Simple_SEO_AI::flush();
+	delete_option( Simple_SEO_Keywords::OPTION );
+	update_option( Simple_SEO_Access::OPTION, $sseo_kw_access );
+	Simple_SEO_Settings::flush();
+	wp_set_current_user( 0 );
+
+	// ------------------------------------------------------------------------------------------
 	sseo_section( 'WooCommerce' );
 
 	// The page shown, as the Schema section shows it.
@@ -12672,7 +13651,7 @@ MD === $sseo_val,
 	$sseo_lay_tabs = new ReflectionProperty( Simple_SEO_Admin::class, 'tabs' );
 	$sseo_lay_kept = $sseo_lay_tabs->getValue();
 	$sseo_lay_tabs->setValue( null, array() );
-	foreach ( array( 'Simple_SEO_Titles', 'Simple_SEO_Special', 'Simple_SEO_Breadcrumbs', 'Simple_SEO_Images', 'Simple_SEO_Social', 'Simple_SEO_Schema', 'Simple_SEO_Local', 'Simple_SEO_Indexing', 'Simple_SEO_IndexNow', 'Simple_SEO_Monitor', 'Simple_SEO_Files', 'Simple_SEO_Cleanup', 'Simple_SEO_AI', 'Simple_SEO_Llms', 'Simple_SEO_Integrations', 'Simple_SEO_Search_Console', 'Simple_SEO_Import' ) as $sseo_class ) {
+	foreach ( array( 'Simple_SEO_Titles', 'Simple_SEO_Special', 'Simple_SEO_Breadcrumbs', 'Simple_SEO_Images', 'Simple_SEO_Social', 'Simple_SEO_Schema', 'Simple_SEO_Local', 'Simple_SEO_Indexing', 'Simple_SEO_IndexNow', 'Simple_SEO_Monitor', 'Simple_SEO_Files', 'Simple_SEO_Cleanup', 'Simple_SEO_AI', 'Simple_SEO_Llms', 'Simple_SEO_Integrations', 'Simple_SEO_Search_Console', 'Simple_SEO_Keywords', 'Simple_SEO_Import' ) as $sseo_class ) {
 		$sseo_class::add_admin_tab();
 	}
 	Simple_SEO_Admin::add_core_tabs();
@@ -12680,7 +13659,7 @@ MD === $sseo_val,
 	sseo_check(
 		'the tabs stand in six groups, each in its order: the search appearance, social networks and Schema, for search engines, AI and agents, services, the plugin',
 		array( 'search', 'markup', 'crawl', 'ai', 'services', 'plugin' ) === $sseo_vals[0]
-			&& array( 'titles', 'special', 'breadcrumbs', 'images', 'social', 'schema', 'local', 'indexing', 'indexnow', 'monitor', 'files', 'cleanup', 'ai', 'llms', 'integrations', 'search-console', 'access', 'import' ) === $sseo_vals[1]
+			&& array( 'titles', 'special', 'breadcrumbs', 'images', 'social', 'schema', 'local', 'indexing', 'indexnow', 'monitor', 'files', 'cleanup', 'ai', 'llms', 'integrations', 'search-console', 'keywords', 'access', 'import' ) === $sseo_vals[1]
 			&& array( 'search', 'markup', 'crawl', 'ai', 'services', 'plugin' ) === array_values( $sseo_vals[2] ),
 		$sseo_vals
 	);
@@ -12785,6 +13764,7 @@ MD === $sseo_val,
 		'llms'           => Simple_SEO_Llms::enabled() ? array( 'llms', 'markdown', 'preview' ) : array( 'llms', 'markdown' ),
 		'integrations'   => array( 'verification', 'analytics' ),
 		'search-console' => array( 'connection', 'how' ),
+		'keywords'       => array(),
 		'access'         => array(),
 		'import'         => array(),
 	);
