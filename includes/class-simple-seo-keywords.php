@@ -850,6 +850,63 @@ final class Simple_SEO_Keywords {
 		return array( $items, '' );
 	}
 
+	/** @return array<string, string> The names of the sources of searches: source => name. */
+	public static function source_names(): array {
+		return array(
+			'suggest'        => __( 'suggestions of Google search', 'simple-seo' ),
+			'search_console' => __( 'Search Console', 'simple-seo' ),
+			'dataforseo'     => 'DataForSEO',
+			'google_ads'     => 'Google Ads',
+		);
+	}
+
+	/**
+	 * The columns of the table of searches to download: the search, its topic, whether it asks,
+	 * the metrics and the data of Search Console when the page has them, the sources.
+	 *
+	 * @return string[]
+	 */
+	public static function export_columns( bool $metrics, bool $kd, bool $gsc ): array {
+		$columns = array( __( 'Search', 'simple-seo' ), __( 'Topic', 'simple-seo' ), __( 'Question', 'simple-seo' ) );
+		if ( $metrics ) {
+			array_push( $columns, __( 'Volume', 'simple-seo' ), $kd ? __( 'KD', 'simple-seo' ) : __( 'Competition', 'simple-seo' ), __( 'CPC', 'simple-seo' ), __( '12 months', 'simple-seo' ) );
+		}
+		if ( $gsc ) {
+			array_push( $columns, __( 'Impressions', 'simple-seo' ), __( 'Clicks', 'simple-seo' ), __( 'Position', 'simple-seo' ) );
+		}
+		$columns[] = __( 'Sources', 'simple-seo' );
+
+		return $columns;
+	}
+
+	/**
+	 * A row of the table of searches to download, as export_columns() goes: numbers as they are,
+	 * '' for none; a text a spreadsheet would take for a formula gets an apostrophe before it.
+	 *
+	 * @param array<string, mixed> $item An item of research().
+	 * @return array<int, string|int|float>
+	 */
+	public static function export_row( array $item, bool $metrics, bool $kd, bool $gsc ): array {
+		$names = self::source_names();
+		$row   = array( self::cell( (string) $item['keyword'] ), self::cell( (string) $item['topic'] ), $item['question'] ? __( 'yes', 'simple-seo' ) : '' );
+		if ( $metrics ) {
+			$data = is_array( $item['metrics'] ?? null ) ? $item['metrics'] : array();
+			array_push( $row, $data['volume'] ?? '', $data[ $kd ? 'kd' : 'competition' ] ?? '', $data['cpc'] ?? '', implode( ' ', (array) ( $data['trend'] ?? array() ) ) );
+		}
+		if ( $gsc ) {
+			$data = is_array( $item['gsc'] ?? null ) ? $item['gsc'] : array();
+			array_push( $row, $data['impressions'] ?? '', $data['clicks'] ?? '', $data['position'] ?? '' );
+		}
+		$row[] = implode( ', ', array_map( static fn( string $source ): string => $names[ $source ] ?? $source, (array) $item['sources'] ) );
+
+		return $row;
+	}
+
+	/** A text for a cell of a spreadsheet: not a formula. */
+	private static function cell( string $text ): string {
+		return 1 === preg_match( '/^[=+\-@\t\r]/', $text ) ? "'" . $text : $text;
+	}
+
 	/** Whether the searches get volumes: from DataForSEO or the Keyword Planner of Google Ads. */
 	public static function volumes_on(): bool {
 		return Simple_SEO_DataForSEO::on() || Simple_SEO_Google_Ads::on();

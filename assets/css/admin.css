@@ -885,6 +885,14 @@
 	display: contents;
 }
 
+.simple-seo-kw-export {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 12px;
+}
+
 .simple-seo-kw-filters .button.is-pressed,
 .simple-seo-kw-filters .button[aria-pressed="true"] {
 	background: #2271b1;

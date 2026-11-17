@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.51.0
+Stable tag: 0.52.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,9 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.52.0 =
+* The keyword research downloads the searches shown, with the filters and order of the page: as a CSV table for Excel or Google Sheets (the search, topic, question, volume, KD or competition, cost per click, twelve months, impressions, clicks, position and sources) or as a TXT list, one search a line.
 
 = 0.51.0 =
 * Keyword research with the Keyword Planner of Google Ads, free, chosen on the part Volumes and difficulty: the search volume of each search, its competition in Google Ads, cost per click and volumes of the last twelve months, sorted by volume, and more searches of the phrase from the Keyword Planner. Its API needs a Google Cloud project with the Basic access level and a Google Ads account; each answer is kept a month.

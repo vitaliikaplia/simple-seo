@@ -13061,7 +13061,7 @@ MD === $sseo_val,
 		'country' => 'UA',
 	);
 	$sseo_html                               = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
-	$sseo_vals['fields subscriber page']     = str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-country="UA">' ) && ! str_contains( $sseo_html, 'data-draft' );
+	$sseo_vals['fields subscriber page']     = str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-country="UA" data-file=' ) && ! str_contains( $sseo_html, 'data-draft' );
 	update_option( Simple_SEO_Access::OPTION, Simple_SEO_Access::defaults() );
 	Simple_SEO_Settings::flush();
 	$sseo_kw_die                    = static fn(): callable => static function (): void {
@@ -13135,9 +13135,9 @@ MD === $sseo_val,
 	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
 	sseo_check(
 		'the page: the phrase searched, the searches with the questions marked, the topics to filter by, the data of Search Console, the AI and the draft',
-		str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-country="UA" data-draft>' ) && 11 === substr_count( $sseo_html, '<tr data-kw="' ) && 4 === substr_count( $sseo_html, '<span class="simple-seo-kw-tag">question</span>' )
+		str_contains( $sseo_html, 'data-seed="іван чай" data-language="uk" data-country="UA" data-draft data-file=' ) && 11 === substr_count( $sseo_html, '<tr data-kw="' ) && 4 === substr_count( $sseo_html, '<span class="simple-seo-kw-tag">question</span>' )
 			&& str_contains( $sseo_html, '<button type="button" class="button button-small" data-kw-filter="topic" data-kw-topic="пити" aria-pressed="false">пити (3)</button>' )
-			&& str_contains( $sseo_html, '<tr data-kw="іван-чай ціна" data-kw-topic="" data-kw-question="0">' ) && str_contains( $sseo_html, '<td class="num">90</td>' ) && str_contains( $sseo_html, '<td class="num">7.3</td>' )
+			&& str_contains( $sseo_html, '<tr data-kw="іван-чай ціна" data-kw-topic="" data-kw-question="0" data-kw-values=' ) && str_contains( $sseo_html, '<td class="num">90</td>' ) && str_contains( $sseo_html, '<td class="num">7.3</td>' )
 			&& str_contains( $sseo_html, 'data-kw-filter="questions"' ) && str_contains( $sseo_html, 'data-kw-group' ) && str_contains( $sseo_html, 'data-kw-outline' )
 			&& str_contains( $sseo_html, 'Searches found: 11, questions among them: 4.' ) && str_contains( $sseo_html, '<option value="uk"  selected=\'selected\'>' ) && str_contains( $sseo_html, '<option value="UA"  selected=\'selected\'>' )
 			&& str_contains( $sseo_html, esc_url( add_query_arg( 'refresh', '1', Simple_SEO_Keywords::page_url( 'іван чай', 'uk', 'UA' ) ) ) )
@@ -13719,8 +13719,8 @@ MD === $sseo_val,
 	$_GET      = array();
 	sseo_check(
 		'the page with DataForSEO: the columns of the volume, difficulty and cost per click to sort by, the volumes of twelve months, Google Trends to load',
-		str_contains( $sseo_html, 'data-country="UA" data-draft data-trends>' ) && str_contains( $sseo_html, '<div class="simple-seo-kw-trends" data-kw-trends hidden>' ) && str_contains( $sseo_html, 'data-kw-sort="volume"' ) && str_contains( $sseo_html, 'data-kw-sort="kd"' )
-			&& str_contains( $sseo_html, '<tr data-kw="як пити іван чай" data-kw-topic="пити" data-kw-question="1" data-kw-volume="1400" data-kw-kd="9" data-kw-cpc="0.25">' ) && str_contains( $sseo_html, '<td class="num">1,400</td>' ) && str_contains( $sseo_html, '<td class="num">$0.25</td>' )
+		str_contains( $sseo_html, 'data-country="UA" data-draft data-trends data-file=' ) && str_contains( $sseo_html, '<div class="simple-seo-kw-trends" data-kw-trends hidden>' ) && str_contains( $sseo_html, 'data-kw-sort="volume"' ) && str_contains( $sseo_html, 'data-kw-sort="kd"' )
+			&& str_contains( $sseo_html, '<tr data-kw="як пити іван чай" data-kw-topic="пити" data-kw-question="1" data-kw-volume="1400" data-kw-kd="9" data-kw-cpc="0.25" data-kw-values=' ) && str_contains( $sseo_html, '<td class="num">1,400</td>' ) && str_contains( $sseo_html, '<td class="num">$0.25</td>' )
 			&& 1 === substr_count( $sseo_html, '<svg class="simple-seo-kw-spark"' ) && 12 === substr_count( $sseo_html, '<rect ' ) && str_contains( $sseo_html, '<rect x="55" y="0" width="4" height="20"></rect>' ) && str_contains( $sseo_html, '<rect x="0" y="16" width="4" height="4"></rect>' )
 			&& str_contains( $sseo_html, 'data-kw-volume="-1"' ),
 		$sseo_html
@@ -14376,6 +14376,62 @@ MD === $sseo_val,
 	$sseo_kw_gads['customers/1234567890:generateKeywordIdeas'] = $sseo_kw_gads_ideas;
 	$sseo_kw_gads_forget();
 
+	// The table of searches to download: as the page shows them, no formulas.
+	$sseo_kw_item = array(
+		'keyword'  => '=1+1 чай, "трав\'яний"',
+		'question' => true,
+		'sources'  => array( 'suggest', 'google_ads', 'other' ),
+		'topic'    => '-тема',
+		'gsc'      => array(
+			'clicks'      => 3,
+			'impressions' => 40,
+			'position'    => 7.3,
+		),
+		'metrics'  => array(
+			'volume'      => 590,
+			'competition' => 20,
+			'cpc'         => 0.25,
+			'trend'       => array( 1, 2, 3 ),
+			'kd'          => 9,
+		),
+	);
+	$sseo_vals    = array(
+		Simple_SEO_Keywords::export_columns( false, false, false ),
+		Simple_SEO_Keywords::export_columns( true, true, true ),
+		Simple_SEO_Keywords::export_columns( true, false, false ),
+		Simple_SEO_Keywords::export_row( $sseo_kw_item, false, false, false ),
+		Simple_SEO_Keywords::export_row( $sseo_kw_item, true, true, true ),
+		Simple_SEO_Keywords::export_row( $sseo_kw_item, true, false, false ),
+		Simple_SEO_Keywords::export_row(
+			array(
+				'keyword'  => '@чай',
+				'question' => false,
+				'sources'  => array(),
+				'topic'    => '+',
+				'gsc'      => null,
+				'metrics'  => null,
+			),
+			true,
+			true,
+			true
+		),
+		Simple_SEO_Keywords::export_row( array( 'keyword' => 'чай -', 'topic' => "\tx" ) + $sseo_kw_item, false, false, false ),
+	);
+	sseo_check(
+		'the table of searches to download: the search, topic, question, the metrics with KD or competition and the data of Search Console when the page has them, the sources by name; numbers as they are; a text that would be a formula with an apostrophe',
+		array(
+			array( 'Search', 'Topic', 'Question', 'Sources' ),
+			array( 'Search', 'Topic', 'Question', 'Volume', 'KD', 'CPC', '12 months', 'Impressions', 'Clicks', 'Position', 'Sources' ),
+			array( 'Search', 'Topic', 'Question', 'Volume', 'Competition', 'CPC', '12 months', 'Sources' ),
+			array( "'=1+1 чай, \"трав'яний\"", "'-тема", 'yes', 'suggestions of Google search, Google Ads, other' ),
+			array( "'=1+1 чай, \"трав'яний\"", "'-тема", 'yes', 590, 9, 0.25, '1 2 3', 40, 3, 7.3, 'suggestions of Google search, Google Ads, other' ),
+			array( "'=1+1 чай, \"трав'яний\"", "'-тема", 'yes', 590, 20, 0.25, '1 2 3', 'suggestions of Google search, Google Ads, other' ),
+			array( "'@чай", "'+", '', '', '', '', '', '', '', '', '' ),
+			array( 'чай -', "'\tx", 'yes', 'suggestions of Google search, Google Ads, other' ),
+		) === $sseo_vals,
+		$sseo_vals
+	);
+
 	// The page, Trends and the tab with the Keyword Planner.
 	$_GET      = array(
 		'page'    => Simple_SEO_Keywords::PAGE,
@@ -14386,10 +14442,19 @@ MD === $sseo_val,
 	$sseo_html = sseo_capture( array( Simple_SEO_Keywords::class, 'render_page' ) );
 	$_GET      = array();
 	$sseo_val  = Simple_SEO_Keywords::trends( 'іван чай', 'uk', 'UA' );
+	$sseo_kw_row = (bool) preg_match( '/<tr data-kw="копорський чай"[^>]* data-kw-values="([^"]*)">/u', $sseo_html, $sseo_kw_found ) ? json_decode( html_entity_decode( $sseo_kw_found[1], ENT_QUOTES ), true ) : null;
+	sseo_check(
+		'the page: the searches shown to download as a table or a list, the columns and each row as the page has them, the file named by the phrase and country',
+		str_contains( $sseo_html, '<button type="button" class="button button-small" data-kw-export="csv"' ) && str_contains( $sseo_html, '<button type="button" class="button button-small" data-kw-export="txt"' )
+			&& str_contains( $sseo_html, ' data-kw-columns="' . esc_attr( (string) wp_json_encode( array( 'Search', 'Topic', 'Question', 'Volume', 'Competition', 'CPC', '12 months', 'Impressions', 'Clicks', 'Position', 'Sources' ) ) ) . '">' )
+			&& is_array( $sseo_kw_row ) && array( 'копорський чай', '', 880, 20, '', '', '', '', '', 'Google Ads' ) === array( $sseo_kw_row[0], $sseo_kw_row[2], $sseo_kw_row[3], $sseo_kw_row[4], $sseo_kw_row[5], $sseo_kw_row[6], $sseo_kw_row[7], $sseo_kw_row[8], $sseo_kw_row[9], $sseo_kw_row[10] )
+			&& str_contains( $sseo_html, ' data-file="keywords-іван-чай-UA">' ),
+		array( $sseo_kw_row, substr( $sseo_html, 0, 3000 ) )
+	);
 	sseo_check(
 		'the page with the Keyword Planner: the columns of the volume, competition instead of the difficulty it has not, and cost per click to sort by; no Google Trends, which comes from DataForSEO',
 		str_contains( $sseo_html, 'data-kw-sort="volume"' ) && str_contains( $sseo_html, 'data-kw-sort="competition"' ) && ! str_contains( $sseo_html, 'data-kw-sort="kd"' ) && ! str_contains( $sseo_html, 'data-kw-kd=' )
-			&& str_contains( $sseo_html, 'data-kw="копорський чай" data-kw-topic="' ) && str_contains( $sseo_html, 'data-kw-volume="880" data-kw-competition="20" data-kw-cpc="-1">' ) && (bool) preg_match( '#<td class="num">880</td>\s*<td class="num">20</td>\s*<td class="num">—</td>#u', $sseo_html )
+			&& str_contains( $sseo_html, 'data-kw="копорський чай" data-kw-topic="' ) && str_contains( $sseo_html, 'data-kw-volume="880" data-kw-competition="20" data-kw-cpc="-1" data-kw-values=' ) && (bool) preg_match( '#<td class="num">880</td>\s*<td class="num">20</td>\s*<td class="num">—</td>#u', $sseo_html )
 			&& ! str_contains( $sseo_html, 'data-trends' ) && ! str_contains( $sseo_html, 'data-kw-trends' ) && is_wp_error( $sseo_val ) && 'simple_seo_kw_no_trends' === $sseo_val->get_error_code(),
 		$sseo_html
 	);

@@ -22,12 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$simple_seo_sources = array(
-	'suggest'        => __( 'suggestions of Google search', 'simple-seo' ),
-	'search_console' => __( 'Search Console', 'simple-seo' ),
-	'dataforseo'     => 'DataForSEO',
-	'google_ads'     => 'Google Ads',
-);
+$simple_seo_sources = Simple_SEO_Keywords::source_names();
 // A sparkline of twelve monthly volumes, bars from the oldest.
 $simple_seo_spark = static function ( array $values ): string {
 	$top  = max( 1, max( $values ) );
@@ -104,7 +99,7 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 					'https://www.google.com/search'
 				);
 				?>
-				<div class="simple-seo-kw-results" data-simple-seo-kw-page data-seed="<?php echo esc_attr( $result['seed'] ); ?>" data-language="<?php echo esc_attr( $result['language'] ); ?>" data-country="<?php echo esc_attr( $result['country'] ); ?>"<?php echo $draft ? ' data-draft' : ''; ?><?php echo $trends ? ' data-trends' : ''; ?>>
+				<div class="simple-seo-kw-results" data-simple-seo-kw-page data-seed="<?php echo esc_attr( $result['seed'] ); ?>" data-language="<?php echo esc_attr( $result['language'] ); ?>" data-country="<?php echo esc_attr( $result['country'] ); ?>"<?php echo $draft ? ' data-draft' : ''; ?><?php echo $trends ? ' data-trends' : ''; ?> data-file="<?php echo esc_attr( sanitize_file_name( 'keywords-' . $result['seed'] . '-' . $result['country'] ) ); ?>">
 					<p class="simple-seo-kw-summary">
 						<?php
 						printf(
@@ -138,6 +133,12 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 						</span>
 					</div>
 
+					<p class="simple-seo-kw-export">
+						<?php esc_html_e( 'Download what is shown:', 'simple-seo' ); ?>
+						<button type="button" class="button button-small" data-kw-export="csv" title="<?php esc_attr_e( 'A table for Excel or Google Sheets', 'simple-seo' ); ?>">CSV</button>
+						<button type="button" class="button button-small" data-kw-export="txt" title="<?php esc_attr_e( 'The searches, one a line', 'simple-seo' ); ?>">TXT</button>
+					</p>
+
 					<?php if ( $trends ) : ?>
 						<div class="simple-seo-kw-trends" data-kw-trends hidden>
 							<h2><?php esc_html_e( 'Google Trends: the interest over five years', 'simple-seo' ); ?></h2>
@@ -155,7 +156,7 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 						<div class="simple-seo-kw-outline" hidden></div>
 					<?php endif; ?>
 
-					<table class="widefat striped simple-seo-kw-table">
+					<table class="widefat striped simple-seo-kw-table" data-kw-columns="<?php echo esc_attr( (string) wp_json_encode( Simple_SEO_Keywords::export_columns( $metrics, $kd, $gsc ), JSON_UNESCAPED_UNICODE ) ); ?>">
 						<thead>
 							<tr>
 								<th scope="col"><?php esc_html_e( 'Search', 'simple-seo' ); ?></th>
@@ -180,7 +181,7 @@ $simple_seo_tab     = current_user_can( Simple_SEO_Access::CAP_SETTINGS )
 						<tbody>
 							<?php foreach ( $result['items'] as $simple_seo_item ) : ?>
 								<?php $simple_seo_m = is_array( $simple_seo_item['metrics'] ?? null ) ? $simple_seo_item['metrics'] : array(); ?>
-								<tr data-kw="<?php echo esc_attr( $simple_seo_item['keyword'] ); ?>" data-kw-topic="<?php echo esc_attr( $simple_seo_item['topic'] ); ?>" data-kw-question="<?php echo $simple_seo_item['question'] ? '1' : '0'; ?>"<?php echo $metrics ? sprintf( ' data-kw-volume="%s" data-kw-%s="%s" data-kw-cpc="%s"', esc_attr( (string) ( $simple_seo_m['volume'] ?? -1 ) ), $kd ? 'kd' : 'competition', esc_attr( (string) ( $simple_seo_m[ $kd ? 'kd' : 'competition' ] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['cpc'] ?? -1 ) ) ) : ''; ?>>
+								<tr data-kw="<?php echo esc_attr( $simple_seo_item['keyword'] ); ?>" data-kw-topic="<?php echo esc_attr( $simple_seo_item['topic'] ); ?>" data-kw-question="<?php echo $simple_seo_item['question'] ? '1' : '0'; ?>"<?php echo $metrics ? sprintf( ' data-kw-volume="%s" data-kw-%s="%s" data-kw-cpc="%s"', esc_attr( (string) ( $simple_seo_m['volume'] ?? -1 ) ), $kd ? 'kd' : 'competition', esc_attr( (string) ( $simple_seo_m[ $kd ? 'kd' : 'competition' ] ?? -1 ) ), esc_attr( (string) ( $simple_seo_m['cpc'] ?? -1 ) ) ) : ''; ?> data-kw-values="<?php echo esc_attr( (string) wp_json_encode( Simple_SEO_Keywords::export_row( $simple_seo_item, $metrics, $kd, $gsc ), JSON_UNESCAPED_UNICODE ) ); ?>">
 									<td>
 										<a href="<?php echo esc_url( $simple_seo_google( $simple_seo_item['keyword'] ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $simple_seo_item['keyword'] ); ?></a>
 										<?php if ( $simple_seo_item['question'] ) : ?>

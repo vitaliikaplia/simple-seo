@@ -289,6 +289,44 @@
 			} );
 		} );
 
+		// The searches shown, in their order, to download: a table (CSV, with a BOM for Excel) or a list.
+		var table = root.querySelector( '[data-kw-columns]' );
+		function cell( value ) {
+			var text = null === value || undefined === value ? '' : String( value );
+			return /[",;\r\n]/.test( text ) ? '"' + text.replace( /"/g, '""' ) + '"' : text;
+		}
+		function download( name, type, text ) {
+			var link = element( 'a' );
+			link.href = URL.createObjectURL( new Blob( [ text ], { type: type } ) );
+			link.download = name;
+			document.body.appendChild( link );
+			link.click();
+			link.remove();
+			setTimeout( function () {
+				URL.revokeObjectURL( link.href );
+			}, 1000 );
+		}
+		Array.prototype.forEach.call( root.querySelectorAll( '[data-kw-export]' ), function ( button ) {
+			button.addEventListener( 'click', function () {
+				var shown = Array.prototype.filter.call( body.querySelectorAll( 'tr[data-kw]' ), function ( row ) {
+					return ! row.hidden;
+				} );
+				var name  = root.getAttribute( 'data-file' ) || 'keywords';
+				if ( 'txt' === button.getAttribute( 'data-kw-export' ) ) {
+					download( name + '.txt', 'text/plain;charset=utf-8', shown.map( function ( row ) {
+						return row.getAttribute( 'data-kw' ) + '\r\n';
+					} ).join( '' ) );
+					return;
+				}
+				var lines = [ JSON.parse( table.getAttribute( 'data-kw-columns' ) ) ].concat( shown.map( function ( row ) {
+					return JSON.parse( row.getAttribute( 'data-kw-values' ) );
+				} ) );
+				download( name + '.csv', 'text/csv;charset=utf-8', String.fromCharCode( 0xFEFF ) + lines.map( function ( line ) {
+					return line.map( cell ).join( ',' ) + '\r\n';
+				} ).join( '' ) );
+			} );
+		} );
+
 		// Google Trends of the phrase: asked after the page, it takes DataForSEO a while.
 		var trends = root.querySelector( '[data-kw-trends]' );
 		if ( trends && root.hasAttribute( 'data-trends' ) ) {

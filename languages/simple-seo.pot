@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.51.0\n"
+"Project-Id-Version: Simple SEO 0.52.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-17T02:10:36+00:00\n"
+"POT-Creation-Date: 2026-11-17T03:49:25+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -281,7 +281,7 @@ msgstr ""
 #: includes/class-simple-seo-audit.php:907
 #: includes/class-simple-seo-audit.php:941
 #: includes/class-simple-seo-bulk.php:278
-#: includes/class-simple-seo-keywords.php:1496
+#: includes/class-simple-seo-keywords.php:1553
 #: includes/class-simple-seo-monitor.php:418
 #: includes/class-simple-seo-monitor.php:436
 #: includes/class-simple-seo-search-console.php:1053
@@ -336,8 +336,8 @@ msgid "The AI answered with nothing to put in the field. Try again."
 msgstr ""
 
 #: includes/class-simple-seo-ai.php:462
-#: includes/class-simple-seo-keywords.php:1086
-#: includes/class-simple-seo-keywords.php:1177
+#: includes/class-simple-seo-keywords.php:1143
+#: includes/class-simple-seo-keywords.php:1234
 msgid "The AI answered with nothing that could be read. Try again."
 msgstr ""
 
@@ -754,7 +754,7 @@ msgstr ""
 
 #: includes/class-simple-seo-bulk.php:124
 #: includes/class-simple-seo-bulk.php:130
-#: includes/class-simple-seo-keywords.php:1571
+#: includes/class-simple-seo-keywords.php:1628
 msgid "All"
 msgstr ""
 
@@ -1071,7 +1071,7 @@ msgstr ""
 
 #: includes/class-simple-seo-faq.php:62
 #: includes/class-simple-seo-faq.php:81
-#: includes/class-simple-seo-keywords.php:1569
+#: includes/class-simple-seo-keywords.php:1626
 msgid "Questions and answers"
 msgstr ""
 
@@ -1081,6 +1081,7 @@ msgid "Questions with their answers, shown as an accordion and marked up for sea
 msgstr ""
 
 #: includes/class-simple-seo-faq.php:64
+#: includes/class-simple-seo-keywords.php:870
 msgid "Question"
 msgstr ""
 
@@ -1253,7 +1254,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.51.0: volumes, competition and cost per click of the searches from the Keyword Planner of Google Ads, free. Version 0.50.0: volumes, difficulty, cost per click and Google Trends of the searches from DataForSEO. Version 0.49.0: keyword research — the searches around a phrase from Google’s suggestions and Search Console, its questions and topics, and the structure of an article by the AI. Version 0.48.0: the groups of the settings fold, the menu scrolls with the page, and the AI tab opens at once. Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.52.0: the searches of the keyword research to download as a CSV table or a TXT list. Version 0.51.0: volumes, competition and cost per click of the searches from the Keyword Planner of Google Ads, free. Version 0.50.0: volumes, difficulty, cost per click and Google Trends of the searches from DataForSEO. Version 0.49.0: keyword research — the searches around a phrase from Google’s suggestions and Search Console, its questions and topics, and the structure of an article by the AI. Version 0.48.0: the groups of the settings fold, the menu scrolls with the page, and the AI tab opens at once. Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-google-ads.php:85
@@ -1722,134 +1723,209 @@ msgid "Google did not answer the requests for suggestions from this server. Try 
 msgstr ""
 
 #: includes/class-simple-seo-keywords.php:671
-#: includes/class-simple-seo-keywords.php:867
+#: includes/class-simple-seo-keywords.php:924
 msgid "Type a phrase to find the searches around it."
 msgstr ""
 
+#: includes/class-simple-seo-keywords.php:856
+msgid "suggestions of Google search"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:857
+#: includes/class-simple-seo-search-console.php:81
+#: includes/class-simple-seo-search-console.php:96
+#: includes/class-simple-seo-search-console.php:97
+#: includes/class-simple-seo-search-console.php:868
+#: includes/views/search-console.php:20
+#: includes/views/tab-keywords.php:25
+msgid "Search Console"
+msgstr ""
+
 #: includes/class-simple-seo-keywords.php:870
-msgid "Google Trends comes from DataForSEO: connect it and turn Trends on on the Keyword research tab."
+#: includes/views/bulk.php:56
+#: includes/views/keywords.php:162
+msgid "Search"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:984
-msgid "The AI is turned off for the keyword research in the settings."
+#: includes/class-simple-seo-keywords.php:870
+#: includes/views/keywords.php:163
+msgid "Topic"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1019
-msgid "There are no searches to group."
+#: includes/class-simple-seo-keywords.php:872
+#: includes/views/keywords.php:165
+msgid "Volume"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1115
-msgid "There are no searches to plan an article on."
+#: includes/class-simple-seo-keywords.php:872
+#: includes/views/keywords.php:167
+msgid "KD"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1240
-msgid "The structure of the article is empty."
+#: includes/class-simple-seo-keywords.php:872
+#: includes/views/keywords.php:169
+msgid "Competition"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1428
-#: includes/class-simple-seo-keywords.php:1458
-#: includes/views/keywords.php:47
-msgid "Keyword research"
+#: includes/class-simple-seo-keywords.php:872
+#: includes/views/keywords.php:171
+msgid "CPC"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1434
+#: includes/class-simple-seo-keywords.php:872
+#: includes/views/keywords.php:172
+msgid "12 months"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:875
+#: includes/class-simple-seo-search-console.php:909
+#: includes/class-simple-seo-search-console.php:970
+#: includes/views/keywords.php:175
+msgid "Impressions"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:875
+#: includes/class-simple-seo-search-console.php:908
+#: includes/class-simple-seo-search-console.php:970
+#: includes/views/keywords.php:176
+msgid "Clicks"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:875
+#: includes/class-simple-seo-search-console.php:970
+#: includes/views/keywords.php:177
+msgid "Position"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:877
+#: includes/class-simple-seo-keywords.php:1491
 #: includes/views/tab-keywords.php:52
 #: includes/views/tab-keywords.php:55
 msgid "Sources"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1435
+#: includes/class-simple-seo-keywords.php:891
+msgid "yes"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:927
+msgid "Google Trends comes from DataForSEO: connect it and turn Trends on on the Keyword research tab."
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:1041
+msgid "The AI is turned off for the keyword research in the settings."
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:1076
+msgid "There are no searches to group."
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:1172
+msgid "There are no searches to plan an article on."
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:1297
+msgid "The structure of the article is empty."
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:1485
+#: includes/class-simple-seo-keywords.php:1515
+#: includes/views/keywords.php:42
+msgid "Keyword research"
+msgstr ""
+
+#: includes/class-simple-seo-keywords.php:1492
 msgid "Volumes and difficulty"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1459
+#: includes/class-simple-seo-keywords.php:1516
 #: includes/views/tab-keywords.php:44
 msgid "Keywords"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1553
+#: includes/class-simple-seo-keywords.php:1610
 msgid "Finding the searches…"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1554
+#: includes/class-simple-seo-keywords.php:1611
 msgid "The AI groups the searches…"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1555
+#: includes/class-simple-seo-keywords.php:1612
 msgid "The AI plans the article…"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1556
+#: includes/class-simple-seo-keywords.php:1613
 msgid "Creating the draft…"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1557
-#: includes/views/keywords.php:93
+#: includes/class-simple-seo-keywords.php:1614
+#: includes/views/keywords.php:88
 msgid "No searches found around this phrase."
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1558
+#: includes/class-simple-seo-keywords.php:1615
 msgid "Something went wrong. Try again."
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1559
+#: includes/class-simple-seo-keywords.php:1616
 msgid "Type a focus keyphrase or a title first."
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1560
+#: includes/class-simple-seo-keywords.php:1617
 msgid "Use as the focus keyphrase"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1561
+#: includes/class-simple-seo-keywords.php:1618
 msgid "Add to the other keyphrases"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1562
-#: includes/views/keywords.php:187
+#: includes/class-simple-seo-keywords.php:1619
+#: includes/views/keywords.php:188
 msgid "question"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1563
+#: includes/class-simple-seo-keywords.php:1620
 msgid "Other"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1564
+#: includes/class-simple-seo-keywords.php:1621
 msgid "Parent topic:"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1565
+#: includes/class-simple-seo-keywords.php:1622
 msgid "Copy"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1566
+#: includes/class-simple-seo-keywords.php:1623
 msgid "Copied."
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1567
+#: includes/class-simple-seo-keywords.php:1624
 msgid "Create a draft"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1568
+#: includes/class-simple-seo-keywords.php:1625
 msgid "Open the draft"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1570
+#: includes/class-simple-seo-keywords.php:1627
 msgid "Covers:"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1572
+#: includes/class-simple-seo-keywords.php:1629
 msgid "Questions"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1573
+#: includes/class-simple-seo-keywords.php:1630
 msgid "Open the keyword research"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1574
+#: includes/class-simple-seo-keywords.php:1631
 msgid "a month"
 msgstr ""
 
-#: includes/class-simple-seo-keywords.php:1595
+#: includes/class-simple-seo-keywords.php:1652
 msgid "Find keyphrases"
 msgstr ""
 
@@ -2491,16 +2567,6 @@ msgstr ""
 msgid "Readability: %s"
 msgstr ""
 
-#: includes/class-simple-seo-search-console.php:81
-#: includes/class-simple-seo-search-console.php:96
-#: includes/class-simple-seo-search-console.php:97
-#: includes/class-simple-seo-search-console.php:868
-#: includes/views/keywords.php:27
-#: includes/views/search-console.php:20
-#: includes/views/tab-keywords.php:25
-msgid "Search Console"
-msgstr ""
-
 #: includes/class-simple-seo-search-console.php:87
 msgid "Connection"
 msgstr ""
@@ -2608,18 +2674,6 @@ msgstr ""
 msgid "Query"
 msgstr ""
 
-#: includes/class-simple-seo-search-console.php:908
-#: includes/class-simple-seo-search-console.php:970
-#: includes/views/keywords.php:175
-msgid "Clicks"
-msgstr ""
-
-#: includes/class-simple-seo-search-console.php:909
-#: includes/class-simple-seo-search-console.php:970
-#: includes/views/keywords.php:174
-msgid "Impressions"
-msgstr ""
-
 #: includes/class-simple-seo-search-console.php:910
 #: includes/class-simple-seo-search-console.php:970
 msgid "CTR"
@@ -2629,13 +2683,8 @@ msgstr ""
 msgid "Average position"
 msgstr ""
 
-#: includes/class-simple-seo-search-console.php:970
-#: includes/views/keywords.php:176
-msgid "Position"
-msgstr ""
-
 #: includes/class-simple-seo-search-console.php:975
-#: includes/views/keywords.php:63
+#: includes/views/keywords.php:58
 #: includes/views/tab-keywords.php:68
 msgid "Language"
 msgstr ""
@@ -3261,13 +3310,8 @@ msgstr ""
 msgid "Which of them"
 msgstr ""
 
-#: includes/views/bulk.php:56
-#: includes/views/keywords.php:161
-msgid "Search"
-msgstr ""
-
 #: includes/views/bulk.php:58
-#: includes/views/keywords.php:121
+#: includes/views/keywords.php:116
 #: includes/views/monitor.php:145
 #: includes/views/tab-files.php:174
 msgid "Show"
@@ -3306,118 +3350,102 @@ msgstr ""
 msgid "Nothing found."
 msgstr ""
 
-#: includes/views/keywords.php:26
-msgid "suggestions of Google search"
-msgstr ""
-
-#: includes/views/keywords.php:43
+#: includes/views/keywords.php:38
 msgid "Open the Keyword research tab of the settings"
 msgstr ""
 
-#: includes/views/keywords.php:49
+#: includes/views/keywords.php:44
 msgid "The searches people make around a phrase: what they type, the questions they ask, the topics these fall into, and how this site does in them — for choosing keyphrases and planning articles."
 msgstr ""
 
-#: includes/views/keywords.php:54
+#: includes/views/keywords.php:49
 msgid "Every source of searches is turned off."
 msgstr ""
 
-#: includes/views/keywords.php:61
+#: includes/views/keywords.php:56
 msgid "Phrase"
 msgstr ""
 
-#: includes/views/keywords.php:62
+#: includes/views/keywords.php:57
 msgid "A phrase, e.g. what the site sells"
 msgstr ""
 
-#: includes/views/keywords.php:69
+#: includes/views/keywords.php:64
 #: includes/views/tab-keywords.php:84
 #: includes/views/tab-local.php:101
 msgid "Country"
 msgstr ""
 
-#: includes/views/keywords.php:75
+#: includes/views/keywords.php:70
 msgid "Find searches"
 msgstr ""
 
 #. translators: 1: a source of searches, 2: what went wrong.
-#: includes/views/keywords.php:86
+#: includes/views/keywords.php:81
 #, php-format
 msgid "No searches from %1$s: %2$s"
 msgstr ""
 
 #. translators: 1: number of searches, 2: number of questions among them.
-#: includes/views/keywords.php:112
+#: includes/views/keywords.php:107
 #, php-format
 msgid "Searches found: %1$s, questions among them: %2$s."
 msgstr ""
 
-#: includes/views/keywords.php:117
+#: includes/views/keywords.php:112
 msgid "The suggestions of Google are kept a week."
 msgstr ""
 
-#: includes/views/keywords.php:118
+#: includes/views/keywords.php:113
 msgid "Ask Google again"
 msgstr ""
 
 #. translators: %s: number of searches.
-#: includes/views/keywords.php:125
+#: includes/views/keywords.php:120
 #, php-format
 msgid "All (%s)"
 msgstr ""
 
 #. translators: %s: number of questions.
-#: includes/views/keywords.php:131
+#: includes/views/keywords.php:126
 #, php-format
 msgid "Questions (%s)"
 msgstr ""
 
-#: includes/views/keywords.php:143
+#: includes/views/keywords.php:137
+msgid "Download what is shown:"
+msgstr ""
+
+#: includes/views/keywords.php:138
+msgid "A table for Excel or Google Sheets"
+msgstr ""
+
+#: includes/views/keywords.php:139
+msgid "The searches, one a line"
+msgstr ""
+
+#: includes/views/keywords.php:144
 msgid "Google Trends: the interest over five years"
 msgstr ""
 
-#: includes/views/keywords.php:150
+#: includes/views/keywords.php:151
 msgid "Group into topics with AI"
 msgstr ""
 
-#: includes/views/keywords.php:151
+#: includes/views/keywords.php:152
 msgid "Plan an article on what is shown"
 msgstr ""
 
-#: includes/views/keywords.php:162
-msgid "Topic"
-msgstr ""
-
-#: includes/views/keywords.php:164
-msgid "Volume"
-msgstr ""
-
-#: includes/views/keywords.php:166
+#: includes/views/keywords.php:167
 msgid "Keyword difficulty, 0–100: how hard it is to reach the top ten"
 msgstr ""
 
-#: includes/views/keywords.php:166
-msgid "KD"
-msgstr ""
-
-#: includes/views/keywords.php:168
+#: includes/views/keywords.php:169
 msgid "Competition in Google Ads, 0–100: how many advertisers bid on the search"
 msgstr ""
 
-#: includes/views/keywords.php:168
-msgid "Competition"
-msgstr ""
-
-#: includes/views/keywords.php:170
-msgid "Cost per click in Google Ads, USD"
-msgstr ""
-
-#: includes/views/keywords.php:170
-msgid "CPC"
-msgstr ""
-
 #: includes/views/keywords.php:171
-msgid "12 months"
+msgid "Cost per click in Google Ads, USD"
 msgstr ""
 
 #: includes/views/markdown.php:18
