@@ -29,8 +29,8 @@ final class Simple_SEO_Snippet {
 			'<div class="simple-seo-snippet%1$s" data-simple-seo-snippet="%2$s">'
 				. '<div class="simple-seo-snippet-bar"><strong>%3$s</strong>'
 				. '<span class="simple-seo-snippet-views" role="group" aria-label="%3$s" hidden>'
-				. '<button type="button" class="button" data-simple-seo-view="desktop" aria-pressed="true">%4$s</button>'
-				. '<button type="button" class="button" data-simple-seo-view="mobile" aria-pressed="false">%5$s</button>'
+				. '<button type="button" class="simple-seo-snippet-view" data-simple-seo-view="desktop" aria-pressed="true" aria-label="%4$s" title="%4$s"><span class="dashicons dashicons-desktop" aria-hidden="true"></span></button>'
+				. '<button type="button" class="simple-seo-snippet-view" data-simple-seo-view="mobile" aria-pressed="false" aria-label="%5$s" title="%5$s"><span class="dashicons dashicons-smartphone" aria-hidden="true"></span></button>'
 				. '</span></div>'
 				. '<div class="simple-seo-snippet-card">'
 				. '<div class="simple-seo-snippet-site"><span class="simple-seo-snippet-icon">%6$s</span>'
@@ -44,8 +44,8 @@ final class Simple_SEO_Snippet {
 			$data['noindex'] ? ' is-noindex' : '',
 			esc_attr( (string) wp_json_encode( $data ) ),
 			esc_html( $data['l10n']['heading'] ),
-			esc_html( $data['l10n']['desktop'] ),
-			esc_html( $data['l10n']['mobile'] ),
+			esc_attr( $data['l10n']['desktop'] ),
+			esc_attr( $data['l10n']['mobile'] ),
 			$icon,
 			esc_html( $data['site'] ),
 			esc_html( self::display_url( '' !== $data['url'] ? $data['url'] : $data['home'] ) ),

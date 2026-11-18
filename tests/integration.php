@@ -2044,6 +2044,12 @@ try {
 	sseo_check( 'hidden by its own choice, while its kind is not', true === $sseo_sn['noindex'] && false === $sseo_sn['typeNoindex'] );
 	$sseo_html = Simple_SEO_Snippet::render( 'post', get_post( $sseo_sn_post ) );
 	sseo_check( 'a hidden page: the card is marked and the note shown', str_contains( $sseo_html, '<div class="simple-seo-snippet is-noindex"' ) && str_contains( $sseo_html, '<p class="simple-seo-snippet-noindex description">' ) );
+	sseo_check(
+		'desktop or mobile: a pill of two icons, named for screen readers and in a tip, the desktop one chosen; shown by the script',
+		str_contains( $sseo_html, '<span class="simple-seo-snippet-views" role="group" aria-label="Search result preview" hidden><button type="button" class="simple-seo-snippet-view" data-simple-seo-view="desktop" aria-pressed="true" aria-label="Desktop" title="Desktop"><span class="dashicons dashicons-desktop" aria-hidden="true"></span></button><button type="button" class="simple-seo-snippet-view" data-simple-seo-view="mobile" aria-pressed="false" aria-label="Mobile" title="Mobile"><span class="dashicons dashicons-smartphone" aria-hidden="true"></span></button></span>' )
+			&& ! str_contains( $sseo_html, '>Desktop</button>' ) && ! str_contains( $sseo_html, '>Mobile</button>' ),
+		$sseo_html
+	);
 	delete_post_meta( $sseo_sn_post, '_simple_seo_index' );
 
 	$sseo_sn_indexing = get_option( Simple_SEO_Indexing::OPTION, null );

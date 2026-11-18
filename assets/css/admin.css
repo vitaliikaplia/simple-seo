@@ -19,10 +19,61 @@
 	margin-bottom: 8px;
 }
 
-.simple-seo-snippet-views .button[aria-pressed="true"] {
+/* Desktop or mobile: a pill of two icons, the chosen one raised on white. */
+.simple-seo-snippet-views {
+	display: inline-flex;
+	gap: 2px;
+	padding: 3px;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
 	background: #f0f0f1;
-	border-color: #8c8f94;
-	box-shadow: inset 0 2px 5px -3px rgba(0, 0, 0, 0.5);
+}
+
+.simple-seo-snippet-views[hidden] {
+	display: none;
+}
+
+.simple-seo-snippet-view {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: #646970;
+	cursor: pointer;
+	transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.simple-seo-snippet-view .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	line-height: 1;
+}
+
+.simple-seo-snippet-view:hover {
+	color: #1d2327;
+}
+
+.simple-seo-snippet-view[aria-pressed="true"] {
+	background: #fff;
+	color: #2271b1;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.simple-seo-snippet-view:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.simple-seo-snippet-view {
+		transition: none;
+	}
 }
 
 /* The card is drawn at the width search engines give a result, so a line breaks where theirs does. */
