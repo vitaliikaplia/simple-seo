@@ -107,6 +107,274 @@
 	} );
 
 	/*
+	 * Fields with variables ({title}, {sep}…): the field keeps the template — what is saved, and what
+	 * the other scripts read and write — and an editor in its place shows each variable as a chip with
+	 * what it becomes on the page (data-simple-seo-vars), the variable and its meaning in the tip.
+	 * An empty field shows its template the same way, faded.
+	 */
+	var VARIABLES = window.simpleSeoVariables || { labels: {}, names: {} };
+	var VARIABLE  = /\{([a-z0-9_]+)\}/g;
+	var SPACER    = String.fromCharCode( 0x200B );
+	var SPACERS   = new RegExp( SPACER, 'g' );
+	var chipped   = [];
+
+	function isVariable( name ) {
+		return Object.prototype.hasOwnProperty.call( VARIABLES.labels, name );
+	}
+
+	function variableChip( name, values ) {
+		var value = Object.prototype.hasOwnProperty.call( values, name ) ? String( values[ name ] ) : '';
+		var chip  = document.createElement( 'span' );
+		chip.className = 'simple-seo-var' + ( '' === value ? ' is-empty' : '' );
+		chip.contentEditable = 'false';
+		chip.setAttribute( 'data-var', name );
+		chip.textContent = '' !== value ? value : ( VARIABLES.names[ name ] || name );
+		chip.title = '{' + name + '}' + ( VARIABLES.labels[ name ] ? ' · ' + VARIABLES.labels[ name ] : '' );
+
+		return chip;
+	}
+
+	// A template as text and chips; a spacer after a chip with no text after it holds the caret there.
+	function drawTemplate( target, template, values ) {
+		target.textContent = '';
+		var last = 0;
+		template.replace( VARIABLE, function ( match, name, at ) {
+			if ( ! isVariable( name ) ) {
+				return match;
+			}
+			if ( at > last ) {
+				target.appendChild( document.createTextNode( template.slice( last, at ) ) );
+			}
+			target.appendChild( variableChip( name, values ) );
+			last = at + match.length;
+			if ( last === template.length || '{' === template.charAt( last ) ) {
+				target.appendChild( document.createTextNode( SPACER ) );
+			}
+			return match;
+		} );
+		if ( last < template.length ) {
+			target.appendChild( document.createTextNode( template.slice( last ) ) );
+		}
+	}
+
+	// The template an editor holds: its text, and each chip as its variable.
+	function templateOf( node ) {
+		var text = '';
+		Array.prototype.forEach.call( node.childNodes, function ( child ) {
+			if ( 3 === child.nodeType ) {
+				text += child.nodeValue.replace( SPACERS, '' );
+			} else if ( child.getAttribute && child.getAttribute( 'data-var' ) ) {
+				text += '{' + child.getAttribute( 'data-var' ) + '}';
+			} else if ( 'BR' === child.nodeName ) {
+				text += '\n';
+			} else {
+				text += templateOf( child );
+			}
+		} );
+
+		return text;
+	}
+
+	// Where the caret is, counted in the template.
+	function caretOf( editor ) {
+		var selection = window.getSelection();
+		if ( ! selection || ! selection.rangeCount || ! editor.contains( selection.getRangeAt( 0 ).endContainer ) ) {
+			return null;
+		}
+		var range = selection.getRangeAt( 0 );
+		var probe = document.createRange();
+		probe.selectNodeContents( editor );
+		probe.setEnd( range.endContainer, range.endOffset );
+		var holder = document.createElement( 'div' );
+		holder.appendChild( probe.cloneContents() );
+
+		return templateOf( holder ).length;
+	}
+
+	function placeCaret( editor, offset ) {
+		var range = document.createRange();
+		var count = 0;
+		var placed = false;
+		Array.prototype.some.call( editor.childNodes, function ( child ) {
+			var isChip = !! ( child.getAttribute && child.getAttribute( 'data-var' ) );
+			var length = 3 === child.nodeType ? child.nodeValue.replace( SPACERS, '' ).length : ( isChip ? child.getAttribute( 'data-var' ).length + 2 : templateOf( child ).length );
+			if ( 3 === child.nodeType && offset <= count + length ) {
+				var index = 0;
+				var real = 0;
+				while ( index < child.nodeValue.length && ( real < offset - count || SPACER === child.nodeValue.charAt( index ) ) ) {
+					real += SPACER === child.nodeValue.charAt( index ) ? 0 : 1;
+					index++;
+				}
+				range.setStart( child, index );
+				placed = true;
+			} else if ( offset <= count ) {
+				range.setStartBefore( child );
+				placed = true;
+			} else if ( isChip && offset < count + length ) {
+				range.setStartAfter( child );
+				placed = true;
+			}
+			count += length;
+			return placed;
+		} );
+		if ( ! placed ) {
+			range.selectNodeContents( editor );
+			range.collapse( false );
+		}
+		range.collapse( true );
+		var selection = window.getSelection();
+		selection.removeAllRanges();
+		selection.addRange( range );
+	}
+
+	function initVariables( field ) {
+		var values  = {};
+		try {
+			values = JSON.parse( field.getAttribute( 'data-simple-seo-vars' ) || '{}' ) || {};
+		} catch ( error ) {
+			values = {};
+		}
+		var multi   = 'TEXTAREA' === field.nodeName;
+		var wrap    = document.createElement( 'div' );
+		var editor  = document.createElement( 'div' );
+		var shadow  = document.createElement( 'div' );
+		var syncing = false;
+
+		wrap.className   = 'simple-seo-vars-wrap';
+		editor.className = 'simple-seo-vars' + ( multi ? ' is-multi' : '' );
+		shadow.className = 'simple-seo-vars simple-seo-vars-placeholder' + ( multi ? ' is-multi' : '' );
+		shadow.setAttribute( 'aria-hidden', 'true' );
+		editor.setAttribute( 'role', 'textbox' );
+		editor.setAttribute( 'aria-multiline', multi ? 'true' : 'false' );
+		editor.setAttribute( 'spellcheck', 'true' );
+		if ( field.getAttribute( 'aria-label' ) ) {
+			editor.setAttribute( 'aria-label', field.getAttribute( 'aria-label' ) );
+		}
+		var label = field.id ? document.querySelector( 'label[for="' + field.id + '"]' ) : null;
+		if ( label ) {
+			label.id = label.id || field.id + '-label';
+			editor.setAttribute( 'aria-labelledby', label.id );
+			label.addEventListener( 'click', function ( event ) {
+				event.preventDefault();
+				editor.focus();
+			} );
+		}
+		if ( field.disabled ) {
+			editor.classList.add( 'is-disabled' );
+			editor.setAttribute( 'aria-disabled', 'true' );
+		} else {
+			editor.contentEditable = 'true';
+		}
+
+		field.parentNode.insertBefore( wrap, field );
+		wrap.appendChild( shadow );
+		wrap.appendChild( editor );
+		wrap.appendChild( field );
+		field.classList.add( 'simple-seo-vars-source' );
+		field.setAttribute( 'tabindex', '-1' );
+		field.setAttribute( 'aria-hidden', 'true' );
+
+		function draw( keepCaret ) {
+			var caret = keepCaret && document.activeElement === editor ? caretOf( editor ) : null;
+			drawTemplate( editor, field.value, values );
+			drawTemplate( shadow, field.value ? '' : field.getAttribute( 'placeholder' ) || '', values );
+			shadow.hidden = '' !== field.value;
+			if ( null !== caret ) {
+				placeCaret( editor, caret );
+			}
+		}
+
+		function send() {
+			var template = templateOf( editor );
+			template = multi ? template.replace( /\n$/, '' ) : template.replace( /\n/g, '' );
+			if ( template !== field.value ) {
+				syncing = true;
+				field.value = template;
+				field.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+				field.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+				syncing = false;
+			}
+			shadow.hidden = '' !== field.value;
+			// A variable typed in full becomes a chip; whatever else the browser put in goes back to text.
+			var tidy = Array.prototype.every.call( editor.childNodes, function ( child ) {
+				return 3 === child.nodeType ? ! /\{[a-z0-9_]+\}/.test( child.nodeValue ) || ! child.nodeValue.match( /\{([a-z0-9_]+)\}/g ).some( function ( one ) {
+					return isVariable( one.slice( 1, -1 ) );
+				} ) : !! ( child.getAttribute && child.getAttribute( 'data-var' ) );
+			} );
+			if ( ! tidy ) {
+				draw( true );
+			}
+		}
+
+		editor.addEventListener( 'input', send );
+		editor.addEventListener( 'keydown', function ( event ) {
+			if ( 'Enter' === event.key ) {
+				event.preventDefault();
+				if ( multi ) {
+					document.execCommand( 'insertText', false, '\n' );
+				}
+			}
+		} );
+		editor.addEventListener( 'paste', function ( event ) {
+			event.preventDefault();
+			var text = ( event.clipboardData || window.clipboardData ).getData( 'text' ) || '';
+			document.execCommand( 'insertText', false, multi ? text : text.replace( /\s*[\r\n]+\s*/g, ' ' ) );
+		} );
+		editor.addEventListener( 'drop', function ( event ) {
+			event.preventDefault();
+		} );
+		editor.addEventListener( 'blur', function () {
+			draw( false );
+		} );
+		// What other scripts write into the field ("Insert structure", the AI, the keyword research).
+		[ 'input', 'change' ].forEach( function ( type ) {
+			field.addEventListener( type, function () {
+				if ( ! syncing ) {
+					draw( false );
+					// "Insert structure" focuses the field after writing into it: the editor takes it.
+					window.setTimeout( toEditor, 0 );
+				}
+			} );
+		} );
+		function toEditor() {
+			if ( document.activeElement === field ) {
+				editor.focus();
+				placeCaret( editor, field.value.length );
+			}
+		}
+		field.addEventListener( 'focus', toEditor );
+
+		chipped.push( {
+			update: function ( more ) {
+				Object.keys( more ).forEach( function ( name ) {
+					if ( undefined !== more[ name ] && null !== more[ name ] ) {
+						values[ name ] = more[ name ];
+					}
+				} );
+				draw( true );
+			}
+		} );
+		draw( false );
+	}
+
+	Array.prototype.forEach.call( document.querySelectorAll( '[data-simple-seo-vars]' ), initVariables );
+
+	// The values change with the page: the title and excerpt as they are typed (from the preview),
+	// the separator as it is chosen on the Titles tab.
+	document.addEventListener( 'simple-seo-values', function ( event ) {
+		chipped.forEach( function ( one ) {
+			one.update( event.detail || {} );
+		} );
+	} );
+	document.addEventListener( 'change', function ( event ) {
+		if ( event.target && 'radio' === event.target.type && /\[separator\]$/.test( event.target.name || '' ) ) {
+			chipped.forEach( function ( one ) {
+				one.update( { sep: event.target.value } );
+			} );
+		}
+	} );
+
+	/*
 	 * The search result preview (Simple_SEO_Snippet): redone from the form while the SEO fields, the
 	 * title, the excerpt and the address change. Until something changes it shows what PHP printed,
 	 * with the filters of the theme, which the browser cannot run.
@@ -295,6 +563,8 @@
 		} else if ( data.excerptField && ! data.protected ) {
 			values.excerpt = plain( source.excerpt ) || data.excerptFromText;
 		}
+		// The chips of the fields show the same values.
+		document.dispatchEvent( new CustomEvent( 'simple-seo-values', { detail: { title: values.title, excerpt: values.excerpt } } ) );
 
 		var texts = {};
 		[ 'title', 'description' ].forEach( function ( which ) {

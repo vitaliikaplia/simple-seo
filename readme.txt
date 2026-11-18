@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.56.0
+Stable tag: 0.57.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,10 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.57.0 =
+* Every field that takes variables shows each of them as a chip with what it becomes on the page: the SEO title, meta description and those of social networks in the SEO block of a post and on the form of a term, bulk editing, and the templates of the Titles and Special pages tabs (with an example page: the latest post of the type, the term with most posts, an author, this month, a search). The tip of a chip names the variable and what it means; an empty field shows its template the same way, faded. A variable typed in full becomes a chip; the field still saves the template.
+* The chips follow the page: the title and excerpt as they are typed in the editor, the separator as it is chosen on the Titles tab.
 
 = 0.56.0 =
 * The switch between the desktop and the mobile view of the search result preview is a pill of two icons, the chosen one raised; their names stay for screen readers and in a tip.

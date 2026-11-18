@@ -298,6 +298,15 @@ final class Simple_SEO_Admin {
 					'strategy'  => 'defer',
 				)
 			);
+			// The fields with variables show each as a chip: its name and what it means in the tip.
+			wp_localize_script(
+				'simple-seo-admin',
+				'simpleSeoVariables',
+				array(
+					'labels' => Simple_SEO_Variables::labels(),
+					'names'  => Simple_SEO_Variables::names(),
+				)
+			);
 		}
 	}
 

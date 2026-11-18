@@ -64,6 +64,7 @@ final class Simple_SEO_Social {
 				'description' => __( 'How a shared link is titled on Facebook, Telegram, X and the like. Leave empty to use the SEO title.', 'simple-seo' ),
 				'order'       => 30,
 				'group'       => 'social',
+				'variables'   => true,
 				'preview'     => static fn( string $type, $object ): string => self::title( self::object_context( $type, $object ) ),
 			)
 		);
@@ -75,6 +76,7 @@ final class Simple_SEO_Social {
 				'type'        => 'textarea',
 				'order'       => 40,
 				'group'       => 'social',
+				'variables'   => true,
 				'preview'     => static fn( string $type, $object ): string => self::description( self::object_context( $type, $object ) ),
 			)
 		);

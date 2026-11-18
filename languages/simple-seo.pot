@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.56.0\n"
+"Project-Id-Version: Simple SEO 0.57.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-18T20:34:14+00:00\n"
+"POT-Creation-Date: 2026-11-18T20:57:17+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: simple-seo\n"
@@ -192,14 +192,14 @@ msgstr ""
 
 #: includes/class-simple-seo-abilities.php:563
 #: includes/class-simple-seo-cli-fields.php:113
-#: includes/class-simple-seo-fields.php:402
+#: includes/class-simple-seo-fields.php:404
 msgid "There is no such term with SEO fields."
 msgstr ""
 
 #: includes/class-simple-seo-abilities.php:563
 #: includes/class-simple-seo-cli-fields.php:113
 #: includes/class-simple-seo-cli.php:124
-#: includes/class-simple-seo-fields.php:402
+#: includes/class-simple-seo-fields.php:404
 msgid "There is no such post with SEO fields."
 msgstr ""
 
@@ -240,7 +240,7 @@ msgid "Access"
 msgstr ""
 
 #: includes/class-simple-seo-admin.php:74
-#: includes/class-simple-seo-editor.php:82
+#: includes/class-simple-seo-editor.php:86
 msgid "Search appearance"
 msgstr ""
 
@@ -265,14 +265,14 @@ msgid "Plugin"
 msgstr ""
 
 #: includes/class-simple-seo-admin.php:165
-#: includes/class-simple-seo-editor.php:28
-#: includes/class-simple-seo-editor.php:182
+#: includes/class-simple-seo-editor.php:31
+#: includes/class-simple-seo-editor.php:187
 #: includes/class-simple-seo-scores.php:112
 msgid "SEO"
 msgstr ""
 
 #: includes/class-simple-seo-admin.php:173
-#: includes/class-simple-seo-admin.php:349
+#: includes/class-simple-seo-admin.php:358
 #: includes/class-simple-seo-indexnow.php:78
 msgid "Settings"
 msgstr ""
@@ -295,23 +295,23 @@ msgstr ""
 msgid "%s is active, so Simple SEO prints nothing on the site — no titles, descriptions or other tags — and pages never get them twice. Deactivate it when you switch to Simple SEO; the settings and fields here can be prepared in the meantime."
 msgstr ""
 
-#: includes/class-simple-seo-admin.php:324
+#: includes/class-simple-seo-admin.php:333
 msgid "Choose an image"
 msgstr ""
 
-#: includes/class-simple-seo-admin.php:325
+#: includes/class-simple-seo-admin.php:334
 msgid "Use this image"
 msgstr ""
 
-#: includes/class-simple-seo-admin.php:327
+#: includes/class-simple-seo-admin.php:336
 msgid "Choose image"
 msgstr ""
 
-#: includes/class-simple-seo-admin.php:328
+#: includes/class-simple-seo-admin.php:337
 msgid "Remove image"
 msgstr ""
 
-#: includes/class-simple-seo-admin.php:339
+#: includes/class-simple-seo-admin.php:348
 msgid "Insert structure"
 msgstr ""
 
@@ -636,7 +636,7 @@ msgstr ""
 
 #: includes/class-simple-seo-analysis.php:449
 #: includes/class-simple-seo-bulk.php:329
-#: includes/class-simple-seo-titles.php:63
+#: includes/class-simple-seo-titles.php:64
 msgid "Meta description"
 msgstr ""
 
@@ -729,7 +729,7 @@ msgstr ""
 
 #. translators: %d: page number.
 #: includes/class-simple-seo-breadcrumbs.php:125
-#: includes/class-simple-seo-variables.php:149
+#: includes/class-simple-seo-variables.php:259
 #, php-format
 msgid "Page %d"
 msgstr ""
@@ -791,15 +791,15 @@ msgstr ""
 
 #. translators: %s: the title or description the page has with the saved values.
 #: includes/class-simple-seo-bulk.php:304
-#: includes/class-simple-seo-bulk.php:371
-#: includes/class-simple-seo-editor.php:287
+#: includes/class-simple-seo-bulk.php:374
+#: includes/class-simple-seo-editor.php:292
 #, php-format
 msgid "Now: %s"
 msgstr ""
 
 #: includes/class-simple-seo-bulk.php:305
-#: includes/class-simple-seo-bulk.php:372
-#: includes/class-simple-seo-editor.php:288
+#: includes/class-simple-seo-bulk.php:375
+#: includes/class-simple-seo-editor.php:293
 msgid "Now: none from Simple SEO."
 msgstr ""
 
@@ -828,44 +828,44 @@ msgid "Image"
 msgstr ""
 
 #: includes/class-simple-seo-bulk.php:328
-#: includes/class-simple-seo-bulk.php:404
+#: includes/class-simple-seo-bulk.php:407
 msgid "Alt text"
 msgstr ""
 
 #: includes/class-simple-seo-bulk.php:328
 #: includes/class-simple-seo-bulk.php:329
-#: includes/class-simple-seo-bulk.php:404
+#: includes/class-simple-seo-bulk.php:407
 msgid "Title"
 msgstr ""
 
 #: includes/class-simple-seo-bulk.php:347
-#: includes/class-simple-seo-bulk.php:392
+#: includes/class-simple-seo-bulk.php:395
 msgid "(no title)"
 msgstr ""
 
 #. translators: %s: alt text made from the name of an image.
-#: includes/class-simple-seo-bulk.php:419
+#: includes/class-simple-seo-bulk.php:422
 #, php-format
 msgid "From its name: %s"
 msgstr ""
 
-#: includes/class-simple-seo-bulk.php:420
+#: includes/class-simple-seo-bulk.php:423
 msgid "Its name says nothing of the picture: describe what it shows."
 msgstr ""
 
-#: includes/class-simple-seo-bulk.php:493
+#: includes/class-simple-seo-bulk.php:496
 msgid "There is no such post or term with SEO fields."
 msgstr ""
 
-#: includes/class-simple-seo-bulk.php:500
+#: includes/class-simple-seo-bulk.php:503
 msgid "You may not edit these fields."
 msgstr ""
 
-#: includes/class-simple-seo-bulk.php:534
+#: includes/class-simple-seo-bulk.php:537
 msgid "There is no such image."
 msgstr ""
 
-#: includes/class-simple-seo-bulk.php:539
+#: includes/class-simple-seo-bulk.php:542
 msgid "You may not edit this image."
 msgstr ""
 
@@ -1070,12 +1070,12 @@ msgstr ""
 msgid "DataForSEO answered %1$s: %2$s"
 msgstr ""
 
-#: includes/class-simple-seo-editor.php:85
+#: includes/class-simple-seo-editor.php:89
 #: includes/class-simple-seo-keywords.php:1620
 msgid "Other"
 msgstr ""
 
-#: includes/class-simple-seo-editor.php:88
+#: includes/class-simple-seo-editor.php:92
 #: includes/class-simple-seo-keywords.php:857
 #: includes/class-simple-seo-search-console.php:81
 #: includes/class-simple-seo-search-console.php:96
@@ -1085,7 +1085,7 @@ msgstr ""
 msgid "Search Console"
 msgstr ""
 
-#: includes/class-simple-seo-editor.php:108
+#: includes/class-simple-seo-editor.php:112
 msgid "Fields filled in"
 msgstr ""
 
@@ -1126,43 +1126,43 @@ msgid "questions"
 msgstr ""
 
 #. translators: %s: key of a field, e.g. title.
-#: includes/class-simple-seo-fields.php:415
+#: includes/class-simple-seo-fields.php:417
 #, php-format
 msgid "There is no SEO field %s here."
 msgstr ""
 
 #. translators: %s: key of a field, e.g. title.
-#: includes/class-simple-seo-fields.php:426
+#: includes/class-simple-seo-fields.php:428
 #, php-format
 msgid "You may not edit the SEO field %s."
 msgstr ""
 
 #. translators: %s: key of a field, e.g. nofollow.
-#: includes/class-simple-seo-fields.php:499
+#: includes/class-simple-seo-fields.php:501
 #, php-format
 msgid "The SEO field %s takes yes or no (1 or 0, true or false)."
 msgstr ""
 
 #. translators: %s: key of a field, e.g. og_image.
-#: includes/class-simple-seo-fields.php:502
+#: includes/class-simple-seo-fields.php:504
 #, php-format
 msgid "The SEO field %s takes the ID of an image in the media library."
 msgstr ""
 
 #. translators: %s: key of a field, e.g. canonical.
-#: includes/class-simple-seo-fields.php:505
+#: includes/class-simple-seo-fields.php:507
 #, php-format
 msgid "The SEO field %s takes a full address that starts with https:// or http://."
 msgstr ""
 
 #. translators: 1: key of a field, e.g. schema_page_type; 2: the values it takes.
-#: includes/class-simple-seo-fields.php:511
+#: includes/class-simple-seo-fields.php:513
 #, php-format
 msgid "The SEO field %1$s takes one of: %2$s."
 msgstr ""
 
 #. translators: %s: key of a field, e.g. title.
-#: includes/class-simple-seo-fields.php:516
+#: includes/class-simple-seo-fields.php:518
 #, php-format
 msgid "The SEO field %s cannot hold this value."
 msgstr ""
@@ -1274,7 +1274,7 @@ msgid "The page has expired. Open it again and repeat."
 msgstr ""
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.56.0: the desktop and mobile switch of the preview as a pill of icons. Version 0.55.0: the fields of the SEO block in one width and one spacing. Version 0.54.0: the sections of the SEO block as one accordion, one open at a time. Version 0.53.0: the SEO block of a post in sections that fold. Version 0.52.0: the searches of the keyword research to download as a CSV table or a TXT list. Version 0.51.0: volumes, competition and cost per click of the searches from the Keyword Planner of Google Ads, free. Version 0.50.0: volumes, difficulty, cost per click and Google Trends of the searches from DataForSEO. Version 0.49.0: keyword research — the searches around a phrase from Google’s suggestions and Search Console, its questions and topics, and the structure of an article by the AI. Version 0.48.0: the groups of the settings fold, the menu scrolls with the page, and the AI tab opens at once. Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgid "Version 0.57.0: the variables in the fields shown as chips with what they become on the page. Version 0.56.0: the desktop and mobile switch of the preview as a pill of icons. Version 0.55.0: the fields of the SEO block in one width and one spacing. Version 0.54.0: the sections of the SEO block as one accordion, one open at a time. Version 0.53.0: the SEO block of a post in sections that fold. Version 0.52.0: the searches of the keyword research to download as a CSV table or a TXT list. Version 0.51.0: volumes, competition and cost per click of the searches from the Keyword Planner of Google Ads, free. Version 0.50.0: volumes, difficulty, cost per click and Google Trends of the searches from DataForSEO. Version 0.49.0: keyword research — the searches around a phrase from Google’s suggestions and Search Console, its questions and topics, and the structure of an article by the AI. Version 0.48.0: the groups of the settings fold, the menu scrolls with the page, and the AI tab opens at once. Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
 msgstr ""
 
 #: includes/class-simple-seo-google-ads.php:85
@@ -1979,7 +1979,7 @@ msgstr ""
 
 #: includes/class-simple-seo-local.php:152
 #: includes/class-simple-seo-schema.php:370
-#: includes/class-simple-seo-titles.php:82
+#: includes/class-simple-seo-titles.php:84
 msgid "General"
 msgstr ""
 
@@ -2264,7 +2264,7 @@ msgstr ""
 
 #. translators: 1: page number, 2: number of pages.
 #: includes/class-simple-seo-markdown.php:747
-#: includes/class-simple-seo-variables.php:147
+#: includes/class-simple-seo-variables.php:257
 #, php-format
 msgid "Page %1$d of %2$d"
 msgstr ""
@@ -2780,7 +2780,7 @@ msgid "Meta description: none, search engines will show a piece of the page's te
 msgstr ""
 
 #: includes/class-simple-seo-social.php:59
-#: includes/class-simple-seo-social.php:94
+#: includes/class-simple-seo-social.php:96
 msgid "Social networks"
 msgstr ""
 
@@ -2792,20 +2792,20 @@ msgstr ""
 msgid "How a shared link is titled on Facebook, Telegram, X and the like. Leave empty to use the SEO title."
 msgstr ""
 
-#: includes/class-simple-seo-social.php:73
+#: includes/class-simple-seo-social.php:74
 msgid "Description for social networks"
 msgstr ""
 
-#: includes/class-simple-seo-social.php:74
+#: includes/class-simple-seo-social.php:75
 msgid "Leave empty to use the meta description."
 msgstr ""
 
-#: includes/class-simple-seo-social.php:84
-#: includes/views/tab-special.php:64
+#: includes/class-simple-seo-social.php:86
+#: includes/views/tab-special.php:66
 msgid "Image for social networks"
 msgstr ""
 
-#: includes/class-simple-seo-social.php:85
+#: includes/class-simple-seo-social.php:87
 msgid "Best 1200 × 630 pixels. Without it: the featured image, then the default image from the settings."
 msgstr ""
 
@@ -2900,105 +2900,154 @@ msgstr ""
 msgid "The title search engines show. Leave empty to use the template; variables like {title}, {sep} and {site} work here too."
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:64
+#: includes/class-simple-seo-titles.php:65
 msgid "The text under the title in search results. Leave empty to use the template."
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:73
+#: includes/class-simple-seo-titles.php:75
 msgid "Titles"
 msgstr ""
 
 #. translators: %s: post type name, plural.
-#: includes/class-simple-seo-titles.php:294
+#: includes/class-simple-seo-titles.php:296
 #, php-format
 msgid "Archive: %s"
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:297
+#: includes/class-simple-seo-titles.php:299
 msgid "Author archives"
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:298
+#: includes/class-simple-seo-titles.php:300
 msgid "Date archives"
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:299
+#: includes/class-simple-seo-titles.php:301
 #: includes/views/tab-cleanup.php:55
 msgid "Search results"
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:303
+#: includes/class-simple-seo-titles.php:305
 msgid "Post types"
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:307
+#: includes/class-simple-seo-titles.php:309
 msgid "Taxonomies"
 msgstr ""
 
-#: includes/class-simple-seo-titles.php:311
+#: includes/class-simple-seo-titles.php:313
 msgid "Archives and search"
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:43
-msgid "Title of the post, term, archive or author; on search results and 404 a ready phrase"
-msgstr ""
-
-#: includes/class-simple-seo-variables.php:44
-msgid "Site title"
-msgstr ""
-
-#: includes/class-simple-seo-variables.php:45
-msgid "Tagline"
-msgstr ""
-
-#: includes/class-simple-seo-variables.php:46
-msgid "Separator chosen in the settings"
-msgstr ""
-
-#: includes/class-simple-seo-variables.php:47
-msgid "Page number, only from the second page on: \"Page 2 of 5\""
-msgstr ""
-
-#: includes/class-simple-seo-variables.php:48
-msgid "Excerpt of the post (or the start of its text), description of the term, author or post type"
-msgstr ""
-
-#: includes/class-simple-seo-variables.php:49
-msgid "Category of the post"
-msgstr ""
-
 #: includes/class-simple-seo-variables.php:50
-msgid "Author name"
+msgid "title"
 msgstr ""
 
 #: includes/class-simple-seo-variables.php:51
-msgid "Publication date of the post, or the date of a date archive"
+msgid "site title"
 msgstr ""
 
 #: includes/class-simple-seo-variables.php:52
-msgid "Name of the post type"
+msgid "tagline"
 msgstr ""
 
 #: includes/class-simple-seo-variables.php:53
-msgid "What was searched for"
+msgid "separator"
 msgstr ""
 
 #: includes/class-simple-seo-variables.php:54
+msgid "page number"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:55
+msgid "excerpt"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:56
+msgid "category"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:57
+msgid "author"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:58
+msgid "date"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:59
+msgid "post type"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:60
+#: includes/class-simple-seo-variables.php:143
+msgid "search words"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:61
+msgid "year"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:153
+msgid "Title of the post, term, archive or author; on search results and 404 a ready phrase"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:154
+msgid "Site title"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:155
+msgid "Tagline"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:156
+msgid "Separator chosen in the settings"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:157
+msgid "Page number, only from the second page on: \"Page 2 of 5\""
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:158
+msgid "Excerpt of the post (or the start of its text), description of the term, author or post type"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:159
+msgid "Category of the post"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:160
+msgid "Author name"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:161
+msgid "Publication date of the post, or the date of a date archive"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:162
+msgid "Name of the post type"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:163
+msgid "What was searched for"
+msgstr ""
+
+#: includes/class-simple-seo-variables.php:164
 msgid "Current year"
 msgstr ""
 
 #. translators: %s: what was searched for.
-#: includes/class-simple-seo-variables.php:130
+#: includes/class-simple-seo-variables.php:240
 #, php-format
 msgid "Search results for \"%s\""
 msgstr ""
 
-#: includes/class-simple-seo-variables.php:132
+#: includes/class-simple-seo-variables.php:242
 msgid "Page not found"
 msgstr ""
 
 #. translators: format of a month archive date, see https://www.php.net/manual/datetime.format.php
-#: includes/class-simple-seo-variables.php:235
+#: includes/class-simple-seo-variables.php:345
 msgctxt "month archive date format"
 msgid "F Y"
 msgstr ""
@@ -5028,17 +5077,17 @@ msgstr ""
 msgid "Edit the page"
 msgstr ""
 
-#: includes/views/tab-special.php:40
-#: includes/views/tab-titles.php:78
+#: includes/views/tab-special.php:42
+#: includes/views/tab-titles.php:80
 msgid "Title template"
 msgstr ""
 
-#: includes/views/tab-special.php:41
-#: includes/views/tab-titles.php:79
+#: includes/views/tab-special.php:43
+#: includes/views/tab-titles.php:81
 msgid "Description template"
 msgstr ""
 
-#: includes/views/tab-special.php:69
+#: includes/views/tab-special.php:71
 msgid "Without it: the default image from the Social networks tab."
 msgstr ""
 

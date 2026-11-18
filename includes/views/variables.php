@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <style>
 	.simple-seo-template { display: flex; gap: 6px; align-items: flex-start; margin: 2px 0 10px; }
-	.simple-seo-template input { flex: 1 1 auto; min-width: 0; }
+	.simple-seo-template input, .simple-seo-template .simple-seo-vars-wrap { flex: 1 1 auto; min-width: 0; }
 	.simple-seo-template .button { flex: 0 0 auto; }
 	.simple-seo-variables code { white-space: nowrap; }
 	@media (max-width: 600px) { .simple-seo-template { flex-wrap: wrap; } }

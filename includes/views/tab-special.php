@@ -36,6 +36,8 @@ require __DIR__ . '/language-notice.php';
 	<table class="form-table" role="presentation">
 		<tbody>
 		<?php
+		// What the variables become on this page, for the chips.
+		$simple_seo_vars = Simple_SEO_Variables::attribute( Simple_SEO_Variables::values( Simple_SEO_Variables::example( $simple_seo_slot ) ) );
 		foreach ( array(
 			'title'       => __( 'Title template', 'simple-seo' ),
 			'description' => __( 'Description template', 'simple-seo' ),
@@ -49,7 +51,7 @@ require __DIR__ . '/language-notice.php';
 					<div class="simple-seo-template">
 						<input type="text" class="large-text code" id="<?php echo esc_attr( $simple_seo_id ); ?>"
 							name="<?php echo esc_attr( $simple_seo_option . '[' . $simple_seo_slot . '][' . $simple_seo_which . ']' ); ?>"
-							value="<?php echo esc_attr( Simple_SEO_Titles::template( $simple_seo_slot, $simple_seo_which ) ); ?>">
+							value="<?php echo esc_attr( Simple_SEO_Titles::template( $simple_seo_slot, $simple_seo_which ) ); ?>"<?php echo $simple_seo_vars; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped by attribute(). ?>>
 						<?php
 						if ( '' !== $simple_seo_default ) {
 							echo Simple_SEO_Admin::mask_button( $simple_seo_id, $simple_seo_default ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.

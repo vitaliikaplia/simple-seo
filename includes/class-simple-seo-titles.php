@@ -53,6 +53,7 @@ final class Simple_SEO_Titles {
 				'label'       => __( 'SEO title', 'simple-seo' ),
 				'description' => __( 'The title search engines show. Leave empty to use the template; variables like {title}, {sep} and {site} work here too.', 'simple-seo' ),
 				'order'       => 10,
+				'variables'   => true,
 				// What the page shows is in the search result preview above the fields (Simple_SEO_Snippet).
 				'mask'        => static fn( string $type, $object ): string => self::template( self::slot_for( self::object_context( $type, $object ) ), 'title' ),
 			)
@@ -64,6 +65,7 @@ final class Simple_SEO_Titles {
 				'description' => __( 'The text under the title in search results. Leave empty to use the template.', 'simple-seo' ),
 				'type'        => 'textarea',
 				'order'       => 20,
+				'variables'   => true,
 				'mask'        => static fn( string $type, $object ): string => self::template( self::slot_for( self::object_context( $type, $object ) ), 'description' ),
 			)
 		);

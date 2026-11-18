@@ -89,6 +89,8 @@ final class Simple_SEO_Fields {
 				'group'       => '',
 				'mask'        => null,
 				'preview'     => null,
+				// Whether it takes variables: the SEO block shows them as chips with their values.
+				'variables'   => false,
 			),
 			$args,
 			array( 'key' => $key )

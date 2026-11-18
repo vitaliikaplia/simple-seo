@@ -1418,6 +1418,66 @@ try {
 	sseo_check( 'an archive row only for a type with an archive', str_contains( $sseo_html, '[archive:sseo_book]' ) && ! str_contains( $sseo_html, '[archive:post]' ) );
 	sseo_check( 'author, date and search rows', str_contains( $sseo_html, '[templates][author]' ) && str_contains( $sseo_html, '[templates][date]' ) && str_contains( $sseo_html, '[templates][search]' ) );
 	sseo_check( 'a saved template is shown, the default where none is saved', str_contains( $sseo_html, 'value="Own {excerpt}"' ) && str_contains( $sseo_html, 'value="{title} {page} {sep} {site}"' ) );
+	$sseo_vals = (bool) preg_match( '/id="simple-seo-template-post-post-title"[^>]* data-simple-seo-vars="([^"]*)"/', $sseo_html, $sseo_match ) ? json_decode( html_entity_decode( $sseo_match[1], ENT_QUOTES ), true ) : null;
+	$sseo_val  = get_posts(
+		array(
+			'post_type'   => 'post',
+			'post_status' => 'publish',
+			'numberposts' => 1,
+		)
+	);
+	sseo_check(
+		'each template shows its variables on an example page of its slot: for posts the latest post, the site and the separator as saved',
+		is_array( $sseo_vals ) && array_keys( Simple_SEO_Variables::labels() ) === array_keys( $sseo_vals ) && get_option( 'blogname' ) === $sseo_vals['site'] && Simple_SEO_Titles::separator() === $sseo_vals['sep']
+			&& $sseo_val && Simple_SEO_Variables::plain( $sseo_val[0]->post_title ) === $sseo_vals['title'] && '' === $sseo_vals['page']
+			&& 2 * substr_count( $sseo_html, '<tr>' ) >= substr_count( $sseo_html, ' data-simple-seo-vars="' ) && substr_count( $sseo_html, ' data-simple-seo-vars="' ) === substr_count( $sseo_html, '[templates][' ),
+		array( $sseo_vals, $sseo_val ? $sseo_val[0]->post_title : null, substr_count( $sseo_html, '<tr>' ), substr_count( $sseo_html, ' data-simple-seo-vars="' ), substr_count( $sseo_html, '[templates][' ) )
+	);
+	$sseo_vals = array();
+	foreach ( array( 'post:page', 'term:category', 'archive:sseo_book', 'author', 'date', 'search', '404', 'home', 'password', 'nope' ) as $sseo_name ) {
+		$sseo_val                = Simple_SEO_Variables::example( $sseo_name );
+		$sseo_vals[ $sseo_name ] = array( $sseo_val->kind, Simple_SEO_Variables::value( 'title', $sseo_val ) );
+	}
+	$sseo_val = get_terms(
+		array(
+			'taxonomy'   => 'category',
+			'number'     => 1,
+			'orderby'    => 'count',
+			'order'      => 'DESC',
+			'hide_empty' => false,
+		)
+	);
+	sseo_check(
+		'the example pages: the latest page, the category with most posts, the archive, an author, this month, a search, a page not found, the home page, a post for its password form; nothing for an unknown slot',
+		Simple_SEO_Context::SINGULAR === $sseo_vals['post:page'][0]
+			&& Simple_SEO_Variables::plain(
+				get_posts(
+					array(
+						'post_type'   => 'page',
+						'post_status' => 'publish',
+						'numberposts' => 1,
+					)
+				)[0]->post_title
+			) === $sseo_vals['post:page'][1]
+			&& array( Simple_SEO_Context::TERM, Simple_SEO_Variables::plain( $sseo_val[0]->name ) ) === $sseo_vals['term:category']
+			&& Simple_SEO_Context::POST_TYPE_ARCHIVE === $sseo_vals['archive:sseo_book'][0] && Simple_SEO_Context::AUTHOR === $sseo_vals['author'][0]
+			&& Simple_SEO_Context::DATE === $sseo_vals['date'][0] && wp_date( 'F Y' ) === Simple_SEO_Variables::value( 'date', Simple_SEO_Variables::example( 'date' ) )
+			&& Simple_SEO_Context::SEARCH === $sseo_vals['search'][0] && 'search words' === Simple_SEO_Variables::value( 'search', Simple_SEO_Variables::example( 'search' ) )
+			&& Simple_SEO_Context::NOT_FOUND === $sseo_vals['404'][0] && Simple_SEO_Context::HOME === $sseo_vals['home'][0] && Simple_SEO_Context::SINGULAR === $sseo_vals['password'][0]
+			&& array( Simple_SEO_Context::OTHER, '' ) === $sseo_vals['nope'],
+		$sseo_vals
+	);
+	Simple_SEO_Variables::register( 'sseo_shop', 'The shop of the test', static fn(): string => 'Test shop' );
+	$sseo_vals = array( Simple_SEO_Variables::names(), Simple_SEO_Variables::values( Simple_SEO_Variables::example( 'nope' ) ), Simple_SEO_Variables::attribute( array( 'title' => 'A "b" <c>' ) ) );
+	sseo_check(
+		'the chips: a short name for each variable, its own name for one of another plugin; the values of a page; the attribute escaped',
+		'separator' === $sseo_vals[0]['sep'] && 'page number' === $sseo_vals[0]['page'] && 'sseo_shop' === $sseo_vals[0]['sseo_shop'] && array_keys( Simple_SEO_Variables::labels() ) === array_keys( $sseo_vals[0] )
+			&& 'Test shop' === $sseo_vals[1]['sseo_shop'] && get_option( 'blogname' ) === $sseo_vals[1]['site']
+			&& ' data-simple-seo-vars="{&quot;title&quot;:&quot;A \\&quot;b\\&quot; &lt;c&gt;&quot;}"' === $sseo_vals[2],
+		$sseo_vals
+	);
+	$sseo_val = new ReflectionProperty( Simple_SEO_Variables::class, 'variables' );
+	$sseo_val->setValue( null, array_diff_key( $sseo_val->getValue(), array( 'sseo_shop' => true ) ) );
 	sseo_check( 'structure buttons carry the default', str_contains( $sseo_html, 'class="button simple-seo-mask"' ) && str_contains( $sseo_html, 'data-mask="{excerpt}"' ) );
 	sseo_check( 'no structure button where the default is empty (search description)', ! str_contains( $sseo_html, 'data-target="simple-seo-template-search-description"' ) );
 	sseo_check( 'the variables are listed', str_contains( $sseo_html, '<code>{excerpt}</code>' ) && str_contains( $sseo_html, '<code>{sep}</code>' ) );
@@ -1693,6 +1753,15 @@ try {
 			&& str_contains( $sseo_vals['indexing'][3] ?? '', '<p class="description simple-seo-preview">Now: ' ) && 1 === substr_count( $sseo_html, '<br>' ) && str_contains( $sseo_html, '</span><br><span class="simple-seo-snippet-url">' )
 			&& str_contains( $sseo_vals['indexing'][3] ?? '', 'name="simple_seo[index]"' ) && ! str_contains( $sseo_vals['social'][3] ?? '', 'name="simple_seo[index]"' ) && ! str_contains( $sseo_html, '<h4' ) && ! isset( $sseo_vals['gsc'] ),
 		array( $sseo_val, $sseo_html )
+	);
+	$sseo_val = esc_attr( (string) wp_json_encode( Simple_SEO_Variables::values( Simple_SEO_Context::for_post( get_post( $sseo_p['bare'] ) ) ), JSON_UNESCAPED_UNICODE ) );
+	sseo_check(
+		'meta box: the fields with variables — SEO title, description and those of social networks — carry what the variables become on this post; the others not',
+		4 === substr_count( $sseo_html, ' data-simple-seo-vars="' . $sseo_val . '"' )
+			&& (bool) preg_match( '/id="simple-seo-field-title"[^>]* data-simple-seo-vars="/', $sseo_html ) && (bool) preg_match( '/id="simple-seo-field-og_description"[^>]* data-simple-seo-vars="/', $sseo_html )
+			&& ! preg_match( '/id="simple-seo-field-(?:keyphrase|canonical|keyphrases)"[^>]* data-simple-seo-vars="/', $sseo_html )
+			&& str_contains( $sseo_val, '&quot;title&quot;:&quot;' . esc_attr( Simple_SEO_Variables::plain( get_the_title( $sseo_p['bare'] ) ) ) . '&quot;' ),
+		$sseo_html
 	);
 	update_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'nofollow' ), '1' );
 	update_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'canonical' ), 'https://example.com/elsewhere/' );
@@ -1989,6 +2058,12 @@ try {
 	sseo_check( 'the Special pages tab sits between Titles and Social networks', strpos( $sseo_html, '>Titles<' ) < strpos( $sseo_html, '>Special pages<' ) && strpos( $sseo_html, '>Special pages<' ) < strpos( $sseo_html, '>Social networks<' ) );
 	sseo_check( 'the tab posts its own group', str_contains( $sseo_html, "value='simple-seo-special'" ) );
 	sseo_check( 'the tab: three sections with title and description templates', 6 === preg_match_all( '/name="simple_seo_special\[(?:home|404|password)\]\[(?:title|description)\]"/', $sseo_html ) && str_contains( $sseo_html, 'value="Home of {site}"' ) );
+	sseo_check(
+		'the tab: each template shows its variables on its page — the home page, a page not found',
+		6 === preg_match_all( '/name="simple_seo_special\[(?:home|404|password)\]\[(?:title|description)\]"\s+value="[^"]*" data-simple-seo-vars="/', $sseo_html )
+			&& str_contains( $sseo_html, esc_attr( (string) wp_json_encode( Simple_SEO_Variables::values( Simple_SEO_Variables::example( '404' ) ), JSON_UNESCAPED_UNICODE ) ) ),
+		$sseo_html
+	);
 	sseo_check( 'the tab: image pickers for the home page and protected content only', str_contains( $sseo_html, 'name="simple_seo_special[home][image]" value="' . $sseo_og . '"' ) && str_contains( $sseo_html, 'name="simple_seo_special[password][image]"' ) && ! str_contains( $sseo_html, 'simple_seo_special[404][image]' ) );
 	sseo_check( 'the tab: the static front page is named, with a link to edit it', str_contains( $sseo_html, 'is the page &quot;Front&quot;' ) && str_contains( $sseo_html, 'post=' . $sseo_p['front'] . '&#038;action=edit' ), $sseo_html );
 	sseo_check( 'the tab: the variables and structure buttons', str_contains( $sseo_html, 'simple-seo-variables' ) && str_contains( $sseo_html, 'data-target="simple-seo-special-password-title"' ) );
@@ -2559,7 +2634,8 @@ try {
 		str_contains( $sseo_html, '<tr data-object="post" data-id="' . $sseo_bk_ids['four'] . '">' )
 			&& str_contains( $sseo_html, '<a href="' . esc_url( get_edit_post_link( $sseo_bk_ids['four'] ) ) . '">Bulk Тест four</a>' )
 			&& str_contains( $sseo_html, '<span class="post-state">Draft</span>' )
-			&& str_contains( $sseo_html, '<input type="text" class="large-text" value="" data-field="title" aria-label="SEO title: Bulk Тест four" placeholder="' . esc_attr( $sseo_mask ) . '">' )
+			&& str_contains( $sseo_html, '<input type="text" class="large-text" value="" data-field="title" aria-label="SEO title: Bulk Тест four" placeholder="' . esc_attr( $sseo_mask ) . '" data-simple-seo-vars="' . esc_attr( (string) wp_json_encode( Simple_SEO_Variables::values( Simple_SEO_Context::for_post( get_post( $sseo_bk_ids['four'] ) ) ), JSON_UNESCAPED_UNICODE ) ) . '">' )
+			&& 2 === substr_count( $sseo_html, ' data-simple-seo-vars="' ) && str_contains( $sseo_html, '&quot;title&quot;:&quot;Bulk Тест four&quot;' )
 			&& str_contains( $sseo_html, '<textarea rows="2" class="large-text" data-field="description"' )
 			&& str_contains( $sseo_html, 'data-now="title">Now: ' . esc_html( Simple_SEO_Bulk::now( get_post( $sseo_bk_ids['four'] ) )['title'] ) . '</p>' )
 			&& str_contains( $sseo_html, 'data-now="description">Now: none from Simple SEO.</p>' )
@@ -2571,7 +2647,7 @@ try {
 	wp_set_current_user( $sseo_au );
 	$sseo_html = Simple_SEO_Bulk::row( get_post( $sseo_bk_ids['one'] ) );
 	wp_set_current_user( $sseo_ed );
-	sseo_check( 'a row the user may not edit: the fields disabled, the name without a link', 2 === substr_count( $sseo_html, ' disabled>' ) && str_contains( $sseo_html, '<strong>Bulk Тест one</strong>' ), $sseo_html );
+	sseo_check( 'a row the user may not edit: the fields disabled, the name without a link', 2 === substr_count( $sseo_html, ' disabled data-simple-seo-vars="' ) && str_contains( $sseo_html, '<strong>Bulk Тест one</strong>' ), $sseo_html );
 	$sseo['posts']['bulk_untitled'] = (int) wp_insert_post( array( 'post_title' => '', 'post_content' => 'Text', 'post_status' => 'draft' ) );
 	sseo_check( 'a row of a post without a title', str_contains( Simple_SEO_Bulk::row( get_post( $sseo['posts']['bulk_untitled'] ) ), '>(no title)</a>' ) );
 	$sseo_html = Simple_SEO_Bulk::row( get_term( $sseo_bk_terms['alpha'] ) );
@@ -2632,6 +2708,7 @@ try {
 	set_current_screen( 'dashboard' );
 	Simple_SEO_Admin::enqueue( Simple_SEO_Bulk::hook() );
 	sseo_check( 'the page loads admin.js and admin.css, not the media library', wp_script_is( 'simple-seo-admin', 'enqueued' ) && wp_style_is( 'simple-seo-admin', 'enqueued' ) && 0 === did_action( 'wp_enqueue_media' ) );
+	sseo_check( 'admin.js knows the variables: their meanings and short names', str_contains( (string) wp_scripts()->get_data( 'simple-seo-admin', 'data' ), 'var simpleSeoVariables = {"labels":{' ) && str_contains( (string) wp_scripts()->get_data( 'simple-seo-admin', 'data' ), '"names":{"title":"title"' ) );
 	if ( null !== $sseo_val ) {
 		$GLOBALS['wp_actions']['wp_enqueue_media'] = $sseo_val;
 	}
@@ -11472,6 +11549,12 @@ MD === $sseo_val,
 		$sseo_html
 	);
 	sseo_check( 'the form of a term: the title and the description', 2 === substr_count( $sseo_term, 'class="simple-seo-ai"' ) && $sseo_ai_at( $sseo_term, 'title', $sseo_mask( 'title' ) ) && $sseo_ai_at( $sseo_term, 'description', $sseo_mask( 'description' ) ), $sseo_term );
+	sseo_check(
+		'the form of a term: its fields with variables carry what the variables become on its archive',
+		substr_count( $sseo_term, ' data-simple-seo-vars="' . esc_attr( (string) wp_json_encode( Simple_SEO_Variables::values( Simple_SEO_Context::for_term( get_term( $sseo_cat_id ) ) ), JSON_UNESCAPED_UNICODE ) ) . '"' ) >= 2
+			&& str_contains( $sseo_term, '&quot;title&quot;:&quot;' . esc_attr( Simple_SEO_Variables::plain( get_term( $sseo_cat_id )->name ) ) . '&quot;' ),
+		$sseo_term
+	);
 	$GLOBALS['sseo_ai_configured'] = false;
 	Simple_SEO_AI::flush();
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );

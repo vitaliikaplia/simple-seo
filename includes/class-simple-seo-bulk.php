@@ -349,6 +349,8 @@ final class Simple_SEO_Bulk {
 		$states  = $object instanceof WP_Post ? implode( ', ', array_map( 'wp_strip_all_tags', get_post_states( $object ) ) ) : '';
 		$now     = self::now( $object );
 		$user_id = get_current_user_id();
+		// What the variables become on the page of this row: the fields show them as chips.
+		$vars = Simple_SEO_Variables::attribute( Simple_SEO_Variables::values( $object instanceof WP_Term ? Simple_SEO_Context::for_term( $object ) : Simple_SEO_Context::for_post( $object ) ) );
 
 		$cells = '';
 		foreach ( self::FIELDS as $key ) {
@@ -357,11 +359,12 @@ final class Simple_SEO_Bulk {
 			$mask  = is_callable( $field['mask'] ?? null ) ? (string) call_user_func( $field['mask'], $type, $object ) : '';
 			$label = sprintf( '%s: %s', (string) ( $field['label'] ?? $key ), $name );
 			$attrs = sprintf(
-				' data-field="%1$s" aria-label="%2$s"%3$s%4$s',
+				' data-field="%1$s" aria-label="%2$s"%3$s%4$s%5$s',
 				esc_attr( $key ),
 				esc_attr( $label ),
 				'' !== $mask ? ' placeholder="' . esc_attr( $mask ) . '"' : '',
-				Simple_SEO_Fields::user_can_edit( $user_id, $type, $id, $key ) ? '' : ' disabled'
+				Simple_SEO_Fields::user_can_edit( $user_id, $type, $id, $key ) ? '' : ' disabled',
+				! empty( $field['variables'] ) ? $vars : ''
 			);
 			$input = 'description' === $key
 				? sprintf( '<textarea rows="2" class="large-text"%s>%s</textarea>', $attrs, esc_textarea( $value ) )

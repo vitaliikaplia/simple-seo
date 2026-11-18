@@ -1258,3 +1258,102 @@
 		transition: none;
 	}
 }
+
+/*
+ * A field with variables (admin.js): an editor that looks like a text field, each variable a chip
+ * with what it becomes on the page; the field itself stays under it, hidden, with the template.
+ */
+.simple-seo-vars-wrap {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.simple-seo-box .simple-seo-field .simple-seo-vars-wrap {
+	max-width: var(--simple-seo-width);
+}
+
+.form-table .simple-seo-vars-wrap {
+	max-width: 99%;
+}
+
+.simple-seo-vars {
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 36px;
+	padding: 6px 8px;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	background: #fff;
+	color: #2c3338;
+	font-size: 14px;
+	line-height: 22px;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	cursor: text;
+}
+
+.simple-seo-vars.is-multi {
+	min-height: 78px;
+}
+
+.simple-seo-vars:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: 2px solid transparent;
+}
+
+.simple-seo-vars.is-disabled {
+	background: #f6f7f7;
+	color: #a7aaad;
+	cursor: default;
+}
+
+.simple-seo-vars-placeholder {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-color: transparent;
+	background: transparent;
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.simple-seo-vars-placeholder[hidden] {
+	display: none;
+}
+
+.simple-seo-var {
+	display: inline;
+	margin: 0 1px;
+	padding: 1px 6px;
+	border-radius: 4px;
+	background: #e5eff8;
+	color: #0a4b78;
+	line-height: 22px;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	cursor: default;
+}
+
+.simple-seo-var.is-empty {
+	padding: 0 5px;
+	border: 1px dashed #c3c4c7;
+	background: transparent;
+	color: #8c8f94;
+	font-style: italic;
+}
+
+.simple-seo-vars-source {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	margin: -1px !important;
+	padding: 0 !important;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	border: 0 !important;
+	white-space: nowrap;
+}
+

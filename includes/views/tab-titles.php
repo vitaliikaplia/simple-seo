@@ -74,6 +74,8 @@ $simple_seo_option = Simple_SEO_Titles::OPTION;
 				<th scope="row"><?php echo esc_html( $simple_seo_label ); ?></th>
 				<td>
 					<?php
+					// What the variables become on an example page of the slot, for the chips.
+					$simple_seo_vars = Simple_SEO_Variables::attribute( Simple_SEO_Variables::values( Simple_SEO_Variables::example( $simple_seo_slot ) ) );
 					foreach ( array(
 						'title'       => __( 'Title template', 'simple-seo' ),
 						'description' => __( 'Description template', 'simple-seo' ),
@@ -85,7 +87,7 @@ $simple_seo_option = Simple_SEO_Titles::OPTION;
 						<div class="simple-seo-template">
 							<input type="text" class="large-text code" id="<?php echo esc_attr( $simple_seo_id ); ?>"
 								name="<?php echo esc_attr( $simple_seo_option . '[templates][' . $simple_seo_slot . '][' . $simple_seo_which . ']' ); ?>"
-								value="<?php echo esc_attr( Simple_SEO_Titles::template( $simple_seo_slot, $simple_seo_which ) ); ?>">
+								value="<?php echo esc_attr( Simple_SEO_Titles::template( $simple_seo_slot, $simple_seo_which ) ); ?>"<?php echo $simple_seo_vars; // phpcs:ignore WordPress.Security.EscapeOutput -- escaped by attribute(). ?>>
 							<?php
 							if ( '' !== $simple_seo_default ) {
 								echo Simple_SEO_Admin::mask_button( $simple_seo_id, $simple_seo_default ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.

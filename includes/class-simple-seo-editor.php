@@ -13,6 +13,9 @@ final class Simple_SEO_Editor {
 	private const NONCE_FIELD  = 'simple_seo_fields_nonce';
 	private const INPUT        = 'simple_seo';
 
+	/** @var array<string, string> The attribute of the variables of each object, for one render. */
+	private static array $variables = array();
+
 	public static function init(): void {
 		add_action( 'add_meta_boxes', array( self::class, 'add_meta_box' ), 10, 2 );
 		add_action( 'save_post', array( self::class, 'save_post' ), 10, 2 );
@@ -49,7 +52,8 @@ final class Simple_SEO_Editor {
 	 * other groups in the order of their fields, and Search Console last.
 	 */
 	public static function render_meta_box( WP_Post $post ): void {
-		$fields = self::editable_fields( 'post', (int) $post->ID );
+		$fields          = self::editable_fields( 'post', (int) $post->ID );
+		self::$variables = array();
 
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 
@@ -174,7 +178,8 @@ final class Simple_SEO_Editor {
 	}
 
 	public static function render_term_fields( WP_Term $term ): void {
-		$fields = self::editable_fields( 'term', (int) $term->term_id );
+		$fields          = self::editable_fields( 'term', (int) $term->term_id );
+		self::$variables = array();
 		if ( ! $fields ) {
 			return;
 		}
@@ -291,6 +296,28 @@ final class Simple_SEO_Editor {
 	}
 
 	/**
+	 * The attribute of the values of the variables on the page of a post or term, worked out once a
+	 * render.
+	 *
+	 * @param WP_Post|WP_Term|null $object
+	 */
+	private static function variables_of( $object ): string {
+		if ( $object instanceof WP_Post ) {
+			$key = 'post:' . $object->ID;
+		} elseif ( $object instanceof WP_Term ) {
+			$key = 'term:' . $object->term_id;
+		} else {
+			return '';
+		}
+		if ( ! isset( self::$variables[ $key ] ) ) {
+			$context                 = $object instanceof WP_Term ? Simple_SEO_Context::for_term( $object ) : Simple_SEO_Context::for_post( $object );
+			self::$variables[ $key ] = Simple_SEO_Variables::attribute( Simple_SEO_Variables::values( $context ) );
+		}
+
+		return self::$variables[ $key ];
+	}
+
+	/**
 	 * @param array<string, mixed> $field
 	 * @param WP_Post|WP_Term|null $object For options that depend on the object.
 	 */
@@ -299,6 +326,8 @@ final class Simple_SEO_Editor {
 		$id          = esc_attr( self::input_id( $key ) );
 		$name        = esc_attr( self::INPUT . '[' . $key . ']' );
 		$placeholder = '' !== $placeholder ? sprintf( ' placeholder="%s"', esc_attr( $placeholder ) ) : '';
+		// What the variables become on this page: the script shows them as chips with these values.
+		$placeholder .= ! empty( $field['variables'] ) ? self::variables_of( $object ) : '';
 
 		switch ( $field['type'] ) {
 			case 'textarea':

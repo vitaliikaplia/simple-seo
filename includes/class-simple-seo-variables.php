@@ -39,6 +39,116 @@ final class Simple_SEO_Variables {
 		return array_map( static fn( array $variable ): string => $variable['label'], self::$variables );
 	}
 
+	/**
+	 * Short names of the variables, for a chip whose value is empty on the page ({page} on its
+	 * first page); one registered by another plugin is shown by its name.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function names(): array {
+		$builtin = array(
+			'title'     => __( 'title', 'simple-seo' ),
+			'site'      => __( 'site title', 'simple-seo' ),
+			'tagline'   => __( 'tagline', 'simple-seo' ),
+			'sep'       => __( 'separator', 'simple-seo' ),
+			'page'      => __( 'page number', 'simple-seo' ),
+			'excerpt'   => __( 'excerpt', 'simple-seo' ),
+			'category'  => __( 'category', 'simple-seo' ),
+			'author'    => __( 'author', 'simple-seo' ),
+			'date'      => __( 'date', 'simple-seo' ),
+			'post_type' => __( 'post type', 'simple-seo' ),
+			'search'    => __( 'search words', 'simple-seo' ),
+			'year'      => __( 'year', 'simple-seo' ),
+		);
+		$names   = array();
+		foreach ( array_keys( self::$variables ) as $name ) {
+			$names[ $name ] = $builtin[ $name ] ?? $name;
+		}
+
+		return $names;
+	}
+
+	/**
+	 * What each variable becomes on a page, on one line, the separator as chosen: what the chips of
+	 * a field with variables show.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function values( Simple_SEO_Context $context ): array {
+		$values = array();
+		foreach ( array_keys( self::$variables ) as $name ) {
+			$values[ $name ] = (string) self::value( $name, $context );
+		}
+
+		return $values;
+	}
+
+	/**
+	 * The values of the variables as the attribute that turns a field into chips (admin.js).
+	 *
+	 * @param array<string, string> $values
+	 */
+	public static function attribute( array $values ): string {
+		return sprintf( ' data-simple-seo-vars="%s"', esc_attr( (string) wp_json_encode( $values, JSON_UNESCAPED_UNICODE ) ) );
+	}
+
+	/**
+	 * An example page of a slot of the templates, for the chips of the settings: the latest post of
+	 * the type, the term with most posts, the archive, an author with posts, this month, a search, a
+	 * page not found, the front page. A page with no example (no post yet) has the site's values only.
+	 */
+	public static function example( string $slot ): Simple_SEO_Context {
+		[ $kind, $subtype ] = array_pad( explode( ':', $slot, 2 ), 2, '' );
+		$context            = null;
+		if ( 'post' === $kind || 'password' === $kind ) {
+			$posts   = get_posts(
+				array(
+					'post_type'   => 'password' === $kind ? 'post' : $subtype,
+					'post_status' => 'publish',
+					'numberposts' => 1,
+				)
+			);
+			$context = $posts ? Simple_SEO_Context::for_post( $posts[0] ) : null;
+		} elseif ( 'term' === $kind ) {
+			$terms   = get_terms(
+				array(
+					'taxonomy'   => $subtype,
+					'number'     => 1,
+					'orderby'    => 'count',
+					'order'      => 'DESC',
+					'hide_empty' => false,
+				)
+			);
+			$context = is_array( $terms ) && $terms ? Simple_SEO_Context::for_term( $terms[0] ) : null;
+		} elseif ( 'archive' === $kind ) {
+			$context = Simple_SEO_Context::for_post_type_archive( $subtype );
+		} elseif ( 'author' === $kind ) {
+			$users   = get_users(
+				array(
+					'has_published_posts' => true,
+					'number'              => 1,
+				)
+			);
+			$context = $users ? Simple_SEO_Context::for_author( $users[0] ) : null;
+		} elseif ( 'home' === $kind ) {
+			$context = Simple_SEO_Context::for_home();
+		} elseif ( in_array( $kind, array( 'date', 'search', '404' ), true ) ) {
+			$context = new Simple_SEO_Context();
+			if ( 'date' === $kind ) {
+				$context->kind      = Simple_SEO_Context::DATE;
+				$context->subtype   = 'month';
+				$context->timestamp = (int) gmmktime( 0, 0, 0, (int) gmdate( 'n' ), 1, (int) gmdate( 'Y' ) );
+			} elseif ( 'search' === $kind ) {
+				$context->kind   = Simple_SEO_Context::SEARCH;
+				$context->search = __( 'search words', 'simple-seo' );
+			} else {
+				$context->kind = Simple_SEO_Context::NOT_FOUND;
+			}
+		}
+
+		return $context ?? new Simple_SEO_Context();
+	}
+
 	public static function register_builtin(): void {
 		self::register( 'title', __( 'Title of the post, term, archive or author; on search results and 404 a ready phrase', 'simple-seo' ), array( self::class, 'object_title' ) );
 		self::register( 'site', __( 'Site title', 'simple-seo' ), static fn(): string => (string) get_option( 'blogname' ) );
