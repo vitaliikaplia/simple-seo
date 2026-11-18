@@ -1053,3 +1053,81 @@
 		padding: 4px 12px 12px;
 	}
 }
+
+/* The SEO block of a post: sections that fold. */
+.simple-seo-box .simple-seo-section {
+	border-top: 1px solid #dcdcde;
+}
+
+.simple-seo-box .simple-seo-section:first-child {
+	border-top: 0;
+}
+
+.simple-seo-box .simple-seo-section > summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 4px;
+	cursor: pointer;
+	list-style: none;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.simple-seo-box .simple-seo-section > summary::-webkit-details-marker {
+	display: none;
+}
+
+.simple-seo-box .simple-seo-section > summary::after {
+	content: "";
+	width: 7px;
+	height: 7px;
+	margin: 0 6px 4px auto;
+	border-right: 2px solid #50575e;
+	border-bottom: 2px solid #50575e;
+	transform: rotate(45deg);
+	transition: transform 0.15s ease;
+}
+
+.simple-seo-box .simple-seo-section[open] > summary::after {
+	margin-bottom: 0;
+	transform: rotate(-135deg);
+}
+
+.simple-seo-box .simple-seo-section > summary:hover {
+	color: #2271b1;
+}
+
+.simple-seo-box .simple-seo-section > summary:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+	border-radius: 2px;
+}
+
+.simple-seo-box .simple-seo-section-count {
+	min-width: 18px;
+	padding: 0 6px;
+	border-radius: 9px;
+	background: #f0f0f1;
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 18px;
+	text-align: center;
+}
+
+.simple-seo-box .simple-seo-section-body {
+	padding: 0 4px 16px;
+}
+
+.simple-seo-box .simple-seo-section-body > p:first-child,
+.simple-seo-box .simple-seo-section-body > div:first-child {
+	margin-top: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.simple-seo-box .simple-seo-section > summary::after {
+		transition: none;
+	}
+}

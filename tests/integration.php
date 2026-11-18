@@ -1666,7 +1666,50 @@ try {
 	delete_option( Simple_SEO_Indexing::OPTION );
 	wp_set_current_user( $sseo_ed );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
-	sseo_check( 'meta box: an Indexing heading before the indexing fields', str_contains( $sseo_html, '>Indexing</h4>' ) && strpos( $sseo_html, '>Indexing</h4>' ) < strpos( $sseo_html, 'name="simple_seo[index]"' ) );
+	// The sections of the SEO block: id => whether open, its title, the fields filled in, its markup.
+	$sseo_box  = static function ( string $html ): array {
+		$found = array();
+		foreach ( array_slice( explode( '<details class="simple-seo-section" ', $html ), 1 ) as $chunk ) {
+			if ( preg_match( '#^data-simple-seo-section="([a-z0-9]+)"( open)?><summary><span class="simple-seo-section-title">([^<]*)</span>(?:<span class="simple-seo-section-count" title="Fields filled in">(\d+)</span>)?</summary><div class="simple-seo-section-body">#', $chunk, $sseo_match ) ) {
+				$found[ $sseo_match[1] ] = array( '' !== $sseo_match[2], $sseo_match[3], (int) ( $sseo_match[4] ?? 0 ), $chunk );
+			}
+		}
+
+		return $found;
+	};
+	$sseo_vals = $sseo_box( $sseo_html );
+	$sseo_val  = array_keys( $sseo_vals );
+	sseo_check(
+		'meta box: sections that fold — how the page looks in search with the snippet, title and description first and open, the keyphrases with the analysis second, then social networks, indexing and Schema, each with its fields',
+		array( 'search', 'analysis' ) === array_slice( $sseo_val, 0, 2 ) && array_search( 'social', $sseo_val, true ) < array_search( 'indexing', $sseo_val, true ) && array_search( 'indexing', $sseo_val, true ) < array_search( 'schema', $sseo_val, true )
+			&& array( true, 'Search appearance', 0 ) === array_slice( $sseo_vals['search'] ?? array(), 0, 3 ) && array( false, 'Content analysis', 0 ) === array_slice( $sseo_vals['analysis'] ?? array(), 0, 3 ) && array( false, 'Indexing', 0 ) === array_slice( $sseo_vals['indexing'] ?? array(), 0, 3 )
+			&& 1 === substr_count( $sseo_html, ' open><summary>' ) && 1 === substr_count( $sseo_html, '<div class="simple-seo-fields simple-seo-box">' )
+			&& str_contains( $sseo_vals['search'][3] ?? '', 'class="simple-seo-snippet' ) && str_contains( $sseo_vals['search'][3] ?? '', 'name="simple_seo[title]"' ) && str_contains( $sseo_vals['search'][3] ?? '', 'name="simple_seo[description]"' )
+			&& str_contains( $sseo_vals['analysis'][3] ?? '', 'name="simple_seo[keyphrase]"' ) && str_contains( $sseo_vals['analysis'][3] ?? '', '<div class="simple-seo-analysis"' )
+			&& str_contains( $sseo_vals['analysis'][3] ?? '', '<br><span class="description">The words people search for to find this page. The analysis below checks the page for them.</span>' )
+			&& (bool) preg_match( '#<input type="checkbox" id="simple-seo-field-nofollow" name="simple_seo\[nofollow\]" value="1"> <label for="simple-seo-field-nofollow">Ask search engines not to follow the links on this page \(nofollow\)</label>#', $sseo_vals['indexing'][3] ?? '' )
+			&& str_contains( $sseo_vals['indexing'][3] ?? '', 'name="simple_seo[index]"' ) && ! str_contains( $sseo_vals['social'][3] ?? '', 'name="simple_seo[index]"' ) && ! str_contains( $sseo_html, '<h4' ) && ! isset( $sseo_vals['gsc'] ),
+		array( $sseo_val, $sseo_html )
+	);
+	update_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'nofollow' ), '1' );
+	update_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'canonical' ), 'https://example.com/elsewhere/' );
+	$sseo_lay_cookie = 'wp-settings-' . $sseo_ed;
+	$sseo_vals       = array();
+	foreach ( array( 'simple_seo_box=social_indexing', 'simple_seo_box=none', 'libraryContent=browse' ) as $sseo_name ) {
+		$_COOKIE[ $sseo_lay_cookie ] = $sseo_name;
+		unset( $GLOBALS['_updated_user_settings'] );
+		$sseo_val    = $sseo_box( sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) ) );
+		$sseo_vals[] = array_keys( array_filter( $sseo_val, static fn( array $one ): bool => $one[0] ) );
+		$sseo_vals[] = $sseo_val['indexing'][2] ?? null;
+	}
+	unset( $_COOKIE[ $sseo_lay_cookie ], $GLOBALS['_updated_user_settings'] );
+	delete_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'nofollow' ) );
+	delete_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'canonical' ) );
+	sseo_check(
+		'meta box: the sections this user keeps open (the user setting the script writes), none, or the search one at first; how many fields of a section are filled in',
+		array( array( 'social', 'indexing' ), 2, array(), 2, array( 'search' ), 2 ) === $sseo_vals,
+		$sseo_vals
+	);
 	sseo_check( 'meta box: what search engines do now, and the canonical', str_contains( $sseo_html, 'Now: shown in search results' ) && str_contains( $sseo_html, 'Now: ' . get_permalink( $sseo_p['bare'] ) ) );
 	$sseo_select = preg_match( '#<select id="simple-seo-field-index"[^>]*>(.*?)</select>#s', $sseo_html, $sseo_m ) ? $sseo_m[1] : '';
 	sseo_check( 'meta box: three choices for search engines', 3 === substr_count( $sseo_select, '<option value=' ) );
@@ -1815,12 +1858,12 @@ try {
 	wp_set_current_user( $sseo_au );
 	delete_post_meta( $sseo_p['author_post'], '_simple_seo_og_image' );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['author_post'] ) ) );
-	sseo_check( 'meta box of an author: the social networks group with its fields', str_contains( $sseo_html, '>Social networks</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[og_title]"' ) && str_contains( $sseo_html, 'name="simple_seo[og_image]"' ) );
+	sseo_check( 'meta box of an author: the social networks group with its fields', str_contains( $sseo_html, '<span class="simple-seo-section-title">Social networks</span>' ) && str_contains( $sseo_html, 'name="simple_seo[og_title]"' ) && str_contains( $sseo_html, 'name="simple_seo[og_image]"' ) );
 	sseo_check( 'meta box: no image yet — preview and remove hidden, no display style to override that', str_contains( $sseo_html, 'class="simple-seo-image-preview" hidden>' ) && str_contains( $sseo_html, 'class="button-link simple-seo-image-remove" hidden>' ) );
 	sseo_check( 'meta box: the social title shows what is shared now', str_contains( $sseo_html, 'Now: Author post – ' . esc_html( $sseo_site ) ) );
 	wp_set_current_user( $sseo_ed );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) );
-	sseo_check( 'meta box of an editor: social before indexing, the chosen image shown', strpos( $sseo_html, '>Social networks</h4>' ) < strpos( $sseo_html, '>Indexing</h4>' ) && str_contains( $sseo_html, 'value="' . $sseo_og . '"' ) && str_contains( $sseo_html, 'sseo-og.jpg' ) );
+	sseo_check( 'meta box of an editor: social before indexing, the chosen image shown', strpos( $sseo_html, '<span class="simple-seo-section-title">Social networks</span>' ) < strpos( $sseo_html, '<span class="simple-seo-section-title">Indexing</span>' ) && str_contains( $sseo_html, 'value="' . $sseo_og . '"' ) && str_contains( $sseo_html, 'sseo-og.jpg' ) );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_term_fields( get_term( $sseo_cat_id ) ) );
 	sseo_check( 'term screen: the social networks group', str_contains( $sseo_html, '>Social networks</h3>' ) && str_contains( $sseo_html, 'name="simple_seo[og_image]"' ) );
 	Simple_SEO_Admin::enqueue( 'toplevel_page_simple-seo' );
@@ -3074,7 +3117,7 @@ try {
 
 	wp_set_current_user( $sseo_ed );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( $sseo_bc ) );
-	sseo_check( 'meta box: the primary category under a Breadcrumbs heading, the picked one selected', str_contains( $sseo_html, '>Breadcrumbs</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[primary_category]"' ) && (bool) preg_match( '/<option value="' . $sseo_sport . '" selected=\'selected\'>— Bc Sport<\/option>/', $sseo_html ), $sseo_html );
+	sseo_check( 'meta box: the primary category under a Breadcrumbs heading, the picked one selected', str_contains( $sseo_html, '<span class="simple-seo-section-title">Breadcrumbs</span>' ) && str_contains( $sseo_html, 'name="simple_seo[primary_category]"' ) && (bool) preg_match( '/<option value="' . $sseo_sport . '" selected=\'selected\'>— Bc Sport<\/option>/', $sseo_html ), $sseo_html );
 	sseo_check( 'meta box: the trail the post has now', str_contains( $sseo_html, 'Now: Home › Bc News › Bc Sport › Bc Post' ) );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bc_parent'] ) ) );
 	sseo_check( 'meta box of a page: no primary category', ! str_contains( $sseo_html, 'primary_category' ) );
@@ -3361,7 +3404,9 @@ try {
 	update_option( 'site_icon', $sseo_feat );
 	Simple_SEO_Settings::flush();
 	$sseo_sc_logos = array( Simple_SEO_Schema::logo_id() );
+	// A block theme keeps its logo in the option site_logo too (WordPress 7.1 keeps it when the mod goes).
 	remove_theme_mod( 'custom_logo' );
+	delete_option( 'site_logo' );
 	$sseo_sc_logos[] = Simple_SEO_Schema::logo_id();
 	delete_option( 'site_icon' );
 	$sseo_sc_logos[] = Simple_SEO_Schema::logo_id();
@@ -3622,7 +3667,7 @@ try {
 	wp_set_current_user( $sseo_ed );
 	$sseo_html = sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo['posts']['sc_faq'] ) ) );
 	wp_set_current_user( 0 );
-	sseo_check( 'the SEO block: Schema with both types and what the page is now', str_contains( $sseo_html, '>Schema</h4>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_page_type]"' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>As set for this post type: Web page</option>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_article_type]"' ) && str_contains( $sseo_html, 'Now: FAQ page with questions and answers: 3' ), $sseo_html );
+	sseo_check( 'the SEO block: Schema with both types and what the page is now', str_contains( $sseo_html, '<span class="simple-seo-section-title">Schema</span>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_page_type]"' ) && str_contains( $sseo_html, '<option value="" selected=\'selected\'>As set for this post type: Web page</option>' ) && str_contains( $sseo_html, 'name="simple_seo[schema_article_type]"' ) && str_contains( $sseo_html, 'Now: FAQ page with questions and answers: 3' ), $sseo_html );
 
 	// A page's own JSON-LD.
 	$sseo_field = Simple_SEO_Fields::get( 'schema_custom' );
@@ -4774,7 +4819,13 @@ try {
 	ob_start();
 	Simple_SEO_Editor::render_meta_box( $sseo_gc_post );
 	$sseo_html = (string) ob_get_clean();
-	sseo_check( 'the SEO box has it after the analysis', false !== strpos( $sseo_html, 'data-simple-seo-gsc=' ) && strpos( $sseo_html, 'data-simple-seo-analysis=' ) < strpos( $sseo_html, 'data-simple-seo-gsc=' ) );
+	sseo_check(
+		'the SEO box has it in its own section, the last one, after the analysis',
+		false !== strpos( $sseo_html, 'data-simple-seo-gsc=' ) && strpos( $sseo_html, 'data-simple-seo-analysis=' ) < strpos( $sseo_html, 'data-simple-seo-gsc=' )
+			&& (bool) preg_match( '#<details class="simple-seo-section" data-simple-seo-section="gsc"><summary><span class="simple-seo-section-title">Search Console</span></summary><div class="simple-seo-section-body"><div class="simple-seo-gsc" data-simple-seo-gsc="[^"]+"><div class="simple-seo-gsc-body">#', $sseo_html )
+			&& strrpos( $sseo_html, '<details ' ) === strpos( $sseo_html, '<details class="simple-seo-section" data-simple-seo-section="gsc">' ),
+		$sseo_html
+	);
 
 	$sseo_request  = new WP_REST_Request( 'GET', '/simple-seo/v1/search-console/post/' . $sseo['posts']['gc_pub'] );
 	$sseo_response = rest_do_request( $sseo_request );

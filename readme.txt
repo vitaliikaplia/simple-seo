@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.52.0
+Stable tag: 0.53.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,9 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.53.0 =
+* The SEO block of a post folds into sections: Search appearance (the preview, SEO title and description), Content analysis (the keyphrases and the checks), Social networks, Breadcrumbs, Indexing, Schema and Search Console. Each heading shows how many of its fields are filled in; the block remembers for each user which sections are open, Search appearance at first.
 
 = 0.52.0 =
 * The keyword research downloads the searches shown, with the filters and order of the page: as a CSV table for Excel or Google Sheets (the search, topic, question, volume, KD or competition, cost per click, twelve months, impressions, clicks, position and sources) or as a TXT list, one search a line.

@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Simple SEO 0.52.0\n"
+"Project-Id-Version: Simple SEO 0.53.0\n"
 "Report-Msgid-Bugs-To: https://github.com/vitaliikaplia/simple-seo/issues\n"
 "PO-Revision-Date: 2026-11-14 00:00+0000\n"
 "Last-Translator: Vitalii Kaplia\n"
@@ -238,6 +238,7 @@ msgid "Access"
 msgstr "Доступ"
 
 #: includes/class-simple-seo-admin.php:74
+#: includes/class-simple-seo-editor.php:81
 msgid "Search appearance"
 msgstr "Вигляд у пошуку"
 
@@ -263,7 +264,7 @@ msgstr "Плагін"
 
 #: includes/class-simple-seo-admin.php:165
 #: includes/class-simple-seo-editor.php:28
-#: includes/class-simple-seo-editor.php:111
+#: includes/class-simple-seo-editor.php:176
 #: includes/class-simple-seo-scores.php:112
 msgid "SEO"
 msgstr "SEO"
@@ -282,7 +283,7 @@ msgstr "Налаштування"
 #: includes/class-simple-seo-keywords.php:1553
 #: includes/class-simple-seo-monitor.php:418
 #: includes/class-simple-seo-monitor.php:436
-#: includes/class-simple-seo-search-console.php:1053
+#: includes/class-simple-seo-search-console.php:1052
 msgid "Sorry, you are not allowed to access this page."
 msgstr "На жаль, у вас немає доступу до цієї сторінки."
 
@@ -789,14 +790,14 @@ msgstr "Зміни не вдалося зберегти. Спробуйте ще
 #. translators: %s: the title or description the page has with the saved values.
 #: includes/class-simple-seo-bulk.php:304
 #: includes/class-simple-seo-bulk.php:371
-#: includes/class-simple-seo-editor.php:216
+#: includes/class-simple-seo-editor.php:281
 #, php-format
 msgid "Now: %s"
 msgstr "Зараз: %s"
 
 #: includes/class-simple-seo-bulk.php:305
 #: includes/class-simple-seo-bulk.php:372
-#: includes/class-simple-seo-editor.php:217
+#: includes/class-simple-seo-editor.php:282
 msgid "Now: none from Simple SEO."
 msgstr "Зараз: від Simple SEO нічого."
 
@@ -1067,6 +1068,25 @@ msgstr "DataForSEO просить зачекати: забагато запит�
 msgid "DataForSEO answered %1$s: %2$s"
 msgstr "DataForSEO відповів %1$s: %2$s"
 
+#: includes/class-simple-seo-editor.php:84
+#: includes/class-simple-seo-keywords.php:1620
+msgid "Other"
+msgstr "Інше"
+
+#: includes/class-simple-seo-editor.php:87
+#: includes/class-simple-seo-keywords.php:857
+#: includes/class-simple-seo-search-console.php:81
+#: includes/class-simple-seo-search-console.php:96
+#: includes/class-simple-seo-search-console.php:97
+#: includes/views/search-console.php:20
+#: includes/views/tab-keywords.php:25
+msgid "Search Console"
+msgstr "Search Console"
+
+#: includes/class-simple-seo-editor.php:100
+msgid "Fields filled in"
+msgstr "Заповнено полів"
+
 #: includes/class-simple-seo-faq.php:62
 #: includes/class-simple-seo-faq.php:81
 #: includes/class-simple-seo-keywords.php:1626
@@ -1252,8 +1272,8 @@ msgid "The page has expired. Open it again and repeat."
 msgstr "Сторінка застаріла. Відкрийте її знову й повторіть."
 
 #: includes/class-simple-seo-github-updater.php:103
-msgid "Version 0.52.0: the searches of the keyword research to download as a CSV table or a TXT list. Version 0.51.0: volumes, competition and cost per click of the searches from the Keyword Planner of Google Ads, free. Version 0.50.0: volumes, difficulty, cost per click and Google Trends of the searches from DataForSEO. Version 0.49.0: keyword research — the searches around a phrase from Google’s suggestions and Search Console, its questions and topics, and the structure of an article by the AI. Version 0.48.0: the groups of the settings fold, the menu scrolls with the page, and the AI tab opens at once. Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
-msgstr "Версія 0.52.0: запити з пошуку ключових слів можна завантажити таблицею CSV або списком TXT. Версія 0.51.0: обсяги, конкуренція й ціна кліку запитів із Keyword Planner у Google Ads, безкоштовно. Версія 0.50.0: обсяги, складність, ціна кліку й Google Trends запитів із DataForSEO. Версія 0.49.0: пошук ключових слів — запити навколо фрази з підказок Google і Search Console, питання й теми, а також структура статті через AI. Версія 0.48.0: групи налаштувань згортаються, меню гортається разом зі сторінкою, а вкладка AI відкривається одразу. Версія 0.47.0: налаштування в групах у меню ліворуч, підвкладки згори, на білому тлі. Версія 0.46.0: менше запитів до бази на сайті й в адмінці. Версія 0.45.0: Markdown-версії сторінок для ШІ-асистентів і агентів (llmstxt.org), вмикаються на вкладці llms.txt, для кожного типу сторінок — зі своїми частинами; сторінки й llms.txt посилаються на них. Версія 0.44.0: магазин WooCommerce бере SEO-поля й назву своєї сторінки; хлібні крихти товарів ідуть через магазин і категорії; кошик, оформлення, акаунт і приховані товари — поза пошуком і картами сайту. Версія 0.43.0: товари WooCommerce у графі Schema (власні дані товару WooCommerce, пов'язані зі сторінкою, продавцем і брендом) і в Open Graph; політика повернень магазину. Версія 0.42.0: AI пише alt-тексти зображень за тим, що бачить на них: кнопка в медіатеці, порожні — в масовому редагуванні, а кожне нове зображення — у фоні. Версія 0.41.0: SEO-блок пише SEO-заголовок, мета-опис і основну ключову фразу за допомогою AI — через провайдера, підключеного в Налаштування → Підключення; змінні шаблону лишаються. Версія 0.40.0: SEO-блок підказує внутрішні посилання — інші сторінки цього сайту, які текст згадує їхньою ключовою фразою чи назвою, але ще не посилається на них. Версія 0.39.0: аудит показує сторінки, на які не посилається жодна інша. Версія 0.38.0: аудит перевіряє й посилання на сторінках — на цей сайт та інші: биті, посилання цього сайту з переспрямуванням, а ті, що не відповіли, — знову через день. Версія 0.37.0: аудит сторінок карти сайту такими, як їх бачить відвідувач: заголовки й описи, яких немає або які повторюються, заголовки H1, зображення без alt-тексту, канонічні адреси, noindex і сторінки, що не відкриваються, — у фоні, на сторінці меню SEO. Версія 0.36.0: монітор ненайдених сторінок: адреси, що відповідають 404, скільки разів і звідки прийшли відвідувачі, без IP-адрес, на сторінці меню SEO, і чернетка редиректу теми WP Base з однієї в один клік. Версія 0.35.0: інструменти для AI-агентів через Simple MCP: SEO-поля записів і термінів, сторінки без власного заголовка чи опису, аналіз, Search Console, налаштування та IndexNow. Версія 0.34.0: команди WP-CLI (wp simple-seo) для SEO-полів записів і термінів, аналізу, імпорту та IndexNow, а SEO-поля кожного типу записів і таксономії — в REST API. Версія 0.33.0: IndexNow — опубліковану, змінену, перенесену чи зняту сторінку за хвилину надсилаємо до Bing, щоб пошуковики прийшли на неї раніше; Яндекс більше не підтримується. Версія 0.32.0: Google Search Console в адмінці — кліки, покази, CTR і позиція сайту з найчастішими запитами й найпопулярнішими сторінками на сторінці меню SEO, а також дані кожного запису в його SEO-блоці; читаються ключем сервісного акаунта Google. Версія 0.31.0: вкладка «Інтеграції» — коди вебмайстрів на головній з перенесенням із Yoast SEO, Rank Math і All in One SEO та теги Google Analytics, Google Tag Manager, Meta Pixel і TikTok Pixel, що вантажаться на перший рух відвідувача й за потреби чекають згоди. Версія 0.30.0: опис, зроблений із тексту запису, і перевірки довжини в аналізі контенту враховують ширину, яку дає пошукова видача, а не кількість символів. Версія 0.29.0: alt-тексти й заголовки зображень з їхніх назв — під час завантаження й у масовому редагуванні для вже завантажених. Версія 0.28.0: локальне SEO — тип організації, її адреса, телефон, години роботи й місце на карті в графі Schema, з перенесенням із Rank Math, Yoast SEO, All in One SEO чи теми. Версія 0.27.0: власна JSON-LD розмітка запису чи терміна, що додається до його графа. Версія 0.26.0: тип сторінки й статті кожного запису й типу записів, сторінки FAQ із питань і відповідей блоків теми, акордеонів або нового блоку «Питання й відповіді». Версія 0.25.0: структуровані дані Schema — один граф JSON-LD: сайт, кого він представляє, сторінка, стаття й хлібні крихти; у режимі «Авто» мовчить там, де тема друкує свій. Версія 0.24.0: масове редагування SEO-заголовків і описів у таблиці — для всіх, хто редагує SEO-поля. Версія 0.23.0: читабельність тексту з власною оцінкою та колонка з SEO-оцінкою й оцінкою читабельності в списках записів. Версія 0.22.0: імпорт переносить також ключові фрази з Yoast SEO, Rank Math і All in One SEO. Версія 0.21.0: аналіз контенту в SEO-блоці записів — основна й додаткові ключові фрази, перевірки сторінки на них і оцінка. Версія 0.20.0: основа для аналізу контенту — Simple SEO читає текст сторінки з будь-якого редактора, разом із блоками ACF і Builder. Версія 0.19.0: над SEO-полями записів і термінів — вигляд сторінки в пошуковій видачі, на комп'ютері й на телефоні, що оновлюється під час набору. Версія 0.18.0: вкладка «Імпорт» переносить налаштування й SEO-поля також з All in One SEO і прибирає з бази те, що лишилося від AIOSEO. Версія 0.17.0: вкладка «Імпорт» переносить налаштування й SEO-поля також із Rank Math і прибирає з бази те, що лишилося від Rank Math. Версія 0.16.0: вкладка «Імпорт» також прибирає з бази те, що лишив Yoast SEO, після імпорту його даних — частинами й після підтвердження резервної копії. Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
+msgid "Version 0.53.0: the SEO block of a post in sections that fold. Version 0.52.0: the searches of the keyword research to download as a CSV table or a TXT list. Version 0.51.0: volumes, competition and cost per click of the searches from the Keyword Planner of Google Ads, free. Version 0.50.0: volumes, difficulty, cost per click and Google Trends of the searches from DataForSEO. Version 0.49.0: keyword research — the searches around a phrase from Google’s suggestions and Search Console, its questions and topics, and the structure of an article by the AI. Version 0.48.0: the groups of the settings fold, the menu scrolls with the page, and the AI tab opens at once. Version 0.47.0: the settings in groups in a menu on the left, sub-tabs on top, on a white panel. Version 0.46.0: fewer queries to the database on the site and in the admin. Version 0.45.0: Markdown versions of pages for AI assistants and agents (llmstxt.org), switched on in the llms.txt tab, each kind of page with its parts; pages and llms.txt link to them. Version 0.44.0: the WooCommerce shop takes the SEO fields and title of its page; the trails of products go through the shop and their categories; the cart, the checkout and the account and hidden products are out of search and the sitemaps. Version 0.43.0: WooCommerce products in the Schema graph (WooCommerce’s own product data tied to the page, the seller and the brand) and in Open Graph; the return policy of the shop. Version 0.42.0: AI writes the alt texts of images from what it sees in them: a button in the media library, the empty ones in bulk editing, and each new image in the background. Version 0.41.0: the SEO block writes the SEO title, the meta description and the focus keyphrase with AI, through the provider connected in Settings → Connectors; the variables of the template stay. Version 0.40.0: the SEO block suggests internal links: the other pages of this site that the text mentions by their keyphrase or title, without a link to them yet. Version 0.39.0: the audit lists the pages no other page links to. Version 0.38.0: the audit checks the links on the pages too, on this site and elsewhere: the broken ones, the links of this site that redirect, and a check a day later of those that did not answer. Version 0.37.0: an audit of the pages of the sitemap as a visitor sees them: titles and descriptions missing or the same, H1 headings, images without alt text, canonical addresses, noindex and pages that do not open, in the background on a page of the SEO menu. Version 0.36.0: a monitor of pages not found: the addresses that answer 404, how many times and where the visitors came from, without IP addresses, on a page of the SEO menu, and a draft redirect of the WP Base theme from one in a click. Version 0.35.0: tools for AI agents through Simple MCP: the SEO fields of posts and terms, the pages without a title or description of their own, the analysis, Search Console, the settings and IndexNow. Version 0.34.0: WP-CLI commands (wp simple-seo) for the SEO fields of posts and terms, the analysis, the imports and IndexNow, and the SEO fields of every post type and taxonomy in the REST API. Version 0.33.0: IndexNow: a page published, changed, moved or taken down is sent to Bing a minute later, so search engines visit it sooner; and Yandex is no longer supported. Version 0.32.0: Google Search Console in the admin: the clicks, impressions, CTR and position of the site with its top queries and pages on a page of the SEO menu, and those of each post in its SEO box, read with the key of a service account of Google. Version 0.31.0: the Integrations tab: codes of webmaster tools on the home page, taken from Yoast SEO, Rank Math and All in One SEO, and the tags of Google Analytics, Google Tag Manager, Meta Pixel and TikTok Pixel, loaded on the visitor's first move and waiting for consent when asked. Version 0.30.0: the description made from the text of a post and the length checks of the content analysis go by the width search results give, not by a number of characters. Version 0.29.0: alt texts and titles of images from their names, on upload and in bulk editing for the images already uploaded. Version 0.28.0: Local SEO: the type of the organization, its address, phone, opening hours and place on the map in the Schema graph, taken from Rank Math, Yoast SEO, All in One SEO or the theme. Version 0.27.0: JSON-LD of its own for a post or a term, added to its graph. Version 0.26.0: the type of page and of article of each post and post type, and FAQ pages from the questions and answers of theme blocks, accordions or the new block Questions and answers. Version 0.25.0: Schema structured data, one JSON-LD graph of the site, whom it represents, the page, the article and the breadcrumb trail, in the mode Auto silent where the theme prints its own. Version 0.24.0: bulk editing of SEO titles and descriptions in a table, for whoever edits the SEO fields. Version 0.23.0: readability of the text with a score of its own, and a column with the SEO and readability scores in the lists of posts. Version 0.22.0: the import takes the keyphrases of Yoast SEO, Rank Math and All in One SEO too. Version 0.21.0: content analysis in the SEO block of posts: a focus keyphrase and more, checks of the page for them and a score. Version 0.20.0: groundwork for the content analysis: Simple SEO reads the text of a page from any editor, ACF and Builder blocks included. Version 0.19.0: a search result preview above the SEO fields of posts and terms, on a computer and on a phone, redone as you type. Version 0.18.0: the Import tab takes over the settings and the SEO fields of All in One SEO too, and removes what AIOSEO left in the database. Version 0.17.0: the Import tab takes over the settings and the SEO fields of Rank Math too, and removes what Rank Math left in the database. Version 0.16.0: the Import tab also removes what Yoast SEO left in the database once its data is imported, part by part, after a backup is confirmed. Version 0.15.0: the Import tab takes over the settings of Yoast SEO and the SEO fields of posts and terms, leaving Simple SEO's own values as they are. Version 0.14.0: the Yoast SEO post meta themes read and write (_yoast_wpseo_title, _yoast_wpseo_metadesc and the like) is Simple SEO's own fields. Version 0.13.0: the Yoast SEO filters themes hook into (title, description, Open Graph, robots, breadcrumbs, sitemaps) change Simple SEO's output. Version 0.12.0: themes made for Yoast SEO keep working without it: wpseo_replace_vars(), yoast_breadcrumb() and WPSEO_Primary_Term are answered by Simple SEO. Version 0.11.0: llms.txt for AI assistants, built from the pages search engines may show, one for each language under wp-loc. Version 0.10.0: the Clean-up tab removes the WordPress version, shortlink, discovery links, emoji script and feed links from pages, each by its own switch. Version 0.9.0: robots.txt and .htaccess edited on the Files tab, with a history of versions; a .htaccess that takes the site down is put back at once. Version 0.8.0: breadcrumbs for themes (PHP, Twig, shortcode) with their own tab, and the primary category of a post. Version 0.7.0: XML sitemap at the addresses Yoast SEO used, a sitemap for each language under wp-loc. Version 0.6.0: settings for the home page, the 404 page and password-protected content. Version 0.5.0: Open Graph and X card. Version 0.4.0: canonical address, noindex and nofollow. Version 0.3.0: page title and meta description from fields and templates. While another SEO plugin is active, nothing is printed."
+msgstr "Версія 0.53.0: SEO-блок запису згорнуто в розділи. Версія 0.52.0: запити з пошуку ключових слів можна завантажити таблицею CSV або списком TXT. Версія 0.51.0: обсяги, конкуренція й ціна кліку запитів із Keyword Planner у Google Ads, безкоштовно. Версія 0.50.0: обсяги, складність, ціна кліку й Google Trends запитів із DataForSEO. Версія 0.49.0: пошук ключових слів — запити навколо фрази з підказок Google і Search Console, питання й теми, а також структура статті через AI. Версія 0.48.0: групи налаштувань згортаються, меню гортається разом зі сторінкою, а вкладка AI відкривається одразу. Версія 0.47.0: налаштування в групах у меню ліворуч, підвкладки згори, на білому тлі. Версія 0.46.0: менше запитів до бази на сайті й в адмінці. Версія 0.45.0: Markdown-версії сторінок для ШІ-асистентів і агентів (llmstxt.org), вмикаються на вкладці llms.txt, для кожного типу сторінок — зі своїми частинами; сторінки й llms.txt посилаються на них. Версія 0.44.0: магазин WooCommerce бере SEO-поля й назву своєї сторінки; хлібні крихти товарів ідуть через магазин і категорії; кошик, оформлення, акаунт і приховані товари — поза пошуком і картами сайту. Версія 0.43.0: товари WooCommerce у графі Schema (власні дані товару WooCommerce, пов'язані зі сторінкою, продавцем і брендом) і в Open Graph; політика повернень магазину. Версія 0.42.0: AI пише alt-тексти зображень за тим, що бачить на них: кнопка в медіатеці, порожні — в масовому редагуванні, а кожне нове зображення — у фоні. Версія 0.41.0: SEO-блок пише SEO-заголовок, мета-опис і основну ключову фразу за допомогою AI — через провайдера, підключеного в Налаштування → Підключення; змінні шаблону лишаються. Версія 0.40.0: SEO-блок підказує внутрішні посилання — інші сторінки цього сайту, які текст згадує їхньою ключовою фразою чи назвою, але ще не посилається на них. Версія 0.39.0: аудит показує сторінки, на які не посилається жодна інша. Версія 0.38.0: аудит перевіряє й посилання на сторінках — на цей сайт та інші: биті, посилання цього сайту з переспрямуванням, а ті, що не відповіли, — знову через день. Версія 0.37.0: аудит сторінок карти сайту такими, як їх бачить відвідувач: заголовки й описи, яких немає або які повторюються, заголовки H1, зображення без alt-тексту, канонічні адреси, noindex і сторінки, що не відкриваються, — у фоні, на сторінці меню SEO. Версія 0.36.0: монітор ненайдених сторінок: адреси, що відповідають 404, скільки разів і звідки прийшли відвідувачі, без IP-адрес, на сторінці меню SEO, і чернетка редиректу теми WP Base з однієї в один клік. Версія 0.35.0: інструменти для AI-агентів через Simple MCP: SEO-поля записів і термінів, сторінки без власного заголовка чи опису, аналіз, Search Console, налаштування та IndexNow. Версія 0.34.0: команди WP-CLI (wp simple-seo) для SEO-полів записів і термінів, аналізу, імпорту та IndexNow, а SEO-поля кожного типу записів і таксономії — в REST API. Версія 0.33.0: IndexNow — опубліковану, змінену, перенесену чи зняту сторінку за хвилину надсилаємо до Bing, щоб пошуковики прийшли на неї раніше; Яндекс більше не підтримується. Версія 0.32.0: Google Search Console в адмінці — кліки, покази, CTR і позиція сайту з найчастішими запитами й найпопулярнішими сторінками на сторінці меню SEO, а також дані кожного запису в його SEO-блоці; читаються ключем сервісного акаунта Google. Версія 0.31.0: вкладка «Інтеграції» — коди вебмайстрів на головній з перенесенням із Yoast SEO, Rank Math і All in One SEO та теги Google Analytics, Google Tag Manager, Meta Pixel і TikTok Pixel, що вантажаться на перший рух відвідувача й за потреби чекають згоди. Версія 0.30.0: опис, зроблений із тексту запису, і перевірки довжини в аналізі контенту враховують ширину, яку дає пошукова видача, а не кількість символів. Версія 0.29.0: alt-тексти й заголовки зображень з їхніх назв — під час завантаження й у масовому редагуванні для вже завантажених. Версія 0.28.0: локальне SEO — тип організації, її адреса, телефон, години роботи й місце на карті в графі Schema, з перенесенням із Rank Math, Yoast SEO, All in One SEO чи теми. Версія 0.27.0: власна JSON-LD розмітка запису чи терміна, що додається до його графа. Версія 0.26.0: тип сторінки й статті кожного запису й типу записів, сторінки FAQ із питань і відповідей блоків теми, акордеонів або нового блоку «Питання й відповіді». Версія 0.25.0: структуровані дані Schema — один граф JSON-LD: сайт, кого він представляє, сторінка, стаття й хлібні крихти; у режимі «Авто» мовчить там, де тема друкує свій. Версія 0.24.0: масове редагування SEO-заголовків і описів у таблиці — для всіх, хто редагує SEO-поля. Версія 0.23.0: читабельність тексту з власною оцінкою та колонка з SEO-оцінкою й оцінкою читабельності в списках записів. Версія 0.22.0: імпорт переносить також ключові фрази з Yoast SEO, Rank Math і All in One SEO. Версія 0.21.0: аналіз контенту в SEO-блоці записів — основна й додаткові ключові фрази, перевірки сторінки на них і оцінка. Версія 0.20.0: основа для аналізу контенту — Simple SEO читає текст сторінки з будь-якого редактора, разом із блоками ACF і Builder. Версія 0.19.0: над SEO-полями записів і термінів — вигляд сторінки в пошуковій видачі, на комп'ютері й на телефоні, що оновлюється під час набору. Версія 0.18.0: вкладка «Імпорт» переносить налаштування й SEO-поля також з All in One SEO і прибирає з бази те, що лишилося від AIOSEO. Версія 0.17.0: вкладка «Імпорт» переносить налаштування й SEO-поля також із Rank Math і прибирає з бази те, що лишилося від Rank Math. Версія 0.16.0: вкладка «Імпорт» також прибирає з бази те, що лишив Yoast SEO, після імпорту його даних — частинами й після підтвердження резервної копії. Версія 0.15.0: вкладка «Імпорт» переносить налаштування Yoast SEO і SEO-поля записів і термінів, лишаючи власні значення Simple SEO як є. Версія 0.14.0: мета записів Yoast SEO, яку теми читають і пишуть (_yoast_wpseo_title, _yoast_wpseo_metadesc тощо), — це власні поля Simple SEO. Версія 0.13.0: фільтри Yoast SEO, якими користуються теми (заголовок, опис, Open Graph, robots, хлібні крихти, карти сайту), змінюють вивід Simple SEO. Версія 0.12.0: теми, зроблені під Yoast SEO, працюють і без нього: wpseo_replace_vars(), yoast_breadcrumb() і WPSEO_Primary_Term обслуговує Simple SEO. Версія 0.11.0: llms.txt для ШІ-асистентів зі сторінок, які можуть показувати пошуковики, окремий для кожної мови з wp-loc. Версія 0.10.0: вкладка «Чистка коду» прибирає зі сторінок версію WordPress, коротке посилання, службові посилання, скрипт емодзі й посилання на стрічки — кожне окремим перемикачем. Версія 0.9.0: robots.txt і .htaccess редагуються на вкладці «Файли», з історією версій; .htaccess, що кладе сайт, одразу повертається назад. Версія 0.8.0: хлібні крихти для тем (PHP, Twig, шорткод) з власною вкладкою та основна рубрика запису. Версія 0.7.0: XML-карта сайту за адресами, якими користувався Yoast SEO, окрема для кожної мови з wp-loc. Версія 0.6.0: налаштування головної, сторінки 404 і вмісту, захищеного паролем. Версія 0.5.0: Open Graph і картка X. Версія 0.4.0: канонічна адреса, noindex і nofollow. Версія 0.3.0: заголовок сторінки й мета-опис із полів і шаблонів. Поки активний інший SEO-плагін, нічого не виводиться."
 
 #: includes/class-simple-seo-google-ads.php:85
 msgid "Google Ads is not connected: choose the key of a service account on the Keyword research tab."
@@ -1729,16 +1749,6 @@ msgstr "Введіть фразу, щоб знайти пошукові запи
 msgid "suggestions of Google search"
 msgstr "підказок пошуку Google"
 
-#: includes/class-simple-seo-keywords.php:857
-#: includes/class-simple-seo-search-console.php:81
-#: includes/class-simple-seo-search-console.php:96
-#: includes/class-simple-seo-search-console.php:97
-#: includes/class-simple-seo-search-console.php:868
-#: includes/views/search-console.php:20
-#: includes/views/tab-keywords.php:25
-msgid "Search Console"
-msgstr "Search Console"
-
 #: includes/class-simple-seo-keywords.php:870
 #: includes/views/bulk.php:56
 #: includes/views/keywords.php:162
@@ -1776,21 +1786,21 @@ msgid "12 months"
 msgstr "12 місяців"
 
 #: includes/class-simple-seo-keywords.php:875
-#: includes/class-simple-seo-search-console.php:909
-#: includes/class-simple-seo-search-console.php:970
+#: includes/class-simple-seo-search-console.php:908
+#: includes/class-simple-seo-search-console.php:969
 #: includes/views/keywords.php:175
 msgid "Impressions"
 msgstr "Покази"
 
 #: includes/class-simple-seo-keywords.php:875
-#: includes/class-simple-seo-search-console.php:908
-#: includes/class-simple-seo-search-console.php:970
+#: includes/class-simple-seo-search-console.php:907
+#: includes/class-simple-seo-search-console.php:969
 #: includes/views/keywords.php:176
 msgid "Clicks"
 msgstr "Кліки"
 
 #: includes/class-simple-seo-keywords.php:875
-#: includes/class-simple-seo-search-console.php:970
+#: includes/class-simple-seo-search-console.php:969
 #: includes/views/keywords.php:177
 msgid "Position"
 msgstr "Позиція"
@@ -1882,10 +1892,6 @@ msgstr "Додати до додаткових"
 #: includes/views/keywords.php:188
 msgid "question"
 msgstr "питання"
-
-#: includes/class-simple-seo-keywords.php:1620
-msgid "Other"
-msgstr "Інше"
 
 #: includes/class-simple-seo-keywords.php:1621
 msgid "Parent topic:"
@@ -2649,39 +2655,39 @@ msgstr "Search Console має дані лише опублікованих ст�
 msgid "The data of Search Console cannot be loaded now."
 msgstr "Дані Search Console зараз не завантажуються."
 
-#: includes/class-simple-seo-search-console.php:869
+#: includes/class-simple-seo-search-console.php:868
 msgid "Loading the data of Search Console…"
 msgstr "Завантаження даних Search Console…"
 
-#: includes/class-simple-seo-search-console.php:880
+#: includes/class-simple-seo-search-console.php:879
 msgid "Search Console has no data of the site yet."
 msgstr "Search Console ще не має даних сайту."
 
 #. translators: 1: first day, 2: last day.
-#: includes/class-simple-seo-search-console.php:887
+#: includes/class-simple-seo-search-console.php:886
 #, php-format
 msgid "Google search, %1$s – %2$s:"
 msgstr "Пошук Google, %1$s – %2$s:"
 
-#: includes/class-simple-seo-search-console.php:892
+#: includes/class-simple-seo-search-console.php:891
 msgid "No queries of this page in these days: Google shows it to no one yet, or leaves out its rare queries."
 msgstr "За ці дні запитів цієї сторінки немає: Google її ще нікому не показує або не називає її рідкісних запитів."
 
-#: includes/class-simple-seo-search-console.php:896
+#: includes/class-simple-seo-search-console.php:895
 #: includes/views/search-console.php:76
 msgid "Query"
 msgstr "Запит"
 
-#: includes/class-simple-seo-search-console.php:910
-#: includes/class-simple-seo-search-console.php:970
+#: includes/class-simple-seo-search-console.php:909
+#: includes/class-simple-seo-search-console.php:969
 msgid "CTR"
 msgstr "CTR"
 
-#: includes/class-simple-seo-search-console.php:911
+#: includes/class-simple-seo-search-console.php:910
 msgid "Average position"
 msgstr "Середня позиція"
 
-#: includes/class-simple-seo-search-console.php:975
+#: includes/class-simple-seo-search-console.php:974
 #: includes/views/keywords.php:58
 #: includes/views/tab-keywords.php:68
 msgid "Language"

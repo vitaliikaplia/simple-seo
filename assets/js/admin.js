@@ -1016,6 +1016,22 @@
 		} );
 	} );
 
+	// The SEO block of a post: the sections this user keeps open, remembered (none: 'none').
+	var sections = Array.prototype.slice.call( document.querySelectorAll( '[data-simple-seo-section]' ) );
+	sections.forEach( function ( section ) {
+		section.addEventListener( 'toggle', function () {
+			if ( ! window.setUserSetting ) {
+				return;
+			}
+			var open = sections.filter( function ( one ) {
+				return one.open;
+			} ).map( function ( one ) {
+				return one.getAttribute( 'data-simple-seo-section' );
+			} );
+			window.setUserSetting( 'simple_seo_box', open.length ? open.join( '_' ) : 'none' );
+		} );
+	} );
+
 	// Settings: the menu and the page stick to the top. One taller than the screen scrolls with the
 	// page down to its end and stays there, and back up to its top. Whenever the direction changes, a
 	// space above it in its column (--simple-seo-offset) holds it where it is and its sticky edge

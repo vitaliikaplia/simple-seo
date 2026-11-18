@@ -28,6 +28,25 @@ final class Simple_SEO_Editor {
 		add_meta_box( 'simple-seo', __( 'SEO', 'simple-seo' ), array( self::class, 'render_meta_box' ), $post_type, 'normal', 'default' );
 	}
 
+	/** The user setting of the sections of the SEO block this user keeps open. */
+	public const OPEN = 'simple_seo_box';
+
+	/**
+	 * The sections of the SEO block this user keeps open: the one of the search at first.
+	 *
+	 * @return string[]
+	 */
+	public static function open_sections(): array {
+		$saved = get_user_setting( self::OPEN, false );
+
+		return false === $saved ? array( 'search' ) : explode( '_', (string) $saved );
+	}
+
+	/**
+	 * The SEO block of a post: sections that fold, each a group of fields — how the page looks in
+	 * search first, its keyphrases with the analysis second, then the other groups in the order of
+	 * their fields, and Search Console last.
+	 */
 	public static function render_meta_box( WP_Post $post ): void {
 		$fields = self::editable_fields( 'post', (int) $post->ID );
 
@@ -36,39 +55,85 @@ final class Simple_SEO_Editor {
 		// A new post has no title yet: what it would show now says nothing.
 		$preview = 'auto-draft' !== $post->post_status;
 
-		$group = '';
-		echo '<div class="simple-seo-fields">';
-		echo Simple_SEO_Snippet::render( 'post', $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+		$groups = array(
+			''         => array(),
+			'analysis' => array(),
+		);
 		foreach ( $fields as $key => $field ) {
-			$value = Simple_SEO_Fields::post_value( (int) $post->ID, $key );
-			if ( $group !== $field['group'] ) {
-				$group   = (string) $field['group'];
-				$heading = Simple_SEO_Fields::group_heading( $group );
-				if ( '' !== $heading ) {
-					printf( '<h4 style="margin:1.5em 0 .5em;padding-top:1em;border-top:1px solid #dcdcde">%s</h4>', esc_html( $heading ) );
-				}
-			}
-			echo '<p>';
-			if ( 'checkbox' === $field['type'] ) {
-				echo self::input( $field, $value ) . ' '; // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
-				printf( '<label for="%s">%s</label>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
-			} else {
-				printf( '<label for="%s"><strong>%s</strong></label><br>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
-				echo self::input_with_mask( $field, $value, 'post', $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
-			}
-			if ( '' !== (string) $field['description'] ) {
-				printf( '<br><span class="description">%s</span>', esc_html( (string) $field['description'] ) );
-			}
-			if ( $preview ) {
-				echo self::preview( $field, 'post', $post, '<br>' ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
-			}
-			echo '</p>';
+			$groups[ (string) $field['group'] ][ $key ] = $field;
 		}
-		// The checks of the content, under the keyphrases they look for.
-		echo Simple_SEO_Analysis::render( $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+
+		$sections = array();
+		foreach ( $groups as $group => $group_fields ) {
+			$html   = '';
+			$filled = 0;
+			foreach ( $group_fields as $key => $field ) {
+				$value   = Simple_SEO_Fields::post_value( (int) $post->ID, (string) $key );
+				$filled += '' !== $value ? 1 : 0;
+				$html   .= self::post_field( $field, $value, $post, $preview );
+			}
+			if ( '' === $group ) {
+				$html = Simple_SEO_Snippet::render( 'post', $post ) . $html;
+			} elseif ( 'analysis' === $group ) {
+				// The checks of the content, under the keyphrases they look for.
+				$html .= Simple_SEO_Analysis::render( $post );
+			}
+			$heading = '' === $group ? __( 'Search appearance', 'simple-seo' ) : Simple_SEO_Fields::group_heading( (string) $group );
+			$id      = self::section_id( (string) $group );
+
+			$sections[ $id ] = array( '' !== $heading ? $heading : __( 'Other', 'simple-seo' ), $html, $filled );
+		}
 		// How the page does in Google search, loaded after the editor.
-		echo Simple_SEO_Search_Console::meta_box_part( $post ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+		$sections['gsc'] = array( __( 'Search Console', 'simple-seo' ), Simple_SEO_Search_Console::meta_box_part( $post ), 0 );
+
+		$open = self::open_sections();
+		echo '<div class="simple-seo-fields simple-seo-box">';
+		foreach ( $sections as $id => [ $heading, $html, $filled ] ) {
+			if ( '' === $html ) {
+				continue;
+			}
+			printf(
+				'<details class="simple-seo-section" data-simple-seo-section="%1$s"%2$s><summary><span class="simple-seo-section-title">%3$s</span>%4$s</summary><div class="simple-seo-section-body">%5$s</div></details>',
+				esc_attr( $id ),
+				in_array( $id, $open, true ) ? ' open' : '',
+				esc_html( $heading ),
+				$filled ? sprintf( '<span class="simple-seo-section-count" title="%1$s">%2$s</span>', esc_attr__( 'Fields filled in', 'simple-seo' ), esc_html( number_format_i18n( $filled ) ) ) : '',
+				$html // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+			);
+		}
 		echo '</div>';
+	}
+
+	/** The id of a section of the SEO block: a group of fields in letters and digits ('search' for the first). */
+	private static function section_id( string $group ): string {
+		$id = (string) preg_replace( '/[^a-z0-9]/', '', strtolower( $group ) );
+
+		return '' !== $id ? $id : 'search';
+	}
+
+	/**
+	 * A field of the SEO block of a post.
+	 *
+	 * @param array<string, mixed> $field
+	 */
+	private static function post_field( array $field, string $value, WP_Post $post, bool $preview ): string {
+		$key  = (string) $field['key'];
+		$html = '<p>';
+		if ( 'checkbox' === $field['type'] ) {
+			$html .= self::input( $field, $value ) . ' ';
+			$html .= sprintf( '<label for="%s">%s</label>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
+		} else {
+			$html .= sprintf( '<label for="%s"><strong>%s</strong></label><br>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
+			$html .= self::input_with_mask( $field, $value, 'post', $post );
+		}
+		if ( '' !== (string) $field['description'] ) {
+			$html .= sprintf( '<br><span class="description">%s</span>', esc_html( (string) $field['description'] ) );
+		}
+		if ( $preview ) {
+			$html .= self::preview( $field, 'post', $post, '<br>' );
+		}
+
+		return $html . '</p>';
 	}
 
 	/**

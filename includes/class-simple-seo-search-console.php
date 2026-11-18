@@ -863,9 +863,8 @@ final class Simple_SEO_Search_Console {
 		);
 
 		return sprintf(
-			'<div class="simple-seo-gsc" data-simple-seo-gsc="%1$s"><h4>%2$s</h4><div class="simple-seo-gsc-body"><p class="description">%3$s</p></div></div>',
+			'<div class="simple-seo-gsc" data-simple-seo-gsc="%1$s"><div class="simple-seo-gsc-body"><p class="description">%2$s</p></div></div>',
 			esc_attr( (string) wp_json_encode( $data ) ),
-			esc_html__( 'Search Console', 'simple-seo' ),
 			esc_html__( 'Loading the data of Search Console…', 'simple-seo' )
 		);
 	}
