@@ -410,7 +410,8 @@
 		var more  = document.getElementById( 'simple-seo-field-keyphrases' );
 		var box   = element( 'div', 'simple-seo-kw-ideas' );
 		box.hidden = true;
-		var place = button.closest( 'p' ) || button.parentNode;
+		// Under the buttons of the field, inside the field.
+		var place = button.closest( '.simple-seo-field-buttons' ) || button;
 		place.parentNode.insertBefore( box, place.nextSibling );
 
 		function render( data ) {

@@ -120,28 +120,26 @@ final class Simple_SEO_Editor {
 	}
 
 	/**
-	 * A field of the SEO block of a post.
+	 * A field of the SEO block of a post: its label, the control with its buttons, the description
+	 * and what the page has now, in one block the styles give one width and one spacing.
 	 *
 	 * @param array<string, mixed> $field
 	 */
 	private static function post_field( array $field, string $value, WP_Post $post, bool $preview ): string {
-		$key  = (string) $field['key'];
-		$html = '<p>';
+		$key = (string) $field['key'];
 		if ( 'checkbox' === $field['type'] ) {
-			$html .= self::input( $field, $value ) . ' ';
-			$html .= sprintf( '<label for="%s">%s</label>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
+			$html = sprintf( '<div class="simple-seo-check">%1$s<label for="%2$s">%3$s</label></div>', self::input( $field, $value ), esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
 		} else {
-			$html .= sprintf( '<label for="%s"><strong>%s</strong></label><br>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) );
-			$html .= self::input_with_mask( $field, $value, 'post', $post );
+			$html = sprintf( '<label class="simple-seo-label" for="%1$s">%2$s</label>', esc_attr( self::input_id( $key ) ), esc_html( (string) $field['label'] ) ) . self::input_with_mask( $field, $value, 'post', $post );
 		}
 		if ( '' !== (string) $field['description'] ) {
-			$html .= sprintf( '<br><span class="description">%s</span>', esc_html( (string) $field['description'] ) );
+			$html .= sprintf( '<p class="description">%s</p>', esc_html( (string) $field['description'] ) );
 		}
 		if ( $preview ) {
-			$html .= self::preview( $field, 'post', $post, '<br>' );
+			$html .= self::preview( $field, 'post', $post );
 		}
 
-		return $html . '</p>';
+		return sprintf( '<div class="simple-seo-field simple-seo-field-%1$s">%2$s</div>', esc_attr( (string) $field['type'] ), $html );
 	}
 
 	/**
@@ -201,7 +199,7 @@ final class Simple_SEO_Editor {
 			if ( '' !== (string) $field['description'] ) {
 				printf( '<p class="description">%s</p>', esc_html( (string) $field['description'] ) );
 			}
-			echo self::preview( $field, 'term', $term, '' ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
+			echo self::preview( $field, 'term', $term ); // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.
 			echo '</td></tr>';
 		}
 	}
@@ -274,15 +272,15 @@ final class Simple_SEO_Editor {
 	 * @param array<string, mixed> $field
 	 * @param WP_Post|WP_Term      $object
 	 */
-	private static function preview( array $field, string $object_type, $object, string $before ): string {
+	private static function preview( array $field, string $object_type, $object ): string {
 		if ( ! is_callable( $field['preview'] ?? null ) ) {
 			return '';
 		}
 
 		$text = (string) call_user_func( $field['preview'], $object_type, $object );
 
-		return $before . sprintf(
-			'<span class="description simple-seo-preview">%s</span>',
+		return sprintf(
+			'<p class="description simple-seo-preview">%s</p>',
 			esc_html(
 				'' !== $text
 					/* translators: %s: the title or description the page has with the saved values. */

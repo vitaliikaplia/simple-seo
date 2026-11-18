@@ -1121,9 +1121,85 @@
 	padding: 0 4px 16px;
 }
 
-.simple-seo-box .simple-seo-section-body > p:first-child,
-.simple-seo-box .simple-seo-section-body > div:first-child {
+.simple-seo-box .simple-seo-section-body > :first-child {
 	margin-top: 0;
+}
+
+.simple-seo-box .simple-seo-section-body > :last-child {
+	margin-bottom: 0;
+}
+
+/*
+ * Its fields: one width for every control (that of the search result preview) and one step of
+ * spacing — 20px between fields, 6px from a label to its control and from a control to its
+ * description, 8px to the buttons under it.
+ */
+.simple-seo-box {
+	--simple-seo-width: 632px;
+}
+
+.simple-seo-box .simple-seo-field {
+	margin: 0 0 20px;
+}
+
+.simple-seo-box .simple-seo-label {
+	display: block;
+	margin: 0 0 6px;
+	font-weight: 600;
+}
+
+.simple-seo-box .simple-seo-field input[type="text"],
+.simple-seo-box .simple-seo-field input[type="url"],
+.simple-seo-box .simple-seo-field textarea,
+.simple-seo-box .simple-seo-field select {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: var(--simple-seo-width);
+	margin: 0;
+}
+
+.simple-seo-box .simple-seo-field .description {
+	max-width: var(--simple-seo-width);
+	margin: 6px 0 0;
+}
+
+.simple-seo-box .simple-seo-field .simple-seo-preview {
+	margin-top: 4px;
+}
+
+.simple-seo-box .simple-seo-field-buttons {
+	display: block;
+	margin-top: 8px;
+}
+
+.simple-seo-box .simple-seo-check {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.simple-seo-box .simple-seo-check input[type="checkbox"] {
+	margin: 2px 0 0;
+}
+
+.simple-seo-box .simple-seo-snippet {
+	max-width: var(--simple-seo-width);
+	margin: 0 0 20px;
+}
+
+.simple-seo-box .simple-seo-analysis,
+.simple-seo-box .simple-seo-gsc {
+	max-width: var(--simple-seo-width);
+}
+
+.simple-seo-box .simple-seo-analysis {
+	margin: 24px 0 0;
+}
+
+.simple-seo-box .simple-seo-kw-ideas {
+	box-sizing: border-box;
+	max-width: var(--simple-seo-width);
+	margin: 8px 0 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1686,8 +1686,11 @@ try {
 			&& 1 === substr_count( $sseo_html, ' open><summary>' ) && 1 === substr_count( $sseo_html, '<div class="simple-seo-fields simple-seo-box">' )
 			&& str_contains( $sseo_vals['search'][3] ?? '', 'class="simple-seo-snippet' ) && str_contains( $sseo_vals['search'][3] ?? '', 'name="simple_seo[title]"' ) && str_contains( $sseo_vals['search'][3] ?? '', 'name="simple_seo[description]"' )
 			&& str_contains( $sseo_vals['analysis'][3] ?? '', 'name="simple_seo[keyphrase]"' ) && str_contains( $sseo_vals['analysis'][3] ?? '', '<div class="simple-seo-analysis"' )
-			&& str_contains( $sseo_vals['analysis'][3] ?? '', '<br><span class="description">The words people search for to find this page. The analysis below checks the page for them.</span>' )
-			&& (bool) preg_match( '#<input type="checkbox" id="simple-seo-field-nofollow" name="simple_seo\[nofollow\]" value="1"> <label for="simple-seo-field-nofollow">Ask search engines not to follow the links on this page \(nofollow\)</label>#', $sseo_vals['indexing'][3] ?? '' )
+			&& str_contains( $sseo_vals['analysis'][3] ?? '', '<div class="simple-seo-field simple-seo-field-text"><label class="simple-seo-label" for="simple-seo-field-keyphrase">Focus keyphrase</label><input type="text" id="simple-seo-field-keyphrase"' )
+			&& str_contains( $sseo_vals['analysis'][3] ?? '', '<p class="description">The words people search for to find this page. The analysis below checks the page for them.</p>' )
+			&& (bool) preg_match( '#<div class="simple-seo-field simple-seo-field-checkbox"><div class="simple-seo-check"><input type="hidden" name="simple_seo\[nofollow\]" value=""><input type="checkbox" id="simple-seo-field-nofollow" name="simple_seo\[nofollow\]" value="1"><label for="simple-seo-field-nofollow">Ask search engines not to follow the links on this page \(nofollow\)</label></div>#', $sseo_vals['indexing'][3] ?? '' )
+			&& (bool) preg_match( '#<div class="simple-seo-field simple-seo-field-select"><label class="simple-seo-label" for="simple-seo-field-index">Search engines</label><select id="simple-seo-field-index"#', $sseo_vals['indexing'][3] ?? '' )
+			&& str_contains( $sseo_vals['indexing'][3] ?? '', '<p class="description simple-seo-preview">Now: ' ) && 1 === substr_count( $sseo_html, '<br>' ) && str_contains( $sseo_html, '</span><br><span class="simple-seo-snippet-url">' )
 			&& str_contains( $sseo_vals['indexing'][3] ?? '', 'name="simple_seo[index]"' ) && ! str_contains( $sseo_vals['social'][3] ?? '', 'name="simple_seo[index]"' ) && ! str_contains( $sseo_html, '<h4' ) && ! isset( $sseo_vals['gsc'] ),
 		array( $sseo_val, $sseo_html )
 	);

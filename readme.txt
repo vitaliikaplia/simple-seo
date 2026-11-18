@@ -3,7 +3,7 @@ Contributors: vitaliikaplia
 Tags: seo
 Requires at least: 7.0
 Requires PHP: 8.1
-Stable tag: 0.54.0
+Stable tag: 0.55.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,9 @@ Simple SEO is in early development. It sets the title and the meta description o
 2. Activate Simple SEO on the Plugins screen.
 
 == Changelog ==
+
+= 0.55.0 =
+* The fields of the SEO block of a post have one width and one spacing: every text field, text area and list is as wide as the search result preview, with the same step between fields, labels, descriptions and buttons. The ideas of the keyword research open under their field.
 
 = 0.54.0 =
 * The sections of the SEO block of a post are one accordion: opening a section closes the one that was open. The block remembers for each user the section left open.
