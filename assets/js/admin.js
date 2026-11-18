@@ -1016,10 +1016,18 @@
 		} );
 	} );
 
-	// The SEO block of a post: the sections this user keeps open, remembered (none: 'none').
+	// The SEO block of a post: an accordion, one section open at a time (the name of the details
+	// does it in browsers that know it, this for the others); the open one remembered (none: 'none').
 	var sections = Array.prototype.slice.call( document.querySelectorAll( '[data-simple-seo-section]' ) );
 	sections.forEach( function ( section ) {
 		section.addEventListener( 'toggle', function () {
+			if ( section.open ) {
+				sections.forEach( function ( other ) {
+					if ( other !== section && other.open ) {
+						other.open = false;
+					}
+				} );
+			}
 			if ( ! window.setUserSetting ) {
 				return;
 			}

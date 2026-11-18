@@ -32,7 +32,8 @@ final class Simple_SEO_Editor {
 	public const OPEN = 'simple_seo_box';
 
 	/**
-	 * The sections of the SEO block this user keeps open: the one of the search at first.
+	 * The section of the SEO block this user keeps open, as saved (the first that is shown opens):
+	 * the one of the search at first, none for 'none'.
 	 *
 	 * @return string[]
 	 */
@@ -43,9 +44,9 @@ final class Simple_SEO_Editor {
 	}
 
 	/**
-	 * The SEO block of a post: sections that fold, each a group of fields — how the page looks in
-	 * search first, its keyphrases with the analysis second, then the other groups in the order of
-	 * their fields, and Search Console last.
+	 * The SEO block of a post: an accordion of sections, each a group of fields, one open at a
+	 * time — how the page looks in search first, its keyphrases with the analysis second, then the
+	 * other groups in the order of their fields, and Search Console last.
 	 */
 	public static function render_meta_box( WP_Post $post ): void {
 		$fields = self::editable_fields( 'post', (int) $post->ID );
@@ -86,16 +87,23 @@ final class Simple_SEO_Editor {
 		// How the page does in Google search, loaded after the editor.
 		$sections['gsc'] = array( __( 'Search Console', 'simple-seo' ), Simple_SEO_Search_Console::meta_box_part( $post ), 0 );
 
-		$open = self::open_sections();
+		$open = '';
+		foreach ( self::open_sections() as $one ) {
+			if ( '' !== ( $sections[ $one ][1] ?? '' ) ) {
+				$open = $one;
+				break;
+			}
+		}
+
 		echo '<div class="simple-seo-fields simple-seo-box">';
 		foreach ( $sections as $id => [ $heading, $html, $filled ] ) {
 			if ( '' === $html ) {
 				continue;
 			}
 			printf(
-				'<details class="simple-seo-section" data-simple-seo-section="%1$s"%2$s><summary><span class="simple-seo-section-title">%3$s</span>%4$s</summary><div class="simple-seo-section-body">%5$s</div></details>',
+				'<details class="simple-seo-section" name="simple-seo-box" data-simple-seo-section="%1$s"%2$s><summary><span class="simple-seo-section-title">%3$s</span>%4$s</summary><div class="simple-seo-section-body">%5$s</div></details>',
 				esc_attr( $id ),
-				in_array( $id, $open, true ) ? ' open' : '',
+				$id === $open ? ' open' : '',
 				esc_html( $heading ),
 				$filled ? sprintf( '<span class="simple-seo-section-count" title="%1$s">%2$s</span>', esc_attr__( 'Fields filled in', 'simple-seo' ), esc_html( number_format_i18n( $filled ) ) ) : '',
 				$html // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts.

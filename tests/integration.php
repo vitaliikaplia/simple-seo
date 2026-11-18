@@ -1669,7 +1669,7 @@ try {
 	// The sections of the SEO block: id => whether open, its title, the fields filled in, its markup.
 	$sseo_box  = static function ( string $html ): array {
 		$found = array();
-		foreach ( array_slice( explode( '<details class="simple-seo-section" ', $html ), 1 ) as $chunk ) {
+		foreach ( array_slice( explode( '<details class="simple-seo-section" name="simple-seo-box" ', $html ), 1 ) as $chunk ) {
 			if ( preg_match( '#^data-simple-seo-section="([a-z0-9]+)"( open)?><summary><span class="simple-seo-section-title">([^<]*)</span>(?:<span class="simple-seo-section-count" title="Fields filled in">(\d+)</span>)?</summary><div class="simple-seo-section-body">#', $chunk, $sseo_match ) ) {
 				$found[ $sseo_match[1] ] = array( '' !== $sseo_match[2], $sseo_match[3], (int) ( $sseo_match[4] ?? 0 ), $chunk );
 			}
@@ -1680,7 +1680,7 @@ try {
 	$sseo_vals = $sseo_box( $sseo_html );
 	$sseo_val  = array_keys( $sseo_vals );
 	sseo_check(
-		'meta box: sections that fold — how the page looks in search with the snippet, title and description first and open, the keyphrases with the analysis second, then social networks, indexing and Schema, each with its fields',
+		'meta box: an accordion of sections — how the page looks in search with the snippet, title and description first and open, the keyphrases with the analysis second, then social networks, indexing and Schema, each with its fields',
 		array( 'search', 'analysis' ) === array_slice( $sseo_val, 0, 2 ) && array_search( 'social', $sseo_val, true ) < array_search( 'indexing', $sseo_val, true ) && array_search( 'indexing', $sseo_val, true ) < array_search( 'schema', $sseo_val, true )
 			&& array( true, 'Search appearance', 0 ) === array_slice( $sseo_vals['search'] ?? array(), 0, 3 ) && array( false, 'Content analysis', 0 ) === array_slice( $sseo_vals['analysis'] ?? array(), 0, 3 ) && array( false, 'Indexing', 0 ) === array_slice( $sseo_vals['indexing'] ?? array(), 0, 3 )
 			&& 1 === substr_count( $sseo_html, ' open><summary>' ) && 1 === substr_count( $sseo_html, '<div class="simple-seo-fields simple-seo-box">' )
@@ -1695,7 +1695,7 @@ try {
 	update_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'canonical' ), 'https://example.com/elsewhere/' );
 	$sseo_lay_cookie = 'wp-settings-' . $sseo_ed;
 	$sseo_vals       = array();
-	foreach ( array( 'simple_seo_box=social_indexing', 'simple_seo_box=none', 'libraryContent=browse' ) as $sseo_name ) {
+	foreach ( array( 'simple_seo_box=social_indexing', 'simple_seo_box=nope_indexing_social', 'simple_seo_box=none', 'libraryContent=browse' ) as $sseo_name ) {
 		$_COOKIE[ $sseo_lay_cookie ] = $sseo_name;
 		unset( $GLOBALS['_updated_user_settings'] );
 		$sseo_val    = $sseo_box( sseo_capture( static fn() => Simple_SEO_Editor::render_meta_box( get_post( $sseo_p['bare'] ) ) ) );
@@ -1706,8 +1706,8 @@ try {
 	delete_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'nofollow' ) );
 	delete_post_meta( $sseo_p['bare'], Simple_SEO_Fields::meta_key( 'canonical' ) );
 	sseo_check(
-		'meta box: the sections this user keeps open (the user setting the script writes), none, or the search one at first; how many fields of a section are filled in',
-		array( array( 'social', 'indexing' ), 2, array(), 2, array( 'search' ), 2 ) === $sseo_vals,
+		'meta box: one section open, the one this user keeps open (the first of the user setting the script writes that the block has), none, or the search one at first; how many fields of a section are filled in',
+		array( array( 'social' ), 2, array( 'indexing' ), 2, array(), 2, array( 'search' ), 2 ) === $sseo_vals,
 		$sseo_vals
 	);
 	sseo_check( 'meta box: what search engines do now, and the canonical', str_contains( $sseo_html, 'Now: shown in search results' ) && str_contains( $sseo_html, 'Now: ' . get_permalink( $sseo_p['bare'] ) ) );
@@ -4822,8 +4822,8 @@ try {
 	sseo_check(
 		'the SEO box has it in its own section, the last one, after the analysis',
 		false !== strpos( $sseo_html, 'data-simple-seo-gsc=' ) && strpos( $sseo_html, 'data-simple-seo-analysis=' ) < strpos( $sseo_html, 'data-simple-seo-gsc=' )
-			&& (bool) preg_match( '#<details class="simple-seo-section" data-simple-seo-section="gsc"><summary><span class="simple-seo-section-title">Search Console</span></summary><div class="simple-seo-section-body"><div class="simple-seo-gsc" data-simple-seo-gsc="[^"]+"><div class="simple-seo-gsc-body">#', $sseo_html )
-			&& strrpos( $sseo_html, '<details ' ) === strpos( $sseo_html, '<details class="simple-seo-section" data-simple-seo-section="gsc">' ),
+			&& (bool) preg_match( '#<details class="simple-seo-section" name="simple-seo-box" data-simple-seo-section="gsc"><summary><span class="simple-seo-section-title">Search Console</span></summary><div class="simple-seo-section-body"><div class="simple-seo-gsc" data-simple-seo-gsc="[^"]+"><div class="simple-seo-gsc-body">#', $sseo_html )
+			&& strrpos( $sseo_html, '<details ' ) === strpos( $sseo_html, '<details class="simple-seo-section" name="simple-seo-box" data-simple-seo-section="gsc">' ),
 		$sseo_html
 	);
 
